@@ -40,6 +40,7 @@ export default function Welcome() {
                 </header> */}
                 <div>
                     <span>jembuteen</span>
+                    <button className='bg-primary-gradient'>aseloel</button>
                 </div>
             </div>
         </>
