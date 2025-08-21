@@ -13,5 +13,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('products', function() {
+        return Inertia::render('products/index');
+    })->name('products');
+});
+
+//add product
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('add-product', function() {
+        return Inertia::render('products/add-product');
+    })->name('add-product');
+});
+
+
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
