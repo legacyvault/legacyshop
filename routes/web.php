@@ -26,6 +26,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('add-product');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('add-product/{id?}', function ($id = null) {
+        $product = $id ? 'edit' : null; //temporary solution
+
+        //enable when there's get product api
+        // if ($id) {
+        //     $product = Product::findOrFail($id); // preload product if editing
+        // }
+
+        return Inertia::render('products/add-product', [
+            'product' => $product,
+        ]);
+
+    })->name('add-product');
+});
 
 
 require __DIR__.'/settings.php';

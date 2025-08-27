@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { Bold, Italic, Underline, Upload, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 
@@ -28,9 +28,13 @@ interface FormErrors {
 }
 
 export default function AddProduct() {
+    const { props } = usePage();
+    const product = props.product;
+    const isEdit = !!product;
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: 'Add Product',
+            title: `${isEdit ? 'Edit' : 'Add'} Product`,
             href: '/add-product',
         },
     ];
@@ -343,7 +347,7 @@ export default function AddProduct() {
 
                 {/* Submit Button */}
                 <div className="pt-4">
-                    <Button onClick={handleSubmit}>Create Product</Button>
+                    <Button onClick={handleSubmit}>{isEdit ? 'Edit' : 'Create'} Product</Button>
                 </div>
             </div>
         </AppLayout>

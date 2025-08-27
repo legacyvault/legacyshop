@@ -201,7 +201,9 @@ function ProductsTable() {
                             <DropdownMenu>
                                 <DropdownMenuTrigger className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100">⋮</DropdownMenuTrigger>
                                 <DropdownMenuContent className="rounded-md border bg-white shadow-md">
-                                    <DropdownMenuItem className="cursor-pointer px-3 py-1 hover:bg-gray-100">Edit</DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer px-3 py-1 hover:bg-gray-100">
+                                        <Link href={`/add-product/${prod.id}`}>Edit</Link>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer px-3 py-1 text-red-600 hover:bg-gray-100">Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
