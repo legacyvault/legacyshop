@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import React, { useState } from 'react';
 
 export default function FrontFooter() {
@@ -12,7 +13,7 @@ export default function FrontFooter() {
     };
 
     return (
-        <footer className="bg-gray-900 py-16 text-white">
+        <footer className="bg-foreground py-16">
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
                 <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-16">
                     {/* Information Section */}
@@ -20,33 +21,13 @@ export default function FrontFooter() {
                         <h3 className="mb-6 text-lg font-semibold tracking-wide">INFORMATION</h3>
                         <ul className="space-y-4">
                             <li>
-                                <a href="/home" className="text-gray-300 transition-colors duration-200 hover:text-white">
+                                <a href="/home" className="text-background transition-colors duration-200 hover:text-muted-foreground">
                                     Home
                                 </a>
                             </li>
                             <li>
-                                <a href="/products" className="text-gray-300 transition-colors duration-200 hover:text-white">
+                                <a href="/products" className="text-background transition-colors duration-200 hover:text-muted-foreground">
                                     Products
-                                </a>
-                            </li>
-                            <li>
-                                <a href="/contact" className="text-gray-300 transition-colors duration-200 hover:text-white">
-                                    Contact
-                                </a>
-                            </li>
-                            <li>
-                                <a href="/wholesale" className="text-gray-300 transition-colors duration-200 hover:text-white">
-                                    Wholesale
-                                </a>
-                            </li>
-                            <li>
-                                <a href="/affiliates" className="text-gray-300 transition-colors duration-200 hover:text-white">
-                                    Affiliates
-                                </a>
-                            </li>
-                            <li>
-                                <a href="/faqs" className="text-gray-300 transition-colors duration-200 hover:text-white">
-                                    FAQ's
                                 </a>
                             </li>
                         </ul>
@@ -54,23 +35,25 @@ export default function FrontFooter() {
 
                     {/* Newsletter Section */}
                     <div>
-                        <h3 className="mb-6 text-lg font-semibold tracking-wide">KANTOFORGE NEWSLETTER</h3>
-                        <p className="mb-6 text-gray-300">Sign-up for exclusive offers and new product releases!</p>
-                        <form onSubmit={handleSubmit} className="flex">
-                            <input
+                        <h3 className="mb-6 text-lg font-semibold tracking-wide text-background">LEGACYVAULT NEWSLETTER</h3>
+                        <p className="mb-6 text-background">Send your email for exclusive offers and new product releases!</p>
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+                            <Input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                className='text-background'
                                 placeholder="enter your email address"
-                                className="flex-1 border border-gray-600 bg-transparent px-4 py-3 text-white placeholder-gray-400 transition-colors duration-200 focus:border-white focus:outline-none"
                                 required
                             />
-                            <Button
-                                type="submit"
-                                className="border-0 bg-white px-6 py-3 font-semibold text-gray-900 transition-colors duration-200 hover:bg-gray-100"
-                            >
-                                SUBMIT
-                            </Button>
+                            <div>
+                                <Button
+                                    type="submit"
+                                    variant={'outline'}
+                                >
+                                    Submit
+                                </Button>
+                            </div>
                         </form>
                     </div>
 
@@ -87,7 +70,7 @@ export default function FrontFooter() {
 
                 {/* Bottom Section */}
                 <div className="mt-16 flex flex-col items-center justify-between border-t border-gray-800 pt-8 lg:flex-row">
-                    <div className="mb-6 text-sm text-gray-400 lg:mb-0">© 2024 KANTOFORGE LTD - All Rights Reserved - Company Number: 14592116</div>
+                    <div className="mb-6 text-sm text-gray-400 lg:mb-0">© 2024 Legacy Vault LTD - All Rights Reserved - Company Number: 14592116</div>
 
                     {/* Payment Icons */}
                     <div className="flex space-x-3">
