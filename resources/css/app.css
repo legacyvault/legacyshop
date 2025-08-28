@@ -7,7 +7,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@layer utilities{
+@layer utilities {
     .bg-primary-gradient {
         background-image: var(--color-primary);
     }
@@ -66,123 +66,117 @@
 }
 
 :root {
-    /* Light background for a clean feel, dark text for readability */
-    --background: #fdfdfd; /* Clean white */
-    --foreground: #2a2623; /* Deep charcoal */
-  
-    --card: #e8e6e3; /* Soft off-white for subtle card separation */
-    --card-foreground: #2a2623; /* Deep charcoal */
-  
-    --popover: #e8e6e3;
-    --popover-foreground: #2a2623;
-  
-    /* Solid gold for primary actions like buttons */
-    --primary: linear-gradient(
-      90deg,
-      #c7a460 0%,
-      #e7c480 50%,
-      #c7a460 100%
-    );
-    --primary-foreground: #fdfdfd; /* Clean white for contrast on gold */
-  
-    --secondary: #bfb9b3; /* Warm light gray */
-    --secondary-foreground: #2a2623;
-  
-    --muted: #7a746f; /* Muted gray-brown for less prominent text */
-    --muted-foreground: #2a2623;
-  
-    /* Gradient gold for accents, borders, and rings */
-    --accent: linear-gradient(
-      90deg,
-      #c7a460 0%,
-      #e7c480 50%,
-      #c7a460 100%
-    );
-    --accent-foreground: #2a2623; /* Deep charcoal for contrast on the gradient */
-  
-    --destructive: #cc0000; /* A standard, bold red for errors or "shiny" items */
-    --destructive-foreground: #fdfdfd;
-  
-    --border: #bfb9b3;
-    --input: #bfb9b3;
-    --ring: #c7a460;
-  
-    --chart-1: #c7a460; /* Gold accent */
-    --chart-2: #2a2623; /* Deep charcoal */
-    --chart-3: #bfb9b3; /* Warm light gray */
-    --chart-4: #7a746f; /* Muted gray-brown */
-    --chart-5: #e8e6e3; /* Soft off-white */
-  
+    /* Background & text */
+    --background: #ffffff; /* White */
+    --foreground: #1e1e1e; /* Primary dark */
+
+    --card: #f4f4f6; /* Light Gray */
+    --card-foreground: #1e1e1e; /* Primary dark */
+
+    --popover: #f4f4f6; /* Light Gray */
+    --popover-foreground: #1e1e1e; /* Primary dark */
+
+    /* Primary (dark background) */
+    --primary: #1e1e1e;
+    --primary-foreground: #ffffff;
+
+    /* Secondary (medium gray) */
+    --secondary: #b3b3b3; /* Gray */
+    --secondary-foreground: #1e1e1e;
+
+    /* Muted (dark gray for less emphasis) */
+    --muted: #ffffff; /* Dark Gray */
+    --muted-foreground: #404040;
+
+    /* Accent (reuse gray or primary for highlight) */
+    --accent: #b3b3b3; /* Gray */
+    --accent-foreground: #1e1e1e;
+
+    /* Destructive (keep red as is for errors) */
+    --destructive: #cc0000;
+    --destructive-foreground: #ffffff;
+
+    /* Borders, inputs, rings */
+    --border: #b3b3b3;
+    --input: #b3b3b3;
+    --ring: #1e1e1e;
+
+    /* Charts */
+    --chart-1: #1e1e1e; /* Primary */
+    --chart-2: #b3b3b3; /* Gray */
+    --chart-3: #f4f4f6; /* Light Gray */
+    --chart-4: #404040; /* Dark Gray */
+    --chart-5: #ffffff; /* White */
+
+    /* Radius */
     --radius: 0.625rem;
-  
-    --sidebar: #fdfdfd;
-    --sidebar-foreground: #2a2623;
-    --sidebar-primary: #c7a460;
-    --sidebar-primary-foreground: #fdfdfd;
-    --sidebar-accent: #bfb9b3;
-    --sidebar-accent-foreground: #2a2623;
-    --sidebar-border: #bfb9b3;
-    --sidebar-ring: #c7a460;
+
+    /* Sidebar */
+    --sidebar: #1e1e1e; /* Primary dark */
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #b3b3b3; /* Gray */
+    --sidebar-primary-foreground: #1e1e1e;
+    --sidebar-accent: #404040; /* Dark Gray */
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #b3b3b3; /* Gray */
+    --sidebar-ring: #1e1e1e;
 }
 
 .dark {
-    /* Light background for a clean feel, dark text for readability */
-    --background: #fdfdfd; /* Clean white */
-    --foreground: #2a2623; /* Deep charcoal */
-  
-    --card: #e8e6e3; /* Soft off-white for subtle card separation */
-    --card-foreground: #2a2623; /* Deep charcoal */
-  
-    --popover: #e8e6e3;
-    --popover-foreground: #2a2623;
-  
-    /* Solid gold for primary actions like buttons */
-    --primary: linear-gradient(
-      90deg,
-      #e7c480 0%,
-      #c7a460 50%,
-      #c7a460 100%
-    );
-    --primary-foreground: #fdfdfd; /* Clean white for contrast on gold */
-  
-    --secondary: #bfb9b3; /* Warm light gray */
-    --secondary-foreground: #2a2623;
-  
-    --muted: #7a746f; /* Muted gray-brown for less prominent text */
-    --muted-foreground: #2a2623;
-  
-    /* Gradient gold for accents, borders, and rings */
-    --accent: linear-gradient(
-      90deg,
-      #c7a460 0%,
-      #e7c480 50%,
-      #c7a460 100%
-    );
-    --accent-foreground: #2a2623; /* Deep charcoal for contrast on the gradient */
-  
-    --destructive: #cc0000; /* A standard, bold red for errors or "shiny" items */
-    --destructive-foreground: #fdfdfd;
-  
-    --border: #bfb9b3;
-    --input: #bfb9b3;
-    --ring: #c7a460;
-  
-    --chart-1: #c7a460; /* Gold accent */
-    --chart-2: #2a2623; /* Deep charcoal */
-    --chart-3: #bfb9b3; /* Warm light gray */
-    --chart-4: #7a746f; /* Muted gray-brown */
-    --chart-5: #e8e6e3; /* Soft off-white */
-  
+    /* Background & text */
+    --background: #ffffff; /* White */
+    --foreground: #1e1e1e; /* Primary dark */
+
+    --card: #f4f4f6; /* Light Gray */
+    --card-foreground: #1e1e1e; /* Primary dark */
+
+    --popover: #f4f4f6; /* Light Gray */
+    --popover-foreground: #1e1e1e; /* Primary dark */
+
+    /* Primary (dark background) */
+    --primary: #1e1e1e;
+    --primary-foreground: #ffffff;
+
+    /* Secondary (medium gray) */
+    --secondary: #b3b3b3; /* Gray */
+    --secondary-foreground: #1e1e1e;
+
+    /* Muted (dark gray for less emphasis) */
+    --muted: #ffffff; /* Dark Gray */
+    --muted-foreground: #404040;
+
+    /* Accent (reuse gray or primary for highlight) */
+    --accent: #b3b3b3; /* Gray */
+    --accent-foreground: #1e1e1e;
+
+    /* Destructive (keep red as is for errors) */
+    --destructive: #cc0000;
+    --destructive-foreground: #ffffff;
+
+    /* Borders, inputs, rings */
+    --border: #b3b3b3;
+    --input: #b3b3b3;
+    --ring: #1e1e1e;
+
+    /* Charts */
+    --chart-1: #1e1e1e; /* Primary */
+    --chart-2: #b3b3b3; /* Gray */
+    --chart-3: #f4f4f6; /* Light Gray */
+    --chart-4: #404040; /* Dark Gray */
+    --chart-5: #ffffff; /* White */
+
+    /* Radius */
     --radius: 0.625rem;
-  
-    --sidebar: #fdfdfd;
-    --sidebar-foreground: #2a2623;
-    --sidebar-primary: #c7a460;
-    --sidebar-primary-foreground: #fdfdfd;
-    --sidebar-accent: #bfb9b3;
-    --sidebar-accent-foreground: #2a2623;
-    --sidebar-border: #bfb9b3;
-    --sidebar-ring: #c7a460;
+
+    /* Sidebar */
+    --sidebar: #1e1e1e; /* Primary dark */
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #b3b3b3; /* Gray */
+    --sidebar-primary-foreground: #1e1e1e;
+    --sidebar-accent: #404040; /* Dark Gray */
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #b3b3b3; /* Gray */
+    --sidebar-ring: #1e1e1e;
 }
 
 @layer base {

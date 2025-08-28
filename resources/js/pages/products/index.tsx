@@ -104,9 +104,9 @@ function CategoriesTable() {
             <table className="mt-4 min-w-full border-collapse text-sm">
                 <thead>
                     <tr className="bg-sidebar-accent">
-                        <th className="border border-popover px-4 py-3 text-left font-medium">#</th>
-                        <th className="border border-popover px-4 py-3 text-left font-medium">Name</th>
-                        <th className="border border-popover px-4 py-3 text-right font-medium">Actions</th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">#</th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Name</th>
+                        <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -146,9 +146,9 @@ function TypesTable() {
         <table className="mt-4 min-w-full border-collapse text-sm">
             <thead>
                 <tr className="bg-sidebar-accent">
-                    <th className="border border-popover px-4 py-3 text-left font-medium">#</th>
-                    <th className="border border-popover px-4 py-3 text-left font-medium">Name</th>
-                    <th className="border border-popover px-4 py-3 text-right font-medium">Actions</th>
+                    <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">#</th>
+                    <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Name</th>
+                    <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -177,14 +177,14 @@ function ProductsTable() {
         <table className="mt-4 min-w-full border-collapse text-sm">
             <thead>
                 <tr className="bg-sidebar-accent">
-                    <th className="border border-popover px-4 py-3 text-left font-medium">#</th>
-                    <th className="border border-popover px-4 py-3 text-left font-medium">Name</th>
-                    <th className="border border-popover px-4 py-3 text-left font-medium">Description</th>
-                    <th className="border border-popover px-4 py-3 text-left font-medium">Category</th>
-                    <th className="border border-popover px-4 py-3 text-left font-medium">Type</th>
-                    <th className="border border-popover px-4 py-3 text-left font-medium">Price</th>
-                    <th className="border border-popover px-4 py-3 text-left font-medium">Quantity</th>
-                    <th className="border border-popover px-4 py-3 text-right font-medium">Actions</th>
+                    <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">#</th>
+                    <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Name</th>
+                    <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Description</th>
+                    <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Category</th>
+                    <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Type</th>
+                    <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Price</th>
+                    <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Quantity</th>
+                    <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
                 </tr>
             </thead>
             <tbody>

@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import FrontFooter from '@/layouts/front/front-footer';
 import FrontHeader from '@/layouts/front/front-header';
 import { type SharedData } from '@/types';
@@ -53,14 +54,15 @@ const ProductCardsSection = () => {
     ];
 
     return (
-        <section className="bg-gray-50 py-16">
+        <section className="py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 {/* Section Header */}
                 <div className="mb-12 text-left">
-                    <h2 className="mb-4 text-3xl font-bold text-gray-900">GRADEGUARDIANS - LOWER PRICE!</h2>
-                    <p className="max-w-2xl text-lg text-gray-600">
+                    <h2 className="mb-4 text-5xl font-bold text-primary">GRADEGUARDIANS - LOWER PRICE!</h2>
+                    <p className="max-w-2xl text-xl text-muted-foreground">
                         Premium UV protected trading card cases at unbeatable prices. Limited time offers available.
                     </p>
+                    <Button className="mt-4">See More Cases</Button>
                 </div>
 
                 {/* Product Grid */}
@@ -68,13 +70,6 @@ const ProductCardsSection = () => {
                     {products.map((product) => (
                         <ProductCard key={product.id} product={product} />
                     ))}
-                </div>
-
-                {/* See More Button */}
-                <div className="text-center">
-                    <button className="transform rounded-lg bg-gray-900 px-8 py-3 text-sm font-semibold tracking-wide text-white uppercase shadow-lg transition-colors duration-200 hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-xl">
-                        See More Cases
-                    </button>
                 </div>
             </div>
         </section>
@@ -137,9 +132,7 @@ const ProductCard = ({ product }: any) => {
                 </div>
 
                 {/* Action Button */}
-                <button className="mt-4 w-full transform rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-gray-800 active:scale-95">
-                    Add to Cart
-                </button>
+                <Button className="mt-4 w-full">Add to Cart</Button>
             </div>
         </div>
     );
