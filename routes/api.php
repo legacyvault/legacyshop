@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::group(['prefix' => 'v1'], function () {
+Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Profile API
     Route::post('update-profile', [UserController::class, 'updateProfile']);
     Route::get('profile', [UserController::class, 'getProfile']);

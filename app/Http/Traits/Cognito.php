@@ -36,10 +36,9 @@ trait Cognito
         $userPoolId = env('AWS_COGNITO_USER_POOL_ID');
 
         try {
-            $result = $client->adminCreateUser([
+            $client->adminCreateUser([
                 'UserPoolId' => $userPoolId,
                 'Username' => $data['email'],
-                'TemporaryPassword' => null,
                 'UserAttributes' => [
                     [
                         'Name' => 'email',
@@ -50,14 +49,19 @@ trait Cognito
                         'Value' => 'true'
                     ],
                 ],
-                'DesiredDeliveryMediums' => ['EMAIL'],
+                'MessageAction' => 'SUPPRESS',
             ]);
 
-            if (isset($result['User'])) {
-                return 'SUCCESS';
-            } else {
-                return 'FAILURE';
-            }
+            $client->adminSetUserPassword([
+                'UserPoolId' => $userPoolId,
+                'Username' => $data['email'],
+                'Password' => $data['password'],
+                'Permanent' => true,
+            ]);
+
+            Log::info('Successfully create AWS Cognito');
+
+            return 'SUCCESS';
         } catch (CognitoIdentityProviderException $e) {
             if ($e->getAwsErrorCode() === $this->USERNAME_EXISTS) {
                 Log::debug('Username already exists in Cognito: ' . $data['email']);
@@ -65,14 +69,22 @@ trait Cognito
                 Log::error($e->getAwsErrorMessage());
             }
 
-            return $e->getAwsErrorMessage();
+            return 'FAILURE';
         }
     }
 
     public function initiateAuth($username, $password)
     {
         $client = $this->getAWSCognitoClient();
-        $secretHash = base64_encode(hash_hmac('sha256', $username . env('AWS_COGNITO_CLIENT_ID'), env('AWS_COGNITO_CLIENT_SECRET'), true));
+
+        $secretHash = base64_encode(
+            hash_hmac(
+                'sha256',
+                $username . env('AWS_COGNITO_CLIENT_ID'),
+                env('AWS_COGNITO_CLIENT_SECRET'),
+                true
+            )
+        );
 
         try {
             $result = $client->initiateAuth([
@@ -85,32 +97,29 @@ trait Cognito
                 ],
             ]);
 
-            if (isset($result['ChallengeName']) && $result['ChallengeName'] === 'NEW_PASSWORD_REQUIRED') {
-                Log::info('New Password Required');
-                return ([
-                    'status' => 'NEW_PASSWORD_REQUIRED',
-                    'session_token' => $result['Session']
-                ]);
-            } else {
-                $authResult = $result['AuthenticationResult'];
-                $accessToken = $authResult['AccessToken'];
-                $refreshToken = $authResult['RefreshToken'];
-
-                return ([
-                    'status' => 'success',
-                    'access_token' => $accessToken,
-                    'refresh_token' => $refreshToken
-                ]);
+            if (!empty($result['AuthenticationResult'])) {
+                return [
+                    'status' => 'SUCCESS',
+                    'access_token' => $result['AuthenticationResult']['AccessToken'],
+                    'refresh_token' => $result['AuthenticationResult']['RefreshToken'],
+                    'id_token' => $result['AuthenticationResult']['IdToken'],
+                    'expires_in' => $result['AuthenticationResult']['ExpiresIn'],
+                ];
             }
+
+            return [
+                'status' => 'FAILED',
+                'message' => 'Authentication failed, no tokens returned.'
+            ];
         } catch (\Aws\Exception\AwsException $e) {
-            // Catch AWS-specific exceptions
             Log::error('AWS Exception: ' . $e->getAwsErrorMessage());
             return [
-                'status' => 'failed',
-                'message' => 'Failed to initiate auth.'
+                'status' => 'FAILED',
+                'message' => $e->getAwsErrorMessage()
             ];
         }
     }
+
 
     public function adminDeleteUser($data)
     {
@@ -124,7 +133,6 @@ trait Cognito
             ]);
 
             return true;
-            
         } catch (CognitoIdentityProviderException $e) {
 
             Log::error($e->getAwsErrorMessage());
