@@ -21,14 +21,14 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Admin Test',
                 'email' => 'ramadianarditama66@gmail.com',
-                'role_id' => 'admin',
+                'role' => 'admin',
                 'password' => 'lMjKoP123!?',
                 'confirm_password' => 'lMjKoP123!?',
             ],
             [
                 'name' => 'User Test',
                 'email' => 'ramadianardtm@gmail.com',
-                'role_id' => 'user',
+                'role' => 'user',
                 'password' => 'lMjKoP123!?',
                 'confirm_password' => 'lMjKoP123!?',
             ],

@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\API\V1\AWSCognitoAuthController;
+use App\Http\Controllers\API\V1\ProductController;
+use App\Http\Controllers\API\V1\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -15,26 +18,21 @@ Route::get('/register', function () {
     return Inertia::render('auth/register');
 })->name('register');
 
-Route::middleware(['auth', 'verified','role:admin'])->group(function () {
-    Route::get('dashboard', function () {
+
+Route::middleware(['ensureToken','role:admin'])->group(function () {
+
+    Route::get('/dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
-});
 
-Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
-    Route::get('products', function() { 
+    Route::get('products', function () {
         return Inertia::render('products/index');
     })->name('products');
-});
 
-//add product
-Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
-    Route::get('add-product', function() {
+    Route::get('add-product', function () {
         return Inertia::render('products/add-product');
     })->name('add-product');
-});
 
-Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::get('add-product/{id?}', function ($id = null) {
         $product = $id ? 'edit' : null; //temporary solution
 
@@ -46,6 +44,31 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
         return Inertia::render('products/add-product', [
             'product' => $product,
         ]);
-
     })->name('add-product');
+});
+
+#API 
+Route::group(['prefix' => 'v1/cognito'], function () {
+    Route::post('login', [AWSCognitoAuthController::class, 'login'])->name('cognito.login');
+});
+Route::group(['prefix' => 'v1/cognito'], function () {
+    Route::post('register', [AwsCognitoAuthController::class, 'registerUser'])->name('cognito.register');
+});
+
+Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+    //Profile API
+    Route::post('update-profile', [UserController::class, 'updateProfile']);
+    Route::get('profile', [UserController::class, 'getProfile']);
+
+    //Category API
+    Route::post('create-category', [ProductController::class, 'createCategory']);
+    Route::post('update-category', [ProductController::class, 'updateCategory']);
+    Route::get('category', [ProductController::class, 'getAllCategory']);
+
+    //Type API
+    Route::post('create-type', [ProductController::class, 'createType']);
+    Route::post('update-type', [ProductController::class, 'updateType']);
+    Route::get('type', [ProductController::class, 'getAllType']);
+
+    Route::post('logout', [AwsCognitoAuthController::class, 'logout']);
 });
