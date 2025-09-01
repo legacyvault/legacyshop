@@ -23,28 +23,3 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
-    //Profile API
-    Route::post('update-profile', [UserController::class, 'updateProfile']);
-    Route::get('profile', [UserController::class, 'getProfile']);
-
-    //Category API
-    Route::post('create-category', [ProductController::class, 'createCategory']);
-    Route::post('update-category', [ProductController::class, 'updateCategory']);
-    Route::get('category', [ProductController::class, 'getAllCategory']);
-
-    //Type API
-    Route::post('create-type', [ProductController::class, 'createType']);
-    Route::post('update-type', [ProductController::class, 'updateType']);
-    Route::get('type', [ProductController::class, 'getAllType']);
-
-    Route::post('logout', [AwsCognitoAuthController::class, 'logout']);
-});
-
-Route::group(['prefix' => 'v1/cognito'], function () {
-    Route::post('register', [AwsCognitoAuthController::class, 'registerUser'])->name('cognito.register');
-});
-
-Route::group(['prefix' => 'v1/cognito'], function () {
-    Route::post('login', [AwsCognitoAuthController::class, 'login'])->name('cognito.login');
-});

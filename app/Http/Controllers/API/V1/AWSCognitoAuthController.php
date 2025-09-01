@@ -77,19 +77,7 @@ class AWSCognitoAuthController extends Controller
                     'name' => $request->name,
                 ]);
 
-                return redirect()->route('login')->with('success', 'Registration successful.');
-
-                // if ($createProfile) {
-                //     $response = [
-                //         'data' => '',
-                //         'meta' => [
-                //             'message' => 'Registration successful.',
-                //             'status_code' => Response::HTTP_OK
-                //         ]
-                //     ];
-
-                //     return response()->json($response, Response::HTTP_OK);
-                // }
+                return redirect()->route('login')->with('success', 'Sign Up successful.');
             } else {
                 $response = [
                     'data' => '',
@@ -99,7 +87,7 @@ class AWSCognitoAuthController extends Controller
                     ]
                 ];
 
-                return redirect()->route('login')->with('success', 'Registration successful.');
+                return redirect()->route('login')->with('error', 'Failed to sign up.');
             }
         } else {
             $response = [
@@ -110,7 +98,7 @@ class AWSCognitoAuthController extends Controller
                 ]
             ];
 
-            return redirect()->route('login')->with('success', 'Registration successful.');
+            return redirect()->route('login')->with('error', 'Failed to sign up.');
         }
     }
 
@@ -134,63 +122,30 @@ class AWSCognitoAuthController extends Controller
         Log::info('Security Audit: User ' . $request->email . ' trying to login.');
         //Cognito initiate auth
         $result = $this->initiateAuth($request->email, $request->password);
+
         if ($result['status'] == 'SUCCESS') {
-            Log::info('Security Audit: User ' . $request->email . 'requested to login.');
-            $userData = User::where('email', $request->email)->first();
-            if ($userData) {
-                Auth::login($userData);
+            Log::info('Security Audit: User ' . $request->email . ' requested to login.');
+            $credentials = $request->only('email', 'password');
+            if (Auth::attempt($credentials)) {
                 $user = Auth::user();
-                $userData->password = $request->password;
-                $userData->auth_token = $result['access_token'];
-                $userData->refresh_token = $result['refresh_token'];
-                $userData->save();
-                $status = "LOGIN_SUCCESSFUL";
+                Auth::login($user); 
+                $user->auth_token = $result['access_token'];
+                $user->refresh_token = $result['refresh_token'];
+                $user->save();
+
                 Log::info('Security Audit: User ' . $request->email . ' login successfully.');
-                $data = [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'email_verified_at' => null,
-                    'role' => $user->role,
-                    'status' => $status
-                ];
 
                 // choose redirect path based on role
-                $redirectUrl = $user->role === 'admin' ? '/dashboard' : '/';
+                $redirectUrl = $user->role === 'admin' ? 'dashboard' : 'home';
 
-                $response = [
-                    'data' => $data,
-                    'auth_token' => $result['access_token'],
-                    'session_token' => null,
-                    'meta' => [
-                        'message' => 'Login successful',
-                        'status_code' => Response::HTTP_OK,
-                        'redirect_url' => $redirectUrl
-                    ]
-                ];
-
-                return response()->json($response, Response::HTTP_OK);
+                return redirect()->route($redirectUrl)->with('success', 'Registration successful.');
+            
             } else {
-                $response = [
-                    'data' => '',
-                    'meta' => [
-                        'message' => 'Login failed. User not found.',
-                        'status_code' => Response::HTTP_BAD_REQUEST
-                    ]
-                ];
-
-                return response()->json($response, Response::HTTP_BAD_REQUEST);
+                return redirect()->route('login')->with('error', 'Login failed.');
             }
+            
         } else {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Login failed. Wrong password.',
-                    'status_code' => Response::HTTP_FORBIDDEN
-                ]
-            ];
-
-            return response()->json($response, Response::HTTP_FORBIDDEN);
+            return redirect()->route('login')->with('error', 'Login failed. Wrong password');
         }
     }
 

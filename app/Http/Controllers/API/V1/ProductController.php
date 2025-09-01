@@ -3,15 +3,21 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\AwsS3;
 use App\Models\Category;
+use App\Models\Product;
+use App\Models\ProductPictures;
 use App\Models\Type;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
+    use AwsS3;
+
     public function createCategory(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -226,5 +232,63 @@ class ProductController extends Controller
             ]
         ];
         return response()->json($response, Response::HTTP_OK);
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'product_name'     => 'required|string|max:255',
+            'product_price'    => 'required|numeric',
+            'product_discount' => 'nullable|numeric',
+            'category_id'      => 'required|string',
+            'type_id'          => 'required|string',
+            'pictures'         => 'nullable|array',
+            'pictures.*'       => 'file|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $product = Product::create([
+                'product_name'     => $request->product_name,
+                'product_price'    => $request->product_price,
+                'product_discount' => $request->product_discount,
+                'category_id'      => $request->category_id,
+                'type_id'          => $request->type_id,
+            ]);
+
+            if ($request->hasFile('pictures')) {
+                foreach ($request->file('pictures') as $file) {
+
+                    $url = $this->uploadToS3($file);
+
+                    ProductPictures::create([
+                        'url'        => $url,
+                        'product_id' => $product->id,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $response = [
+                'data' => '',
+                'meta' => [
+                    'message' => 'Products created successfully.',
+                    'status_code' => Response::HTTP_OK
+                ]
+            ];
+            return response()->json($response, Response::HTTP_OK);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $response = [
+                'data' => '',
+                'meta' => [
+                    'message' => 'Failed to create products.',
+                    'status_code' => Response::HTTP_INTERNAL_SERVER_ERROR
+                ]
+            ];
+            return response()->json($response, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

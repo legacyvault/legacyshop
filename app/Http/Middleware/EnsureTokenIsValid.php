@@ -6,6 +6,8 @@ use App\Http\Traits\Cognito;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureTokenIsValid
@@ -18,43 +20,22 @@ class EnsureTokenIsValid
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->header('Authorization');
-
-        if (strpos($token, 'Bearer ') === 0) {
-            $token = substr($token, 7);
-
-            $user = User::where('auth_token', $token)->first();
-
-            if (!$user) {
-                $response = [
-                    'data' => '',
-                    'meta' => [
-                        'message' => 'Unauthorized: Invalid token. Please re-login.',
-                        'status_code' => Response::HTTP_UNAUTHORIZED
-                    ]
-                ];
-                return response()->json($response, Response::HTTP_UNAUTHORIZED);
-            }
-
-            $cognitoTokenInfo = $this->validateToken($token);
-
-            if (!$cognitoTokenInfo) {
-                $user->auth_token = null;
-                $user->refresh_token = null;
-                $user->save();
-                $response = [
-                    'data' => '',
-                    'meta' => [
-                        'message' => 'Unauthorized: Invalid token.',
-                        'status_code' => Response::HTTP_UNAUTHORIZED
-                    ]
-                ];
-                return response()->json($response, Response::HTTP_UNAUTHORIZED);
-            }
-
-            return $next($request);
-        } else {
-            return response(['message' => 'Invalid Authentication Token'], Response::HTTP_UNAUTHORIZED);
+        $user = Auth::user();
+        if (!$user) {
+            Auth::logout();
+            return redirect()->route('login');
         }
+        $token = $user->auth_token;
+        $cognitoTokenInfo = $this->validateToken($token);
+
+        if (!$cognitoTokenInfo) {
+            $user->auth_token = null;
+            $user->refresh_token = null;
+            $user->save();
+            Auth::logout();
+            return redirect()->route('login');
+        }
+
+        return $next($request);
     }
 }
