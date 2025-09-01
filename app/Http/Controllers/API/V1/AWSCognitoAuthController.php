@@ -36,28 +36,28 @@ class AWSCognitoAuthController extends Controller
             ],
         ]);
 
-        if ($validator->fails()) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => $validator->errors()->all()[0],
-                    'status_code' => Response::HTTP_BAD_REQUEST
-                ]
-            ];
-            return response()->json($response, Response::HTTP_BAD_REQUEST);
-        }
+        // if ($validator->fails()) {
+        //     $response = [
+        //         'data' => '',
+        //         'meta' => [
+        //             'message' => $validator->errors()->all()[0],
+        //             'status_code' => Response::HTTP_BAD_REQUEST
+        //         ]
+        //     ];
+        //     return response()->json($response, Response::HTTP_BAD_REQUEST);
+        // }
 
-        if ($request->password != $request->confirm_password) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Failed to register. Password not match.',
-                    'status_code' => Response::HTTP_FORBIDDEN
-                ]
-            ];
+        // if ($request->password != $request->confirm_password) {
+        //     $response = [
+        //         'data' => '',
+        //         'meta' => [
+        //             'message' => 'Failed to register. Password not match.',
+        //             'status_code' => Response::HTTP_FORBIDDEN
+        //         ]
+        //     ];
 
-            return response()->json($response, Response::HTTP_FORBIDDEN);
-        }
+        //     return response()->json($response, Response::HTTP_FORBIDDEN);
+        // }
 
         //Create Cognito User
         $createCognitoUser = $this->customCreateUser($request->all());
@@ -77,17 +77,19 @@ class AWSCognitoAuthController extends Controller
                     'name' => $request->name,
                 ]);
 
-                if ($createProfile) {
-                    $response = [
-                        'data' => '',
-                        'meta' => [
-                            'message' => 'Registration successful.',
-                            'status_code' => Response::HTTP_OK
-                        ]
-                    ];
+                return redirect()->route('login')->with('success', 'Registration successful.');
 
-                    return response()->json($response, Response::HTTP_OK);
-                }
+                // if ($createProfile) {
+                //     $response = [
+                //         'data' => '',
+                //         'meta' => [
+                //             'message' => 'Registration successful.',
+                //             'status_code' => Response::HTTP_OK
+                //         ]
+                //     ];
+
+                //     return response()->json($response, Response::HTTP_OK);
+                // }
             } else {
                 $response = [
                     'data' => '',
@@ -97,7 +99,7 @@ class AWSCognitoAuthController extends Controller
                     ]
                 ];
 
-                return response()->json($response, Response::HTTP_FORBIDDEN);
+                return redirect()->route('login')->with('success', 'Registration successful.');
             }
         } else {
             $response = [
@@ -108,7 +110,7 @@ class AWSCognitoAuthController extends Controller
                 ]
             ];
 
-            return response()->json($response, Response::HTTP_FORBIDDEN);
+            return redirect()->route('login')->with('success', 'Registration successful.');
         }
     }
 
@@ -153,13 +155,17 @@ class AWSCognitoAuthController extends Controller
                     'status' => $status
                 ];
 
+                // choose redirect path based on role
+                $redirectUrl = $user->role === 'admin' ? '/dashboard' : '/';
+
                 $response = [
                     'data' => $data,
                     'auth_token' => $result['access_token'],
                     'session_token' => null,
                     'meta' => [
                         'message' => 'Login successful',
-                        'status_code' => Response::HTTP_OK
+                        'status_code' => Response::HTTP_OK,
+                        'redirect_url' => $redirectUrl
                     ]
                 ];
 

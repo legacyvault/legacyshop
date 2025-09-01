@@ -7,6 +7,14 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
+Route::get('/login', function () {
+    return Inertia::render('auth/login');
+})->name('login');
+
+Route::get('/register', function () {
+    return Inertia::render('auth/register');
+})->name('register');
+
 Route::middleware(['auth', 'verified','role:admin'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
@@ -14,7 +22,7 @@ Route::middleware(['auth', 'verified','role:admin'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
-    Route::get('products', function() {
+    Route::get('products', function() { 
         return Inertia::render('products/index');
     })->name('products');
 });
@@ -41,7 +49,3 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
 
     })->name('add-product');
 });
-
-
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';

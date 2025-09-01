@@ -42,9 +42,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 });
 
 Route::group(['prefix' => 'v1/cognito'], function () {
-    Route::post('register', [AwsCognitoAuthController::class, 'registerUser']);
+    Route::post('register', [AwsCognitoAuthController::class, 'registerUser'])->name('cognito.register');
 });
 
 Route::group(['prefix' => 'v1/cognito'], function () {
-    Route::post('login', [AwsCognitoAuthController::class, 'login']);
+    Route::post('login', [AwsCognitoAuthController::class, 'login'])->name('cognito.login');
 });
