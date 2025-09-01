@@ -22,8 +22,18 @@ class AWSCognitoAuthController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
             'email' => 'required|unique:users,email|email',
-            'password' => ['required', 'string', Password::min(8)->mixedCase()->numbers()],
-            'confirm_password' => ['required', 'string', Password::min(8)->mixedCase()->numbers()],
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/^(?=.*[0-9])(?=.*[\W_]).+$/'
+            ],
+            'confirm_password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/^(?=.*[0-9])(?=.*[\W_]).+$/'
+            ],
         ]);
 
         if ($validator->fails()) {
