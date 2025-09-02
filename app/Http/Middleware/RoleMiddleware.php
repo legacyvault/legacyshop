@@ -15,7 +15,7 @@ class RoleMiddleware
 
         if (!$user) {
             Auth::logout();
-            return redirect()->route('login');
+            return redirect()->route('login')->with('error', 'You are not allowed.');
         }
 
         if ($user->role !== $role) {
@@ -23,7 +23,7 @@ class RoleMiddleware
             $user->refresh_token = null;
             $user->save();
             Auth::logout();
-            return redirect()->route('login');
+            return redirect()->route('login')->with('error', 'You are not allowed.');
         }
 
         return $next($request);

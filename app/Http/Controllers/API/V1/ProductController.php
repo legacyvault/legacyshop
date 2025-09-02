@@ -191,4 +191,17 @@ class ProductController extends Controller
             return redirect()->back()->with('error', 'Failed to add product.');
         }
     }
+
+    public function getAllProduct()
+    {
+        $products = Product::with('category', 'type', 'pictures')->get();
+        
+        return Inertia::render('products/index', [
+            'products' => $products,
+            'flash' => [
+                'success' => session('success'),
+                'error'   => session('error'),
+            ],
+        ]);
+    }
 }

@@ -22,10 +22,12 @@ class EnsureTokenIsValid
     {
         $user = Auth::user();
         if (!$user) {
-            Auth::logout();
-            return redirect()->route('login');
+            return redirect()->route('login')->with('error', 'Session is over, please re-login.');
         }
         $token = $user->auth_token;
+        if (!$token) {
+            return redirect()->route('login')->with('error', 'Session is over, please re-login.');
+        }
         $cognitoTokenInfo = $this->validateToken($token);
 
         if (!$cognitoTokenInfo) {
@@ -33,7 +35,7 @@ class EnsureTokenIsValid
             $user->refresh_token = null;
             $user->save();
             Auth::logout();
-            return redirect()->route('login');
+            return redirect()->route('login')->with('error', 'Session is over, please re-login.');
         }
 
         return $next($request);
