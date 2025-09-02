@@ -154,7 +154,7 @@ export default function Welcome() {
 
                 {/* HERO SECTION */}
 
-                <div className="mx-auto mb-16 md:max-w-7xl">
+                <div className="mx-auto my-16 md:max-w-7xl">
                     <h1 className="mb-10 text-center text-5xl font-black text-primary">Welcome to LegacyVault</h1>
                     <p className="mb-4 text-center">
                         Here at LegacyVault, we're all about the details. And when we say "custom," we mean it! Our super talented squad crafts these
