@@ -90,14 +90,7 @@ class AWSCognitoAuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => $validator->errors()->all()[0],
-                    'status_code' => Response::HTTP_BAD_REQUEST
-                ]
-            ];
-            return response()->json($response, Response::HTTP_BAD_REQUEST);
+            return redirect()->back()->withErrors($validator)->withInput();
         }
         Log::info('Security Audit: User ' . $request->email . ' trying to login.');
         //Cognito initiate auth
@@ -108,7 +101,7 @@ class AWSCognitoAuthController extends Controller
             $credentials = $request->only('email', 'password');
             if (Auth::attempt($credentials)) {
                 $user = Auth::user();
-                Auth::login($user); 
+                Auth::login($user);
                 $user->auth_token = $result['access_token'];
                 $user->refresh_token = $result['refresh_token'];
                 $user->save();
@@ -119,11 +112,9 @@ class AWSCognitoAuthController extends Controller
                 $redirectUrl = $user->role === 'admin' ? 'dashboard' : 'home';
 
                 return redirect()->route($redirectUrl)->with('success', 'Registration successful.');
-            
             } else {
                 return redirect()->route('login')->with('error', 'Login failed.');
             }
-            
         } else {
             return redirect()->route('login')->with('error', 'Login failed. Wrong password');
         }
@@ -133,62 +124,27 @@ class AWSCognitoAuthController extends Controller
     {
         try {
 
-            $token = $request->header('Authorization');
+            $user = Auth::user();
 
-            if (strpos($token, 'Bearer ') === 0) {
-                $token = substr($token, 7);
-                $user = User::where('auth_token', $token)->first();
-
-                if (!$user) {
-                    $response = [
-                        'data' => '',
-                        'meta' => [
-                            'message' => 'Logout failed',
-                            'status_code' => Response::HTTP_UNAUTHORIZED
-                        ]
-                    ];
-                    return response()->json($response, Response::HTTP_UNAUTHORIZED);
-                }
-
-                $refresh_token = $user->refresh_token;
-                $revoke_token = $this->revokeTokenFromCognito($refresh_token);
-
-                if (!$revoke_token) {
-                    $response = [
-                        'data' => '',
-                        'meta' => [
-                            'message' => 'Logout failed',
-                            'status_code' => Response::HTTP_UNAUTHORIZED
-                        ]
-                    ];
-                    return response()->json($response, Response::HTTP_UNAUTHORIZED);
-                }
-
-                $user->auth_token = null;
-                $user->refresh_token = null;
-                $user->save();
+            if (!$user) {
+                return redirect()->back()->with('error', 'Logout failed');
             }
 
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Logout successful',
-                    'status_code' => Response::HTTP_OK
-                ]
-            ];
+            $refresh_token = $user->refresh_token;
+            $revoke_token = $this->revokeTokenFromCognito($refresh_token);
 
-            return response()->json($response, Response::HTTP_OK);
+            if (!$revoke_token) {
+                return redirect()->back()->with('error', 'Logout failed');
+            }
+
+            $user->auth_token = null;
+            $user->refresh_token = null;
+            $user->save();
+
+            return redirect()->route('login')->with('success', 'Logout successful.');
         } catch (\Exception $e) {
-            // Something went wrong whilst attempting to encode the token
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Logout failed : ' . $e,
-                    'status_code' => Response::HTTP_UNAUTHORIZED
-                ]
-            ];
-
-            return response()->json($response, Response::HTTP_UNAUTHORIZED);
+            Log::error('Failed to logout: ' . $e);
+            return redirect()->back()->with('error', 'Logout failed');
         }
     }
 }
