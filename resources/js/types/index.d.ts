@@ -27,6 +27,7 @@ export interface SharedData {
     quote: { message: string; author: string };
     auth: Auth;
     ziggy: Config & { location: string };
+    profile: IProfile;
     sidebarOpen: boolean;
     [key: string]: unknown;
 }
@@ -41,4 +42,18 @@ export interface User {
     created_at: string;
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
+}
+
+export interface IProfile {
+    address: string | null;
+    city: string | null;
+    country: string | null;
+    created_at: string | Date;
+    id: string;
+    name: string;
+    phone: string | null;
+    postal_code: string | null;
+    province: string | null;
+    updated_at: string | Date;
+    user_id: string;
 }
