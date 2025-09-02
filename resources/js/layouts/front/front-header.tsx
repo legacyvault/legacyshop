@@ -1,61 +1,120 @@
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { UserMenuContent } from '@/components/user-menu-content';
+import { useInitials } from '@/hooks/use-initials';
 import { Auth } from '@/types';
 import { Link } from '@inertiajs/react';
-import { SearchIcon } from 'lucide-react';
+import { SearchIcon, ShoppingCart } from 'lucide-react';
 
 interface IPropsHeader {
     auth: Auth;
 }
 
 export default function FrontHeader({ auth }: IPropsHeader) {
-    return (
-        <header className="mb-6 w-full shadow-md">
-            <nav className="mx-auto grid max-w-[335px] grid-cols-4 items-center justify-between gap-4 py-6 md:max-w-7xl">
-                {auth.user.role === 'admin' ? (
-                    <Link
-                        href={route('dashboard')}
-                        className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-foreground hover:border-[#1915014a]"
-                    >
-                        Dashboard
-                    </Link>
-                ) : (
-                    <>
-                        <div className="col-span-3 flex w-full items-center gap-4">
-                            <Link
-                                href={route('home')}
-                                className="inline-block rounded-sm border border-transparent py-1.5 text-xl leading-normal font-bold text-foreground hover:border-[#19140035]"
-                            >
-                                LOGO
-                            </Link>
+    const getInitials = useInitials();
 
-                            <div className="relative hidden w-full md:block">
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    className="w-full rounded-md border border-gray-300 bg-white py-2 pr-4 pl-10 text-sm text-gray-700 focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
-                                />
-                                <SearchIcon className="absolute top-1/2 left-3 -translate-y-1/2 text-foreground" />
+    return (
+        <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
+            {/* Main header */}
+            <div className="mx-auto max-w-7xl px-4">
+                <div className="flex items-center justify-between py-3 md:py-4">
+                    {/* Left section - Logo */}
+                    <div className="flex items-center gap-4">
+                        <Link href={route('home')} className="text-2xl font-bold text-foreground transition-opacity hover:opacity-80">
+                            LOGO
+                        </Link>
+                    </div>
+
+                    {/* Center section - Search bar */}
+                    <div className="mx-4 flex-1 md:mx-8">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Search"
+                                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-12 text-sm text-gray-700 placeholder-gray-500 transition-all md:py-3"
+                            />
+                            <SearchIcon className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        </div>
+                    </div>
+
+                    {/* Right section - Actions */}
+                    <div className="flex w-64 items-center gap-2 md:gap-4">
+                        {/* Shopping cart */}
+                        <Link href="#" className="relative rounded-lg p-2 transition-colors hover:bg-gray-50">
+                            <ShoppingCart className="h-5 w-5 text-gray-700 md:h-6 md:w-6" />
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                                12
+                            </span>
+                        </Link>
+
+                        {/* User section */}
+                        {auth.user ? (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50">
+                                    <div className="hidden items-center gap-2 md:flex">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                                            {getInitials(auth.user.email)}
+                                        </div>
+                                        <span className="truncate text-sm font-medium text-gray-900 capitalize">
+                                            Hi, {auth.user.email.split('@')[0]}
+                                        </span>
+                                    </div>
+                                    <div className="md:hidden">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                                            {getInitials(auth.user.email)}
+                                        </div>
+                                    </div>
+                                </DropdownMenuTrigger>
+
+                                <DropdownMenuContent align="end" className="w-48">
+                                    <UserMenuContent user={auth.user} />
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <Link
+                                    href={route('login')}
+                                    className="hidden rounded-lg px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted md:inline-block"
+                                >
+                                    Masuk
+                                </Link>
+                                <Link
+                                    href={route('register')}
+                                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                                >
+                                    <span className="hidden md:inline">Daftar</span>
+                                    <span className="md:hidden">Join</span>
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {auth.user.role === 'admin' && (
+                <div className="hidden border-b bg-gray-50 md:block">
+                    <div className="mx-auto max-w-7xl px-4">
+                        <div className="flex items-center justify-between py-2 text-xs text-gray-600">
+                            <div className="flex items-center gap-4">
+                                <Link href="/dashboard" prefetch>
+                                    <span className="flex items-center gap-1">Back to Dashboard</span>
+                                </Link>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
 
-                        <div className="flex items-center gap-2">
-                            <span>Cart</span>|
-                            {}
-                            <Link
-                                href={route('login')}
-                                className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal font-medium text-foreground hover:border-[#19140035]"
-                            >
-                                Log in
-                            </Link>
-                            <Link
-                                href={route('register')}
-                                className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal font-medium text-foreground hover:border-[#1915014a]"
-                            >
-                                Register
-                            </Link>
-                        </div>
-                    </>
-                )}
-            </nav>
+            {/* Mobile search bar */}
+            <div className="px-4 pb-4 md:hidden">
+                <div className="relative">
+                    <input
+                        type="text"
+                        placeholder="Cari di Tokopedia"
+                        className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-12 text-sm text-gray-700 placeholder-gray-500 transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                    />
+                    <SearchIcon className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                </div>
+            </div>
         </header>
     );
 }
