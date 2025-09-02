@@ -13,7 +13,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
 
     const handleLogout = () => {
-        router.post(route('cognito.logout'));  
+        router.post(route('cognito.logout'));
     };
 
     return (
@@ -26,10 +26,10 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                    <div>
+                    <Link href={route('profile.edit-view')}>
                         <Settings className="mr-2" />
                         <span>Settings</span>
-                    </div>
+                    </Link>
                 </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

@@ -60,8 +60,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('add-product', [ProductController::class, 'addProduct'])->name('addProduct');
 
     //Profile API
-    Route::post('update-profile', [UserController::class, 'updateProfile']);
-    Route::get('profile', [UserController::class, 'getProfile']);
+    Route::post('update-profile', [UserController::class, 'updateProfile'])->name('profile.edit');
+    Route::get('profile', [UserController::class, 'getProfile'])->name('profile.edit-view');
 
     //Category API
     Route::post('create-category', [ProductController::class, 'createCategory']);

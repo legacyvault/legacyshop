@@ -9,6 +9,8 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
@@ -32,16 +34,11 @@ class UserController extends Controller
 
     public function getProfile()
     {
-        $profile = Profile::where('user_id', $this->user->id)->first();
+        $profile = Profile::where('user_id', Auth::id())->first();
 
-        $response = [
-            'data' => $profile,
-            'meta' => [
-                'message' => 'Profile data retrieved.',
-                'status_code' => Response::HTTP_OK
-            ]
-        ];
-        return response()->json($response, Response::HTTP_OK);
+        return Inertia::render('profile/index', [
+            'profile' => $profile
+        ]);
     }
 
     public function updateProfile(Request $request)
@@ -57,16 +54,12 @@ class UserController extends Controller
         ]);
 
         if ($validator->fails()) {
-            $response = [
-                'message' => $validator->errors()->all()[0],
-                'data' => ''
-            ];
-            return response()->json($response, Response::HTTP_BAD_REQUEST);
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
         try {
 
-            $user = Profile::where('user_id', $this->user->id)->first();
+            $user = Profile::where('user_id', Auth::id())->first();
 
             if ($user) {
                 $user->name = $request->name;
