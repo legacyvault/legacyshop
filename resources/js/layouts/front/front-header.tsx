@@ -10,7 +10,7 @@ export default function FrontHeader({ auth }: IPropsHeader) {
     return (
         <header className="mb-6 w-full shadow-md">
             <nav className="mx-auto grid max-w-[335px] grid-cols-4 items-center justify-between gap-4 py-6 md:max-w-7xl">
-                {auth.user ? (
+                {auth.user.role === 'admin' ? (
                     <Link
                         href={route('dashboard')}
                         className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-foreground hover:border-[#1915014a]"
@@ -39,6 +39,7 @@ export default function FrontHeader({ auth }: IPropsHeader) {
 
                         <div className="flex items-center gap-2">
                             <span>Cart</span>|
+                            {}
                             <Link
                                 href={route('login')}
                                 className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal font-medium text-foreground hover:border-[#19140035]"

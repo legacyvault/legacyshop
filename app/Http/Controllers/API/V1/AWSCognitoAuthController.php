@@ -31,33 +31,13 @@ class AWSCognitoAuthController extends Controller
             'confirm_password' => [
                 'required',
                 'string',
-                'min:8',
-                'regex:/^(?=.*[0-9])(?=.*[\W_]).+$/'
+                'same:password'
             ],
         ]);
 
-        // if ($validator->fails()) {
-        //     $response = [
-        //         'data' => '',
-        //         'meta' => [
-        //             'message' => $validator->errors()->all()[0],
-        //             'status_code' => Response::HTTP_BAD_REQUEST
-        //         ]
-        //     ];
-        //     return response()->json($response, Response::HTTP_BAD_REQUEST);
-        // }
-
-        // if ($request->password != $request->confirm_password) {
-        //     $response = [
-        //         'data' => '',
-        //         'meta' => [
-        //             'message' => 'Failed to register. Password not match.',
-        //             'status_code' => Response::HTTP_FORBIDDEN
-        //         ]
-        //     ];
-
-        //     return response()->json($response, Response::HTTP_FORBIDDEN);
-        // }
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
 
         //Create Cognito User
         $createCognitoUser = $this->customCreateUser($request->all());

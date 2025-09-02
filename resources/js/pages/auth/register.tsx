@@ -13,7 +13,7 @@ type RegisterForm = {
     name: string;
     email: string;
     password: string;
-    password_confirmation: string;
+    confirm_password: string;
 };
 
 export default function Register() {
@@ -21,13 +21,13 @@ export default function Register() {
         name: '',
         email: '',
         password: '',
-        password_confirmation: '',
+        confirm_password: '',
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('cognito.register'), {
-            onFinish: () => reset('password', 'password_confirmation'),
+            onFinish: () => reset('password', 'confirm_password'),
         });
     };
 
@@ -86,19 +86,19 @@ export default function Register() {
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="password_confirmation">Confirm password</Label>
+                        <Label htmlFor="confirm_password">Confirm password</Label>
                         <Input
-                            id="password_confirmation"
+                            id="confirm_password"
                             type="password"
                             required
                             tabIndex={4}
                             autoComplete="new-password"
-                            value={data.password_confirmation}
-                            onChange={(e) => setData('password_confirmation', e.target.value)}
+                            value={data.confirm_password}
+                            onChange={(e) => setData('confirm_password', e.target.value)}
                             disabled={processing}
                             placeholder="Confirm password"
                         />
-                        <InputError message={errors.password_confirmation} />
+                        <InputError message={errors.confirm_password} />
                     </div>
 
                     <Button type="submit" className="mt-2 w-full" tabIndex={5} disabled={processing}>
