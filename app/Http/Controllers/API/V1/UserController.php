@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -71,33 +72,13 @@ class UserController extends Controller
                 $user->postal_code = $request->postal_code;
                 $user->save();
 
-                $response = [
-                    'data' => '',
-                    'meta' => [
-                        'message' => 'Profile data updated.',
-                        'status_code' => Response::HTTP_OK
-                    ]
-                ];
-                return response()->json($response, Response::HTTP_OK);
+                return redirect()->back()->with('success', 'Profile data updated.');
             } else {
-                $response = [
-                    'data' => '',
-                    'meta' => [
-                        'message' => 'User not found.',
-                        'status_code' => Response::HTTP_BAD_REQUEST
-                    ]
-                ];
-                return response()->json($response, Response::HTTP_BAD_REQUEST);
+                return redirect()->back()->with('error', 'User not found');
             }
         } catch (Exception $e) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Failed to update profile.' . $e,
-                    'status_code' => Response::HTTP_FORBIDDEN
-                ]
-            ];
-            return response()->json($response, Response::HTTP_FORBIDDEN);
+            Log::error('Update Profile Failed: ' . $e);
+            return redirect()->back()->with('error', 'Failed to update profile.');
         }
     }
 }

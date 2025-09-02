@@ -10,9 +10,11 @@ use App\Models\ProductPictures;
 use App\Models\Type;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class ProductController extends Controller
 {
@@ -26,14 +28,7 @@ class ProductController extends Controller
         ]);
 
         if ($validator->fails()) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => $validator->errors()->all()[0],
-                    'status_code' => Response::HTTP_BAD_REQUEST
-                ]
-            ];
-            return response()->json($response, Response::HTTP_BAD_REQUEST);
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
         $create = Category::create([
@@ -42,23 +37,9 @@ class ProductController extends Controller
         ]);
 
         if ($create) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Successfully create category.',
-                    'status_code' => Response::HTTP_OK
-                ]
-            ];
-            return response()->json($response, Response::HTTP_OK);
+            return redirect()->back()->with('success', 'Successfully create category.');
         } else {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Failed to create category.',
-                    'status_code' => Response::HTTP_FORBIDDEN
-                ]
-            ];
-            return response()->json($response, Response::HTTP_FORBIDDEN);
+            return redirect()->back()->with('error', 'Failed to create category.');
         }
     }
 
@@ -70,14 +51,7 @@ class ProductController extends Controller
         ]);
 
         if ($validator->fails()) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => $validator->errors()->all()[0],
-                    'status_code' => Response::HTTP_BAD_REQUEST
-                ]
-            ];
-            return response()->json($response, Response::HTTP_BAD_REQUEST);
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
         $create = Type::create([
@@ -86,23 +60,9 @@ class ProductController extends Controller
         ]);
 
         if ($create) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Successfully create category.',
-                    'status_code' => Response::HTTP_OK
-                ]
-            ];
-            return response()->json($response, Response::HTTP_OK);
+            return redirect()->back()->with('success', 'Successfully create type.');
         } else {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Failed to create category.',
-                    'status_code' => Response::HTTP_FORBIDDEN
-                ]
-            ];
-            return response()->json($response, Response::HTTP_FORBIDDEN);
+            return redirect()->back()->with('error', 'Failed to create type.');
         }
     }
 
@@ -119,41 +79,20 @@ class ProductController extends Controller
         ]);
 
         if ($validator->fails()) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => $validator->errors()->all()[0],
-                    'status_code' => Response::HTTP_BAD_REQUEST
-                ]
-            ];
-            return response()->json($response, Response::HTTP_BAD_REQUEST);
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
         $data = Category::find($request->id);
 
         if (!$data) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Category not found.',
-                    'status_code' => Response::HTTP_NOT_FOUND
-                ]
-            ];
-            return response()->json($response, Response::HTTP_NOT_FOUND);
+            return redirect()->back()->with('error', 'Category not found.');
         }
 
         $data->name = $request->name;
         $data->description = $request->description;
         $data->save();
 
-        $response = [
-            'data' => '',
-            'meta' => [
-                'message' => 'Successfully update category.',
-                'status_code' => Response::HTTP_OK
-            ]
-        ];
-        return response()->json($response, Response::HTTP_OK);
+        return redirect()->back()->with('success', 'Successfully update category.');
     }
 
     public function updateType(Request $request)
@@ -169,74 +108,45 @@ class ProductController extends Controller
         ]);
 
         if ($validator->fails()) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => $validator->errors()->all()[0],
-                    'status_code' => Response::HTTP_BAD_REQUEST
-                ]
-            ];
-            return response()->json($response, Response::HTTP_BAD_REQUEST);
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
         $data = Type::find($request->id);
 
         if (!$data) {
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Type not found.',
-                    'status_code' => Response::HTTP_NOT_FOUND
-                ]
-            ];
-            return response()->json($response, Response::HTTP_NOT_FOUND);
+            return redirect()->back()->with('error', 'Type not found.');
         }
 
         $data->name = $request->name;
         $data->description = $request->description;
         $data->save();
 
-        $response = [
-            'data' => '',
-            'meta' => [
-                'message' => 'Successfully update type.',
-                'status_code' => Response::HTTP_OK
-            ]
-        ];
-        return response()->json($response, Response::HTTP_OK);
+        return redirect()->back()->with('success', 'Successfully update type.');
     }
 
     public function getAllCategory()
     {
         $data = Category::orderBy('name', 'asc')->get();
 
-        $response = [
-            'data' => $data,
-            'meta' => [
-                'message' => 'Successfully get all category.',
-                'status_code' => Response::HTTP_OK
-            ]
-        ];
-        return response()->json($response, Response::HTTP_OK);
+        return redirect()->back()->with([
+            'success' => 'Successfully get products.',
+            'categories' => $data,
+        ]);
     }
 
     public function getAllType()
     {
         $data = Type::orderBy('name', 'asc')->get();
 
-        $response = [
-            'data' => $data,
-            'meta' => [
-                'message' => 'Successfully get all type.',
-                'status_code' => Response::HTTP_OK
-            ]
-        ];
-        return response()->json($response, Response::HTTP_OK);
+        return redirect()->back()->with([
+            'success' => 'Successfully get types.',
+            'types' => $data,
+        ]);
     }
 
     public function addProduct(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'product_name'     => 'required|string|max:255',
             'product_price'    => 'required|numeric',
             'product_discount' => 'nullable|numeric',
@@ -245,6 +155,10 @@ class ProductController extends Controller
             'pictures'         => 'nullable|array',
             'pictures.*'       => 'file|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
 
         try {
             DB::beginTransaction();
@@ -270,11 +184,11 @@ class ProductController extends Controller
             }
 
             DB::commit();
-
-            return redirect()->route('products')->with('success', 'Add product successful.');
+            return redirect()->back()->with('success', 'Add product successful.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('products')->with('succeerrors', 'Failed to add product.');
+            Log::error('Failed to create product: ' . $e);
+            return redirect()->back()->with('error', 'Failed to add product.');
         }
     }
 }
