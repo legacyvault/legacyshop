@@ -234,7 +234,7 @@ class ProductController extends Controller
         return response()->json($response, Response::HTTP_OK);
     }
 
-    public function store(Request $request)
+    public function addProduct(Request $request)
     {
         $request->validate([
             'product_name'     => 'required|string|max:255',
@@ -271,24 +271,10 @@ class ProductController extends Controller
 
             DB::commit();
 
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Products created successfully.',
-                    'status_code' => Response::HTTP_OK
-                ]
-            ];
-            return response()->json($response, Response::HTTP_OK);
+            return redirect()->route('products')->with('success', 'Add product successful.');
         } catch (\Exception $e) {
             DB::rollBack();
-            $response = [
-                'data' => '',
-                'meta' => [
-                    'message' => 'Failed to create products.',
-                    'status_code' => Response::HTTP_INTERNAL_SERVER_ERROR
-                ]
-            ];
-            return response()->json($response, Response::HTTP_INTERNAL_SERVER_ERROR);
+            return redirect()->route('products')->with('succeerrors', 'Failed to add product.');
         }
     }
 }

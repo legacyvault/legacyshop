@@ -19,7 +19,7 @@ Route::get('/register', function () {
 })->name('register');
 
 
-Route::middleware(['ensureToken','role:admin'])->group(function () {
+Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
     Route::get('/dashboard', function () {
         return Inertia::render('dashboard');
@@ -56,6 +56,9 @@ Route::group(['prefix' => 'v1/cognito'], function () {
 });
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+    //Product API
+    Route::post('add-product', [ProductController::class, 'addProduct'])->name('addProduct');
+
     //Profile API
     Route::post('update-profile', [UserController::class, 'updateProfile']);
     Route::get('profile', [UserController::class, 'getProfile']);
