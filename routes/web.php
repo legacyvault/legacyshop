@@ -73,5 +73,5 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('update-type', [ProductController::class, 'updateType']);
     Route::get('type', [ProductController::class, 'getAllType']);
 
-    Route::post('logout', [AwsCognitoAuthController::class, 'logout']);
+    Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
 });

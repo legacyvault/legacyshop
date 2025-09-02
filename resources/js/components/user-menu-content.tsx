@@ -13,8 +13,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
 
     const handleLogout = () => {
-        cleanup();
-        router.flushAll();
+        router.post(route('cognito.logout'));  
     };
 
     return (
@@ -35,7 +34,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-                <div>
+                <div onClick={handleLogout}>
                     <LogOut className="mr-2" />
                     Log out
                 </div>
