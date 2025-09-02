@@ -58,20 +58,21 @@ Route::group(['prefix' => 'v1/cognito'], function () {
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Product API
     Route::post('add-product', [ProductController::class, 'addProduct'])->name('addProduct');
+    Route::post('product', [ProductController::class, 'getAllProduct'])->name('product');
 
     //Profile API
     Route::post('update-profile', [UserController::class, 'updateProfile'])->name('profile.edit');
     Route::get('profile', [UserController::class, 'getProfile'])->name('profile.edit-view');
 
     //Category API
-    Route::post('create-category', [ProductController::class, 'createCategory']);
-    Route::post('update-category', [ProductController::class, 'updateCategory']);
-    Route::get('category', [ProductController::class, 'getAllCategory']);
+    Route::post('create-category', [ProductController::class, 'createCategory'])->name('category.create');
+    Route::post('update-category', [ProductController::class, 'updateCategory'])->name('category.update');
+    Route::get('category', [ProductController::class, 'getAllCategory'])->name('category');
 
     //Type API
-    Route::post('create-type', [ProductController::class, 'createType']);
-    Route::post('update-type', [ProductController::class, 'updateType']);
-    Route::get('type', [ProductController::class, 'getAllType']);
+    Route::post('create-type', [ProductController::class, 'createType'])->name('type.create');
+    Route::post('update-type', [ProductController::class, 'updateType'])->name('category.update');
+    Route::get('type', [ProductController::class, 'getAllType'])->name('type');
 
     Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
 });
