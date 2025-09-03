@@ -8,10 +8,10 @@ use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Symfony\Component\HttpFoundation\Response;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Lang;
 
 class UserController extends Controller
 {
@@ -38,7 +38,9 @@ class UserController extends Controller
         $profile = Profile::where('user_id', Auth::id())->first();
 
         return Inertia::render('profile/index', [
-            'profile' => $profile
+            'profile' => $profile,
+            'home' => Lang::get('WelcomeTrans'), 
+            'navbar' => Lang::get('HeaderTrans') 
         ]);
     }
 

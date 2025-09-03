@@ -139,7 +139,7 @@ const ProductCard = ({ product }: any) => {
 };
 
 export default function Welcome() {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, translations, locale } = usePage<SharedData>().props;
 
     return (
         <>
@@ -148,22 +148,14 @@ export default function Welcome() {
                 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
             </Head>
             <div className="">
-                <FrontHeader auth={auth} />
+                <FrontHeader auth={auth} locale={locale} translations={translations} />
 
                 {/* HERO SECTION */}
 
                 <div className="mx-auto my-16 md:max-w-7xl">
-                    <h1 className="mb-10 text-center text-5xl font-black text-primary">Welcome to LegacyVault</h1>
-                    <p className="mb-4 text-center">
-                        Here at LegacyVault, we're all about the details. And when we say "custom," we mean it! Our super talented squad crafts these
-                        extended backgrounds with so much love and care, it would make a Jigglypuff jealous! We're talking mind-blowingly gorgeous
-                        custom artwork tailored to your favourite cards.
-                    </p>
-                    <p className="text-center">
-                        We totally get it. Your Pokémon cards are more than just cardboard - they're a piece of you, a part of your story. That's why
-                        we're here to not just protect 'em but also to glam 'em up. We create stellar protective cases with insane, customized
-                        extended backgrounds that will make your collection the envy of all.
-                    </p>
+                    <h1 className="mb-10 text-center text-5xl font-black text-primary">{translations.home.welcome}</h1>
+                    <p className="mb-4 text-center">{translations.home.description1}</p>
+                    <p className="text-center">{translations.home.description2}</p>
                 </div>
 
                 {/* 3D SECTION */}

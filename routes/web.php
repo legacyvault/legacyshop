@@ -5,9 +5,13 @@ use App\Http\Controllers\API\V1\ProductController;
 use App\Http\Controllers\API\V1\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Lang;
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
+    return Inertia::render('welcome',['translations' => [ 
+        'home' => Lang::get('WelcomeTrans'), 
+        'navbar' => Lang::get('HeaderTrans') 
+    ]]);
 })->name('home');
 
 Route::get('/login', function () {
@@ -76,3 +80,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 
     Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
 });
+
+//CHANGE LANGUAGE
+Route::get('/lang/{lang}', function ($lang) {
+
+    if (in_array($lang, ['en', 'id'])) {
+        session(['locale' => $lang]);
+    }
+    return back();
+})->name('locale.switch');

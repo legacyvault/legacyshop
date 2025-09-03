@@ -30,6 +30,8 @@ export interface SharedData {
     profile: IProfile;
     sidebarOpen: boolean;
     [key: string]: unknown;
+    translations: any;
+    locale: string;
 }
 
 export interface User {
