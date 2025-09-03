@@ -8,20 +8,25 @@ import { SearchIcon, ShoppingCart } from 'lucide-react';
 
 interface IPropsHeader {
     auth: Auth;
+    locale: string;
+    translations: any;
 }
 
-export default function FrontHeader({ auth }: IPropsHeader) {
+export default function FrontHeader({ auth, locale, translations }: IPropsHeader) {
     const getInitials = useInitials();
 
     return (
         <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
+            <Link href={route('locale.switch', locale === 'en' ? 'id' : 'en')} className="rounded bg-gray-200 px-4 py-2">
+                Switch to {locale === 'en' ? 'Bahasa' : 'English'}
+            </Link>
             {/* Main header */}
             <div className="mx-auto max-w-7xl px-4">
                 <div className="flex items-center justify-between py-3 md:py-4">
                     {/* Left section - Logo */}
                     <div className="flex items-center gap-4">
                         <Link href={route('home')} className="font-bold text-foreground transition-opacity hover:opacity-80">
-                            <AppLogoIcon className="size-12" />
+                            <AppLogoIcon className="size-16" />
                         </Link>
                     </div>
 
@@ -30,7 +35,7 @@ export default function FrontHeader({ auth }: IPropsHeader) {
                         <div className="relative">
                             <input
                                 type="text"
-                                placeholder="Search"
+                                placeholder={translations.navbar.search}
                                 className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-12 text-sm text-gray-700 placeholder-gray-500 transition-all md:py-3"
                             />
                             <SearchIcon className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -74,16 +79,16 @@ export default function FrontHeader({ auth }: IPropsHeader) {
                             <div className="flex items-center gap-2">
                                 <Link
                                     href={route('login')}
-                                    className="hidden rounded-lg px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted md:inline-block"
+                                    className="hidden rounded-lg px-4 py-2 text-sm font-medium text-foreground capitalize transition-colors hover:bg-muted md:inline-block"
                                 >
-                                    Masuk
+                                    {translations.navbar.sign_in}
                                 </Link>
                                 <Link
                                     href={route('register')}
                                     className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                                 >
-                                    <span className="hidden md:inline">Daftar</span>
-                                    <span className="md:hidden">Join</span>
+                                    <span className="hidden capitalize md:inline">{translations.navbar.register}</span>
+                                    <span className="capitalize md:hidden">{translations.navbar.register}</span>
                                 </Link>
                             </div>
                         )}
@@ -110,7 +115,7 @@ export default function FrontHeader({ auth }: IPropsHeader) {
                 <div className="relative">
                     <input
                         type="text"
-                        placeholder="Cari di Tokopedia"
+                        placeholder={translations.navbar.search}
                         className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-12 text-sm text-gray-700 placeholder-gray-500 transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                     />
                     <SearchIcon className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-400" />

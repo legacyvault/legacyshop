@@ -6,7 +6,7 @@ import { Head, usePage } from '@inertiajs/react';
 import EditProfileForm from './edit-profile';
 
 export default function EditProfile() {
-    const { auth, profile } = usePage<SharedData>().props;
+    const { auth, profile, locale, translations } = usePage<SharedData>().props;
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -26,7 +26,7 @@ export default function EditProfile() {
                 </>
             ) : (
                 <>
-                    <FrontHeader auth={auth} />
+                    <FrontHeader auth={auth} locale={locale} translations={translations} />
                     <EditProfileForm profile={profile} />
                     <FrontFooter />
                 </>
