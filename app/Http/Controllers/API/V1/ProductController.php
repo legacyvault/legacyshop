@@ -7,6 +7,7 @@ use App\Http\Traits\AwsS3;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductPictures;
+use App\Models\Tags;
 use App\Models\Type;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -154,6 +155,8 @@ class ProductController extends Controller
             'type_id'          => 'required|string',
             'pictures'         => 'nullable|array',
             'pictures.*'       => 'file|mimes:jpg,jpeg,png,webp|max:2048',
+            'tag_id'           => 'nullable|array',
+            'tag_id.*'         => 'exists:tags,id',
         ]);
 
         if ($validator->fails()) {
@@ -170,6 +173,10 @@ class ProductController extends Controller
                 'category_id'      => $request->category_id,
                 'type_id'          => $request->type_id,
             ]);
+
+            if ($request->has('tag_id')) {
+                $product->tags()->sync($request->tag_id);
+            }
 
             if ($request->hasFile('pictures')) {
                 foreach ($request->file('pictures') as $file) {
@@ -194,14 +201,76 @@ class ProductController extends Controller
 
     public function getAllProduct()
     {
-        $products = Product::with('category', 'type', 'pictures')->get();
-        
+        $products = Product::with('category', 'type', 'pictures', 'tags')->get();
+
         return Inertia::render('products/index', [
             'products' => $products,
             'flash' => [
                 'success' => session('success'),
                 'error'   => session('error'),
             ],
+        ]);
+    }
+
+    public function createTag(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|unique:tags,name',
+            'description' => 'string|nullable'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $create = Tags::create([
+            'name' => $request->name,
+            'description' => $request->description
+        ]);
+
+        if ($create) {
+            return redirect()->back()->with('success', 'Successfully create tag.');
+        } else {
+            return redirect()->back()->with('error', 'Failed to create tag.');
+        }
+    }
+
+    public function updateTag(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id' => 'required|exists:tags,id',
+            'name' => [
+                'required',
+                'string',
+                Rule::unique('tags', 'name')->ignore($request->id),
+            ],
+            'description' => 'string|nullable'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $data = Type::find($request->id);
+
+        if (!$data) {
+            return redirect()->back()->with('error', 'Tag not found.');
+        }
+
+        $data->name = $request->name;
+        $data->description = $request->description;
+        $data->save();
+
+        return redirect()->back()->with('success', 'Successfully update tag.');
+    }
+
+    public function getAllTags()
+    {
+        $data = Tags::orderBy('name', 'asc')->get();
+
+        return redirect()->back()->with([
+            'success' => 'Successfully get tags.',
+            'tags' => $data,
         ]);
     }
 }

@@ -47,6 +47,7 @@ class UserSeeder extends Seeder
                 $data_profile = [
                     'user_id' => $createUser->id,
                     'name' => $user_data['name'],
+                    'country' => 'ID'
                 ];
                 $createProfile = Profile::create($data_profile);
             }

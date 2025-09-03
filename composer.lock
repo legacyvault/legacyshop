@@ -4,8 +4,70 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1cc820abf83426066e0a77f03f030a81",
+    "content-hash": "73a99db668142228959def4f6ecb7c22",
     "packages": [
+        {
+            "name": "aternus/geonames-client",
+            "version": "2.4.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Aternus/geonames-client.git",
+                "reference": "fe26322803caf853053b2a8576a00ee249fc31e6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Aternus/geonames-client/zipball/fe26322803caf853053b2a8576a00ee249fc31e6",
+                "reference": "fe26322803caf853053b2a8576a00ee249fc31e6",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-json": "*",
+                "ext-xml": "*",
+                "guzzlehttp/guzzle": "7.*",
+                "php": ">=7.2.0"
+            },
+            "require-dev": {
+                "ext-xdebug": "*",
+                "phpunit/phpunit": "8.*",
+                "slevomat/coding-standard": "^8.15",
+                "squizlabs/php_codesniffer": "3.*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "GeoNames\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Kiril Reznik",
+                    "email": "kiril@atern.us",
+                    "homepage": "https://atern.us/"
+                }
+            ],
+            "description": "GeoNames API Client",
+            "homepage": "https://github.com/Aternus/geonames-client",
+            "keywords": [
+                "ISO-639-1",
+                "api",
+                "countries",
+                "database",
+                "geographical",
+                "geonames",
+                "iso-3166",
+                "languages"
+            ],
+            "support": {
+                "issues": "https://github.com/Aternus/geonames-client/issues",
+                "source": "https://github.com/Aternus/geonames-client"
+            },
+            "time": "2024-06-09T21:04:39+00:00"
+        },
         {
             "name": "aws/aws-crt-php",
             "version": "v1.2.7",
