@@ -5,9 +5,10 @@ use App\Http\Controllers\API\V1\ProductController;
 use App\Http\Controllers\API\V1\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Lang;
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
+    return Inertia::render('welcome',['translations' => Lang::get('WelcomeTrans')]);
 })->name('home');
 
 Route::get('/login', function () {

@@ -139,7 +139,9 @@ const ProductCard = ({ product }: any) => {
 };
 
 export default function Welcome() {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, translation } = usePage<SharedData>().props;
+
+    console.log(usePage().props);
 
     return (
         <>
