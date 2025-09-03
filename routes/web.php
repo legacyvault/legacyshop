@@ -33,6 +33,32 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         return Inertia::render('products/index');
     })->name('products');
 
+    Route::prefix('products')->group(function() {
+        Route::get('category', function () {
+            return Inertia::render('category/index');
+        })->name('category');
+    
+        Route::get('division', function () {
+            return Inertia::render('division/index');
+        })->name('division');
+    
+        Route::get('product', function () {
+            return Inertia::render('product/index');
+        })->name('product');
+    
+        Route::get('subcategory', function () {
+            return Inertia::render('subcategory/index');
+        })->name('subcategory');
+    
+        Route::get('unit', function () {
+            return Inertia::render('unit/index');
+        })->name('unit');
+
+        Route::get('variant', function () {
+            return Inertia::render('variant/index');
+        })->name('variant');
+    });
+
     Route::get('add-product', function () {
         return Inertia::render('products/add-product');
     })->name('add-product');
