@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\V1\AWSCognitoAuthController;
+use App\Http\Controllers\API\V1\LocationController;
 use App\Http\Controllers\API\V1\ProductController;
 use App\Http\Controllers\API\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +61,11 @@ Route::group(['prefix' => 'v1/cognito'], function () {
 });
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+    //Location API
+    Route::get('province-list', [LocationController::class, 'getProvinceList'])->name('province.list');
+    Route::get('city-list/{geonameId}', [LocationController::class, 'getCitiesList'])->name('cities.list');
+    Route::get('postal-code-list/{cityName}', [LocationController::class, 'getPostalCodeList'])->name('postal_code.list');
+
     //Product API
     Route::post('add-product', [ProductController::class, 'addProduct'])->name('addProduct');
     Route::post('product', [ProductController::class, 'getAllProduct'])->name('product');
@@ -67,6 +73,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Profile API
     Route::post('update-profile', [UserController::class, 'updateProfile'])->name('profile.edit');
     Route::get('profile', [UserController::class, 'getProfile'])->name('profile.edit-view');
+    Route::post('create-delivery-address', [UserController::class, 'createDeliveryAddress'])->name('create.delivery-address');
 
     //Category API
     Route::post('create-category', [ProductController::class, 'createCategory'])->name('category.create');
@@ -75,8 +82,13 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 
     //Type API
     Route::post('create-type', [ProductController::class, 'createType'])->name('type.create');
-    Route::post('update-type', [ProductController::class, 'updateType'])->name('category.update');
+    Route::post('update-type', [ProductController::class, 'updateType'])->name('type.update');
     Route::get('type', [ProductController::class, 'getAllType'])->name('type');
+
+    //Tags API
+    Route::post('create-tag', [ProductController::class, 'createTag'])->name('tag.create');
+    Route::post('update-tag', [ProductController::class, 'updateTag'])->name('tag.update');
+    Route::get('tag', [ProductController::class, 'getAllTags'])->name('tag');
 
     Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
 });
