@@ -17,10 +17,11 @@ class Profile extends Model
         'name',
         'user_id',
         'phone',
-        'address',
-        'city',
-        'province',
-        'country',
-        'postal_code',
+        'country'
     ];
+
+    public function delivery_address()
+    {
+        return $this->hasMany(DeliveryAddress::class);
+    }
 }

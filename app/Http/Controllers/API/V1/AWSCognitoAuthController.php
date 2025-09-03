@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 
@@ -40,6 +41,18 @@ class AWSCognitoAuthController extends Controller
         }
 
         //Create Cognito User
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        if (env('APP_ENV') == 'local') {
+            $ip = '36.84.152.11';
+        }
+
+        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
+        $location = $response->json();
+
+        if ($location['status'] == 'fail') {
+            return redirect()->back()->with('error', 'Failed to register');
+        }
+
         $createCognitoUser = $this->customCreateUser($request->all());
 
         if ($createCognitoUser == 'SUCCESS') {
@@ -55,6 +68,7 @@ class AWSCognitoAuthController extends Controller
                 $createProfile = Profile::create([
                     'user_id' => $createUser->id,
                     'name' => $request->name,
+                    'country' => $location['countryCode'] ?? null,
                 ]);
 
                 return redirect()->route('login')->with('success', 'Sign Up successful.');

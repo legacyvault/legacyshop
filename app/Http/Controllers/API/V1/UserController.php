@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeliveryAddress;
 use App\Models\Profile;
 use App\Models\User;
 use Exception;
@@ -35,7 +36,7 @@ class UserController extends Controller
 
     public function getProfile()
     {
-        $profile = Profile::where('user_id', Auth::id())->first();
+        $profile = Profile::where('user_id', Auth::id())->with('delivery_address')->first();
 
         return Inertia::render('profile/index', [
             'profile' => $profile,
@@ -81,6 +82,41 @@ class UserController extends Controller
         } catch (Exception $e) {
             Log::error('Update Profile Failed: ' . $e);
             return redirect()->back()->with('error', 'Failed to update profile.');
+        }
+    }
+
+    public function createDeliveryAddress(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'country' => 'required|string',
+            'province' => 'required|string',
+            'address' => 'required|string',
+            'city' => 'required|string',
+            'postal_code' => 'required|string'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $user = Auth::user();
+        $profile = Profile::where('user_id', $user->id)->first();
+        $hasAddress = DeliveryAddress::where('profile_id', $profile->id)->exists();
+        
+        $create = DeliveryAddress::create([
+            'profile_id' => $profile->id,
+            'country' => $request->country,
+            'province' => $request->province,
+            'address' => $request->address,
+            'city' => $request->city,
+            'postal_code' => $request->postal_code,
+            'is_active' => $hasAddress ? 0 : 1,
+        ]);
+
+        if ($create) {
+            return redirect()->back()->with('success', 'Successfully create delivery address.');
+        } else {
+            return redirect()->back()->with('error', 'Failed to create delivery address.');
         }
     }
 }
