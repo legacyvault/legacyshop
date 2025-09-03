@@ -1,3 +1,4 @@
+import AppLogoIcon from '@/components/app-logo-icon';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
@@ -19,8 +20,8 @@ export default function FrontHeader({ auth }: IPropsHeader) {
                 <div className="flex items-center justify-between py-3 md:py-4">
                     {/* Left section - Logo */}
                     <div className="flex items-center gap-4">
-                        <Link href={route('home')} className="text-2xl font-bold text-foreground transition-opacity hover:opacity-80">
-                            LOGO
+                        <Link href={route('home')} className="font-bold text-foreground transition-opacity hover:opacity-80">
+                            <AppLogoIcon className="size-12" />
                         </Link>
                     </div>
 
@@ -90,7 +91,7 @@ export default function FrontHeader({ auth }: IPropsHeader) {
                 </div>
             </div>
 
-            {auth.user.role === 'admin' && (
+            {auth.user && auth.user.role === 'admin' && (
                 <div className="hidden border-b bg-gray-50 md:block">
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="flex items-center justify-between py-2 text-xs text-gray-600">
