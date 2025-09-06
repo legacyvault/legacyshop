@@ -15,8 +15,34 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Products',
-        href: '/products',
+        href: '/products/product',
         icon: PackageOpen,
+        child: [
+            {
+                title: 'Unit',
+                href: '/products/unit',
+            },
+            {
+                title: 'Category',
+                href: '/products/category',
+            },
+            {
+                title: 'Sub Category',
+                href: '/products/subcategory',
+            },
+            {
+                title: 'Division',
+                href: '/products/division',
+            },
+            {
+                title: 'Variant',
+                href: '/products/variant',
+            },
+            {
+                title: 'Product',
+                href: '/products/product',
+            },
+        ],
     },
 ];
 

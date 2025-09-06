@@ -30,26 +30,148 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
-    Route::get('products', function () {
-        return Inertia::render('products/index');
-    })->name('products');
+    Route::prefix('products')->group(function() {
+        Route::get('category', function () {
+            return Inertia::render('products/category/index');
+        })->name('category');
+    
+        Route::get('division', function () {
+            return Inertia::render('products/division/index');
+        })->name('division');
+    
+        Route::get('product', function () {
+            return Inertia::render('products/product/index');
+        })->name('product');
+    
+        Route::get('subcategory', function () {
+            return Inertia::render('products/subcategory/index');
+        })->name('subcategory');
+    
+        Route::get('unit', function () {
+            return Inertia::render('products/unit/index');
+        })->name('unit');
 
-    Route::get('add-product', function () {
-        return Inertia::render('products/add-product');
-    })->name('add-product');
+        Route::get('variant', function () {
+            return Inertia::render('products/variant/index');
+        })->name('variant');
 
-    Route::get('add-product/{id?}', function ($id = null) {
-        $product = $id ? 'edit' : null; //temporary solution
+        Route::prefix('product')->group(function() {
+            Route::get('add-product/{id?}', function ($id = null) {
+                $product = $id ? 'edit' : null; //temporary solution
+        
+                //enable when there's get product api
+                // if ($id) {
+                //     $product = Product::findOrFail($id); // preload product if editing
+                // }
+        
+                return Inertia::render('products/product/add-product', [
+                    'product' => $product,
+                ]);
+            })->name('add-product');
 
-        //enable when there's get product api
-        // if ($id) {
-        //     $product = Product::findOrFail($id); // preload product if editing
-        // }
+            Route::get('viewprod/{id?}', function ($id = null) {
+                $product = $id ? 'edit' : null; //temporary solution
+        
+                //enable when there's get product api
+                // if ($id) {
+                //     $product = Product::findOrFail($id); // preload product if editing
+                // }
+        
+                return Inertia::render('products/product/view-product', [
+                    'product' => $product,
+                ]);
+            })->name('view-product');
+        });
 
-        return Inertia::render('products/add-product', [
-            'product' => $product,
-        ]);
-    })->name('add-product');
+        Route::prefix('subcategory')->group(function() {
+
+            Route::get('viewsub/{id?}', function ($id = null) {
+                $subcat = $id ? 'edit' : null; //temporary solution
+        
+                //enable when there's get product api
+                // if ($id) {
+                //     $product = Product::findOrFail($id); // preload product if editing
+                // }
+        
+                return Inertia::render('products/subcategory/view-subcategory', [
+                    'subcat' => $subcat,
+                ]);
+            })->name('view-subcategory');
+
+            Route::get('addsub/{id?}', function ($id = null) {
+                $subcat = $id ? 'edit' : null; //temporary solution
+        
+                //enable when there's get product api
+                // if ($id) {
+                //     $product = Product::findOrFail($id); // preload product if editing
+                // }
+        
+                return Inertia::render('products/subcategory/add-subcategory', [
+                    'subcat' => $subcat,
+                ]);
+            })->name('add-subcategory');
+        });
+
+        Route::prefix('division')->group(function() {
+
+            Route::get('viewdiv/{id?}', function ($id = null) {
+                $division = $id ? 'edit' : null; //temporary solution
+        
+                //enable when there's get product api
+                // if ($id) {
+                //     $product = Product::findOrFail($id); // preload product if editing
+                // }
+        
+                return Inertia::render('products/division/view-division', [
+                    'division' => $division,
+                ]);
+            })->name('view-division');
+
+            Route::get('adddiv/{id?}', function ($id = null) {
+                $division = $id ? 'edit' : null; //temporary solution
+        
+                //enable when there's get product api
+                // if ($id) {
+                //     $product = Product::findOrFail($id); // preload product if editing
+                // }
+        
+                return Inertia::render('products/division/add-division', [
+                    'division' => $division,
+                ]);
+            })->name('add-division');
+        });
+
+        Route::prefix('variant')->group(function() {
+
+            Route::get('viewvar/{id?}', function ($id = null) {
+                $variant = $id ? 'edit' : null; //temporary solution
+        
+                //enable when there's get product api
+                // if ($id) {
+                //     $product = Product::findOrFail($id); // preload product if editing
+                // }
+        
+                return Inertia::render('products/variant/view-variant', [
+                    'variant' => $variant,
+                ]);
+            })->name('view-variant');
+
+            Route::get('addvar/{id?}', function ($id = null) {
+                $variant = $id ? 'edit' : null; //temporary solution
+        
+                //enable when there's get product api
+                // if ($id) {
+                //     $product = Product::findOrFail($id); // preload product if editing
+                // }
+        
+                return Inertia::render('products/variant/add-variant', [
+                    'variant' => $variant,
+                ]);
+            })->name('add-variant');
+        });
+
+    });
+
 });
 
 #API 
