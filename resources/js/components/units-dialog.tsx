@@ -2,11 +2,11 @@ import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from './ui/dialog';
 
-interface ICategoriesDialog {
+interface IUnitsDialog {
     open: boolean;
     isOpen: Dispatch<SetStateAction<boolean>>;
     type: 'add' | 'delete' | 'edit';
-    category?: IFormData;
+    unit?: { id: number; name: string; description: string };
     onSubmit?: (data: IFormData, type: 'add' | 'delete' | 'edit') => void;
 }
 
@@ -14,24 +14,21 @@ interface IFormData {
     id: number;
     name: string;
     description: string;
-    unit: string;
 }
 
 interface IFormErrors {
     id?: number;
     name?: string;
     description?: string;
-    unit?: string;
 }
 
-export default function CategoriesDialog({ open, isOpen, type, category, onSubmit }: ICategoriesDialog) {
+export default function UnitsDialog({ open, isOpen, type, unit, onSubmit }: IUnitsDialog) {
     const [errors, setErrors] = useState<IFormErrors>({});
 
     const [formData, setFormData] = useState<IFormData>({
         id: 0,
         name: '',
         description: '',
-        unit: '',
     });
 
     const handleInputChange = (field: keyof IFormData, value: any) => {
@@ -44,24 +41,22 @@ export default function CategoriesDialog({ open, isOpen, type, category, onSubmi
 
     useEffect(() => {
         if (open) {
-            if (type !== 'add' && category) {
+            if (type !== 'add' && unit) {
                 setFormData({
-                    id: category.id,
-                    name: category.name,
-                    description: category.description,
-                    unit: category.unit,
+                    id: unit.id,
+                    name: unit.name,
+                    description: unit.description,
                 });
             } else {
                 setFormData({
                     id: 0,
                     name: '',
                     description: '',
-                    unit: '',
                 });
             }
             setErrors({});
         }
-    }, [open, category, type]);
+    }, [open, unit, type]);
 
     const submitHandler = () => {
         if (type !== 'delete' && (!formData.name.trim() || !formData.description.trim())) {
@@ -80,7 +75,7 @@ export default function CategoriesDialog({ open, isOpen, type, category, onSubmi
             <DialogPortal>
                 <DialogOverlay />
                 <DialogContent>
-                    <DialogTitle className="capitalize">{type} Categories</DialogTitle>
+                    <DialogTitle className="capitalize">{type} Unit</DialogTitle>
                     {type !== 'delete' ? (
                         <>
                             <div className="mb-6">
@@ -109,21 +104,6 @@ export default function CategoriesDialog({ open, isOpen, type, category, onSubmi
                                     placeholder="Enter description"
                                 />
                                 {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
-                            </div>
-                            <div className="mb-6">
-                                <label className="mb-2 block text-sm font-medium">Unit *</label>
-                                <select
-                                    value={formData.unit}
-                                    onChange={(e) => handleInputChange('unit', e.target.value)}
-                                    className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                                        errors.unit ? 'border-red-500' : 'border-gray-300'
-                                    }`}
-                                >
-                                    <option value="">Select Unit</option>
-                                    <option value="variant 1">Unit 1</option>
-                                    <option value="variant 2">Unit 2</option>
-                                </select>
-                                {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit}</p>}
                             </div>
                         </>
                     ) : (

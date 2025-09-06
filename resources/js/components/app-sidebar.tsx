@@ -15,7 +15,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Products',
-        href: '/products',
+        href: '/products/product',
         icon: PackageOpen,
         child: [
             {
