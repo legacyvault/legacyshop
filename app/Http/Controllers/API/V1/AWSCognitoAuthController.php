@@ -81,7 +81,7 @@ class AWSCognitoAuthController extends Controller
                     ]
                 ];
 
-                return redirect()->route('login')->with('error', 'Failed to sign up.');
+                return back()->withErrors(['register' => 'Failed to sign up.']);
             }
         } else {
             $response = [
@@ -92,7 +92,7 @@ class AWSCognitoAuthController extends Controller
                 ]
             ];
 
-            return redirect()->route('login')->with('error', 'Failed to sign up.');
+            return back()->withErrors(['register' => 'Failed to sign up.']);
         }
     }
 
@@ -127,10 +127,10 @@ class AWSCognitoAuthController extends Controller
 
                 return redirect()->route($redirectUrl)->with('success', 'Registration successful.');
             } else {
-                return redirect()->route('login')->with('error', 'Login failed.');
+                return back()->withErrors(['login' => 'Login failed.']);
             }
         } else {
-            return redirect()->route('login')->with('error', 'Login failed. Wrong password');
+            return back()->withErrors(['login' => 'Login failed. Wrong Password']);
         }
     }
 
