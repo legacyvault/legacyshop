@@ -81,7 +81,7 @@ class AWSCognitoAuthController extends Controller
                     ]
                 ];
 
-                return redirect()->route('login')->with('error', 'Failed to sign up.');
+                return back()->withErrors(['register' => 'Failed to sign up.']);
             }
         } else {
             $response = [
@@ -92,7 +92,7 @@ class AWSCognitoAuthController extends Controller
                 ]
             ];
 
-            return redirect()->route('login')->with('error', 'Failed to sign up.');
+            return back()->withErrors(['register' => 'Failed to sign up.']);
         }
     }
 
