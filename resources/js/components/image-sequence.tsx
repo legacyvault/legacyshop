@@ -31,7 +31,7 @@ const ImageSequence: React.FC = () => {
         const state = { frame: 0 };
 
         const render = () => {
-            const scale = 0.7;
+            const scale = 0.8;
             const img = images[state.frame];
             const hRatio = canvas.width / img.width;
             const vRatio = canvas.height / img.height;
