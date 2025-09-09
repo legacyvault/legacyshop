@@ -1,6 +1,6 @@
 import { IProfile } from '@/types';
 import { useForm } from '@inertiajs/react';
-import { Globe, MapPin, Phone, Save, User } from 'lucide-react';
+import { Calendar, Globe, Phone, Save, User } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
 interface Country {
@@ -9,59 +9,24 @@ interface Country {
     flag: string;
 }
 
-interface Province {
-    name: string;
-    iso2: string;
-}
-
-interface City {
-    name: string;
-}
-
 interface EditProfileFormProps {
     profile: IProfile;
 }
 
 export default function EditProfileForm({ profile }: EditProfileFormProps) {
-    const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+    console.log(profile);
     const [countries, setCountries] = useState<Country[]>([]);
-    const [provinces, setProvinces] = useState<Province[]>([]);
-    const [cities, setCities] = useState<City[]>([]);
-    const [loadingProvinces, setLoadingProvinces] = useState(false);
-    const [loadingCities, setLoadingCities] = useState(false);
 
     const { data, setData, post, processing, errors, isDirty } = useForm({
         name: profile?.name || '',
         phone: profile?.phone || '',
-        address: profile?.address || '',
-        city: profile?.city || '',
-        province: profile?.province || '', // Note: using 'provice' as per your interface
-        country: profile?.country || '',
-        postal_code: profile?.postal_code || '',
+        date_of_birth: profile?.date_of_birth || '',
     });
 
     // Fetch countries on component mount
     useEffect(() => {
         fetchCountries();
     }, []);
-
-    // Initialize location data when profile data is available
-    useEffect(() => {
-        if (data.country && countries.length > 0) {
-            const country = countries.find((c) => c.name === data.country);
-            if (country) {
-                setSelectedCountry(country);
-                fetchProvinces(country.code);
-            }
-        }
-    }, [data.country, countries]);
-
-    // Fetch cities when province changes
-    useEffect(() => {
-        if (data.province && selectedCountry) {
-            fetchCities(selectedCountry.code, data.province);
-        }
-    }, [data.province, selectedCountry]);
 
     const fetchCountries = async () => {
         try {
@@ -88,89 +53,6 @@ export default function EditProfileForm({ profile }: EditProfileFormProps) {
         }
     };
 
-    const fetchProvinces = async (countryCode: string) => {
-        setLoadingProvinces(true);
-        try {
-            const response = await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, {
-                headers: {
-                    'X-CSCAPI-KEY': 'YOUR_API_KEY_HERE', // You'll need to get this from countrystatecity.in
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setProvinces(data);
-            } else {
-                // Fallback for when API key is not available
-                console.log('Province API requires API key. Using fallback data.');
-                setProvinces([]);
-            }
-        } catch (error) {
-            console.error('Error fetching provinces:', error);
-            setProvinces([]);
-        } finally {
-            setLoadingProvinces(false);
-        }
-    };
-
-    const fetchCities = async (countryCode: string, stateCode: string) => {
-        setLoadingCities(true);
-        try {
-            const province = provinces.find((p) => p.name === stateCode);
-            if (!province) return;
-
-            const response = await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states/${province.iso2}/cities`, {
-                headers: {
-                    'X-CSCAPI-KEY': 'YOUR_API_KEY_HERE', // You'll need to get this from countrystatecity.in
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setCities(data);
-            } else {
-                console.log('Cities API requires API key. Using fallback data.');
-                setCities([]);
-            }
-        } catch (error) {
-            console.error('Error fetching cities:', error);
-            setCities([]);
-        } finally {
-            setLoadingCities(false);
-        }
-    };
-
-    const handleCountryChange = (countryName: string) => {
-        const country = countries.find((c) => c.name === countryName);
-        if (country) {
-            setSelectedCountry(country);
-            setProvinces([]);
-            setCities([]);
-            setData((data) => ({
-                ...data,
-                country: countryName,
-                province: '',
-                city: '',
-            }));
-
-            // Fetch provinces for selected country
-            fetchProvinces(country.code);
-        }
-    };
-
-    const handleProvinceChange = (provinceName: string) => {
-        setData((data) => ({
-            ...data,
-            province: provinceName,
-            city: '',
-        }));
-
-        // Fetch cities for selected province
-        if (selectedCountry) {
-            fetchCities(selectedCountry.code, provinceName);
-        }
-    };
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         post(route('profile.edit'), {
@@ -187,7 +69,7 @@ export default function EditProfileForm({ profile }: EditProfileFormProps) {
 
     return (
         <div className="min-h-screen bg-background p-6">
-            <div className="mx-auto max-w-2xl">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-8">
                     <div className="mb-2 flex items-center gap-3">
@@ -245,34 +127,23 @@ export default function EditProfileForm({ profile }: EditProfileFormProps) {
                                     />
                                     {errors.phone && <p className="mt-1 text-sm text-destructive">{errors.phone}</p>}
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Address Information Section */}
-                        <div>
-                            <h2 className="mb-4 flex items-center gap-2 text-lg font-medium text-card-foreground">
-                                <MapPin className="h-4 w-4" />
-                                Address Information
-                            </h2>
-
-                            <div className="grid gap-4">
-                                {/* Address Field */}
                                 <div>
-                                    <label htmlFor="address" className="mb-2 block text-sm font-medium text-card-foreground">
-                                        Street Address
+                                    <label htmlFor="date_of_birth" className="mb-2 block text-sm font-medium text-card-foreground">
+                                        <Calendar className="mr-1 inline h-4 w-4" />
+                                        Date of Birth
                                     </label>
-                                    <textarea
-                                        id="address"
-                                        value={data.address}
-                                        onChange={(e) => setData('address', e.target.value)}
-                                        className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
-                                        placeholder="Enter your street address"
-                                        rows={3}
+                                    <input
+                                        id="date_of_birth"
+                                        type="date"
+                                        value={data.date_of_birth}
+                                        onChange={(e) => setData('date_of_birth', e.target.value)}
+                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
+                                        max={new Date().toISOString().split('T')[0]} // Prevent future dates
                                     />
-                                    {errors.address && <p className="mt-1 text-sm text-destructive">{errors.address}</p>}
+                                    {errors.date_of_birth && <p className="mt-1 text-sm text-destructive">{errors.date_of_birth}</p>}
                                 </div>
 
-                                {/* Country Field */}
                                 <div>
                                     <label htmlFor="country" className="mb-2 block text-sm font-medium text-card-foreground">
                                         <Globe className="mr-1 inline h-4 w-4" />
@@ -280,109 +151,17 @@ export default function EditProfileForm({ profile }: EditProfileFormProps) {
                                     </label>
                                     <select
                                         id="country"
-                                        value={data.country}
-                                        onChange={(e) => handleCountryChange(e.target.value)}
+                                        value={profile.country!}
                                         className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
+                                        disabled={true}
                                     >
                                         <option value="">Select Country</option>
                                         {countries.map((country) => (
-                                            <option key={country.code} value={country.name}>
+                                            <option key={country.code} value={country.code}>
                                                 {country.flag} {country.name}
                                             </option>
                                         ))}
                                     </select>
-                                    {errors.country && <p className="mt-1 text-sm text-destructive">{errors.country}</p>}
-                                </div>
-
-                                {/* Province/State Field */}
-                                <div>
-                                    <label htmlFor="province" className="mb-2 block text-sm font-medium text-card-foreground">
-                                        Province/State
-                                    </label>
-                                    {/* TODO: ENABLE THIS AFTER API KEY */}
-                                    {/* <select
-                                        id="province"
-                                        value={data.province}
-                                        onChange={(e) => handleProvinceChange(e.target.value)}
-                                        disabled={!selectedCountry || loadingProvinces}
-                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        <option value="">
-                                            {loadingProvinces
-                                                ? 'Loading provinces...'
-                                                : selectedCountry
-                                                  ? 'Select Province/State'
-                                                  : 'Select Country First'}
-                                        </option>
-                                        {provinces.map((province) => (
-                                            <option key={province.iso2} value={province.name}>
-                                                {province.name}
-                                            </option>
-                                        ))}
-                                    </select> */}
-                                    <input
-                                        id="province"
-                                        type="text"
-                                        value={data.province}
-                                        onChange={(e) => setData('province', e.target.value)}
-                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
-                                        placeholder="Enter province/state"
-                                        required
-                                    />
-                                    {errors.province && <p className="mt-1 text-sm text-destructive">{errors.province}</p>}
-                                </div>
-
-                                {/* City and Postal Code Row */}
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                    {/* City Field */}
-                                    <div>
-                                        <label htmlFor="city" className="mb-2 block text-sm font-medium text-card-foreground">
-                                            City
-                                        </label>
-                                        {/* TODO: enable after got api key */}
-                                        {/* <select
-                                            id="city"
-                                            value={data.city}
-                                            onChange={(e) => setData('city', e.target.value)}
-                                            disabled={!data.province || loadingCities}
-                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                                        >
-                                            <option value="">
-                                                {loadingCities ? 'Loading cities...' : data.province ? 'Select City' : 'Select Province First'}
-                                            </option>
-                                            {cities.map((city) => (
-                                                <option key={city.name} value={city.name}>
-                                                    {city.name}
-                                                </option>
-                                            ))}
-                                        </select> */}
-                                        <input
-                                            id="city"
-                                            type="text"
-                                            value={data.city}
-                                            onChange={(e) => setData('city', e.target.value)}
-                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
-                                            placeholder="Enter city"
-                                            required
-                                        />
-                                        {errors.city && <p className="mt-1 text-sm text-destructive">{errors.city}</p>}
-                                    </div>
-
-                                    {/* Postal Code Field */}
-                                    <div>
-                                        <label htmlFor="postal_code" className="mb-2 block text-sm font-medium text-card-foreground">
-                                            Postal Code
-                                        </label>
-                                        <input
-                                            id="postal_code"
-                                            type="text"
-                                            value={data.postal_code}
-                                            onChange={(e) => setData('postal_code', e.target.value)}
-                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
-                                            placeholder="12345"
-                                        />
-                                        {errors.postal_code && <p className="mt-1 text-sm text-destructive">{errors.postal_code}</p>}
-                                    </div>
                                 </div>
                             </div>
                         </div>
