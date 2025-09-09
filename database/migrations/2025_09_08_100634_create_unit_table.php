@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('category', function (Blueprint $table) {
+        Schema::create('unit', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('unit_id');
             $table->string('description')->nullable();
             $table->string('name');
             $table->timestamps();
@@ -25,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('category');
+        Schema::dropIfExists('unit');
     }
 };
