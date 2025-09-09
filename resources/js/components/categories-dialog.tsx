@@ -1,4 +1,5 @@
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import { IUnit } from '@/types';
+import { Dispatch, SetStateAction, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from './ui/dialog';
 
@@ -7,73 +8,38 @@ interface ICategoriesDialog {
     isOpen: Dispatch<SetStateAction<boolean>>;
     type: 'add' | 'delete' | 'edit';
     category?: IFormData;
-    onSubmit?: (data: IFormData, type: 'add' | 'delete' | 'edit') => void;
+    units: IUnit[];
+
+    //Inertia’s useForm
+    data: { id?: string; name: string; description: string; unit_id: string };
+    setData: (field: 'name' | 'description' | 'id' | 'unit_id', value: string) => void;
+    errors: { name?: string; description?: string; unit_id?: string };
+
+    onSubmit: (e: React.FormEvent) => void;
 }
 
 interface IFormData {
-    id: number;
+    id: string;
     name: string;
     description: string;
-    unit: string;
+    unit_id: string;
 }
 
-interface IFormErrors {
-    id?: number;
-    name?: string;
-    description?: string;
-    unit?: string;
-}
-
-export default function CategoriesDialog({ open, isOpen, type, category, onSubmit }: ICategoriesDialog) {
-    const [errors, setErrors] = useState<IFormErrors>({});
-
-    const [formData, setFormData] = useState<IFormData>({
-        id: 0,
-        name: '',
-        description: '',
-        unit: '',
-    });
-
-    const handleInputChange = (field: keyof IFormData, value: any) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            if (field === 'id') return;
-            setErrors((prev) => ({ ...prev, [field]: undefined }));
-        }
-    };
-
+export default function CategoriesDialog({ open, isOpen, type, category, onSubmit, units, data, setData, errors }: ICategoriesDialog) {
     useEffect(() => {
         if (open) {
-            if (type !== 'add' && category) {
-                setFormData({
-                    id: category.id,
-                    name: category.name,
-                    description: category.description,
-                    unit: category.unit,
-                });
-            } else {
-                setFormData({
-                    id: 0,
-                    name: '',
-                    description: '',
-                    unit: '',
-                });
+            if (type === 'edit' && category) {
+                setData('id', category.id);
+                setData('name', category.name);
+                setData('description', category.description);
+                setData('unit_id', category.unit_id);
+            } else if (type === 'add') {
+                setData('name', '');
+                setData('description', '');
+                setData('unit_id', '');
             }
-            setErrors({});
         }
     }, [open, category, type]);
-
-    const submitHandler = () => {
-        if (type !== 'delete' && (!formData.name.trim() || !formData.description.trim())) {
-            setErrors({
-                name: !formData.name.trim() ? 'Name is required' : undefined,
-                description: !formData.description.trim() ? 'Description is required' : undefined,
-            });
-            return;
-        }
-
-        onSubmit?.(formData, type);
-    };
 
     return (
         <Dialog open={open} onOpenChange={isOpen}>
@@ -82,13 +48,13 @@ export default function CategoriesDialog({ open, isOpen, type, category, onSubmi
                 <DialogContent>
                     <DialogTitle className="capitalize">{type} Categories</DialogTitle>
                     {type !== 'delete' ? (
-                        <>
+                        <form method="POST" onSubmit={onSubmit}>
                             <div className="mb-6">
                                 <label className="mb-2 block text-sm font-medium">Name *</label>
                                 <input
                                     type="text"
-                                    value={formData.name}
-                                    onChange={(e) => handleInputChange('name', e.target.value)}
+                                    value={data.name}
+                                    onChange={(e) => setData('name', e.target.value)}
                                     className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
                                         errors.name ? 'border-red-500' : 'border-gray-200'
                                     }`}
@@ -101,8 +67,8 @@ export default function CategoriesDialog({ open, isOpen, type, category, onSubmi
                                 <label className="mb-2 block text-sm font-medium">Description *</label>
                                 <input
                                     type="text"
-                                    value={formData.description}
-                                    onChange={(e) => handleInputChange('description', e.target.value)}
+                                    value={data.description}
+                                    onChange={(e) => setData('description', e.target.value)}
                                     className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
                                         errors.description ? 'border-red-500' : 'border-gray-200'
                                     }`}
@@ -113,30 +79,37 @@ export default function CategoriesDialog({ open, isOpen, type, category, onSubmi
                             <div className="mb-6">
                                 <label className="mb-2 block text-sm font-medium">Unit *</label>
                                 <select
-                                    value={formData.unit}
-                                    onChange={(e) => handleInputChange('unit', e.target.value)}
+                                    value={data.unit_id}
+                                    onChange={(e) => setData('unit_id', e.target.value)}
                                     className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                                        errors.unit ? 'border-red-500' : 'border-gray-300'
+                                        errors.unit_id ? 'border-red-500' : 'border-gray-300'
                                     }`}
                                 >
-                                    <option value="">Select Unit</option>
-                                    <option value="variant 1">Unit 1</option>
-                                    <option value="variant 2">Unit 2</option>
+                                    <option value="">--Select Unit--</option>
+                                    {units.map((unit, i) => (
+                                        <option key={unit.id} value={unit.id}>
+                                            {unit.name}
+                                        </option>
+                                    ))}
                                 </select>
-                                {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit}</p>}
+                                {errors.unit_id && <p className="mt-1 text-sm text-red-500">{errors.unit_id}</p>}
                             </div>
-                        </>
+                            <DialogClose asChild>
+                                <Button type="submit" className="capitalize">
+                                    {type}
+                                </Button>
+                            </DialogClose>
+                        </form>
                     ) : (
                         <>
                             <span>Are you sure want to delete this category?</span>
+                            <DialogClose asChild>
+                                <Button className="capitalize" onClick={onSubmit}>
+                                    {type}
+                                </Button>
+                            </DialogClose>
                         </>
                     )}
-
-                    <DialogClose asChild>
-                        <Button className="capitalize" onClick={submitHandler}>
-                            {type}
-                        </Button>
-                    </DialogClose>
                 </DialogContent>
             </DialogPortal>
         </Dialog>

@@ -1,74 +1,34 @@
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from './ui/dialog';
 
-interface IUnitsDialog {
+interface IUnitsDialogProps {
     open: boolean;
     isOpen: Dispatch<SetStateAction<boolean>>;
     type: 'add' | 'delete' | 'edit';
-    unit?: { id: number; name: string; description: string };
-    onSubmit?: (data: IFormData, type: 'add' | 'delete' | 'edit') => void;
+    unit?: { id: string; name: string; description: string };
+
+    //Inertia’s useForm
+    data: { id?: string; name: string; description: string };
+    setData: (field: 'name' | 'description' | 'id', value: string) => void;
+    errors: { name?: string; description?: string };
+
+    onSubmit: (e: React.FormEvent) => void;
 }
 
-interface IFormData {
-    id: number;
-    name: string;
-    description: string;
-}
-
-interface IFormErrors {
-    id?: number;
-    name?: string;
-    description?: string;
-}
-
-export default function UnitsDialog({ open, isOpen, type, unit, onSubmit }: IUnitsDialog) {
-    const [errors, setErrors] = useState<IFormErrors>({});
-
-    const [formData, setFormData] = useState<IFormData>({
-        id: 0,
-        name: '',
-        description: '',
-    });
-
-    const handleInputChange = (field: keyof IFormData, value: any) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            if (field === 'id') return;
-            setErrors((prev) => ({ ...prev, [field]: undefined }));
-        }
-    };
-
+export default function UnitsDialog({ open, isOpen, type, unit, data, setData, errors, onSubmit }: IUnitsDialogProps) {
     useEffect(() => {
         if (open) {
-            if (type !== 'add' && unit) {
-                setFormData({
-                    id: unit.id,
-                    name: unit.name,
-                    description: unit.description,
-                });
-            } else {
-                setFormData({
-                    id: 0,
-                    name: '',
-                    description: '',
-                });
+            if (type === 'edit' && unit) {
+                setData('id', unit.id);
+                setData('name', unit.name);
+                setData('description', unit.description);
+            } else if (type === 'add') {
+                setData('name', '');
+                setData('description', '');
             }
-            setErrors({});
         }
-    }, [open, unit, type]);
-
-    const submitHandler = () => {
-        if (type !== 'delete' && (!formData.name.trim() || !formData.description.trim())) {
-            setErrors({
-                name: !formData.name.trim() ? 'Name is required' : undefined,
-                description: !formData.description.trim() ? 'Description is required' : undefined,
-            });
-            return;
-        }
-
-        onSubmit?.(formData, type);
-    };
+    }, [open, type, unit]);
 
     return (
         <Dialog open={open} onOpenChange={isOpen}>
@@ -76,18 +36,19 @@ export default function UnitsDialog({ open, isOpen, type, unit, onSubmit }: IUni
                 <DialogOverlay />
                 <DialogContent>
                     <DialogTitle className="capitalize">{type} Unit</DialogTitle>
+
                     {type !== 'delete' ? (
-                        <>
+                        <form method="POST" onSubmit={onSubmit}>
                             <div className="mb-6">
                                 <label className="mb-2 block text-sm font-medium">Name *</label>
                                 <input
                                     type="text"
-                                    value={formData.name}
-                                    onChange={(e) => handleInputChange('name', e.target.value)}
+                                    value={data.name}
+                                    onChange={(e) => setData('name', e.target.value)}
                                     className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
                                         errors.name ? 'border-red-500' : 'border-gray-200'
                                     }`}
-                                    placeholder="Enter category name"
+                                    placeholder="Enter unit name"
                                 />
                                 {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
                             </div>
@@ -96,8 +57,8 @@ export default function UnitsDialog({ open, isOpen, type, unit, onSubmit }: IUni
                                 <label className="mb-2 block text-sm font-medium">Description *</label>
                                 <input
                                     type="text"
-                                    value={formData.description}
-                                    onChange={(e) => handleInputChange('description', e.target.value)}
+                                    value={data.description}
+                                    onChange={(e) => setData('description', e.target.value)}
                                     className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
                                         errors.description ? 'border-red-500' : 'border-gray-200'
                                     }`}
@@ -105,18 +66,23 @@ export default function UnitsDialog({ open, isOpen, type, unit, onSubmit }: IUni
                                 />
                                 {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
                             </div>
-                        </>
+
+                            <DialogClose asChild>
+                                <Button type="submit" className="capitalize">
+                                    {type}
+                                </Button>
+                            </DialogClose>
+                        </form>
                     ) : (
                         <>
-                            <span>Are you sure want to delete this category?</span>
+                            <span>Are you sure want to delete this unit?</span>
+                            <DialogClose asChild>
+                                <Button onClick={onSubmit} className="capitalize">
+                                    {type}
+                                </Button>
+                            </DialogClose>
                         </>
                     )}
-
-                    <DialogClose asChild>
-                        <Button className="capitalize" onClick={submitHandler}>
-                            {type}
-                        </Button>
-                    </DialogClose>
                 </DialogContent>
             </DialogPortal>
         </Dialog>

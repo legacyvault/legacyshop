@@ -1,20 +1,18 @@
 <?php
 
 use App\Http\Controllers\API\V1\AWSCognitoAuthController;
-use App\Http\Controllers\API\V1\DivisionController;
 use App\Http\Controllers\API\V1\LocationController;
 use App\Http\Controllers\API\V1\ProductController;
-use App\Http\Controllers\API\V1\SubCategoryController;
 use App\Http\Controllers\API\V1\UserController;
-use App\Http\Controllers\API\V1\VariantController;
+use App\Http\Controllers\API\V1\ViewController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
 
 Route::get('/', function () {
-    return Inertia::render('welcome', ['translations' => [
-        'home' => Lang::get('WelcomeTrans'),
-        'navbar' => Lang::get('HeaderTrans')
+    return Inertia::render('welcome',['translations' => [ 
+        'home' => Lang::get('WelcomeTrans'), 
+        'navbar' => Lang::get('HeaderTrans') 
     ]]);
 })->name('home');
 
@@ -33,40 +31,36 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
-    Route::prefix('products')->group(function () {
-        Route::get('category', function () {
-            return Inertia::render('products/category/index');
-        })->name('category');
-
+    Route::prefix('products')->group(function() {
+        Route::get('category', [ViewController::class, 'categoryPage']);
+    
         Route::get('division', function () {
             return Inertia::render('products/division/index');
         })->name('division');
-
+    
         Route::get('product', function () {
             return Inertia::render('products/product/index');
         })->name('product');
-
+    
         Route::get('subcategory', function () {
             return Inertia::render('products/subcategory/index');
         })->name('subcategory');
-
-        Route::get('unit', function () {
-            return Inertia::render('products/unit/index');
-        })->name('unit');
+    
+        Route::get('unit', [ViewController::class, 'unitPage']);
 
         Route::get('variant', function () {
             return Inertia::render('products/variant/index');
         })->name('variant');
 
-        Route::prefix('product')->group(function () {
+        Route::prefix('product')->group(function() {
             Route::get('add-product/{id?}', function ($id = null) {
                 $product = $id ? 'edit' : null; //temporary solution
-
+        
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-
+        
                 return Inertia::render('products/product/add-product', [
                     'product' => $product,
                 ]);
@@ -74,28 +68,28 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
             Route::get('viewprod/{id?}', function ($id = null) {
                 $product = $id ? 'edit' : null; //temporary solution
-
+        
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-
+        
                 return Inertia::render('products/product/view-product', [
                     'product' => $product,
                 ]);
             })->name('view-product');
         });
 
-        Route::prefix('subcategory')->group(function () {
+        Route::prefix('subcategory')->group(function() {
 
             Route::get('viewsub/{id?}', function ($id = null) {
                 $subcat = $id ? 'edit' : null; //temporary solution
-
+        
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-
+        
                 return Inertia::render('products/subcategory/view-subcategory', [
                     'subcat' => $subcat,
                 ]);
@@ -103,28 +97,28 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
             Route::get('addsub/{id?}', function ($id = null) {
                 $subcat = $id ? 'edit' : null; //temporary solution
-
+        
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-
+        
                 return Inertia::render('products/subcategory/add-subcategory', [
                     'subcat' => $subcat,
                 ]);
             })->name('add-subcategory');
         });
 
-        Route::prefix('division')->group(function () {
+        Route::prefix('division')->group(function() {
 
             Route::get('viewdiv/{id?}', function ($id = null) {
                 $division = $id ? 'edit' : null; //temporary solution
-
+        
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-
+        
                 return Inertia::render('products/division/view-division', [
                     'division' => $division,
                 ]);
@@ -132,28 +126,28 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
             Route::get('adddiv/{id?}', function ($id = null) {
                 $division = $id ? 'edit' : null; //temporary solution
-
+        
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-
+        
                 return Inertia::render('products/division/add-division', [
                     'division' => $division,
                 ]);
             })->name('add-division');
         });
 
-        Route::prefix('variant')->group(function () {
+        Route::prefix('variant')->group(function() {
 
             Route::get('viewvar/{id?}', function ($id = null) {
                 $variant = $id ? 'edit' : null; //temporary solution
-
+        
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-
+        
                 return Inertia::render('products/variant/view-variant', [
                     'variant' => $variant,
                 ]);
@@ -161,18 +155,20 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
             Route::get('addvar/{id?}', function ($id = null) {
                 $variant = $id ? 'edit' : null; //temporary solution
-
+        
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-
+        
                 return Inertia::render('products/variant/add-variant', [
                     'variant' => $variant,
                 ]);
             })->name('add-variant');
         });
+
     });
+
 });
 
 #API 
@@ -192,32 +188,6 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Product API
     Route::post('add-product', [ProductController::class, 'addProduct'])->name('addProduct');
     Route::post('product', [ProductController::class, 'getAllProduct'])->name('product');
-
-    //Unit API
-    Route::post('create-unit', [ProductController::class, 'createUnit'])->name('unit.create');
-    Route::post('update-unit', [ProductController::class, 'updateUnit'])->name('unit.update');
-    Route::get('unit', [ProductController::class, 'getAllUnit'])->name('unit');
-
-    //Subcat API
-    Route::post('create-sub-category', [SubCategoryController::class, 'createSubCategory'])->name('subcat.create');
-    Route::post('update-sub-category', [SubCategoryController::class, 'updateSubCategory'])->name('subcat.update');
-    Route::get('sub-category', [SubCategoryController::class, 'getAllSubCategory'])->name('subcat');
-    Route::post('add-subcat-stock', [SubCategoryController::class, 'addStock'])->name('subcat.add-stock');
-    Route::post('update-subcat-stock', [SubCategoryController::class, 'updateLatestStock'])->name('subcat.update-stock');
-
-    //Division API
-    Route::post('create-division', [DivisionController::class, 'createDivision'])->name('division.create');
-    Route::post('update-division', [DivisionController::class, 'updateDivision'])->name('division.update');
-    Route::get('division', [DivisionController::class, 'getAllDivision'])->name('division');
-    Route::post('add-division-stock', [DivisionController::class, 'addStock'])->name('division.add-stock');
-    Route::post('update-division-stock', [DivisionController::class, 'updateLatestStock'])->name('division.update-stock');
-
-    //Variant API
-    Route::post('create-variant', [VariantController::class, 'createVariant'])->name('variant.create');
-    Route::post('update-variant', [VariantController::class, 'updateVariant'])->name('variant.update');
-    Route::get('variant', [VariantController::class, 'getAllVariant'])->name('variant');
-    Route::post('add-variant-stock', [VariantController::class, 'addStock'])->name('variant.add-stock');
-    Route::post('update-variant-stock', [VariantController::class, 'updateLatestStock'])->name('variant.update-stock');
 
     //Profile API
     Route::post('update-profile', [UserController::class, 'updateProfile'])->name('profile.edit');
