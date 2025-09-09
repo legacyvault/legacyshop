@@ -71,7 +71,11 @@ class AWSCognitoAuthController extends Controller
                     'country' => $location['countryCode'] ?? null,
                 ]);
 
-                return redirect()->route('login')->with('success', 'Sign Up successful.');
+                return redirect()->route('login')->with('alert', [
+                    'type' => 'success',
+                    'message' => 'Sign Up successful.',
+                ]);
+
             } else {
                 $response = [
                     'data' => '',
@@ -81,7 +85,10 @@ class AWSCognitoAuthController extends Controller
                     ]
                 ];
 
-                return back()->withErrors(['register' => 'Failed to sign up.']);
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Failed to sign up.',
+                ]);
             }
         } else {
             $response = [
@@ -91,8 +98,10 @@ class AWSCognitoAuthController extends Controller
                     'status_code' => Response::HTTP_FORBIDDEN
                 ]
             ];
-
-            return back()->withErrors(['register' => 'Failed to sign up.']);
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to sign up.',
+            ]);
         }
     }
 
@@ -125,12 +134,21 @@ class AWSCognitoAuthController extends Controller
                 // choose redirect path based on role
                 $redirectUrl = $user->role === 'admin' ? 'dashboard' : 'home';
 
-                return redirect()->route($redirectUrl)->with('success', 'Registration successful.');
+                return redirect()->route($redirectUrl)->with('alert', [
+                    'type' => 'success',
+                    'message' => 'Login successful.',
+                ]);
             } else {
-                return back()->withErrors(['login' => 'Login failed.']);
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Login failed',
+                ]);
             }
         } else {
-            return back()->withErrors(['login' => 'Login failed. Wrong Password']);
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Login failed. Wrong Password',
+            ]);
         }
     }
 

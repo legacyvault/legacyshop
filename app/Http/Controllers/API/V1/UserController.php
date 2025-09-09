@@ -38,11 +38,7 @@ class UserController extends Controller
     {
         $profile = Profile::where('user_id', Auth::id())->with('delivery_address')->first();
 
-        return Inertia::render('profile/index', [
-            'profile' => $profile,
-            'home' => Lang::get('WelcomeTrans'), 
-            'navbar' => Lang::get('HeaderTrans') 
-        ]);
+        return $profile;
     }
 
     public function updateProfile(Request $request)
@@ -64,15 +60,25 @@ class UserController extends Controller
             if ($user) {
                 $user->name = $request->name;
                 $user->date_of_birth = $request->date_of_birth;
+                $user->phone = $request->phone;
                 $user->save();
 
-                return redirect()->back()->with('success', 'Profile data updated.');
+                return redirect()->back()->with('alert', [
+                    'type' => 'success',
+                    'message' => 'Profile data updated.',
+                ]);
             } else {
-                return redirect()->back()->with('error', 'User not found');
+                return redirect()->back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'User not found',
+                ]);
             }
         } catch (Exception $e) {
             Log::error('Update Profile Failed: ' . $e);
-            return redirect()->back()->with('error', 'Failed to update profile.');
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to update profile.',
+            ]);
         }
     }
 

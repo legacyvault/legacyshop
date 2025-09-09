@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
 
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
+import DialogHandler from '@/components/dialog-handler';
 
 type RegisterForm = {
     name: string;
@@ -51,20 +51,7 @@ export default function Register() {
 
     return (
         <>
-            <Dialog open={errorAlert} onOpenChange={setErrorAlert}>
-                <DialogPortal>
-                    <DialogOverlay />
-                    <DialogContent>
-                        <DialogTitle>Error</DialogTitle>
-                        <DialogDescription>{errorMsg}</DialogDescription>
-                        <DialogClose asChild>
-                            <div>
-                                <Button className="capitalize">Okay</Button>
-                            </div>
-                        </DialogClose>
-                    </DialogContent>
-                </DialogPortal>
-            </Dialog>
+            <DialogHandler />
             <AuthLayout title="Create an account" description="Enter your details below to create your account">
                 <Head title="Register" />
                 <form method="POST" className="flex flex-col gap-6" onSubmit={submit}>

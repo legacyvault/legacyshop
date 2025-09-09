@@ -2,10 +2,10 @@ import { Head, useForm } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
 
+import DialogHandler from '@/components/dialog-handler';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
@@ -53,20 +53,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
     return (
         <>
-            <Dialog open={errorAlert} onOpenChange={setErrorAlert}>
-                <DialogPortal>
-                    <DialogOverlay />
-                    <DialogContent>
-                        <DialogTitle>Error</DialogTitle>
-                        <DialogDescription>{errorMsg}</DialogDescription>
-                        <DialogClose asChild>
-                            <div>
-                                <Button className="capitalize">Okay</Button>
-                            </div>
-                        </DialogClose>
-                    </DialogContent>
-                </DialogPortal>
-            </Dialog>
+            <DialogHandler />
 
             <AuthLayout title="Log in to your account" description="Enter your email and password below to log in">
                 <Head title="Log in" />
