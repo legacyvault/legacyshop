@@ -33,6 +33,7 @@ export interface SharedData {
     [key: string]: unknown;
     translations: any;
     locale: string;
+    units: IUnit[];
 }
 
 export interface User {
@@ -59,4 +60,10 @@ export interface IProfile {
     province: string | null;
     updated_at: string | Date;
     user_id: string;
+}
+
+export interface IUnit {
+    id: string;
+    name: string;
+    description: string;
 }

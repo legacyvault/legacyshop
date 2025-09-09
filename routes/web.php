@@ -194,9 +194,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('product', [ProductController::class, 'getAllProduct'])->name('product');
 
     //Unit API
+    Route::prefix('products')->group(function (){
+        Route::get('unit', [ProductController::class, 'getAllUnit'])->name('unit');
+    });
+
     Route::post('create-unit', [ProductController::class, 'createUnit'])->name('unit.create');
     Route::post('update-unit', [ProductController::class, 'updateUnit'])->name('unit.update');
-    Route::get('unit', [ProductController::class, 'getAllUnit'])->name('unit');
 
     //Subcat API
     Route::post('create-sub-category', [SubCategoryController::class, 'createSubCategory'])->name('subcat.create');

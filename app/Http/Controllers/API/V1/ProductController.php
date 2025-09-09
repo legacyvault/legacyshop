@@ -334,10 +334,8 @@ class ProductController extends Controller
     public function getAllUnit()
     {
         $data = Unit::orderBy('name', 'asc')->get();
-
-        return redirect()->back()->with([
-            'success' => 'Successfully get units.',
-            'units' => $data,
+        return Inertia::render('products/unit/index', [
+            'units' => $data
         ]);
     }
 }
