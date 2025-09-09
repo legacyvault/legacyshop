@@ -50,11 +50,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
             'phone' => 'required|string|regex:/^\d+$/',
-            'address' => 'required|string',
-            'city' => 'required|string',
-            'province' => 'required|string',
-            'country' => 'required|string',
-            'postal_code' => 'required|string|regex:/^\d+$/',
+            'date_of_birth' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -67,12 +63,7 @@ class UserController extends Controller
 
             if ($user) {
                 $user->name = $request->name;
-                $user->address = $request->address;
-                $user->phone = $request->phone;
-                $user->city = $request->city;
-                $user->province = $request->province;
-                $user->country = $request->country;
-                $user->postal_code = $request->postal_code;
+                $user->date_of_birth = $request->date_of_birth;
                 $user->save();
 
                 return redirect()->back()->with('success', 'Profile data updated.');

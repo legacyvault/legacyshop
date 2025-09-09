@@ -17,7 +17,8 @@ class Profile extends Model
         'name',
         'user_id',
         'phone',
-        'country'
+        'country',
+        'date_of_birth'
     ];
 
     public function delivery_address()
