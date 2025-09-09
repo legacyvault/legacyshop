@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductPictures;
 use App\Models\Tags;
 use App\Models\Type;
+use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +26,8 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|unique:category,name',
-            'description' => 'string|nullable'
+            'description' => 'string|nullable',
+            'unit_id' => 'required|exists:unit,id'
         ]);
 
         if ($validator->fails()) {
@@ -34,6 +36,7 @@ class ProductController extends Controller
 
         $create = Category::create([
             'name' => $request->name,
+            'unit_id' => $request->unit_id,
             'description' => $request->description
         ]);
 
@@ -76,6 +79,7 @@ class ProductController extends Controller
                 'string',
                 Rule::unique('category', 'name')->ignore($request->id),
             ],
+            'unit_id' => 'required|exists:unit,id',
             'description' => 'string|nullable'
         ]);
 
@@ -90,6 +94,7 @@ class ProductController extends Controller
         }
 
         $data->name = $request->name;
+        $data->unit_id = $request->unit_id;
         $data->description = $request->description;
         $data->save();
 
@@ -127,7 +132,7 @@ class ProductController extends Controller
 
     public function getAllCategory()
     {
-        $data = Category::orderBy('name', 'asc')->get();
+        $data = Category::orderBy('name', 'asc')->with('unit')->get();
 
         return redirect()->back()->with([
             'success' => 'Successfully get products.',
@@ -271,6 +276,68 @@ class ProductController extends Controller
         return redirect()->back()->with([
             'success' => 'Successfully get tags.',
             'tags' => $data,
+        ]);
+    }
+
+    public function createUnit(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|unique:unit,name',
+            'description' => 'string|nullable'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $create = Unit::create([
+            'name' => $request->name,
+            'description' => $request->description
+        ]);
+
+        if ($create) {
+            return redirect()->back()->with('success', 'Successfully create unit.');
+        } else {
+            return redirect()->back()->with('error', 'Failed to create unit.');
+        }
+    }
+
+    public function updateUnit(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id' => 'required|exists:unit,id',
+            'name' => [
+                'required',
+                'string',
+                Rule::unique('unit', 'name')->ignore($request->id),
+            ],
+            'description' => 'string|nullable'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $data = Unit::find($request->id);
+
+        if (!$data) {
+            return redirect()->back()->with('error', 'Unit not found.');
+        }
+
+        $data->name = $request->name;
+        $data->description = $request->description;
+        $data->save();
+
+        return redirect()->back()->with('success', 'Successfully update unit.');
+    }
+
+    public function getAllUnit()
+    {
+        $data = Unit::orderBy('name', 'asc')->get();
+
+        return redirect()->back()->with([
+            'success' => 'Successfully get units.',
+            'units' => $data,
         ]);
     }
 }
