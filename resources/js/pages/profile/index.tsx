@@ -1,6 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import FrontFooter from '@/layouts/front/front-footer';
-import FrontHeader from '@/layouts/front/front-header';
+import FrontLayout from '@/layouts/front/front-layout';
 import { BreadcrumbItem, SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 import EditProfileForm from './edit-profile';
@@ -26,9 +25,9 @@ export default function EditProfile() {
                 </>
             ) : (
                 <>
-                    <FrontHeader auth={auth} locale={locale} translations={translations} />
-                    <EditProfileForm profile={profile} />
-                    <FrontFooter />
+                    <FrontLayout auth={auth} locale={locale} translations={translations}>
+                        <EditProfileForm profile={profile} />
+                    </FrontLayout>
                 </>
             )}
         </>

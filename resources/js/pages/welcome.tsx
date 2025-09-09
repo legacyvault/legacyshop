@@ -1,7 +1,6 @@
 import ImageSequence from '@/components/image-sequence';
 import { Button } from '@/components/ui/button';
-import FrontFooter from '@/layouts/front/front-footer';
-import FrontHeader from '@/layouts/front/front-header';
+import FrontLayout from '@/layouts/front/front-layout';
 import { type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
@@ -181,39 +180,40 @@ export default function Welcome() {
                 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
             </Head>
             <div className="">
-                <FrontHeader auth={auth} locale={locale} translations={translations} />
-                {/* HERO + SEQUENCE SECTION */}
-                <section className="relative flex h-[200vh] w-full flex-col bg-primary">
-                    {/* Image sequence pinned behind */}
-                    <div className="h-screen w-full">
-                        <ImageSequence />
+                <FrontLayout auth={auth} locale={locale} translations={translations}>
+                    {/* HERO + SEQUENCE SECTION */}
+                    <section className="relative flex h-[200vh] w-full flex-col bg-primary">
+                        {/* Image sequence pinned behind */}
+                        <div className="h-screen w-full">
+                            <ImageSequence />
+                        </div>
+
+                        {/* Overlay text */}
+                        <div className="absolute top-0 flex h-screen w-full flex-col items-center justify-center text-center text-white">
+                            <h1 ref={textRef1} className="mb-6 text-5xl font-black drop-shadow-lg md:text-7xl">
+                                {translations.home.welcome}
+                            </h1>
+                            <p ref={textRef2} className="max-w-2xl px-4 text-lg md:text-xl">
+                                {translations.home.description1}
+                            </p>
+                        </div>
+
+                        {/* Scroll down to reveal more content */}
+                        <div ref={bottomRef} className="relative z-10 mt-auto py-24 text-center">
+                            <h2 className="mx-auto mb-6 max-w-3xl text-xl font-bold text-background">{translations.home.description2}</h2>
+                            <p className="mx-auto max-w-xl text-background">
+                                Discover more about our work, technology, and how we bring ideas to life.
+                            </p>
+                            <Button className="mt-8 bg-background text-foreground transition hover:scale-105" variant={'secondary'}>
+                                Get Started
+                            </Button>
+                        </div>
+                    </section>
+
+                    <div className="my-8">
+                        <ProductCardsSection />
                     </div>
-
-                    {/* Overlay text */}
-                    <div className="absolute top-0 flex h-screen w-full flex-col items-center justify-center text-center text-white">
-                        <h1 ref={textRef1} className="mb-6 text-5xl font-black drop-shadow-lg md:text-7xl">
-                            {translations.home.welcome}
-                        </h1>
-                        <p ref={textRef2} className="max-w-2xl px-4 text-lg md:text-xl">
-                            {translations.home.description1}
-                        </p>
-                    </div>
-
-                    {/* Scroll down to reveal more content */}
-                    <div ref={bottomRef} className="relative z-10 mt-auto py-24 text-center">
-                        <h2 className="mx-auto mb-6 max-w-3xl text-xl font-bold text-background">{translations.home.description2}</h2>
-                        <p className="mx-auto max-w-xl text-background">Discover more about our work, technology, and how we bring ideas to life.</p>
-                        <Button className="mt-8 bg-background text-foreground transition hover:scale-105" variant={'secondary'}>
-                            Get Started
-                        </Button>
-                    </div>
-                </section>
-
-                <div className="my-8">
-                    <ProductCardsSection />
-                </div>
-
-                <FrontFooter />
+                </FrontLayout>
             </div>
         </>
     );

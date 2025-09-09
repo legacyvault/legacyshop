@@ -9,22 +9,6 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
 
-Route::get('/', function () {
-    return Inertia::render('welcome',['translations' => [ 
-        'home' => Lang::get('WelcomeTrans'), 
-        'navbar' => Lang::get('HeaderTrans') 
-    ]]);
-})->name('home');
-
-Route::get('/login', function () {
-    return Inertia::render('auth/login');
-})->name('login');
-
-Route::get('/register', function () {
-    return Inertia::render('auth/register');
-})->name('register');
-
-
 Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
     Route::get('/dashboard', function () {
@@ -32,7 +16,6 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
     })->name('dashboard');
 
     Route::prefix('products')->group(function() {
-        Route::get('category', [ViewController::class, 'categoryPage']);
     
         Route::get('division', function () {
             return Inertia::render('products/division/index');
@@ -45,8 +28,6 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('subcategory', function () {
             return Inertia::render('products/subcategory/index');
         })->name('subcategory');
-    
-        Route::get('unit', [ViewController::class, 'unitPage']);
 
         Route::get('variant', function () {
             return Inertia::render('products/variant/index');
@@ -220,3 +201,39 @@ Route::get('/lang/{lang}', function ($lang) {
     }
     return back();
 })->name('locale.switch');
+
+
+
+
+//ROUTES
+Route::get('/', function () {
+    return Inertia::render('welcome',['translations' => [ 
+        'home' => Lang::get('WelcomeTrans'), 
+        'navbar' => Lang::get('HeaderTrans') 
+    ]]);
+})->name('home');
+
+Route::get('/login', function () {
+    return Inertia::render('auth/login');
+})->name('login');
+
+Route::get('/register', function () {
+    return Inertia::render('auth/register');
+})->name('register');
+
+Route::middleware(['ensureToken'])->group(function () {
+    Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
+});
+
+
+Route::middleware(['ensureToken', 'role:admin'])->group(function () {
+
+    Route::get('/dashboard', function () {
+        return Inertia::render('dashboard');
+    })->name('dashboard');
+
+    Route::prefix('products')->group(function() {
+        Route::get('category', [ViewController::class, 'categoryPage']);
+        Route::get('unit', [ViewController::class, 'unitPage']);
+    });
+});

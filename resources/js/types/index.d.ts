@@ -50,17 +50,15 @@ export interface User {
 }
 
 export interface IProfile {
-    address: string | null;
-    city: string | null;
     country: string | null;
     created_at: string | Date;
     id: string;
     name: string;
     phone: string | null;
-    postal_code: string | null;
-    province: string | null;
     updated_at: string | Date;
     user_id: string;
+    date_of_birth: string;
+    delivery_address: string;
 }
 
 export interface IUnit {

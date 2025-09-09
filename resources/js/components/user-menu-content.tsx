@@ -26,7 +26,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                    <Link href={route('profile.edit-view')}>
+                    <Link href={route('profile.view')}>
                         <Settings className="mr-2" />
                         <span>Settings</span>
                     </Link>
