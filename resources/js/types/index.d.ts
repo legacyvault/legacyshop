@@ -34,6 +34,7 @@ export interface SharedData {
     translations: any;
     locale: string;
     units: IUnit[];
+    categories: ICategories[];
 }
 
 export interface User {
@@ -66,4 +67,12 @@ export interface IUnit {
     id: string;
     name: string;
     description: string;
+}
+
+export interface ICategories {
+    id: string;
+    name: string;
+    description: string;
+    unit_id: string;
+    unit: IUnit;
 }

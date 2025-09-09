@@ -20,7 +20,7 @@ const mainNavItems: NavItem[] = [
         child: [
             {
                 title: 'Unit',
-                href: '/v1/products/unit',
+                href: '/products/unit',
             },
             {
                 title: 'Category',

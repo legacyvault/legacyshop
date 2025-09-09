@@ -41,7 +41,12 @@ export default function Unit() {
         e.preventDefault();
 
         post(route('unit.create'), {
-            onFinish: () => (Object.keys(errors).length === 0 ? isOpenAdd(false) : isOpenAdd(true)),
+            onSuccess: () => {
+                isOpenAdd(false);
+            },
+            onError: () => {
+                isOpenAdd(true);
+            },
         });
     };
 
@@ -82,7 +87,7 @@ function UnitsTable({ units }: PropsUnitTable) {
         e.preventDefault();
         post(route('unit.update'), {
             onSuccess: () => {
-                isOpenEdit(false); // close on success only
+                isOpenEdit(false);
             },
             onError: () => {
                 isOpenEdit(true);
