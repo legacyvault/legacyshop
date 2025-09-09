@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('user_id')->unique();
             $table->string('name');
             $table->string('phone')->nullable();
+            $table->string('date_of_birth')->nullable();
             $table->string('country')->nullable();
             $table->timestamps();
         });
