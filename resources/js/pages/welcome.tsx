@@ -1,9 +1,14 @@
+import ImageSequence from '@/components/image-sequence';
 import { Button } from '@/components/ui/button';
 import FrontFooter from '@/layouts/front/front-footer';
 import FrontHeader from '@/layouts/front/front-header';
 import { type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useRef, useState } from 'react';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const ProductCardsSection = () => {
     const products = [
@@ -141,6 +146,34 @@ const ProductCard = ({ product }: any) => {
 export default function Welcome() {
     const { auth, translations, locale } = usePage<SharedData>().props;
 
+    const textRef1 = useRef<HTMLDivElement | null>(null);
+    const textRef2 = useRef<HTMLDivElement | null>(null);
+    const bottomRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!textRef1.current && !textRef2.current) return;
+
+        // 👇 Intro reveal (on first load)
+        gsap.from([textRef1.current, textRef2.current], {
+            opacity: 0,
+            y: 50,
+            duration: 1,
+            ease: 'power3.out',
+            stagger: 0.2,
+        });
+
+        gsap.from(bottomRef.current, {
+            opacity: 0,
+            y: 100,
+            duration: 1,
+            ease: 'power3.out',
+            scrollTrigger: {
+                trigger: bottomRef.current,
+                start: 'top 80%', // reveal when top enters 80% of viewport
+                toggleActions: 'play none none reverse',
+            },
+        });
+    }, []);
     return (
         <>
             <Head title="Welcome">
@@ -149,19 +182,32 @@ export default function Welcome() {
             </Head>
             <div className="">
                 <FrontHeader auth={auth} locale={locale} translations={translations} />
+                {/* HERO + SEQUENCE SECTION */}
+                <section className="relative flex h-[200vh] w-full flex-col bg-primary">
+                    {/* Image sequence pinned behind */}
+                    <div className="h-screen w-full">
+                        <ImageSequence />
+                    </div>
 
-                {/* HERO SECTION */}
+                    {/* Overlay text */}
+                    <div className="absolute top-0 flex h-screen w-full flex-col items-center justify-center text-center text-white">
+                        <h1 ref={textRef1} className="mb-6 text-5xl font-black drop-shadow-lg md:text-7xl">
+                            {translations.home.welcome}
+                        </h1>
+                        <p ref={textRef2} className="max-w-2xl px-4 text-lg md:text-xl">
+                            {translations.home.description1}
+                        </p>
+                    </div>
 
-                <div className="mx-auto my-16 md:max-w-7xl">
-                    <h1 className="mb-10 text-center text-5xl font-black text-primary">{translations.home.welcome}</h1>
-                    <p className="mb-4 text-center">{translations.home.description1}</p>
-                    <p className="text-center">{translations.home.description2}</p>
-                </div>
-
-                {/* 3D SECTION */}
-                <div className="h-[1200px] bg-amber-600">
-                    <span>3 nya di mulai dari sini</span>
-                </div>
+                    {/* Scroll down to reveal more content */}
+                    <div ref={bottomRef} className="relative z-10 mt-auto py-24 text-center">
+                        <h2 className="mx-auto mb-6 max-w-3xl text-xl font-bold text-background">{translations.home.description2}</h2>
+                        <p className="mx-auto max-w-xl text-background">Discover more about our work, technology, and how we bring ideas to life.</p>
+                        <Button className="mt-8 bg-background text-foreground transition hover:scale-105" variant={'secondary'}>
+                            Get Started
+                        </Button>
+                    </div>
+                </section>
 
                 <div className="my-8">
                     <ProductCardsSection />
