@@ -15,13 +15,10 @@ interface FormData {
     subcategory: string[];
     division: string[];
     variant: string[];
-    // Discount options
-    subcategoryDiscountValue: string;
-    divisionDiscountValue: string;
-    variantDiscountValue: string;
-    selectedSubcategoryDiscount: string;
-    selectedDivisionDiscount: string;
-    selectedVariantDiscount: string;
+    // New discount structure - each value has its own discount settings
+    subcategoryDiscounts: Record<string, { source: string; value: string }>; // e.g., { "subcategory 1": { source: "subcategory 1", value: "10" } }
+    divisionDiscounts: Record<string, { source: string; value: string }>;
+    variantDiscounts: Record<string, { source: string; value: string }>;
 }
 
 interface FormErrors {
@@ -34,13 +31,10 @@ interface FormErrors {
     subcategory?: string;
     division?: string;
     variant?: string;
-    // Discount options
-    subcategoryDiscountValue?: string;
-    divisionDiscountValue?: string;
-    variantDiscountValue?: string;
-    selectedSubcategoryDiscount?: string;
-    selectedDivisionDiscount?: string;
-    selectedVariantDiscount?: string;
+    // New discount error structure
+    subcategoryDiscounts?: Record<string, string>;
+    divisionDiscounts?: Record<string, string>;
+    variantDiscounts?: Record<string, string>;
 }
 
 // Multi-select component
@@ -183,12 +177,9 @@ export default function AddProduct() {
         subcategory: [],
         division: [],
         variant: [],
-        subcategoryDiscountValue: '',
-        divisionDiscountValue: '',
-        variantDiscountValue: '',
-        selectedSubcategoryDiscount: '',
-        selectedDivisionDiscount: '',
-        selectedVariantDiscount: '',
+        subcategoryDiscounts: {},
+        divisionDiscounts: {},
+        variantDiscounts: {},
     });
 
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -214,6 +205,68 @@ export default function AddProduct() {
             const newCursorPos = start + startTag.length + selectedText.length + endTag.length;
             textarea.setSelectionRange(newCursorPos, newCursorPos);
         }, 0);
+    };
+
+    const handleDiscountSourceChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, source: string) => {
+        const discountField = `${type}Discounts` as 'subcategoryDiscounts' | 'divisionDiscounts' | 'variantDiscounts';
+
+        setFormData((prev) => ({
+            ...prev,
+            [discountField]: {
+                ...(prev[discountField] ?? {}), // ✅ ensure object
+                [selectedValue]: {
+                    source,
+                    value: source === 'manual' ? '' : DISCOUNT_VALUES[type][selectedValue] || '',
+                },
+            },
+        }));
+    };
+
+    const handleDiscountValueChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, value: string) => {
+        const discountField = `${type}Discounts` as 'subcategoryDiscounts' | 'divisionDiscounts' | 'variantDiscounts';
+
+        if (Number(value) <= 100) {
+            setFormData((prev) => ({
+                ...prev,
+                [discountField]: {
+                    ...prev[discountField],
+                    [selectedValue]: {
+                        ...prev[discountField][selectedValue],
+                        value: value,
+                    },
+                },
+            }));
+        }
+    };
+
+    const initializeDiscounts = (type: 'subcategory' | 'division' | 'variant', values: string[]) => {
+        setFormData((prev) => {
+            const currentDiscounts =
+                type === 'subcategory' ? prev.subcategoryDiscounts : type === 'division' ? prev.divisionDiscounts : prev.variantDiscounts;
+
+            const newDiscounts = { ...currentDiscounts };
+
+            // Add new selections with default settings
+            values.forEach((value) => {
+                if (!newDiscounts[value]) {
+                    newDiscounts[value] = { source: '', value: '' };
+                }
+            });
+
+            // Remove discounts for unselected values
+            Object.keys(newDiscounts).forEach((key) => {
+                if (!values.includes(key)) {
+                    delete newDiscounts[key];
+                }
+            });
+
+            return {
+                ...prev,
+                ...(type === 'subcategory' && { subcategoryDiscounts: newDiscounts }),
+                ...(type === 'division' && { divisionDiscounts: newDiscounts }),
+                ...(type === 'variant' && { variantDiscounts: newDiscounts }),
+            };
+        });
     };
 
     // Convert description with formatting tags to HTML for preview
@@ -310,17 +363,26 @@ export default function AddProduct() {
         const basePrice = Number(formData.price) || 0;
         let finalPrice = basePrice;
 
-        if (formData.subcategoryDiscountValue) {
-            finalPrice = finalPrice * (1 - Number(formData.subcategoryDiscountValue) / 100);
-        }
+        // Apply subcategory discounts
+        Object.values(formData.subcategoryDiscounts).forEach((discount) => {
+            if (discount.value) {
+                finalPrice = finalPrice * (1 - Number(discount.value) / 100);
+            }
+        });
 
-        if (formData.divisionDiscountValue) {
-            finalPrice = finalPrice * (1 - Number(formData.divisionDiscountValue) / 100);
-        }
+        // Apply division discounts
+        Object.values(formData.divisionDiscounts).forEach((discount) => {
+            if (discount.value) {
+                finalPrice = finalPrice * (1 - Number(discount.value) / 100);
+            }
+        });
 
-        if (formData.variantDiscountValue) {
-            finalPrice = finalPrice * (1 - Number(formData.variantDiscountValue) / 100);
-        }
+        // Apply variant discounts
+        Object.values(formData.variantDiscounts).forEach((discount) => {
+            if (discount.value) {
+                finalPrice = finalPrice * (1 - Number(discount.value) / 100);
+            }
+        });
 
         return finalPrice;
     };
@@ -499,7 +561,10 @@ export default function AddProduct() {
                     <MultiSelect
                         options={OPTIONS.subcategory}
                         values={formData.subcategory}
-                        onChange={(values) => handleInputChange('subcategory', values)}
+                        onChange={(values) => {
+                            handleInputChange('subcategory', values);
+                            initializeDiscounts('subcategory', values);
+                        }}
                         placeholder="Select subcategories"
                         error={errors.subcategory}
                     />
@@ -509,56 +574,64 @@ export default function AddProduct() {
                 {/* Subcategory Discount */}
                 {formData.subcategory.length > 0 && (
                     <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                        <div className="mb-3 flex items-center justify-between">
-                            <label className="text-sm font-medium">Subcategory Discount</label>
+                        <div className="mb-3">
+                            <label className="text-sm font-medium">Subcategory Discounts</label>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="text-sm text-blue-600">
-                                <div className="mb-2">Choose discount source:</div>
-                                <div className="space-y-2">
-                                    {formData.subcategory.map((sub) => (
-                                        <label key={sub} className="flex items-center space-x-2">
-                                            <input
-                                                type="radio"
-                                                name="subcategoryDiscountSource"
-                                                value={sub}
-                                                checked={formData.selectedSubcategoryDiscount === sub}
-                                                onChange={(e) => handleDiscountSelection('subcategory', e.target.value)}
-                                                className="text-blue-600"
-                                            />
-                                            <span>
-                                                Use "{sub}" discount ({DISCOUNT_VALUES.subcategory[sub] || 'N/A'}%)
-                                            </span>
-                                        </label>
-                                    ))}
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            name="subcategoryDiscountSource"
-                                            value="manual"
-                                            checked={formData.selectedSubcategoryDiscount === 'manual'}
-                                            onChange={(e) => handleDiscountSelection('subcategory', e.target.value)}
-                                            className="text-blue-600"
-                                        />
-                                        <span>Enter manually</span>
-                                    </label>
-                                </div>
-                            </div>
+                        <div className="space-y-4">
+                            {formData.subcategory.map((sub) => (
+                                <div key={sub} className="rounded-md border border-blue-300 bg-white p-3">
+                                    <div className="mb-2 text-sm font-medium">{sub}</div>
 
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={formData.subcategoryDiscountValue}
-                                    onChange={(e) => handleDiscountChange('subcategoryDiscountValue', e)}
-                                    className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
-                                    placeholder="Enter discount percentage"
-                                    disabled={formData.selectedSubcategoryDiscount !== 'manual' && formData.selectedSubcategoryDiscount !== ''}
-                                    maxLength={3}
-                                />
-                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                            </div>
-                            {errors.subcategoryDiscountValue && <p className="text-sm text-red-500">{errors.subcategoryDiscountValue}</p>}
+                                    <div className="space-y-2">
+                                        <div className="text-sm text-blue-600">
+                                            <div className="mb-2">Choose discount source:</div>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`subcategoryDiscountSource-${sub}`}
+                                                        value={sub}
+                                                        checked={formData.subcategoryDiscounts[sub]?.source === sub}
+                                                        onChange={() => handleDiscountSourceChange('subcategory', sub, sub)}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>
+                                                        Use "{sub}" discount ({DISCOUNT_VALUES.subcategory[sub] || 'N/A'}%)
+                                                    </span>
+                                                </label>
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`subcategoryDiscountSource-${sub}`}
+                                                        value="manual"
+                                                        checked={formData.subcategoryDiscounts[sub]?.source === 'manual'}
+                                                        onChange={() => handleDiscountSourceChange('subcategory', sub, 'manual')}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>Enter manually</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.subcategoryDiscounts[sub]?.value || ''}
+                                                onChange={(e) => handleDiscountValueChange('subcategory', sub, e.target.value.replace(/\D/g, ''))}
+                                                className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
+                                                placeholder="Enter discount percentage"
+                                                disabled={
+                                                    formData.subcategoryDiscounts[sub]?.source !== 'manual' &&
+                                                    formData.subcategoryDiscounts[sub]?.source !== ''
+                                                }
+                                                maxLength={3}
+                                            />
+                                            <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -569,7 +642,10 @@ export default function AddProduct() {
                     <MultiSelect
                         options={OPTIONS.division}
                         values={formData.division}
-                        onChange={(values) => handleInputChange('division', values)}
+                        onChange={(values) => {
+                            handleInputChange('division', values);
+                            initializeDiscounts('division', values);
+                        }}
                         placeholder="Select divisions"
                         error={errors.division}
                     />
@@ -579,55 +655,64 @@ export default function AddProduct() {
                 {/* Division Discount */}
                 {formData.division.length > 0 && (
                     <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                        <div className="mb-3 flex items-center justify-between">
-                            <label className="text-sm font-medium">Division Discount</label>
+                        <div className="mb-3">
+                            <label className="text-sm font-medium">Division Discounts</label>
                         </div>
-                        <div className="space-y-3">
-                            <div className="text-sm text-blue-600">
-                                <div className="mb-2">Choose discount source:</div>
-                                <div className="space-y-2">
-                                    {formData.division.map((div) => (
-                                        <label key={div} className="flex items-center space-x-2">
-                                            <input
-                                                type="radio"
-                                                name="divisionDiscountSource"
-                                                value={div}
-                                                checked={formData.selectedDivisionDiscount === div}
-                                                onChange={(e) => handleDiscountSelection('division', e.target.value)}
-                                                className="text-blue-600"
-                                            />
-                                            <span>
-                                                Use "{div}" discount ({DISCOUNT_VALUES.division[div] || 'N/A'}%)
-                                            </span>
-                                        </label>
-                                    ))}
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            name="divisionDiscountSource"
-                                            value="manual"
-                                            checked={formData.selectedDivisionDiscount === 'manual'}
-                                            onChange={(e) => handleDiscountSelection('division', e.target.value)}
-                                            className="text-blue-600"
-                                        />
-                                        <span>Enter manually</span>
-                                    </label>
-                                </div>
-                            </div>
 
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={formData.divisionDiscountValue}
-                                    onChange={(e) => handleDiscountChange('divisionDiscountValue', e)}
-                                    className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
-                                    placeholder="Enter discount percentage"
-                                    disabled={formData.selectedDivisionDiscount !== 'manual' && formData.selectedDivisionDiscount !== ''}
-                                    maxLength={3}
-                                />
-                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                            </div>
-                            {errors.divisionDiscountValue && <p className="text-sm text-red-500">{errors.divisionDiscountValue}</p>}
+                        <div className="space-y-4">
+                            {formData.division.map((div) => (
+                                <div key={div} className="rounded-md border border-blue-300 bg-white p-3">
+                                    <div className="mb-2 text-sm font-medium">{div}</div>
+
+                                    <div className="space-y-2">
+                                        <div className="text-sm text-blue-600">
+                                            <div className="mb-2">Choose discount source:</div>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`divisionDiscountSource-${div}`}
+                                                        value={div}
+                                                        checked={formData.divisionDiscounts[div]?.source === div}
+                                                        onChange={() => handleDiscountSourceChange('division', div, div)}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>
+                                                        Use "{div}" discount ({DISCOUNT_VALUES.division[div] || 'N/A'}%)
+                                                    </span>
+                                                </label>
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`divisionDiscountSource-${div}`}
+                                                        value="manual"
+                                                        checked={formData.divisionDiscounts[div]?.source === 'manual'}
+                                                        onChange={() => handleDiscountSourceChange('division', div, 'manual')}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>Enter manually</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.divisionDiscounts[div]?.value || ''}
+                                                onChange={(e) => handleDiscountValueChange('division', div, e.target.value.replace(/\D/g, ''))}
+                                                className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
+                                                placeholder="Enter discount percentage"
+                                                disabled={
+                                                    formData.divisionDiscounts[div]?.source !== 'manual' &&
+                                                    formData.divisionDiscounts[div]?.source !== ''
+                                                }
+                                                maxLength={3}
+                                            />
+                                            <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -638,7 +723,10 @@ export default function AddProduct() {
                     <MultiSelect
                         options={OPTIONS.variant}
                         values={formData.variant}
-                        onChange={(values) => handleInputChange('variant', values)}
+                        onChange={(values) => {
+                            handleInputChange('variant', values);
+                            initializeDiscounts('variant', values);
+                        }}
                         placeholder="Select variants"
                         error={errors.variant}
                     />
@@ -647,55 +735,64 @@ export default function AddProduct() {
 
                 {formData.variant.length > 0 && (
                     <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                        <div className="mb-3 flex items-center justify-between">
-                            <label className="text-sm font-medium">Variant Discount</label>
+                        <div className="mb-3">
+                            <label className="text-sm font-medium">Variant Discounts</label>
                         </div>
-                        <div className="space-y-3">
-                            <div className="text-sm text-blue-600">
-                                <div className="mb-2">Choose discount source:</div>
-                                <div className="space-y-2">
-                                    {formData.variant.map((variant) => (
-                                        <label key={variant} className="flex items-center space-x-2">
-                                            <input
-                                                type="radio"
-                                                name="variantDiscountSource"
-                                                value={variant}
-                                                checked={formData.selectedVariantDiscount === variant}
-                                                onChange={(e) => handleDiscountSelection('variant', e.target.value)}
-                                                className="text-blue-600"
-                                            />
-                                            <span>
-                                                Use "{variant}" discount ({DISCOUNT_VALUES.variant[variant] || 'N/A'}%)
-                                            </span>
-                                        </label>
-                                    ))}
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            name="variantDiscountSource"
-                                            value="manual"
-                                            checked={formData.selectedVariantDiscount === 'manual'}
-                                            onChange={(e) => handleDiscountSelection('variant', e.target.value)}
-                                            className="text-blue-600"
-                                        />
-                                        <span>Enter manually</span>
-                                    </label>
-                                </div>
-                            </div>
 
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={formData.variantDiscountValue}
-                                    onChange={(e) => handleDiscountChange('variantDiscountValue', e)}
-                                    className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
-                                    placeholder="Enter discount percentage"
-                                    disabled={formData.selectedVariantDiscount !== 'manual' && formData.selectedVariantDiscount !== ''}
-                                    maxLength={3}
-                                />
-                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                            </div>
-                            {errors.variantDiscountValue && <p className="text-sm text-red-500">{errors.variantDiscountValue}</p>}
+                        <div className="space-y-4">
+                            {formData.variant.map((variant) => (
+                                <div key={variant} className="rounded-md border border-blue-300 bg-white p-3">
+                                    <div className="mb-2 text-sm font-medium">{variant}</div>
+
+                                    <div className="space-y-2">
+                                        <div className="text-sm text-blue-600">
+                                            <div className="mb-2">Choose discount source:</div>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`variantDiscountSource-${variant}`}
+                                                        value={variant}
+                                                        checked={formData.variantDiscounts[variant]?.source === variant}
+                                                        onChange={() => handleDiscountSourceChange('variant', variant, variant)}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>
+                                                        Use "{variant}" discount ({DISCOUNT_VALUES.variant[variant] || 'N/A'}%)
+                                                    </span>
+                                                </label>
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`variantDiscountSource-${variant}`}
+                                                        value="manual"
+                                                        checked={formData.variantDiscounts[variant]?.source === 'manual'}
+                                                        onChange={() => handleDiscountSourceChange('variant', variant, 'manual')}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>Enter manually</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.variantDiscounts[variant]?.value || ''}
+                                                onChange={(e) => handleDiscountValueChange('variant', variant, e.target.value.replace(/\D/g, ''))}
+                                                className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
+                                                placeholder="Enter discount percentage"
+                                                disabled={
+                                                    formData.variantDiscounts[variant]?.source !== 'manual' &&
+                                                    formData.variantDiscounts[variant]?.source !== ''
+                                                }
+                                                maxLength={3}
+                                            />
+                                            <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -709,26 +806,46 @@ export default function AddProduct() {
                                 <span>Base Price:</span>
                                 <span>Rp {formatRupiah(formData.price)}</span>
                             </div>
-                            {formData.subcategoryDiscountValue && (
-                                <div className="flex justify-between text-blue-600">
-                                    <span>Subcategory Discount ({formData.subcategoryDiscountValue}%):</span>
-                                    <span>
-                                        -Rp {formatRupiah(String((Number(formData.price) * Number(formData.subcategoryDiscountValue)) / 100))}
-                                    </span>
-                                </div>
+
+                            {/* Subcategory discounts */}
+                            {Object.entries(formData.subcategoryDiscounts).map(
+                                ([key, discount]) =>
+                                    discount.value && (
+                                        <div key={key} className="flex justify-between text-blue-600">
+                                            <span>
+                                                {key} Discount ({discount.value}%):
+                                            </span>
+                                            <span>-Rp {formatRupiah(String((Number(formData.price) * Number(discount.value)) / 100))}</span>
+                                        </div>
+                                    ),
                             )}
-                            {formData.divisionDiscountValue && (
-                                <div className="flex justify-between text-green-600">
-                                    <span>Division Discount ({formData.divisionDiscountValue}%):</span>
-                                    <span>-Rp {formatRupiah(String((Number(formData.price) * Number(formData.divisionDiscountValue)) / 100))}</span>
-                                </div>
+
+                            {/* Division discounts */}
+                            {Object.entries(formData.divisionDiscounts).map(
+                                ([key, discount]) =>
+                                    discount.value && (
+                                        <div key={key} className="flex justify-between text-green-600">
+                                            <span>
+                                                {key} Discount ({discount.value}%):
+                                            </span>
+                                            <span>-Rp {formatRupiah(String((Number(formData.price) * Number(discount.value)) / 100))}</span>
+                                        </div>
+                                    ),
                             )}
-                            {formData.variantDiscountValue && (
-                                <div className="flex justify-between text-purple-600">
-                                    <span>Variant Discount ({formData.variantDiscountValue}%):</span>
-                                    <span>-Rp {formatRupiah(String((Number(formData.price) * Number(formData.variantDiscountValue)) / 100))}</span>
-                                </div>
+
+                            {/* Variant discounts */}
+                            {Object.entries(formData.variantDiscounts).map(
+                                ([key, discount]) =>
+                                    discount.value && (
+                                        <div key={key} className="flex justify-between text-purple-600">
+                                            <span>
+                                                {key} Discount ({discount.value}%):
+                                            </span>
+                                            <span>-Rp {formatRupiah(String((Number(formData.price) * Number(discount.value)) / 100))}</span>
+                                        </div>
+                                    ),
                             )}
+
                             <hr className="my-2" />
                             <div className="flex justify-between font-medium">
                                 <span>Final Price:</span>
@@ -736,7 +853,7 @@ export default function AddProduct() {
                             </div>
                             {hasDiscount && (
                                 <div className="text-xs text-gray-500">
-                                    Discount price: Rp {formatRupiah(String(Number(formData.price) - Math.round(finalPrice)))}
+                                    Total discount: Rp {formatRupiah(String(Number(formData.price) - Math.round(finalPrice)))}
                                 </div>
                             )}
                         </div>
