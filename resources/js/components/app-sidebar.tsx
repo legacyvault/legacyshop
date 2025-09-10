@@ -38,6 +38,10 @@ const mainNavItems: NavItem[] = [
                 title: 'Variant',
                 href: '/products/variant',
             },
+            {
+                title: 'Tags',
+                href: '/products/tags',
+            },
         ],
     },
 ];
