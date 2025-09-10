@@ -35,6 +35,7 @@ export interface SharedData {
     locale: string;
     units: IUnit[];
     categories: ICategories[];
+    tags: ITags[];
 }
 
 export interface User {
@@ -73,4 +74,10 @@ export interface ICategories {
     description: string;
     unit_id: string;
     unit: IUnit;
+}
+
+export interface ITags {
+    id: string;
+    name: string;
+    description: string;
 }

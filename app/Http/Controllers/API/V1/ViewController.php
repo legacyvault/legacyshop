@@ -49,4 +49,12 @@ class ViewController extends Controller
             ]
         ]);
     }
+
+    public function tagsPage(){
+        $tags = $this->productController->getAllTags();
+
+        return Inertia::render('products/tags/index', [
+            'tags' => $tags
+        ]);
+    }
 }

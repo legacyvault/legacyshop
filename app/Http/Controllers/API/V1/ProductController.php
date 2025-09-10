@@ -253,10 +253,13 @@ class ProductController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $data = Type::find($request->id);
+        $data = Tags::find($request->id);
 
         if (!$data) {
-            return redirect()->back()->with('error', 'Tag not found.');
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Tag not found.',
+            ]);
         }
 
         $data->name = $request->name;
@@ -270,10 +273,7 @@ class ProductController extends Controller
     {
         $data = Tags::orderBy('name', 'asc')->get();
 
-        return redirect()->back()->with([
-            'success' => 'Successfully get tags.',
-            'tags' => $data,
-        ]);
+        return $data;
     }
 
     public function createUnit(Request $request)
