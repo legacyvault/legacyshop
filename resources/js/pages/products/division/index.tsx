@@ -60,7 +60,7 @@ function DivisionsTable() {
                         <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">#</th>
                         <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Name</th>
                         <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Description</th>
-                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Category</th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Sub Category</th>
                         <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Price</th>
                         <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Discount</th>
                         <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Total Stocks</th>
