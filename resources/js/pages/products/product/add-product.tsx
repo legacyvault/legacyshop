@@ -2,8 +2,8 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
-import { Bold, ChevronDown, Italic, Underline, Upload, X } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import { Bold, ChevronDown, Italic, Search, Underline, Upload, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface FormData {
     name: string;
@@ -15,6 +15,7 @@ interface FormData {
     subcategory: string[];
     division: string[];
     variant: string[];
+    tags: string[];
     // New discount structure - each value has its own discount settings
     subcategoryDiscounts: Record<string, { source: string; value: string }>; // e.g., { "subcategory 1": { source: "subcategory 1", value: "10" } }
     divisionDiscounts: Record<string, { source: string; value: string }>;
@@ -31,6 +32,7 @@ interface FormErrors {
     subcategory?: string;
     division?: string;
     variant?: string;
+    tags?: string;
     // New discount error structure
     subcategoryDiscounts?: Record<string, string>;
     divisionDiscounts?: Record<string, string>;
@@ -46,8 +48,73 @@ interface MultiSelectProps {
     error?: string;
 }
 
+const HighlightedText: React.FC<{ text: string; highlight: string }> = ({ text, highlight }) => {
+    if (!highlight.trim()) {
+        return <span>{text}</span>;
+    }
+
+    const regex = new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+
+    return (
+        <span>
+            {parts
+                .filter((part) => part)
+                .map((part, i) =>
+                    regex.test(part) ? (
+                        <mark key={i} className="rounded bg-yellow-200 px-1 text-yellow-900">
+                            {part}
+                        </mark>
+                    ) : (
+                        <span key={i}>{part}</span>
+                    ),
+                )}
+        </span>
+    );
+};
+
 const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, placeholder, error }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filteredOptions, setFilteredOptions] = useState(options);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Filter options based on search term
+    useEffect(() => {
+        const filtered = options.filter(
+            (option) =>
+                option.label.toLowerCase().includes(searchTerm.toLowerCase()) || option.value.toLowerCase().includes(searchTerm.toLowerCase()),
+        );
+        setFilteredOptions(filtered);
+    }, [searchTerm, options]);
+
+    // Focus search input when dropdown opens
+    useEffect(() => {
+        if (isOpen && searchInputRef.current) {
+            setTimeout(() => {
+                searchInputRef.current?.focus();
+            }, 100);
+        }
+    }, [isOpen]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+                setSearchTerm(''); // Clear search when closing
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
 
     const toggleOption = (value: string) => {
         if (values.includes(value)) {
@@ -61,10 +128,26 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
         onChange(values.filter((v) => v !== value));
     };
 
+    const handleDropdownToggle = () => {
+        setIsOpen(!isOpen);
+        if (!isOpen) {
+            setSearchTerm(''); // Clear search when opening
+        }
+    };
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(e.target.value);
+    };
+
+    const clearSearch = () => {
+        setSearchTerm('');
+        searchInputRef.current?.focus();
+    };
+
     return (
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
             <div
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleDropdownToggle}
                 className={`flex min-h-[42px] w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
                     error ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -94,19 +177,67 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
             </div>
 
             {isOpen && (
-                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-300 bg-white shadow-lg">
-                    {options.map((option) => (
-                        <div
-                            key={option.value}
-                            onClick={() => toggleOption(option.value)}
-                            className={`flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-gray-100 ${
-                                values.includes(option.value) ? 'bg-blue-50 text-blue-700' : ''
-                            }`}
-                        >
-                            <input type="checkbox" checked={values.includes(option.value)} onChange={() => {}} className="pointer-events-none" />
-                            {option.label}
+                <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-300 bg-white shadow-lg">
+                    {/* Search Input */}
+                    <div className="border-b border-gray-200 p-2">
+                        <div className="relative">
+                            <Search size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                value={searchTerm}
+                                onChange={handleSearchChange}
+                                placeholder="Search options..."
+                                className="w-full rounded-md border border-gray-300 py-2 pr-8 pl-10 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            {searchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={clearSearch}
+                                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
-                    ))}
+                    </div>
+
+                    {/* Options List */}
+                    <div className="max-h-60 overflow-auto">
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map((option) => (
+                                <div
+                                    key={option.value}
+                                    onClick={() => toggleOption(option.value)}
+                                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-gray-100 ${
+                                        values.includes(option.value) ? 'bg-blue-50 text-blue-700' : ''
+                                    }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={values.includes(option.value)}
+                                        onChange={() => {}}
+                                        className="pointer-events-none"
+                                    />
+                                    <span className="flex-1">
+                                        {/* Highlight matching text */}
+                                        {searchTerm ? <HighlightedText text={option.label} highlight={searchTerm} /> : option.label}
+                                    </span>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="px-3 py-4 text-center text-sm text-gray-500">No options found for "{searchTerm}"</div>
+                        )}
+                    </div>
+
+                    {/* Results Count */}
+                    {searchTerm && (
+                        <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
+                            {filteredOptions.length} of {options.length} options shown
+                            {values.length > 0 && ` • ${values.length} selected`}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -153,6 +284,10 @@ const OPTIONS = {
         { value: 'variant 1', label: 'Variant 1' },
         { value: 'variant 2', label: 'Variant 2' },
     ],
+    tags: [
+        { value: 'tags 1', label: 'tags 1' },
+        { value: 'tags 2', label: 'tags 2' },
+    ],
 };
 
 export default function AddProduct() {
@@ -180,6 +315,7 @@ export default function AddProduct() {
         subcategoryDiscounts: {},
         divisionDiscounts: {},
         variantDiscounts: {},
+        tags: [],
     });
 
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -875,6 +1011,21 @@ export default function AddProduct() {
                         </div>
                     </div>
                 )}
+
+                {/* Tags Multi-Select */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">Tags *</label>
+                    <MultiSelect
+                        options={OPTIONS.tags}
+                        values={formData.tags}
+                        onChange={(values) => {
+                            handleInputChange('tags', values);
+                        }}
+                        placeholder="Select tags"
+                        error={errors.tags}
+                    />
+                    {errors.tags && <p className="mt-1 text-sm text-red-500">{errors.tags}</p>}
+                </div>
 
                 {/* Price Summary */}
                 {formData.price && (
