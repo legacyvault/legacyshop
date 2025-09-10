@@ -7,7 +7,7 @@ import React, { useRef, useState } from 'react';
 
 interface FormData {
     name: string;
-    image: File | null;
+    images: File[];
     description: string;
     price: string;
     unit: string;
@@ -23,7 +23,7 @@ interface FormData {
 
 interface FormErrors {
     name?: string;
-    image?: string;
+    images?: string;
     description?: string;
     price?: string;
     unit?: string;
@@ -169,7 +169,7 @@ export default function AddProduct() {
 
     const [formData, setFormData] = useState<FormData>({
         name: '',
-        image: null,
+        images: [],
         description: '',
         price: '',
         unit: '',
@@ -182,9 +182,24 @@ export default function AddProduct() {
         variantDiscounts: {},
     });
 
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [errors, setErrors] = useState<FormErrors>({});
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+    const validateImage = (file: File): string | null => {
+        const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+
+        if (file.size > maxSize) {
+            return `Image "${file.name}" is too large. Maximum size is 2MB.`;
+        }
+
+        if (!allowedTypes.includes(file.type)) {
+            return `Image "${file.name}" has an invalid format. Only JPEG, PNG, GIF, and WebP are allowed.`;
+        }
+
+        return null;
+    };
 
     const insertFormatting = (startTag: string, endTag: string) => {
         const textarea = descriptionRef.current;
@@ -280,30 +295,79 @@ export default function AddProduct() {
 
     // Handle image upload
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setFormData((prev) => ({ ...prev, image: file }));
+        const files = Array.from(e.target.files || []);
 
-            // Create preview
+        // Check if adding these files would exceed the limit
+        const totalImages = formData.images.length + files.length;
+        if (totalImages > 5) {
+            setErrors((prev) => ({
+                ...prev,
+                images: `Maximum 5 images allowed. You're trying to add ${files.length} more to ${formData.images.length} existing images.`,
+            }));
+            return;
+        }
+
+        // Validate each file
+        const validationErrors: string[] = [];
+        const validFiles: File[] = [];
+
+        files.forEach((file) => {
+            const error = validateImage(file);
+            if (error) {
+                validationErrors.push(error);
+            } else {
+                validFiles.push(file);
+            }
+        });
+
+        if (validationErrors.length > 0) {
+            setErrors((prev) => ({ ...prev, images: validationErrors.join(' ') }));
+            return;
+        }
+
+        // Clear any previous errors
+        setErrors((prev) => ({ ...prev, images: undefined }));
+
+        // Update form data
+        setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, ...validFiles],
+        }));
+
+        // Create previews for new images
+        const newPreviews: string[] = [];
+        validFiles.forEach((file) => {
             const reader = new FileReader();
             reader.onload = () => {
-                setImagePreview(reader.result as string);
+                newPreviews.push(reader.result as string);
+                if (newPreviews.length === validFiles.length) {
+                    setImagePreviews((prev) => [...prev, ...newPreviews]);
+                }
             };
             reader.readAsDataURL(file);
-        }
+        });
+
+        // Reset the input value to allow selecting the same file again
+        e.target.value = '';
     };
 
     // Remove image
-    const removeImage = () => {
-        setFormData((prev) => ({ ...prev, image: null }));
-        setImagePreview(null);
+    const removeImage = (index: number) => {
+        setFormData((prev) => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index),
+        }));
+        setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+
+        // Clear errors if any
+        setErrors((prev) => ({ ...prev, images: undefined }));
     };
 
     // Handle form input changes
     const handleInputChange = (field: keyof FormData, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        // Clear error when user starts typing
-        if (errors[field]) {
+        // Clear error when user starts typing/changing
+        if (errors[field as keyof FormErrors]) {
             setErrors((prev) => ({ ...prev, [field]: undefined }));
         }
     };
@@ -318,44 +382,6 @@ export default function AddProduct() {
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '');
         handleInputChange('price', value);
-    };
-
-    // Handle discount percentage input
-    const handleDiscountChange = (field: string, e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.replace(/\D/g, '');
-        if (Number(value) <= 100) {
-            handleInputChange(field as keyof FormData, value);
-        }
-    };
-
-    // Handle discount toggle and auto-populate value
-    const handleDiscountToggle = (type: 'subcategory' | 'division' | 'variant', checked: boolean) => {
-        const useField = `use${type.charAt(0).toUpperCase() + type.slice(1)}Discount` as keyof FormData;
-        const valueField = `${type}DiscountValue` as keyof FormData;
-        const selectedField = `selected${type.charAt(0).toUpperCase() + type.slice(1)}Discount` as keyof FormData;
-
-        setFormData((prev) => {
-            const newData: any = { ...prev, [useField]: checked };
-
-            if (checked) {
-                // Reset selected discount and value when toggling on
-                newData[selectedField] = '';
-                newData[valueField] = '';
-            }
-
-            return newData;
-        });
-    };
-
-    const handleDiscountSelection = (type: 'subcategory' | 'division' | 'variant', selectedOption: string) => {
-        const valueField = `${type}DiscountValue` as keyof FormData;
-        const selectedField = `selected${type.charAt(0).toUpperCase() + type.slice(1)}Discount` as keyof FormData;
-
-        setFormData((prev) => ({
-            ...prev,
-            [selectedField]: selectedOption,
-            [valueField]: selectedOption === 'manual' ? '' : DISCOUNT_VALUES[type][selectedOption] || '',
-        }));
     };
 
     // Calculate final price with discounts
@@ -389,15 +415,43 @@ export default function AddProduct() {
 
     // Handle form submission
     const handleSubmit = () => {
+        // Basic validation
+        const newErrors: FormErrors = {};
+
+        if (!formData.name.trim()) {
+            newErrors.name = 'Product name is required';
+        }
+
+        if (formData.images.length === 0) {
+            newErrors.images = 'At least one image is required';
+        }
+
+        // Add other validations as needed...
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
         const submitData = {
             ...formData,
             price: Number(formData.price),
             finalPrice: calculateFinalPrice(),
+            // The images array will contain the File objects
+            imageCount: formData.images.length,
         };
 
         console.log('Form submitted:', submitData);
-        // Here you would typically send the data to your backend
-        alert('Form submitted successfully! Check console for data.');
+        console.log(
+            'Images:',
+            formData.images.map((img) => ({
+                name: img.name,
+                size: img.size,
+                type: img.type,
+            })),
+        );
+
+        alert(`Form submitted successfully with ${formData.images.length} images! Check console for data.`);
     };
 
     const finalPrice = calculateFinalPrice();
@@ -422,30 +476,55 @@ export default function AddProduct() {
                     {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
                 </div>
 
-                {/* Image Upload */}
+                {/* Multiple Image Upload */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Product Image *</label>
-                    <div className="space-y-3">
-                        {imagePreview ? (
-                            <div className="relative inline-block">
-                                <img src={imagePreview} alt="Preview" className="h-32 w-32 rounded-lg border object-cover" />
-                                <button
-                                    type="button"
-                                    onClick={removeImage}
-                                    className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
-                        ) : (
-                            <label className="flex h-32 w-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
-                                <Upload className="h-8 w-8 text-gray-400" />
-                                <p className="mt-2 text-xs text-gray-500">Upload Image</p>
-                                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                            </label>
-                        )}
-                    </div>
-                    {errors.image && <p className="mt-1 text-sm text-red-500">{errors.image as string}</p>}
+                    <label className="mb-2 block text-sm font-medium">Product Images * (Max 5 images, under 2MB each)</label>
+
+                    {/* Image Previews */}
+                    {imagePreviews.length > 0 && (
+                        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                            {imagePreviews.map((preview, index) => (
+                                <div key={index} className="relative">
+                                    <img src={preview} alt={`Preview ${index + 1}`} className="h-24 w-24 rounded-lg border object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => removeImage(index)}
+                                        className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                    <div className="mt-1 truncate text-center text-xs text-gray-500">{formData.images[index]?.name}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Upload Button - Only show if less than 5 images */}
+                    {formData.images.length < 5 && (
+                        <label className="flex h-32 w-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
+                            <Upload className="h-8 w-8 text-gray-400" />
+                            <p className="mt-2 text-xs text-gray-500">Upload Images</p>
+                            <p className="text-xs text-gray-400">{5 - formData.images.length} remaining</p>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                className="hidden"
+                                multiple // Enable multiple file selection
+                            />
+                        </label>
+                    )}
+
+                    {/* Help text */}
+                    <p className="mt-2 text-xs text-gray-500">
+                        Select multiple images at once. Each image must be under 2MB. Supported formats: JPEG, PNG, GIF, WebP.
+                    </p>
+
+                    {/* Error display */}
+                    {errors.images && <p className="mt-1 text-sm text-red-500">{errors.images}</p>}
+
+                    {/* Image count display */}
+                    {formData.images.length > 0 && <p className="mt-2 text-sm text-gray-600">{formData.images.length} of 5 images selected</p>}
                 </div>
 
                 {/* Rich Text Description */}
