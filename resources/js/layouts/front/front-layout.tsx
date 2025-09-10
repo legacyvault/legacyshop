@@ -1,4 +1,5 @@
 import DialogHandler from '@/components/dialog-handler';
+import { CartProvider, useCart } from '@/contexts/CartContext';
 import { Auth } from '@/types';
 import { PropsWithChildren } from 'react';
 import FrontFooter from './front-footer';
@@ -10,13 +11,27 @@ interface IPropsHeader {
     translations: any;
 }
 
-export default function FrontLayout({ children, auth, locale, translations }: PropsWithChildren<IPropsHeader>) {
+export default function FrontLayout({ auth, locale, translations, children }: PropsWithChildren<IPropsHeader>) {
+    return (
+        <>
+            <CartProvider>
+                <FrontChildLayout children={children} auth={auth} locale={locale} translations={translations} />
+            </CartProvider>
+        </>
+    );
+}
+
+function FrontChildLayout({ children, auth, locale, translations }: PropsWithChildren<IPropsHeader>) {
+    const { isCartOpen } = useCart();
     return (
         <>
             <DialogHandler />
             <FrontHeader auth={auth} locale={locale} translations={translations} />
-            {children}
-            <FrontFooter />
+            <div className="relative min-h-screen">
+                <div className={`absolute inset-0 z-10 bg-foreground ${isCartOpen ? 'opacity-75' : 'opacity-0'}`}></div>
+                {children}
+                <FrontFooter />
+            </div>
         </>
     );
 }
