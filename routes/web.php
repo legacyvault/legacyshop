@@ -182,6 +182,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('create-category', [ProductController::class, 'createCategory'])->name('category.create');
     Route::post('update-category', [ProductController::class, 'updateCategory'])->name('category.update');
     Route::get('category', [ProductController::class, 'getAllCategory'])->name('category');
+    Route::get('category/{id}', [ProductController::class, 'getCategoryById'])->name('category.id');
 
     //Type API
     Route::post('create-type', [ProductController::class, 'createType'])->name('type.create');
@@ -208,6 +209,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('sub-category', [SubCategoryController::class, 'getAllSubCategory'])->name('subcat');
     Route::post('add-subcat-stock', [SubCategoryController::class, 'addStock'])->name('subcat.add-stock');
     Route::post('update-subcat-stock', [SubCategoryController::class, 'updateLatestStock'])->name('subcat.update-stock');
+    Route::get('sub-category/{id}', [SubCategoryController::class, 'getSubCategoryById'])->name('subcat.id');
 
     //Division API
     Route::post('create-division', [DivisionController::class, 'createDivision'])->name('division.create');
@@ -215,14 +217,16 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('division', [DivisionController::class, 'getAllDivision'])->name('division');
     Route::post('add-division-stock', [DivisionController::class, 'addStock'])->name('division.add-stock');
     Route::post('update-division-stock', [DivisionController::class, 'updateLatestStock'])->name('division.update-stock');
-
+    Route::get('division/{id}', [DivisionController::class, 'getDivisionById'])->name('division.id');
+    
     //Variant API
     Route::post('create-variant', [VariantController::class, 'createVariant'])->name('variant.create');
     Route::post('update-variant', [VariantController::class, 'updateVariant'])->name('variant.update');
     Route::get('variant', [VariantController::class, 'getAllVariant'])->name('variant');
     Route::post('add-variant-stock', [VariantController::class, 'addStock'])->name('variant.add-stock');
     Route::post('update-variant-stock', [VariantController::class, 'updateLatestStock'])->name('variant.update-stock');
-
+    Route::get('variant/{id}', [VariantController::class, 'getVariantById'])->name('variant.id');
+    
     Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
 });
 

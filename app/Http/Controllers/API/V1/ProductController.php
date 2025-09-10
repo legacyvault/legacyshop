@@ -137,6 +137,13 @@ class ProductController extends Controller
         return $data;
     }
 
+    public function getCategoryById($id)
+    {
+        $data = Category::with('unit')->find($id);
+
+        return $data;
+    }
+
     public function getAllType()
     {
         $data = Type::orderBy('name', 'asc')->get();

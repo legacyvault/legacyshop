@@ -159,4 +159,11 @@ class DivisionController extends Controller
             'divisions' => $data,
         ]);
     }
+
+    public function getDivisionById($id)
+    {
+        $data = Division::with('stocks')->find($id);
+
+        return $data;
+    }
 }

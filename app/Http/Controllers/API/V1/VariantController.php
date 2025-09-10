@@ -159,4 +159,11 @@ class VariantController extends Controller
             'variants' => $data,
         ]);
     }
+
+    public function getVariantById($id)
+    {
+        $data = Variant::with('stocks')->find($id);
+
+        return $data;
+    }
 }

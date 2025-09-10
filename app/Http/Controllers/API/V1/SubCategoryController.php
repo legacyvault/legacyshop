@@ -159,4 +159,11 @@ class SubCategoryController extends Controller
             'sub_categories' => $data,
         ]);
     }
+
+    public function getSubCategoryById($id)
+    {
+        $data = SubCategory::with('stocks')->find($id);
+
+        return $data;
+    }
 }
