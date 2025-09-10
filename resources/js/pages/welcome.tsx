@@ -1,5 +1,6 @@
 import ImageSequence from '@/components/image-sequence';
 import { Button } from '@/components/ui/button';
+import { useCart } from '@/contexts/CartContext';
 import FrontLayout from '@/layouts/front/front-layout';
 import { type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
@@ -96,6 +97,17 @@ const ProductCard = ({ product }: any) => {
         return Math.round(((originalPrice - salePrice) / originalPrice) * 100);
     };
 
+    const { addItem } = useCart();
+
+    const cartHandler = () => {
+        addItem({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+        });
+    };
+
     return (
         <div className="group relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:shadow-lg">
             {/* Sale Badge */}
@@ -136,7 +148,9 @@ const ProductCard = ({ product }: any) => {
                 </div>
 
                 {/* Action Button */}
-                <Button className="mt-4 w-full">Add to Cart</Button>
+                <Button className="mt-4 w-full" onClick={cartHandler}>
+                    Add to Cart
+                </Button>
             </div>
         </div>
     );

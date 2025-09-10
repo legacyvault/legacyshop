@@ -1,10 +1,11 @@
 import AppLogoIcon from '@/components/app-logo-icon';
+import { CartDropdown } from '@/components/CartDropdown';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { Auth } from '@/types';
 import { Link } from '@inertiajs/react';
-import { SearchIcon, ShoppingCart } from 'lucide-react';
+import { SearchIcon } from 'lucide-react';
 
 interface IPropsHeader {
     auth: Auth;
@@ -44,37 +45,33 @@ export default function FrontHeader({ auth, locale, translations }: IPropsHeader
 
                     {/* Right section - Actions */}
                     <div className="flex w-64 items-center gap-2 md:gap-4">
-                        {/* Shopping cart */}
-                        <Link href="#" className="relative rounded-lg p-2 transition-colors hover:bg-gray-50">
-                            <ShoppingCart className="h-5 w-5 text-gray-700 md:h-6 md:w-6" />
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                                12
-                            </span>
-                        </Link>
-
                         {/* User section */}
                         {auth.user ? (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50">
-                                    <div className="hidden items-center gap-2 md:flex">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                                            {getInitials(auth.user.email)}
+                            <>
+                                {/* Shopping cart */}
+                                <CartDropdown />
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50">
+                                        <div className="hidden items-center gap-2 md:flex">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                                                {getInitials(auth.user.email)}
+                                            </div>
+                                            <span className="truncate text-sm font-medium text-gray-900 capitalize">
+                                                Hi, {auth.user.email.split('@')[0]}
+                                            </span>
                                         </div>
-                                        <span className="truncate text-sm font-medium text-gray-900 capitalize">
-                                            Hi, {auth.user.email.split('@')[0]}
-                                        </span>
-                                    </div>
-                                    <div className="md:hidden">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                                            {getInitials(auth.user.email)}
+                                        <div className="md:hidden">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                                                {getInitials(auth.user.email)}
+                                            </div>
                                         </div>
-                                    </div>
-                                </DropdownMenuTrigger>
+                                    </DropdownMenuTrigger>
 
-                                <DropdownMenuContent align="end" className="w-48">
-                                    <UserMenuContent user={auth.user} />
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                        <UserMenuContent user={auth.user} />
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </>
                         ) : (
                             <div className="flex items-center gap-2">
                                 <Link
