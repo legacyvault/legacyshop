@@ -5,6 +5,9 @@ use App\Http\Controllers\API\V1\LocationController;
 use App\Http\Controllers\API\V1\ProductController;
 use App\Http\Controllers\API\V1\UserController;
 use App\Http\Controllers\API\V1\ViewController;
+use App\Http\Controllers\API\V1\DivisionController;
+use App\Http\Controllers\API\V1\SubCategoryController;
+use App\Http\Controllers\API\V1\VariantController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
@@ -189,6 +192,36 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('create-tag', [ProductController::class, 'createTag'])->name('tag.create');
     Route::post('update-tag', [ProductController::class, 'updateTag'])->name('tag.update');
     Route::get('tag', [ProductController::class, 'getAllTags'])->name('tag');
+
+
+    //Unit API
+    Route::prefix('products')->group(function (){
+        Route::get('unit', [ProductController::class, 'getAllUnit'])->name('unit');
+    });
+
+    Route::post('create-unit', [ProductController::class, 'createUnit'])->name('unit.create');
+    Route::post('update-unit', [ProductController::class, 'updateUnit'])->name('unit.update');
+
+    //Subcat API
+    Route::post('create-sub-category', [SubCategoryController::class, 'createSubCategory'])->name('subcat.create');
+    Route::post('update-sub-category', [SubCategoryController::class, 'updateSubCategory'])->name('subcat.update');
+    Route::get('sub-category', [SubCategoryController::class, 'getAllSubCategory'])->name('subcat');
+    Route::post('add-subcat-stock', [SubCategoryController::class, 'addStock'])->name('subcat.add-stock');
+    Route::post('update-subcat-stock', [SubCategoryController::class, 'updateLatestStock'])->name('subcat.update-stock');
+
+    //Division API
+    Route::post('create-division', [DivisionController::class, 'createDivision'])->name('division.create');
+    Route::post('update-division', [DivisionController::class, 'updateDivision'])->name('division.update');
+    Route::get('division', [DivisionController::class, 'getAllDivision'])->name('division');
+    Route::post('add-division-stock', [DivisionController::class, 'addStock'])->name('division.add-stock');
+    Route::post('update-division-stock', [DivisionController::class, 'updateLatestStock'])->name('division.update-stock');
+
+    //Variant API
+    Route::post('create-variant', [VariantController::class, 'createVariant'])->name('variant.create');
+    Route::post('update-variant', [VariantController::class, 'updateVariant'])->name('variant.update');
+    Route::get('variant', [VariantController::class, 'getAllVariant'])->name('variant');
+    Route::post('add-variant-stock', [VariantController::class, 'addStock'])->name('variant.add-stock');
+    Route::post('update-variant-stock', [VariantController::class, 'updateLatestStock'])->name('variant.update-stock');
 
     Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
 });
