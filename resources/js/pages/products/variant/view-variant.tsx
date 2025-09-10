@@ -81,24 +81,6 @@ export default function ViewVariant() {
                                 <p className="leading-relaxed font-semibold text-card-foreground">Value</p>
                             </div>
 
-                            {/* Unit */}
-                            <div className="space-y-2">
-                                <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Unit</h3>
-                                <p className="text-lg font-semibold text-card-foreground">Value</p>
-                            </div>
-
-                            {/* Category */}
-                            <div className="space-y-2">
-                                <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Category</h3>
-                                <p className="text-lg font-semibold text-card-foreground">Value</p>
-                            </div>
-
-                            {/* Sub Category */}
-                            <div className="space-y-2">
-                                <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Sub Category</h3>
-                                <p className="text-lg font-semibold text-card-foreground">Value</p>
-                            </div>
-
                             {/* Division */}
                             <div className="space-y-2">
                                 <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Division</h3>

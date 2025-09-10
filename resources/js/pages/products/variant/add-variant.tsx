@@ -11,9 +11,6 @@ interface FormData {
     description: string;
     price: string;
     discount: string;
-    unit: string;
-    category: string;
-    subcategory: string;
     division: string;
 }
 
@@ -24,9 +21,6 @@ interface FormErrors {
     description?: string;
     price?: string;
     discount?: string;
-    unit?: string;
-    category?: string;
-    subcategory?: string;
     division?: string;
 }
 
@@ -49,9 +43,6 @@ export default function AddVariant() {
         description: '',
         price: '',
         discount: '',
-        unit: '',
-        category: '',
-        subcategory: '',
         division: '',
     });
 
@@ -201,57 +192,6 @@ export default function AddVariant() {
                     />
                 </div>
 
-                {/* Unit Field */}
-                <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Unit *</label>
-                    <select
-                        value={formData.unit}
-                        onChange={(e) => handleInputChange('unit', e.target.value)}
-                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.unit ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                    >
-                        <option value="">Select Unit</option>
-                        <option value="pokemon">unit 1</option>
-                        <option value="one piece">unit 2</option>
-                    </select>
-                    {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit}</p>}
-                </div>
-
-                {/* Category Field */}
-                <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Category *</label>
-                    <select
-                        value={formData.category}
-                        onChange={(e) => handleInputChange('category', e.target.value)}
-                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.category ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                    >
-                        <option value="">Select Division</option>
-                        <option value="pokemon">division 1</option>
-                        <option value="one piece">division 2</option>
-                    </select>
-                    {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
-                </div>
-
-                {/* Sub Category Field */}
-                <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Sub Category *</label>
-                    <select
-                        value={formData.subcategory}
-                        onChange={(e) => handleInputChange('subcategory', e.target.value)}
-                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.category ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                    >
-                        <option value="">Select Sub Category</option>
-                        <option value="pokemon">Sub Category 1</option>
-                        <option value="one piece">Sub Category 2</option>
-                    </select>
-                    {errors.subcategory && <p className="mt-1 text-sm text-red-500">{errors.subcategory}</p>}
-                </div>
-
                 {/* Division Field */}
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Division *</label>
@@ -259,7 +199,7 @@ export default function AddVariant() {
                         value={formData.division}
                         onChange={(e) => handleInputChange('division', e.target.value)}
                         className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.category ? 'border-red-500' : 'border-gray-300'
+                            errors.division ? 'border-red-500' : 'border-gray-300'
                         }`}
                     >
                         <option value="">Select Division</option>

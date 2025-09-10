@@ -7,7 +7,7 @@ import React, { useRef, useState } from 'react';
 
 interface FormData {
     name: string;
-    image: File | null;
+    images: File[];
     description: string;
     price: string;
     unit: string;
@@ -15,18 +15,15 @@ interface FormData {
     subcategory: string[];
     division: string[];
     variant: string[];
-    // Discount options
-    subcategoryDiscountValue: string;
-    divisionDiscountValue: string;
-    variantDiscountValue: string;
-    selectedSubcategoryDiscount: string;
-    selectedDivisionDiscount: string;
-    selectedVariantDiscount: string;
+    // New discount structure - each value has its own discount settings
+    subcategoryDiscounts: Record<string, { source: string; value: string }>; // e.g., { "subcategory 1": { source: "subcategory 1", value: "10" } }
+    divisionDiscounts: Record<string, { source: string; value: string }>;
+    variantDiscounts: Record<string, { source: string; value: string }>;
 }
 
 interface FormErrors {
     name?: string;
-    image?: string;
+    images?: string;
     description?: string;
     price?: string;
     unit?: string;
@@ -34,13 +31,10 @@ interface FormErrors {
     subcategory?: string;
     division?: string;
     variant?: string;
-    // Discount options
-    subcategoryDiscountValue?: string;
-    divisionDiscountValue?: string;
-    variantDiscountValue?: string;
-    selectedSubcategoryDiscount?: string;
-    selectedDivisionDiscount?: string;
-    selectedVariantDiscount?: string;
+    // New discount error structure
+    subcategoryDiscounts?: Record<string, string>;
+    divisionDiscounts?: Record<string, string>;
+    variantDiscounts?: Record<string, string>;
 }
 
 // Multi-select component
@@ -175,7 +169,7 @@ export default function AddProduct() {
 
     const [formData, setFormData] = useState<FormData>({
         name: '',
-        image: null,
+        images: [],
         description: '',
         price: '',
         unit: '',
@@ -183,17 +177,29 @@ export default function AddProduct() {
         subcategory: [],
         division: [],
         variant: [],
-        subcategoryDiscountValue: '',
-        divisionDiscountValue: '',
-        variantDiscountValue: '',
-        selectedSubcategoryDiscount: '',
-        selectedDivisionDiscount: '',
-        selectedVariantDiscount: '',
+        subcategoryDiscounts: {},
+        divisionDiscounts: {},
+        variantDiscounts: {},
     });
 
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [errors, setErrors] = useState<FormErrors>({});
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+    const validateImage = (file: File): string | null => {
+        const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+
+        if (file.size > maxSize) {
+            return `Image "${file.name}" is too large. Maximum size is 2MB.`;
+        }
+
+        if (!allowedTypes.includes(file.type)) {
+            return `Image "${file.name}" has an invalid format. Only JPEG, PNG, GIF, and WebP are allowed.`;
+        }
+
+        return null;
+    };
 
     const insertFormatting = (startTag: string, endTag: string) => {
         const textarea = descriptionRef.current;
@@ -216,6 +222,68 @@ export default function AddProduct() {
         }, 0);
     };
 
+    const handleDiscountSourceChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, source: string) => {
+        const discountField = `${type}Discounts` as 'subcategoryDiscounts' | 'divisionDiscounts' | 'variantDiscounts';
+
+        setFormData((prev) => ({
+            ...prev,
+            [discountField]: {
+                ...(prev[discountField] ?? {}), // ✅ ensure object
+                [selectedValue]: {
+                    source,
+                    value: source === 'manual' ? '' : DISCOUNT_VALUES[type][selectedValue] || '',
+                },
+            },
+        }));
+    };
+
+    const handleDiscountValueChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, value: string) => {
+        const discountField = `${type}Discounts` as 'subcategoryDiscounts' | 'divisionDiscounts' | 'variantDiscounts';
+
+        if (Number(value) <= 100) {
+            setFormData((prev) => ({
+                ...prev,
+                [discountField]: {
+                    ...prev[discountField],
+                    [selectedValue]: {
+                        ...prev[discountField][selectedValue],
+                        value: value,
+                    },
+                },
+            }));
+        }
+    };
+
+    const initializeDiscounts = (type: 'subcategory' | 'division' | 'variant', values: string[]) => {
+        setFormData((prev) => {
+            const currentDiscounts =
+                type === 'subcategory' ? prev.subcategoryDiscounts : type === 'division' ? prev.divisionDiscounts : prev.variantDiscounts;
+
+            const newDiscounts = { ...currentDiscounts };
+
+            // Add new selections with default settings
+            values.forEach((value) => {
+                if (!newDiscounts[value]) {
+                    newDiscounts[value] = { source: '', value: '' };
+                }
+            });
+
+            // Remove discounts for unselected values
+            Object.keys(newDiscounts).forEach((key) => {
+                if (!values.includes(key)) {
+                    delete newDiscounts[key];
+                }
+            });
+
+            return {
+                ...prev,
+                ...(type === 'subcategory' && { subcategoryDiscounts: newDiscounts }),
+                ...(type === 'division' && { divisionDiscounts: newDiscounts }),
+                ...(type === 'variant' && { variantDiscounts: newDiscounts }),
+            };
+        });
+    };
+
     // Convert description with formatting tags to HTML for preview
     const formatDescriptionPreview = (text: string): string => {
         return text
@@ -227,30 +295,79 @@ export default function AddProduct() {
 
     // Handle image upload
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setFormData((prev) => ({ ...prev, image: file }));
+        const files = Array.from(e.target.files || []);
 
-            // Create preview
+        // Check if adding these files would exceed the limit
+        const totalImages = formData.images.length + files.length;
+        if (totalImages > 5) {
+            setErrors((prev) => ({
+                ...prev,
+                images: `Maximum 5 images allowed. You're trying to add ${files.length} more to ${formData.images.length} existing images.`,
+            }));
+            return;
+        }
+
+        // Validate each file
+        const validationErrors: string[] = [];
+        const validFiles: File[] = [];
+
+        files.forEach((file) => {
+            const error = validateImage(file);
+            if (error) {
+                validationErrors.push(error);
+            } else {
+                validFiles.push(file);
+            }
+        });
+
+        if (validationErrors.length > 0) {
+            setErrors((prev) => ({ ...prev, images: validationErrors.join(' ') }));
+            return;
+        }
+
+        // Clear any previous errors
+        setErrors((prev) => ({ ...prev, images: undefined }));
+
+        // Update form data
+        setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, ...validFiles],
+        }));
+
+        // Create previews for new images
+        const newPreviews: string[] = [];
+        validFiles.forEach((file) => {
             const reader = new FileReader();
             reader.onload = () => {
-                setImagePreview(reader.result as string);
+                newPreviews.push(reader.result as string);
+                if (newPreviews.length === validFiles.length) {
+                    setImagePreviews((prev) => [...prev, ...newPreviews]);
+                }
             };
             reader.readAsDataURL(file);
-        }
+        });
+
+        // Reset the input value to allow selecting the same file again
+        e.target.value = '';
     };
 
     // Remove image
-    const removeImage = () => {
-        setFormData((prev) => ({ ...prev, image: null }));
-        setImagePreview(null);
+    const removeImage = (index: number) => {
+        setFormData((prev) => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index),
+        }));
+        setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+
+        // Clear errors if any
+        setErrors((prev) => ({ ...prev, images: undefined }));
     };
 
     // Handle form input changes
     const handleInputChange = (field: keyof FormData, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        // Clear error when user starts typing
-        if (errors[field]) {
+        // Clear error when user starts typing/changing
+        if (errors[field as keyof FormErrors]) {
             setErrors((prev) => ({ ...prev, [field]: undefined }));
         }
     };
@@ -267,75 +384,74 @@ export default function AddProduct() {
         handleInputChange('price', value);
     };
 
-    // Handle discount percentage input
-    const handleDiscountChange = (field: string, e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.replace(/\D/g, '');
-        if (Number(value) <= 100) {
-            handleInputChange(field as keyof FormData, value);
-        }
-    };
-
-    // Handle discount toggle and auto-populate value
-    const handleDiscountToggle = (type: 'subcategory' | 'division' | 'variant', checked: boolean) => {
-        const useField = `use${type.charAt(0).toUpperCase() + type.slice(1)}Discount` as keyof FormData;
-        const valueField = `${type}DiscountValue` as keyof FormData;
-        const selectedField = `selected${type.charAt(0).toUpperCase() + type.slice(1)}Discount` as keyof FormData;
-
-        setFormData((prev) => {
-            const newData: any = { ...prev, [useField]: checked };
-
-            if (checked) {
-                // Reset selected discount and value when toggling on
-                newData[selectedField] = '';
-                newData[valueField] = '';
-            }
-
-            return newData;
-        });
-    };
-
-    const handleDiscountSelection = (type: 'subcategory' | 'division' | 'variant', selectedOption: string) => {
-        const valueField = `${type}DiscountValue` as keyof FormData;
-        const selectedField = `selected${type.charAt(0).toUpperCase() + type.slice(1)}Discount` as keyof FormData;
-
-        setFormData((prev) => ({
-            ...prev,
-            [selectedField]: selectedOption,
-            [valueField]: selectedOption === 'manual' ? '' : DISCOUNT_VALUES[type][selectedOption] || '',
-        }));
-    };
-
     // Calculate final price with discounts
     const calculateFinalPrice = () => {
         const basePrice = Number(formData.price) || 0;
         let finalPrice = basePrice;
 
-        if (formData.subcategoryDiscountValue) {
-            finalPrice = finalPrice * (1 - Number(formData.subcategoryDiscountValue) / 100);
-        }
+        // Apply subcategory discounts
+        Object.values(formData.subcategoryDiscounts).forEach((discount) => {
+            if (discount.value) {
+                finalPrice = finalPrice * (1 - Number(discount.value) / 100);
+            }
+        });
 
-        if (formData.divisionDiscountValue) {
-            finalPrice = finalPrice * (1 - Number(formData.divisionDiscountValue) / 100);
-        }
+        // Apply division discounts
+        Object.values(formData.divisionDiscounts).forEach((discount) => {
+            if (discount.value) {
+                finalPrice = finalPrice * (1 - Number(discount.value) / 100);
+            }
+        });
 
-        if (formData.variantDiscountValue) {
-            finalPrice = finalPrice * (1 - Number(formData.variantDiscountValue) / 100);
-        }
+        // Apply variant discounts
+        Object.values(formData.variantDiscounts).forEach((discount) => {
+            if (discount.value) {
+                finalPrice = finalPrice * (1 - Number(discount.value) / 100);
+            }
+        });
 
         return finalPrice;
     };
 
     // Handle form submission
     const handleSubmit = () => {
+        // Basic validation
+        const newErrors: FormErrors = {};
+
+        if (!formData.name.trim()) {
+            newErrors.name = 'Product name is required';
+        }
+
+        if (formData.images.length === 0) {
+            newErrors.images = 'At least one image is required';
+        }
+
+        // Add other validations as needed...
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
         const submitData = {
             ...formData,
             price: Number(formData.price),
             finalPrice: calculateFinalPrice(),
+            // The images array will contain the File objects
+            imageCount: formData.images.length,
         };
 
         console.log('Form submitted:', submitData);
-        // Here you would typically send the data to your backend
-        alert('Form submitted successfully! Check console for data.');
+        console.log(
+            'Images:',
+            formData.images.map((img) => ({
+                name: img.name,
+                size: img.size,
+                type: img.type,
+            })),
+        );
+
+        alert(`Form submitted successfully with ${formData.images.length} images! Check console for data.`);
     };
 
     const finalPrice = calculateFinalPrice();
@@ -360,30 +476,55 @@ export default function AddProduct() {
                     {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
                 </div>
 
-                {/* Image Upload */}
+                {/* Multiple Image Upload */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Product Image *</label>
-                    <div className="space-y-3">
-                        {imagePreview ? (
-                            <div className="relative inline-block">
-                                <img src={imagePreview} alt="Preview" className="h-32 w-32 rounded-lg border object-cover" />
-                                <button
-                                    type="button"
-                                    onClick={removeImage}
-                                    className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
-                        ) : (
-                            <label className="flex h-32 w-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
-                                <Upload className="h-8 w-8 text-gray-400" />
-                                <p className="mt-2 text-xs text-gray-500">Upload Image</p>
-                                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                            </label>
-                        )}
-                    </div>
-                    {errors.image && <p className="mt-1 text-sm text-red-500">{errors.image as string}</p>}
+                    <label className="mb-2 block text-sm font-medium">Product Images * (Max 5 images, under 2MB each)</label>
+
+                    {/* Image Previews */}
+                    {imagePreviews.length > 0 && (
+                        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                            {imagePreviews.map((preview, index) => (
+                                <div key={index} className="relative">
+                                    <img src={preview} alt={`Preview ${index + 1}`} className="h-24 w-24 rounded-lg border object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => removeImage(index)}
+                                        className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                    <div className="mt-1 truncate text-center text-xs text-gray-500">{formData.images[index]?.name}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Upload Button - Only show if less than 5 images */}
+                    {formData.images.length < 5 && (
+                        <label className="flex h-32 w-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
+                            <Upload className="h-8 w-8 text-gray-400" />
+                            <p className="mt-2 text-xs text-gray-500">Upload Images</p>
+                            <p className="text-xs text-gray-400">{5 - formData.images.length} remaining</p>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                className="hidden"
+                                multiple // Enable multiple file selection
+                            />
+                        </label>
+                    )}
+
+                    {/* Help text */}
+                    <p className="mt-2 text-xs text-gray-500">
+                        Select multiple images at once. Each image must be under 2MB. Supported formats: JPEG, PNG, GIF, WebP.
+                    </p>
+
+                    {/* Error display */}
+                    {errors.images && <p className="mt-1 text-sm text-red-500">{errors.images}</p>}
+
+                    {/* Image count display */}
+                    {formData.images.length > 0 && <p className="mt-2 text-sm text-gray-600">{formData.images.length} of 5 images selected</p>}
                 </div>
 
                 {/* Rich Text Description */}
@@ -499,7 +640,10 @@ export default function AddProduct() {
                     <MultiSelect
                         options={OPTIONS.subcategory}
                         values={formData.subcategory}
-                        onChange={(values) => handleInputChange('subcategory', values)}
+                        onChange={(values) => {
+                            handleInputChange('subcategory', values);
+                            initializeDiscounts('subcategory', values);
+                        }}
                         placeholder="Select subcategories"
                         error={errors.subcategory}
                     />
@@ -509,56 +653,64 @@ export default function AddProduct() {
                 {/* Subcategory Discount */}
                 {formData.subcategory.length > 0 && (
                     <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                        <div className="mb-3 flex items-center justify-between">
-                            <label className="text-sm font-medium">Subcategory Discount</label>
+                        <div className="mb-3">
+                            <label className="text-sm font-medium">Subcategory Discounts</label>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="text-sm text-blue-600">
-                                <div className="mb-2">Choose discount source:</div>
-                                <div className="space-y-2">
-                                    {formData.subcategory.map((sub) => (
-                                        <label key={sub} className="flex items-center space-x-2">
-                                            <input
-                                                type="radio"
-                                                name="subcategoryDiscountSource"
-                                                value={sub}
-                                                checked={formData.selectedSubcategoryDiscount === sub}
-                                                onChange={(e) => handleDiscountSelection('subcategory', e.target.value)}
-                                                className="text-blue-600"
-                                            />
-                                            <span>
-                                                Use "{sub}" discount ({DISCOUNT_VALUES.subcategory[sub] || 'N/A'}%)
-                                            </span>
-                                        </label>
-                                    ))}
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            name="subcategoryDiscountSource"
-                                            value="manual"
-                                            checked={formData.selectedSubcategoryDiscount === 'manual'}
-                                            onChange={(e) => handleDiscountSelection('subcategory', e.target.value)}
-                                            className="text-blue-600"
-                                        />
-                                        <span>Enter manually</span>
-                                    </label>
-                                </div>
-                            </div>
+                        <div className="space-y-4">
+                            {formData.subcategory.map((sub) => (
+                                <div key={sub} className="rounded-md border border-blue-300 bg-white p-3">
+                                    <div className="mb-2 text-sm font-medium">{sub}</div>
 
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={formData.subcategoryDiscountValue}
-                                    onChange={(e) => handleDiscountChange('subcategoryDiscountValue', e)}
-                                    className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
-                                    placeholder="Enter discount percentage"
-                                    disabled={formData.selectedSubcategoryDiscount !== 'manual' && formData.selectedSubcategoryDiscount !== ''}
-                                    maxLength={3}
-                                />
-                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                            </div>
-                            {errors.subcategoryDiscountValue && <p className="text-sm text-red-500">{errors.subcategoryDiscountValue}</p>}
+                                    <div className="space-y-2">
+                                        <div className="text-sm text-blue-600">
+                                            <div className="mb-2">Choose discount source:</div>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`subcategoryDiscountSource-${sub}`}
+                                                        value={sub}
+                                                        checked={formData.subcategoryDiscounts[sub]?.source === sub}
+                                                        onChange={() => handleDiscountSourceChange('subcategory', sub, sub)}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>
+                                                        Use "{sub}" discount ({DISCOUNT_VALUES.subcategory[sub] || 'N/A'}%)
+                                                    </span>
+                                                </label>
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`subcategoryDiscountSource-${sub}`}
+                                                        value="manual"
+                                                        checked={formData.subcategoryDiscounts[sub]?.source === 'manual'}
+                                                        onChange={() => handleDiscountSourceChange('subcategory', sub, 'manual')}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>Enter manually</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.subcategoryDiscounts[sub]?.value || ''}
+                                                onChange={(e) => handleDiscountValueChange('subcategory', sub, e.target.value.replace(/\D/g, ''))}
+                                                className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
+                                                placeholder="Enter discount percentage"
+                                                disabled={
+                                                    formData.subcategoryDiscounts[sub]?.source !== 'manual' &&
+                                                    formData.subcategoryDiscounts[sub]?.source !== ''
+                                                }
+                                                maxLength={3}
+                                            />
+                                            <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -569,7 +721,10 @@ export default function AddProduct() {
                     <MultiSelect
                         options={OPTIONS.division}
                         values={formData.division}
-                        onChange={(values) => handleInputChange('division', values)}
+                        onChange={(values) => {
+                            handleInputChange('division', values);
+                            initializeDiscounts('division', values);
+                        }}
                         placeholder="Select divisions"
                         error={errors.division}
                     />
@@ -579,55 +734,64 @@ export default function AddProduct() {
                 {/* Division Discount */}
                 {formData.division.length > 0 && (
                     <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                        <div className="mb-3 flex items-center justify-between">
-                            <label className="text-sm font-medium">Division Discount</label>
+                        <div className="mb-3">
+                            <label className="text-sm font-medium">Division Discounts</label>
                         </div>
-                        <div className="space-y-3">
-                            <div className="text-sm text-blue-600">
-                                <div className="mb-2">Choose discount source:</div>
-                                <div className="space-y-2">
-                                    {formData.division.map((div) => (
-                                        <label key={div} className="flex items-center space-x-2">
-                                            <input
-                                                type="radio"
-                                                name="divisionDiscountSource"
-                                                value={div}
-                                                checked={formData.selectedDivisionDiscount === div}
-                                                onChange={(e) => handleDiscountSelection('division', e.target.value)}
-                                                className="text-blue-600"
-                                            />
-                                            <span>
-                                                Use "{div}" discount ({DISCOUNT_VALUES.division[div] || 'N/A'}%)
-                                            </span>
-                                        </label>
-                                    ))}
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            name="divisionDiscountSource"
-                                            value="manual"
-                                            checked={formData.selectedDivisionDiscount === 'manual'}
-                                            onChange={(e) => handleDiscountSelection('division', e.target.value)}
-                                            className="text-blue-600"
-                                        />
-                                        <span>Enter manually</span>
-                                    </label>
-                                </div>
-                            </div>
 
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={formData.divisionDiscountValue}
-                                    onChange={(e) => handleDiscountChange('divisionDiscountValue', e)}
-                                    className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
-                                    placeholder="Enter discount percentage"
-                                    disabled={formData.selectedDivisionDiscount !== 'manual' && formData.selectedDivisionDiscount !== ''}
-                                    maxLength={3}
-                                />
-                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                            </div>
-                            {errors.divisionDiscountValue && <p className="text-sm text-red-500">{errors.divisionDiscountValue}</p>}
+                        <div className="space-y-4">
+                            {formData.division.map((div) => (
+                                <div key={div} className="rounded-md border border-blue-300 bg-white p-3">
+                                    <div className="mb-2 text-sm font-medium">{div}</div>
+
+                                    <div className="space-y-2">
+                                        <div className="text-sm text-blue-600">
+                                            <div className="mb-2">Choose discount source:</div>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`divisionDiscountSource-${div}`}
+                                                        value={div}
+                                                        checked={formData.divisionDiscounts[div]?.source === div}
+                                                        onChange={() => handleDiscountSourceChange('division', div, div)}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>
+                                                        Use "{div}" discount ({DISCOUNT_VALUES.division[div] || 'N/A'}%)
+                                                    </span>
+                                                </label>
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`divisionDiscountSource-${div}`}
+                                                        value="manual"
+                                                        checked={formData.divisionDiscounts[div]?.source === 'manual'}
+                                                        onChange={() => handleDiscountSourceChange('division', div, 'manual')}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>Enter manually</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.divisionDiscounts[div]?.value || ''}
+                                                onChange={(e) => handleDiscountValueChange('division', div, e.target.value.replace(/\D/g, ''))}
+                                                className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
+                                                placeholder="Enter discount percentage"
+                                                disabled={
+                                                    formData.divisionDiscounts[div]?.source !== 'manual' &&
+                                                    formData.divisionDiscounts[div]?.source !== ''
+                                                }
+                                                maxLength={3}
+                                            />
+                                            <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -638,7 +802,10 @@ export default function AddProduct() {
                     <MultiSelect
                         options={OPTIONS.variant}
                         values={formData.variant}
-                        onChange={(values) => handleInputChange('variant', values)}
+                        onChange={(values) => {
+                            handleInputChange('variant', values);
+                            initializeDiscounts('variant', values);
+                        }}
                         placeholder="Select variants"
                         error={errors.variant}
                     />
@@ -647,55 +814,64 @@ export default function AddProduct() {
 
                 {formData.variant.length > 0 && (
                     <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                        <div className="mb-3 flex items-center justify-between">
-                            <label className="text-sm font-medium">Variant Discount</label>
+                        <div className="mb-3">
+                            <label className="text-sm font-medium">Variant Discounts</label>
                         </div>
-                        <div className="space-y-3">
-                            <div className="text-sm text-blue-600">
-                                <div className="mb-2">Choose discount source:</div>
-                                <div className="space-y-2">
-                                    {formData.variant.map((variant) => (
-                                        <label key={variant} className="flex items-center space-x-2">
-                                            <input
-                                                type="radio"
-                                                name="variantDiscountSource"
-                                                value={variant}
-                                                checked={formData.selectedVariantDiscount === variant}
-                                                onChange={(e) => handleDiscountSelection('variant', e.target.value)}
-                                                className="text-blue-600"
-                                            />
-                                            <span>
-                                                Use "{variant}" discount ({DISCOUNT_VALUES.variant[variant] || 'N/A'}%)
-                                            </span>
-                                        </label>
-                                    ))}
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            name="variantDiscountSource"
-                                            value="manual"
-                                            checked={formData.selectedVariantDiscount === 'manual'}
-                                            onChange={(e) => handleDiscountSelection('variant', e.target.value)}
-                                            className="text-blue-600"
-                                        />
-                                        <span>Enter manually</span>
-                                    </label>
-                                </div>
-                            </div>
 
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={formData.variantDiscountValue}
-                                    onChange={(e) => handleDiscountChange('variantDiscountValue', e)}
-                                    className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
-                                    placeholder="Enter discount percentage"
-                                    disabled={formData.selectedVariantDiscount !== 'manual' && formData.selectedVariantDiscount !== ''}
-                                    maxLength={3}
-                                />
-                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                            </div>
-                            {errors.variantDiscountValue && <p className="text-sm text-red-500">{errors.variantDiscountValue}</p>}
+                        <div className="space-y-4">
+                            {formData.variant.map((variant) => (
+                                <div key={variant} className="rounded-md border border-blue-300 bg-white p-3">
+                                    <div className="mb-2 text-sm font-medium">{variant}</div>
+
+                                    <div className="space-y-2">
+                                        <div className="text-sm text-blue-600">
+                                            <div className="mb-2">Choose discount source:</div>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`variantDiscountSource-${variant}`}
+                                                        value={variant}
+                                                        checked={formData.variantDiscounts[variant]?.source === variant}
+                                                        onChange={() => handleDiscountSourceChange('variant', variant, variant)}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>
+                                                        Use "{variant}" discount ({DISCOUNT_VALUES.variant[variant] || 'N/A'}%)
+                                                    </span>
+                                                </label>
+                                                <label className="flex items-center space-x-2">
+                                                    <input
+                                                        type="radio"
+                                                        name={`variantDiscountSource-${variant}`}
+                                                        value="manual"
+                                                        checked={formData.variantDiscounts[variant]?.source === 'manual'}
+                                                        onChange={() => handleDiscountSourceChange('variant', variant, 'manual')}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span>Enter manually</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.variantDiscounts[variant]?.value || ''}
+                                                onChange={(e) => handleDiscountValueChange('variant', variant, e.target.value.replace(/\D/g, ''))}
+                                                className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
+                                                placeholder="Enter discount percentage"
+                                                disabled={
+                                                    formData.variantDiscounts[variant]?.source !== 'manual' &&
+                                                    formData.variantDiscounts[variant]?.source !== ''
+                                                }
+                                                maxLength={3}
+                                            />
+                                            <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -709,26 +885,46 @@ export default function AddProduct() {
                                 <span>Base Price:</span>
                                 <span>Rp {formatRupiah(formData.price)}</span>
                             </div>
-                            {formData.subcategoryDiscountValue && (
-                                <div className="flex justify-between text-blue-600">
-                                    <span>Subcategory Discount ({formData.subcategoryDiscountValue}%):</span>
-                                    <span>
-                                        -Rp {formatRupiah(String((Number(formData.price) * Number(formData.subcategoryDiscountValue)) / 100))}
-                                    </span>
-                                </div>
+
+                            {/* Subcategory discounts */}
+                            {Object.entries(formData.subcategoryDiscounts).map(
+                                ([key, discount]) =>
+                                    discount.value && (
+                                        <div key={key} className="flex justify-between text-blue-600">
+                                            <span>
+                                                {key} Discount ({discount.value}%):
+                                            </span>
+                                            <span>-Rp {formatRupiah(String((Number(formData.price) * Number(discount.value)) / 100))}</span>
+                                        </div>
+                                    ),
                             )}
-                            {formData.divisionDiscountValue && (
-                                <div className="flex justify-between text-green-600">
-                                    <span>Division Discount ({formData.divisionDiscountValue}%):</span>
-                                    <span>-Rp {formatRupiah(String((Number(formData.price) * Number(formData.divisionDiscountValue)) / 100))}</span>
-                                </div>
+
+                            {/* Division discounts */}
+                            {Object.entries(formData.divisionDiscounts).map(
+                                ([key, discount]) =>
+                                    discount.value && (
+                                        <div key={key} className="flex justify-between text-green-600">
+                                            <span>
+                                                {key} Discount ({discount.value}%):
+                                            </span>
+                                            <span>-Rp {formatRupiah(String((Number(formData.price) * Number(discount.value)) / 100))}</span>
+                                        </div>
+                                    ),
                             )}
-                            {formData.variantDiscountValue && (
-                                <div className="flex justify-between text-purple-600">
-                                    <span>Variant Discount ({formData.variantDiscountValue}%):</span>
-                                    <span>-Rp {formatRupiah(String((Number(formData.price) * Number(formData.variantDiscountValue)) / 100))}</span>
-                                </div>
+
+                            {/* Variant discounts */}
+                            {Object.entries(formData.variantDiscounts).map(
+                                ([key, discount]) =>
+                                    discount.value && (
+                                        <div key={key} className="flex justify-between text-purple-600">
+                                            <span>
+                                                {key} Discount ({discount.value}%):
+                                            </span>
+                                            <span>-Rp {formatRupiah(String((Number(formData.price) * Number(discount.value)) / 100))}</span>
+                                        </div>
+                                    ),
                             )}
+
                             <hr className="my-2" />
                             <div className="flex justify-between font-medium">
                                 <span>Final Price:</span>
@@ -736,7 +932,7 @@ export default function AddProduct() {
                             </div>
                             {hasDiscount && (
                                 <div className="text-xs text-gray-500">
-                                    Discount price: Rp {formatRupiah(String(Number(formData.price) - Math.round(finalPrice)))}
+                                    Total discount: Rp {formatRupiah(String(Number(formData.price) - Math.round(finalPrice)))}
                                 </div>
                             )}
                         </div>

@@ -9,8 +9,6 @@ interface FormData {
     description: string;
     price: string;
     discount: string;
-    unit: string;
-    category: string;
     sub_category: string;
 }
 
@@ -19,8 +17,6 @@ interface FormErrors {
     description?: string;
     price?: string;
     discount?: string;
-    unit?: string;
-    category?: string;
     sub_category?: string;
 }
 
@@ -42,8 +38,6 @@ export default function AddDivision() {
         price: '',
         discount: '',
         sub_category: '',
-        category: '',
-        unit: '',
     });
 
     const [errors, setErrors] = useState<FormErrors>({});
@@ -144,40 +138,6 @@ export default function AddDivision() {
                         className="focus:border-border-primary focus:ring-border-primary w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:outline-none"
                         placeholder="0"
                     />
-                </div>
-
-                {/* Unit Field */}
-                <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Unit *</label>
-                    <select
-                        value={formData.unit}
-                        onChange={(e) => handleInputChange('unit', e.target.value)}
-                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.unit ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                    >
-                        <option value="">Select Unit</option>
-                        <option value="pokemon">Unit 1</option>
-                        <option value="one piece">Unit 2</option>
-                    </select>
-                    {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit}</p>}
-                </div>
-
-                {/* Category Field */}
-                <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Category *</label>
-                    <select
-                        value={formData.category}
-                        onChange={(e) => handleInputChange('category', e.target.value)}
-                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.category ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                    >
-                        <option value="">Select Category</option>
-                        <option value="pokemon">Category 1</option>
-                        <option value="one piece">Category 2</option>
-                    </select>
-                    {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
                 </div>
 
                 {/* Sub Category Field */}
