@@ -37,7 +37,8 @@ class UserSeeder extends Seeder
         foreach ($data_users as $user_data) {
             $data = [
                 'email' => $user_data['email'],
-                'password' => bcrypt($user_data['password'])
+                'password' => bcrypt($user_data['password']),
+                'role' => $user_data['role']
             ];
 
             $createUser = User::create($data);
