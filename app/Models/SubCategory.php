@@ -25,4 +25,14 @@ class SubCategory extends Model
     {
         return $this->hasMany(SubCategoryStock::class);
     }
+    
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'category_id', 'id');
+    }
+
+    public function divisions()
+    {
+        return $this->hasMany(Division::class);
+    }
 }

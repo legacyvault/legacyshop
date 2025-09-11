@@ -152,7 +152,7 @@ class DivisionController extends Controller
 
     public function getAllDivision()
     {
-        $data = Division::orderBy('name', 'asc')->with('stocks')->get();
+        $data = Division::orderBy('name', 'asc')->with(['stocks','variants'])->get();
 
         return redirect()->back()->with([
             'success' => 'Successfully get division.',
