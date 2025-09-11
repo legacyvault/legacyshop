@@ -24,6 +24,11 @@ class Category extends Model
         return $this->belongsTo(Unit::class, 'unit_id', 'id');
     }
 
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'product_category');
+    }
+
     public function sub_categories()
     {
         return $this->hasMany(SubCategory::class);

@@ -25,7 +25,14 @@ class SubCategory extends Model
     {
         return $this->hasMany(SubCategoryStock::class);
     }
-    
+
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'product_sub_category')
+            ->withPivot(['use_subcategory_discount', 'manual_discount', 'stock'])
+            ->withTimestamps();
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class, 'category_id', 'id');
