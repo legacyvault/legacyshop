@@ -16,4 +16,9 @@ class Unit extends Model
         'name',
         'description',
     ];
+
+    public function categories()
+    {
+        return $this->hasMany(Category::class);
+    }
 }

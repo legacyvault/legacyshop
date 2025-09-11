@@ -25,4 +25,9 @@ class Variant extends Model
     {
         return $this->hasMany(DivisionStock::class);
     }
+
+    public function division()
+    {
+        return $this->belongsTo(Division::class, 'division_id', 'id');
+    }
 }

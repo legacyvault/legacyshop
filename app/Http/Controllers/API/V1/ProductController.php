@@ -132,7 +132,7 @@ class ProductController extends Controller
 
     public function getAllCategory()
     {
-        $data = Category::orderBy('name', 'asc')->with('unit')->get();
+        $data = Category::orderBy('name', 'asc')->with(['unit', 'sub_categories'])->get();
 
         return $data;
     }
@@ -337,7 +337,7 @@ class ProductController extends Controller
 
     public function getAllUnit()
     {
-        $data = Unit::orderBy('name', 'asc')->get();
+        $data = Unit::orderBy('name', 'asc')->with('categories')->get();
         return $data;
     }
 }

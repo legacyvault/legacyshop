@@ -25,4 +25,14 @@ class Division extends Model
     {
         return $this->hasMany(DivisionStock::class);
     }
+
+    public function sub_category()
+    {
+        return $this->belongsTo(SubCategory::class, 'sub_category_id', 'id');
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(Variant::class);
+    }
 }
