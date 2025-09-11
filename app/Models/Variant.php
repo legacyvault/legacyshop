@@ -26,6 +26,13 @@ class Variant extends Model
         return $this->hasMany(DivisionStock::class);
     }
 
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'product_variant')
+            ->withPivot(['use_variant_discount', 'manual_discount', 'stock'])
+            ->withTimestamps();
+    }
+
     public function division()
     {
         return $this->belongsTo(Division::class, 'division_id', 'id');

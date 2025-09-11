@@ -158,14 +158,37 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'product_name'     => 'required|string|max:255',
-            'product_price'    => 'required|numeric',
+            'product_price'    => 'required|numeric|min:1000',
+            'description'      => 'required|string',
             'product_discount' => 'nullable|numeric',
-            'category_id'      => 'required|string',
-            'type_id'          => 'required|string',
-            'pictures'         => 'nullable|array',
-            'pictures.*'       => 'file|mimes:jpg,jpeg,png,webp|max:2048',
-            'tag_id'           => 'nullable|array',
-            'tag_id.*'         => 'exists:tags,id',
+            'unit_id'          => 'required|exists:units,id',
+
+            'pictures'   => 'nullable|array',
+            'pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
+
+            'tag_id'        => 'nullable|array',
+            'tag_id.*'      => 'exists:tags,id',
+
+            'categories'    => 'nullable|array',
+            'categories.*'  => 'exists:categories,id',
+
+            'sub_categories'          => 'nullable|array',
+            'sub_categories.*.id'     => 'exists:sub_categories,id',
+            'sub_categories.*.stock'  => 'nullable|integer',
+            'sub_categories.*.use_subcategory_discount' => 'nullable',
+            'sub_categories.*.manual_discount' => 'nullable|numeric',
+
+            'divisions'          => 'nullable|array',
+            'divisions.*.id'     => 'exists:divisions,id',
+            'divisions.*.stock'  => 'nullable|integer',
+            'divisions.*.use_division_discount' => 'nullable',
+            'divisions.*.manual_discount' => 'nullable|numeric',
+
+            'variants'          => 'nullable|array',
+            'variants.*.id'     => 'exists:variants,id',
+            'variants.*.stock'  => 'nullable|integer',
+            'variants.*.use_variant_discount' => 'nullable',
+            'variants.*.manual_discount' => 'nullable|numeric',
         ]);
 
         if ($validator->fails()) {
@@ -178,19 +201,64 @@ class ProductController extends Controller
             $product = Product::create([
                 'product_name'     => $request->product_name,
                 'product_price'    => $request->product_price,
-                'product_discount' => $request->product_discount,
-                'category_id'      => $request->category_id,
-                'type_id'          => $request->type_id,
+                'product_discount' => $request->product_discount ?? 0,
+                'description'      => $request->description,
+                'unit_id'          => $request->unit_id,
             ]);
 
-            if ($request->has('tag_id')) {
+            // Sync tags (no pivot)
+            if ($request->filled('tag_id')) {
                 $product->tags()->sync($request->tag_id);
             }
 
+            // Sync categories (no pivot)
+            if ($request->filled('categories')) {
+                $product->categories()->sync($request->categories);
+            }
+
+            // Sync subcategories (with pivot)
+            if ($request->filled('sub_categories')) {
+                $syncData = [];
+                foreach ($request->sub_categories as $subcat) {
+                    $syncData[$subcat['id']] = [
+                        'use_subcategory_discount' => $subcat['use_subcategory_discount'] ?? true,
+                        'manual_discount'          => $subcat['manual_discount'] ?? 0,
+                        'stock'                    => $subcat['stock'] ?? null,
+                    ];
+                }
+                $product->subcategories()->sync($syncData);
+            }
+
+            // Sync divisions (with pivot)
+            if ($request->filled('divisions')) {
+                $syncData = [];
+                foreach ($request->divisions as $div) {
+                    $syncData[$div['id']] = [
+                        'use_division_discount' => $div['use_division_discount'] ?? true,
+                        'manual_discount'       => $div['manual_discount'] ?? 0,
+                        'stock'                 => $div['stock'] ?? null,
+                    ];
+                }
+                $product->divisions()->sync($syncData);
+            }
+
+            // Sync variants (with pivot)
+            if ($request->filled('variants')) {
+                $syncData = [];
+                foreach ($request->variants as $var) {
+                    $syncData[$var['id']] = [
+                        'use_variant_discount' => $var['use_variant_discount'] ?? true,
+                        'manual_discount'      => $var['manual_discount'] ?? 0,
+                        'stock'                => $var['stock'] ?? null,
+                    ];
+                }
+                $product->variants()->sync($syncData);
+            }
+
+            // Upload pictures to S3
             if ($request->hasFile('pictures')) {
                 foreach ($request->file('pictures') as $file) {
-
-                    $url = $this->uploadToS3($file);
+                    $url = $this->uploadToS3($file, $product->id);
 
                     ProductPictures::create([
                         'url'        => $url,
@@ -200,25 +268,43 @@ class ProductController extends Controller
             }
 
             DB::commit();
-            return redirect()->back()->with('success', 'Add product successful.');
+            return redirect()->back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Product added successfully.',
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Failed to create product: ' . $e);
-            return redirect()->back()->with('error', 'Failed to add product.');
+            Log::error('Failed to create product: ' . $e->getMessage());
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add product.',
+            ]);
         }
     }
 
-    public function getAllProduct()
+    public function getAllProduct(Request $request)
     {
-        $products = Product::with('category', 'type', 'pictures', 'tags')->get();
+        $perPage = (int) $request->input('per_page', 15);
+        $search  = $request->input('q');
 
-        return Inertia::render('products/index', [
-            'products' => $products,
-            'flash' => [
-                'success' => session('success'),
-                'error'   => session('error'),
-            ],
+        $query = Product::with([
+            'unit',
+            'categories',
+            'subcategories',
+            'divisions',
+            'tags',
+            'pictures',
         ]);
+
+        if ($search) {
+            $query->where('product_name', 'like', "%{$search}%");
+        }
+
+        $products = $query->orderBy('product_name', 'asc')
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return $products;
     }
 
     public function createTag(Request $request)

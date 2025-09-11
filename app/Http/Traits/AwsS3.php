@@ -24,24 +24,23 @@ trait AwsS3
         return new S3Client($s3_config);
     }
 
-    public function uploadToS3($file): string
+    public function uploadToS3($file, $productId = null): string
     {
         $extension = $file->getClientOriginalExtension();
+        $random    = mt_rand(100000, 999999);
 
-        $random = mt_rand(100000, 999999);
+        $pathPrefix = $productId ? "products/{$productId}" : "products";
 
-        $filename = "products/legacy-{$random}." . $extension;
+        $filename = "{$pathPrefix}/legacy-{$random}." . $extension;
 
-        // Upload to S3
         $this->getS3Client()->putObject([
-            'Bucket' => env('AWS_S3_BUCKET'),
-            'Key'    => $filename,
-            'Body'   => fopen($file->getRealPath(), 'r'),
-            'ACL'    => 'public-read',
+            'Bucket'      => env('AWS_S3_BUCKET'),
+            'Key'         => $filename,
+            'Body'        => fopen($file->getRealPath(), 'r'),
+            'ACL'         => 'public-read',
             'ContentType' => $file->getMimeType()
         ]);
 
-        // Kembalikan URL file
         return rtrim(env('AWS_S3_ENDPOINT'), '/') . '/' . env('AWS_S3_BUCKET') . '/' . $filename;
     }
 }

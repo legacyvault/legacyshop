@@ -13,29 +13,43 @@ class Product extends Model
 
     protected $fillable = [
         'product_name',
+        'description',
+        'unit_id',
         'product_price',
-        'product_discount',
-        'category_id',
-        'type_id'
+        'product_discount'
     ];
+
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class, 'unit_id', 'id');
+    }
 
     public function tags()
     {
-        return $this->belongsToMany(Tags::class, 'product_tag', 'product_id', 'tag_id');
+        return $this->belongsToMany(Tags::class, 'product_tag');
+    }
+
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class, 'product_category');
+    }
+
+    public function subcategories()
+    {
+        return $this->belongsToMany(SubCategory::class, 'product_sub_category')
+            ->withPivot(['use_subcategory_discount', 'manual_discount', 'stock'])
+            ->withTimestamps();
+    }
+
+    public function divisions()
+    {
+        return $this->belongsToMany(Division::class, 'product_division')
+            ->withPivot(['use_division_discount', 'manual_discount', 'stock'])
+            ->withTimestamps();
     }
 
     public function pictures()
     {
         return $this->hasMany(ProductPictures::class);
-    }
-
-    public function category()
-    {
-        return $this->belongsTo(Category::class, 'category_id', 'id');
-    }
-
-    public function type()
-    {
-        return $this->belongsTo(Type::class, 'type_id', 'id');
     }
 }
