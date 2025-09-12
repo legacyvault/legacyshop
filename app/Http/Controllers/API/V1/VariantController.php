@@ -30,9 +30,15 @@ class VariantController extends Controller
         $create = Variant::create($request->all());
 
         if ($create) {
-            return redirect()->back()->with('success', 'Successfully create variant.');
+            return redirect()->route('variant')->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully create variant.',
+            ]);
         } else {
-            return redirect()->back()->with('error', 'Failed to create variant.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to create variant..',
+            ]);
         }
     }
 
@@ -50,10 +56,13 @@ class VariantController extends Controller
 
         try {
             DB::beginTransaction();
-            $variant = Variant::where('id', 'variant_id')->first();
+            $variant = Variant::where('id', $request->variant_id)->first();
 
             if (!$variant) {
-                return redirect()->back()->with('error', 'Cannot find variant.');
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Cannot find variant.',
+                ]);
             }
 
             $create = VariantStock::create($request->all());
@@ -63,11 +72,17 @@ class VariantController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Successfully add variant.');
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully add variant stock.',
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::info('Failed to add stock on variant: ' . $e);
-            return redirect()->back()->with('error', 'Failed to add variant stock.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add variant stock.',
+            ]);
         }
     }
 
@@ -86,13 +101,16 @@ class VariantController extends Controller
 
         try {
             DB::beginTransaction();
-            $variant = Variant::where('id', 'variant_id')->first();
+            $variant = Variant::where('id', $request->variant_id)->first();
 
             if (!$variant) {
-                return redirect()->back()->with('error', 'Cannot find variant.');
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Cannot find variant.',
+                ]);
             }
 
-            $latest_variant_stock = VariantStock::where('id', 'id')->first();
+            $latest_variant_stock = VariantStock::where('id', $request->id)->first();
 
             $variant->total_stock = $variant->total_stock - $latest_variant_stock->quantity;
             $variant->save();
@@ -107,11 +125,17 @@ class VariantController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Successfully add variant stock.');
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully add variant stock.',
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::info('Failed to add stock on variant: ' . $e);
-            return redirect()->back()->with('error', 'Failed to add variant stock.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add variant stock.',
+            ]);
         }
     }
 
@@ -137,7 +161,10 @@ class VariantController extends Controller
         $data = Variant::find($request->id);
 
         if (!$data) {
-            return redirect()->back()->with('error', 'Variant not found.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Variant not found.',
+            ]);
         }
 
         $data->name = $request->name;
@@ -147,22 +174,27 @@ class VariantController extends Controller
         $data->discount = $request->discount;
         $data->save();
 
-        return redirect()->back()->with('success', 'Successfully update variant.');
+        return redirect()->route('variant')->with('alert', [
+            'type' => 'success',
+            'message' => 'Successfully update variant.',
+        ]);
     }
 
     public function getAllVariant()
     {
-        $data = Variant::orderBy('name', 'asc')->with('stocks')->get();
+        $data = Variant::orderBy('name', 'asc')->with(['stocks', 'division'])->get();
 
-        return redirect()->back()->with([
-            'success' => 'Successfully get variants.',
-            'variants' => $data,
-        ]);
+        return $data;
     }
 
     public function getVariantById($id)
     {
-        $data = Variant::with('stocks')->find($id);
+        $data = Variant::with([            
+            'stocks' => function ($query) {
+            $query->orderBy('created_at', 'desc');
+            },
+            'division'
+        ])->find($id);
 
         return $data;
     }

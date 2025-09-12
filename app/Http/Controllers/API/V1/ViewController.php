@@ -14,6 +14,7 @@ class ViewController extends Controller
     protected $userController;
     protected $subcategoryController;
     protected $divisionController;
+    protected $variantController;
 
     public function __construct(Request $request)
     {
@@ -21,7 +22,7 @@ class ViewController extends Controller
         $this->userController = new UserController($request);
         $this->subcategoryController = new SubCategoryController();
         $this->divisionController = new DivisionController();
-        
+        $this->variantController = new VariantController();
     }
     
     public function unitPage(){
@@ -126,6 +127,39 @@ class ViewController extends Controller
             'division' => $selectedDivision
         ]);
     }
+
+    public function variantPage(){
+        $variant = $this->variantController->getAllVariant();
+
+        return Inertia::render('products/variant/index', [
+            'variants' => $variant
+        ]);
+    }
+
+    public function addVarPage($id = null)
+    {
+        $selectedVar = null;
+        $divisions = $this->divisionController->getAllDivision();
+
+        if ($id) {
+            $selectedVar = $this->variantController->getVariantById($id);
+        }
+    
+        return Inertia::render('products/variant/add-variant', [
+            'id' => $id,
+            'divisions' => $divisions,
+            'variant' => $selectedVar
+        ]);
+    }
+
+    public function viewVarPage($id)
+    {
+        $selectedVariant = $this->variantController->getVariantById($id);
+        return Inertia::render('products/variant/view-division', [
+            'variant' => $selectedVariant
+        ]);
+    }
+
 
 
 }
