@@ -10,7 +10,7 @@ class DivisionStock extends Model
 {
     use HasFactory, HasUuids;
 
-    protected $table = 'divison_stock';
+    protected $table = 'division_stock';
 
     protected $fillable = [
         'quantity',
@@ -18,8 +18,8 @@ class DivisionStock extends Model
         'remarks'
     ];
 
-    public function divison()
+    public function division()
     {
-        return $this->belongsTo(Division::class, 'divison_id', 'id');
+        return $this->belongsTo(Division::class, 'division_id', 'id');
     }
 }

@@ -91,7 +91,6 @@ export default function ViewSubcategory() {
         });
     };
 
-    console.log(selectedSubcat);
     return (
         <>
             <AddStockDialog

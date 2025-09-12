@@ -13,12 +13,14 @@ class ViewController extends Controller
     protected $productController;
     protected $userController;
     protected $subcategoryController;
+    protected $divisionController;
 
     public function __construct(Request $request)
     {
         $this->productController = new ProductController();
         $this->userController = new UserController($request);
         $this->subcategoryController = new SubCategoryController();
+        $this->divisionController = new DivisionController();
         
     }
     
@@ -92,4 +94,38 @@ class ViewController extends Controller
             'subcat' => $selectedSubCat
         ]);
     }
+
+    public function divisionPage(){
+        $division = $this->divisionController->getAllDivision();
+
+        return Inertia::render('products/division/index', [
+            'divisions' => $division
+        ]);
+    }
+
+    public function addDivPage($id = null)
+    {
+        $selectedDiv = null;
+        $subcats = $this->subcategoryController->getAllSubCategory();
+
+        if ($id) {
+            $selectedDiv = $this->divisionController->getDivisionById($id);
+        }
+    
+        return Inertia::render('products/division/add-division', [
+            'id' => $id,
+            'division' => $selectedDiv,
+            'subcats' => $subcats
+        ]);
+    }
+
+    public function viewDivPage($id)
+    {
+        $selectedDivision = $this->divisionController->getDivisionById($id);
+        return Inertia::render('products/division/view-division', [
+            'division' => $selectedDivision
+        ]);
+    }
+
+
 }

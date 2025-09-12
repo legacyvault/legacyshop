@@ -37,6 +37,7 @@ export interface SharedData {
     categories: ICategories[];
     tags: ITags[];
     subcats: ISubcats[];
+    divisions: IDivisions[];
 }
 
 export interface User {
@@ -101,4 +102,16 @@ export interface IStocks {
     remarks: string;
     created_at: string;
     sub_category_id: string;
+}
+
+export interface IDivisions {
+    description: string;
+    discount: number;
+    id: string;
+    name: string;
+    price: number;
+    sub_category: ISubcats;
+    sub_category_id: string;
+    total_stock: number;
+    stocks: IStocks[];
 }
