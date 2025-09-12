@@ -32,6 +32,20 @@ class UserSeeder extends Seeder
                 'password' => 'lMjKoP123!?',
                 'confirm_password' => 'lMjKoP123!?',
             ],
+            [
+                'name' => 'gifino',
+                'email' => 'gifino@email.com',
+                'role' => 'user',
+                'password' => 'Gifino_123',
+                'confirm_password' => 'Gifino_123',
+            ],
+            [
+                'name' => 'gifino admin',
+                'email' => 'gifino-admin@email.com',
+                'role' => 'admin',
+                'password' => 'Gifino_123',
+                'confirm_password' => 'Gifino_123',
+            ],
         ];
 
         foreach ($data_users as $user_data) {

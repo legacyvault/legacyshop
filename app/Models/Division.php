@@ -10,7 +10,7 @@ class Division extends Model
 {
     use HasFactory, HasUuids;
 
-    protected $table = 'divison';
+    protected $table = 'division';
 
     protected $fillable = [
         'name',

@@ -30,9 +30,16 @@ class SubCategoryController extends Controller
         $create = SubCategory::create($request->all());
 
         if ($create) {
-            return redirect()->back()->with('success', 'Successfully create sub category.');
+            return redirect()->route('subcategory')->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully create sub category.',
+            ]);
+
         } else {
-            return redirect()->back()->with('error', 'Failed to create sub category.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to create sub category..',
+            ]);
         }
     }
 
@@ -50,10 +57,13 @@ class SubCategoryController extends Controller
 
         try {
             DB::beginTransaction();
-            $sub_category = SubCategory::where('id', 'sub_category_id')->first();
+            $sub_category = SubCategory::where('id', $request->sub_category_id)->first();
 
             if (!$sub_category) {
-                return redirect()->back()->with('error', 'Cannot find sub category.');
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Cannot find sub category.',
+                ]);
             }
 
             $create = SubCategoryStock::create($request->all());
@@ -63,11 +73,18 @@ class SubCategoryController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Successfully add sub category stock.');
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully add sub category stock.',
+            ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::info('Failed to add stock on sub category: ' . $e);
-            return redirect()->back()->with('error', 'Failed to add sub category stock.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add sub category stock.',
+            ]);
         }
     }
 
@@ -86,13 +103,16 @@ class SubCategoryController extends Controller
 
         try {
             DB::beginTransaction();
-            $sub_category = SubCategory::where('id', 'sub_category_id')->first();
+            $sub_category = SubCategory::where('id', $request->sub_category_id)->first();
 
             if (!$sub_category) {
-                return redirect()->back()->with('error', 'Cannot find sub category.');
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Cannot find sub category.',
+                ]);
             }
 
-            $latest_subcat_stock = SubCategoryStock::where('id', 'id')->first();
+            $latest_subcat_stock = SubCategoryStock::where('id', $request->id)->first();
 
             $sub_category->total_stock = $sub_category->total_stock - $latest_subcat_stock->quantity;
             $sub_category->save();
@@ -107,11 +127,18 @@ class SubCategoryController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Successfully add sub category stock.');
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully add sub category stock.',
+            ]);
+            
         } catch (\Exception $e) {
             DB::rollBack();
             Log::info('Failed to add stock on sub category: ' . $e);
-            return redirect()->back()->with('error', 'Failed to add sub category stock.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add sub category stock.',
+            ]);
         }
     }
 
@@ -137,7 +164,10 @@ class SubCategoryController extends Controller
         $data = SubCategory::find($request->id);
 
         if (!$data) {
-            return redirect()->back()->with('error', 'Category not found.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Category not found.',
+            ]);
         }
 
         $data->name = $request->name;
@@ -147,22 +177,27 @@ class SubCategoryController extends Controller
         $data->discount = $request->discount;
         $data->save();
 
-        return redirect()->back()->with('success', 'Successfully update sub category.');
+        return redirect()->route('subcategory')->with('alert', [
+            'type' => 'success',
+            'message' => 'Successfully update sub category.',
+        ]);
     }
 
     public function getAllSubCategory()
     {
-        $data = SubCategory::orderBy('name', 'asc')->with(['stocks', 'divisions'])->get();
+        $data = SubCategory::orderBy('name', 'asc')->with(['stocks', 'divisions', 'category'])->get();
 
-        return redirect()->back()->with([
-            'success' => 'Successfully get sub categories.',
-            'sub_categories' => $data,
-        ]);
+        return $data;
     }
 
     public function getSubCategoryById($id)
     {
-        $data = SubCategory::with('stocks')->find($id);
+        $data = SubCategory::with([
+            'stocks' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'category'
+        ])->find($id);
 
         return $data;
     }

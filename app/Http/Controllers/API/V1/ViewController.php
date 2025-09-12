@@ -12,11 +12,16 @@ class ViewController extends Controller
 
     protected $productController;
     protected $userController;
+    protected $subcategoryController;
+    protected $divisionController;
 
     public function __construct(Request $request)
     {
         $this->productController = new ProductController();
         $this->userController = new UserController($request);
+        $this->subcategoryController = new SubCategoryController();
+        $this->divisionController = new DivisionController();
+        
     }
     
     public function unitPage(){
@@ -57,4 +62,70 @@ class ViewController extends Controller
             'tags' => $tags
         ]);
     }
+
+    public function subcatPage(){
+        $subcat = $this->subcategoryController->getAllSubCategory();
+
+        return Inertia::render('products/subcategory/index', [
+            'subcats' => $subcat
+        ]);
+    }
+
+    public function addSubcatPage($id = null)
+    {
+        $selectedSubCat = null;
+        $categories = $this->productController->getAllCategory();
+
+        if ($id) {
+            $selectedSubCat = $this->subcategoryController->getSubCategoryById($id);
+        }
+    
+        return Inertia::render('products/subcategory/add-subcategory', [
+            'id' => $id,
+            'subcat' => $selectedSubCat,
+            'categories' => $categories
+        ]);
+    }
+
+    public function viewSubcatPage($id)
+    {
+        $selectedSubCat = $this->subcategoryController->getSubCategoryById($id);
+        return Inertia::render('products/subcategory/view-subcategory', [
+            'subcat' => $selectedSubCat
+        ]);
+    }
+
+    public function divisionPage(){
+        $division = $this->divisionController->getAllDivision();
+
+        return Inertia::render('products/division/index', [
+            'divisions' => $division
+        ]);
+    }
+
+    public function addDivPage($id = null)
+    {
+        $selectedDiv = null;
+        $subcats = $this->subcategoryController->getAllSubCategory();
+
+        if ($id) {
+            $selectedDiv = $this->divisionController->getDivisionById($id);
+        }
+    
+        return Inertia::render('products/division/add-division', [
+            'id' => $id,
+            'division' => $selectedDiv,
+            'subcats' => $subcats
+        ]);
+    }
+
+    public function viewDivPage($id)
+    {
+        $selectedDivision = $this->divisionController->getDivisionById($id);
+        return Inertia::render('products/division/view-division', [
+            'division' => $selectedDivision
+        ]);
+    }
+
+
 }

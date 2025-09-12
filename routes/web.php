@@ -20,17 +20,9 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
     Route::prefix('products')->group(function() {
     
-        Route::get('division', function () {
-            return Inertia::render('products/division/index');
-        })->name('division');
-    
         Route::get('product', function () {
             return Inertia::render('products/product/index');
         })->name('product');
-    
-        Route::get('subcategory', function () {
-            return Inertia::render('products/subcategory/index');
-        })->name('subcategory');
 
         Route::get('variant', function () {
             return Inertia::render('products/variant/index');
@@ -62,64 +54,6 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
                     'product' => $product,
                 ]);
             })->name('view-product');
-        });
-
-        Route::prefix('subcategory')->group(function() {
-
-            Route::get('viewsub/{id?}', function ($id = null) {
-                $subcat = $id ? 'edit' : null; //temporary solution
-        
-                //enable when there's get product api
-                // if ($id) {
-                //     $product = Product::findOrFail($id); // preload product if editing
-                // }
-        
-                return Inertia::render('products/subcategory/view-subcategory', [
-                    'subcat' => $subcat,
-                ]);
-            })->name('view-subcategory');
-
-            Route::get('addsub/{id?}', function ($id = null) {
-                $subcat = $id ? 'edit' : null; //temporary solution
-        
-                //enable when there's get product api
-                // if ($id) {
-                //     $product = Product::findOrFail($id); // preload product if editing
-                // }
-        
-                return Inertia::render('products/subcategory/add-subcategory', [
-                    'subcat' => $subcat,
-                ]);
-            })->name('add-subcategory');
-        });
-
-        Route::prefix('division')->group(function() {
-
-            Route::get('viewdiv/{id?}', function ($id = null) {
-                $division = $id ? 'edit' : null; //temporary solution
-        
-                //enable when there's get product api
-                // if ($id) {
-                //     $product = Product::findOrFail($id); // preload product if editing
-                // }
-        
-                return Inertia::render('products/division/view-division', [
-                    'division' => $division,
-                ]);
-            })->name('view-division');
-
-            Route::get('adddiv/{id?}', function ($id = null) {
-                $division = $id ? 'edit' : null; //temporary solution
-        
-                //enable when there's get product api
-                // if ($id) {
-                //     $product = Product::findOrFail($id); // preload product if editing
-                // }
-        
-                return Inertia::render('products/division/add-division', [
-                    'division' => $division,
-                ]);
-            })->name('add-division');
         });
 
         Route::prefix('variant')->group(function() {
@@ -273,5 +207,19 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('category', [ViewController::class, 'categoryPage']);
         Route::get('unit', [ViewController::class, 'unitPage']);
         Route::get('tags', [ViewController::class, 'tagsPage']);
+
+        //SUBCAT ROUTES
+        Route::get('subcategory', [ViewController::class, 'subcatPage'])->name('subcategory');
+        Route::prefix('subcategory')->group(function() {
+            Route::get('viewsub/{id}',[ViewController::class, 'viewSubcatPage']);
+            Route::get('addsub/{id?}',[ViewController::class, 'addSubcatPage']);
+        });
+
+        //DIVISION ROUTE
+        Route::get('division', [ViewController::class, 'divisionPage'])->name('division');
+        Route::prefix('division')->group(function() {
+            Route::get('viewdiv/{id}',[ViewController::class, 'viewDivPage']);
+            Route::get('adddiv/{id?}',[ViewController::class, 'addDivPage']);
+        });
     });
 });

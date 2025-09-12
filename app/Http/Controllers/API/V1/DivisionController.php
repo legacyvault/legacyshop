@@ -30,9 +30,15 @@ class DivisionController extends Controller
         $create = Division::create($request->all());
 
         if ($create) {
-            return redirect()->back()->with('success', 'Successfully create division.');
+            return redirect()->route('division')->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully create division.',
+            ]);
         } else {
-            return redirect()->back()->with('error', 'Failed to create division.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to create division.',
+            ]);
         }
     }
 
@@ -50,10 +56,13 @@ class DivisionController extends Controller
 
         try {
             DB::beginTransaction();
-            $division = Division::where('id', 'division_id')->first();
+            $division = Division::where('id', $request->division_id)->first();
 
             if (!$division) {
-                return redirect()->back()->with('error', 'Cannot find division.');
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Cannot find division.',
+                ]);
             }
 
             $create = DivisionStock::create($request->all());
@@ -63,11 +72,17 @@ class DivisionController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Successfully add division.');
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully add division stock.',
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::info('Failed to add stock on division: ' . $e);
-            return redirect()->back()->with('error', 'Failed to add division stock.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add division stock.',
+            ]);
         }
     }
 
@@ -86,13 +101,16 @@ class DivisionController extends Controller
 
         try {
             DB::beginTransaction();
-            $division = Division::where('id', 'division_id')->first();
+            $division = Division::where('id', $request->division_id)->first();
 
             if (!$division) {
-                return redirect()->back()->with('error', 'Cannot find division.');
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Cannot find division.',
+                ]);
             }
 
-            $latest_division_stock = DivisionStock::where('id', 'id')->first();
+            $latest_division_stock = DivisionStock::where('id', $request->id)->first();
 
             $division->total_stock = $division->total_stock - $latest_division_stock->quantity;
             $division->save();
@@ -107,11 +125,17 @@ class DivisionController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Successfully add division stock.');
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully add division stock.',
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::info('Failed to add stock on division: ' . $e);
-            return redirect()->back()->with('error', 'Failed to add division stock.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add division stock.',
+            ]);
         }
     }
 
@@ -137,7 +161,10 @@ class DivisionController extends Controller
         $data = Division::find($request->id);
 
         if (!$data) {
-            return redirect()->back()->with('error', 'Division not found.');
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Division not found.',
+            ]);
         }
 
         $data->name = $request->name;
@@ -147,22 +174,27 @@ class DivisionController extends Controller
         $data->discount = $request->discount;
         $data->save();
 
-        return redirect()->back()->with('success', 'Successfully update division.');
+        return redirect()->route('division')->with('alert', [
+            'type' => 'success',
+            'message' => 'Successfully update division.',
+        ]);
     }
 
     public function getAllDivision()
     {
-        $data = Division::orderBy('name', 'asc')->with(['stocks','variants'])->get();
+        $data = Division::orderBy('name', 'asc')->with(['stocks','variants', 'sub_category'])->get();
 
-        return redirect()->back()->with([
-            'success' => 'Successfully get division.',
-            'divisions' => $data,
-        ]);
+        return $data;
     }
 
     public function getDivisionById($id)
     {
-        $data = Division::with('stocks')->find($id);
+        $data = Division::with([            
+            'stocks' => function ($query) {
+            $query->orderBy('created_at', 'desc');
+            },
+            'sub_category'
+        ])->find($id);
 
         return $data;
     }

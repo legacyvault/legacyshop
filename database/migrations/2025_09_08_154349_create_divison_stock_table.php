@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('divison_stock', function (Blueprint $table) {
+        Schema::create('division_stock', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('division_id');
             $table->integer('quantity');
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('divison_stock');
+        Schema::dropIfExists('division_stock');
     }
 };

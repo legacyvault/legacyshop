@@ -1,29 +1,24 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
-import React, { useState } from 'react';
+import { BreadcrumbItem, IDivisions, SharedData } from '@/types';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import React from 'react';
 
 interface FormData {
+    id: string | null;
     name: string;
     description: string;
-    price: string;
-    discount: string;
-    sub_category: string;
-}
-
-interface FormErrors {
-    name?: string;
-    description?: string;
-    price?: string;
-    discount?: string;
-    sub_category?: string;
+    price: number;
+    discount: number;
+    sub_category_id: string;
 }
 
 export default function AddDivision() {
-    const { props } = usePage();
-    const product = props.product;
-    const isEdit = !!product;
+    const { id, division, subcats } = usePage<SharedData>().props;
+
+    const isEdit = !!id;
+
+    const selectedDivision: IDivisions = division as IDivisions;
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -32,24 +27,14 @@ export default function AddDivision() {
         },
     ];
 
-    const [formData, setFormData] = useState<FormData>({
-        name: '',
-        description: '',
-        price: '',
-        discount: '',
-        sub_category: '',
+    const { data, setData, post, errors } = useForm<Required<FormData>>({
+        id: isEdit ? selectedDivision.id : null,
+        name: isEdit ? selectedDivision.name : '',
+        description: isEdit ? selectedDivision.description : '',
+        sub_category_id: isEdit ? selectedDivision.sub_category_id : '',
+        price: isEdit ? selectedDivision.price : 0,
+        discount: isEdit ? selectedDivision.discount : 0,
     });
-
-    const [errors, setErrors] = useState<FormErrors>({});
-
-    // Handle form input changes
-    const handleInputChange = (field: keyof FormData, value: any) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-        // Clear error when user starts typing
-        if (errors[field]) {
-            setErrors((prev) => ({ ...prev, [field]: undefined }));
-        }
-    };
 
     // Format price to Rupiah
     const formatRupiah = (value: string) => {
@@ -60,18 +45,18 @@ export default function AddDivision() {
     // Handle price input
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '');
-        handleInputChange('price', value);
+        setData('price', Number(value));
+    };
+
+    const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setData('discount', Number(value));
     };
 
     // Handle form submission
-    const handleSubmit = () => {
-        const submitData = {
-            ...formData,
-            price: Number(formData.price),
-            discount: Number(formData.discount) || 0,
-        };
-
-        console.log('Form submitted:', submitData);
+    const handleSubmit = (e: any) => {
+        e.preventDefault();
+        post(route(isEdit ? 'division.update' : 'division.create'));
     };
 
     return (
@@ -83,8 +68,8 @@ export default function AddDivision() {
                     <label className="mb-2 block text-sm font-medium">Name *</label>
                     <input
                         type="text"
-                        value={formData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        value={data.name}
+                        onChange={(e) => setData('name', e.target.value)}
                         className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
                             errors.name ? 'border-red-500' : 'border-gray-200'
                         }`}
@@ -98,10 +83,10 @@ export default function AddDivision() {
                     <label className="mb-2 block text-sm font-medium">Description *</label>
                     <input
                         type="text"
-                        value={formData.name}
-                        onChange={(e) => handleInputChange('description', e.target.value)}
+                        value={data.description}
+                        onChange={(e) => setData('description', e.target.value)}
                         className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
-                            errors.name ? 'border-red-500' : 'border-gray-200'
+                            errors.description ? 'border-red-500' : 'border-gray-200'
                         }`}
                         placeholder="Enter description"
                     />
@@ -115,7 +100,7 @@ export default function AddDivision() {
                         <span className="absolute top-2 left-3 text-gray-500">Rp</span>
                         <input
                             type="text"
-                            value={formatRupiah(formData.price)}
+                            value={formatRupiah(data.price.toString())}
                             onChange={handlePriceChange}
                             className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
                                 errors.price ? 'border-red-500' : 'border-gray-300'
@@ -130,11 +115,9 @@ export default function AddDivision() {
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Discount (%)</label>
                     <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={formData.discount}
-                        onChange={(e) => handleInputChange('discount', e.target.value)}
+                        type="text"
+                        value={data.discount}
+                        onChange={handleDiscountChange}
                         className="focus:border-border-primary focus:ring-border-primary w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:outline-none"
                         placeholder="0"
                     />
@@ -144,17 +127,21 @@ export default function AddDivision() {
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Sub Category *</label>
                     <select
-                        value={formData.sub_category}
-                        onChange={(e) => handleInputChange('sub_category', e.target.value)}
+                        value={data.sub_category_id}
+                        onChange={(e) => setData('sub_category_id', e.target.value)}
                         className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.sub_category ? 'border-red-500' : 'border-gray-300'
+                            errors.sub_category_id ? 'border-red-500' : 'border-gray-300'
                         }`}
                     >
                         <option value="">Select Sub Category</option>
-                        <option value="pokemon">Sub Category 1</option>
-                        <option value="one piece">Sub Category 2</option>
+                        {subcats.length > 0 &&
+                            subcats.map((subcat) => (
+                                <option key={subcat.id} value={subcat.id}>
+                                    {subcat.name}
+                                </option>
+                            ))}
                     </select>
-                    {errors.sub_category && <p className="mt-1 text-sm text-red-500">{errors.sub_category}</p>}
+                    {errors.sub_category_id && <p className="mt-1 text-sm text-red-500">{errors.sub_category_id}</p>}
                 </div>
 
                 {/* Submit Button */}
