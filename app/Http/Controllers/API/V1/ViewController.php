@@ -12,11 +12,14 @@ class ViewController extends Controller
 
     protected $productController;
     protected $userController;
+    protected $subcategoryController;
 
     public function __construct(Request $request)
     {
         $this->productController = new ProductController();
         $this->userController = new UserController($request);
+        $this->subcategoryController = new SubCategoryController();
+        
     }
     
     public function unitPage(){
@@ -55,6 +58,38 @@ class ViewController extends Controller
 
         return Inertia::render('products/tags/index', [
             'tags' => $tags
+        ]);
+    }
+
+    public function subcatPage(){
+        $subcat = $this->subcategoryController->getAllSubCategory();
+
+        return Inertia::render('products/subcategory/index', [
+            'subcats' => $subcat
+        ]);
+    }
+
+    public function addSubcatPage($id = null)
+    {
+        $selectedSubCat = null;
+        $categories = $this->productController->getAllCategory();
+
+        if ($id) {
+            $selectedSubCat = $this->subcategoryController->getSubCategoryById($id);
+        }
+    
+        return Inertia::render('products/subcategory/add-subcategory', [
+            'id' => $id,
+            'subcat' => $selectedSubCat,
+            'categories' => $categories
+        ]);
+    }
+
+    public function viewSubcatPage($id)
+    {
+        $selectedSubCat = $this->subcategoryController->getSubCategoryById($id);
+        return Inertia::render('products/subcategory/view-subcategory', [
+            'subcat' => $selectedSubCat
         ]);
     }
 }

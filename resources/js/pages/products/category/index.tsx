@@ -42,7 +42,7 @@ export default function Category() {
 
     const catSubmitHandler = (e: any) => {
         e.preventDefault();
-        post(route('category.update'), {
+        post(route('category.create'), {
             onSuccess: () => isOpenAddCat(false),
             onError: () => isOpenAddCat(true),
         });
