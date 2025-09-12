@@ -15,6 +15,8 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('division_id');
             $table->string('name');
+            $table->enum('type', ['text', 'color'])->default('text');
+            $table->string('color')->nullable();
             $table->string('description')->nullable();
             $table->float('price');
             $table->float('discount')->default(0);
