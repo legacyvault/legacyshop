@@ -24,10 +24,6 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
             return Inertia::render('products/product/index');
         })->name('product');
 
-        Route::get('variant', function () {
-            return Inertia::render('products/variant/index');
-        })->name('variant');
-
         Route::prefix('product')->group(function() {
             Route::get('add-product/{id?}', function ($id = null) {
                 $product = $id ? 'edit' : null; //temporary solution
@@ -54,35 +50,6 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
                     'product' => $product,
                 ]);
             })->name('view-product');
-        });
-
-        Route::prefix('variant')->group(function() {
-
-            Route::get('viewvar/{id?}', function ($id = null) {
-                $variant = $id ? 'edit' : null; //temporary solution
-        
-                //enable when there's get product api
-                // if ($id) {
-                //     $product = Product::findOrFail($id); // preload product if editing
-                // }
-        
-                return Inertia::render('products/variant/view-variant', [
-                    'variant' => $variant,
-                ]);
-            })->name('view-variant');
-
-            Route::get('addvar/{id?}', function ($id = null) {
-                $variant = $id ? 'edit' : null; //temporary solution
-        
-                //enable when there's get product api
-                // if ($id) {
-                //     $product = Product::findOrFail($id); // preload product if editing
-                // }
-        
-                return Inertia::render('products/variant/add-variant', [
-                    'variant' => $variant,
-                ]);
-            })->name('add-variant');
         });
 
     });
@@ -221,5 +188,13 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
             Route::get('viewdiv/{id}',[ViewController::class, 'viewDivPage']);
             Route::get('adddiv/{id?}',[ViewController::class, 'addDivPage']);
         });
+
+        //VARIANT ROUTES
+        Route::get('variant',[ViewController::class, 'variantPage'])->name('variant');
+        Route::prefix('variant')->group(function() {
+            Route::get('viewdiv/{id}',[ViewController::class, 'viewVarPage']);
+            Route::get('adddiv/{id?}',[ViewController::class, 'addVarPage']);
+        });
+
     });
 });

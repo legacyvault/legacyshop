@@ -38,6 +38,7 @@ export interface SharedData {
     tags: ITags[];
     subcats: ISubcats[];
     divisions: IDivisions[];
+    variants: any;
 }
 
 export interface User {
