@@ -155,7 +155,7 @@ class ViewController extends Controller
     public function viewVarPage($id)
     {
         $selectedVariant = $this->variantController->getVariantById($id);
-        return Inertia::render('products/variant/view-division', [
+        return Inertia::render('products/variant/view-variant', [
             'variant' => $selectedVariant
         ]);
     }
