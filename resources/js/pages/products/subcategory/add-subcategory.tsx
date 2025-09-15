@@ -45,7 +45,7 @@ export default function AddSubCategory() {
     };
 
     const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
+        const value = e.target.value.replace(/\D/g, '');
         setData('discount', Number(value));
     };
 

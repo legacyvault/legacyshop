@@ -2,7 +2,7 @@ import Empty from '@/components/empty';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, SharedData } from '@/types';
+import { BreadcrumbItem, IVariants, SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -13,11 +13,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface PropsVariantTable {
-    variants: any;
+    variants: IVariants[];
 }
 
 export default function Variant() {
     const { variants } = usePage<SharedData>().props;
+
+    console.log(variants);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -56,15 +58,15 @@ function VariantsTable({ variants }: PropsVariantTable) {
                             </tr>
                         </thead>
                         <tbody>
-                            {variants.map((variant: any, i: number) => (
+                            {variants.map((variant, i: number) => (
                                 <tr key={variant.id} className="hover:bg-gray-50">
                                     <td className="border border-popover px-4 py-3">{i + 1}</td>
                                     <td className="border border-popover px-4 py-3">{variant.name}</td>
                                     <td className="border border-popover px-4 py-3">{variant.description}</td>
-                                    <td className="border border-popover px-4 py-3">belom tau</td>
-                                    <td className="border border-popover px-4 py-3">Rp. belom tau</td>
+                                    <td className="border border-popover px-4 py-3">{variant.division.name}</td>
+                                    <td className="border border-popover px-4 py-3">Rp. {formatRupiah(variant.price.toString())}</td>
                                     <td className="border border-popover px-4 py-3">{variant.discount}%</td>
-                                    <td className="border border-popover px-4 py-3">{variant.total_stocks}</td>
+                                    <td className="border border-popover px-4 py-3">{variant.total_stock}</td>
                                     <td className="border border-popover px-4 py-3 text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100">⋮</DropdownMenuTrigger>

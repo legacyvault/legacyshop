@@ -38,7 +38,7 @@ export interface SharedData {
     tags: ITags[];
     subcats: ISubcats[];
     divisions: IDivisions[];
-    variants: any;
+    variants: IVariants[];
 }
 
 export interface User {
@@ -115,4 +115,18 @@ export interface IDivisions {
     sub_category_id: string;
     total_stock: number;
     stocks: IStocks[];
+}
+
+export interface IVariants {
+    color: string | null;
+    description: string;
+    discount: number;
+    division: IDivisions;
+    division_id: string;
+    id: string;
+    name: string;
+    price: number;
+    stocks: IStocks[];
+    total_stock: number;
+    type: 'text' | 'color' | '';
 }

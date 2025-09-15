@@ -192,8 +192,8 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         //VARIANT ROUTES
         Route::get('variant',[ViewController::class, 'variantPage'])->name('variant');
         Route::prefix('variant')->group(function() {
-            Route::get('viewdiv/{id}',[ViewController::class, 'viewVarPage']);
-            Route::get('adddiv/{id?}',[ViewController::class, 'addVarPage']);
+            Route::get('viewvar/{id}',[ViewController::class, 'viewVarPage']);
+            Route::get('addvar/{id?}',[ViewController::class, 'addVarPage']);
         });
 
     });

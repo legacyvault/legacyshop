@@ -18,12 +18,14 @@ class Variant extends Model
         'division_id',
         'price',
         'discount',
-        'total_stock'
+        'total_stock',
+        'type',
+        'color'
     ];
 
     public function stocks()
     {
-        return $this->hasMany(DivisionStock::class);
+        return $this->hasMany(VariantStock::class);
     }
 
     public function products()
