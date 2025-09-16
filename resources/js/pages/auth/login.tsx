@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
 
@@ -113,6 +113,13 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
                             Log in
                         </Button>
+
+                        <Link href={'google.com'}>
+                            <Button className="w-full" variant={'outline'} tabIndex={4}>
+                                <img src="./google-icon.png" className="h-4 w-4" />
+                                Log in with Google
+                            </Button>
+                        </Link>
                     </div>
 
                     <div className="text-center text-sm text-muted-foreground">
