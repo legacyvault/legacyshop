@@ -19,6 +19,11 @@ class Product extends Model
         'product_discount'
     ];
 
+    public function stocks()
+    {
+        return $this->hasMany(ProductStock::class);
+    }
+
     public function unit()
     {
         return $this->belongsTo(Unit::class, 'unit_id', 'id');

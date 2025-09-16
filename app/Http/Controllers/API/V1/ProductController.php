@@ -7,6 +7,7 @@ use App\Http\Traits\AwsS3;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductPictures;
+use App\Models\ProductStock;
 use App\Models\Tags;
 use App\Models\Type;
 use App\Models\Unit;
@@ -282,12 +283,110 @@ class ProductController extends Controller
         }
     }
 
+    public function addStock(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'product_id' => 'required|string|exists:products,id',
+            'quantity' => 'required|numeric|min:1',
+            'remarks' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+            $product = Product::where('id', $request->product_id)->first();
+
+            if (!$product) {
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Cannot find product.',
+                ]);
+            }
+
+            $create = ProductStock::create($request->all());
+
+            $product->total_stock = $product->total_stock + $request->quantity;
+            $product->save();
+
+            DB::commit();
+
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully add product stock.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::info('Failed to add stock on product: ' . $e);
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add product stock.',
+            ]);
+        }
+    }
+
+    public function updateLatestStock(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id' => 'required|exists:product_stock,id',
+            'product_id' => 'required|string|exists:products,id',
+            'quantity' => 'required|numeric|min:1',
+            'remarks' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+            $product = Product::where('id', $request->product_id)->first();
+
+            if (!$product) {
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Cannot find product.',
+                ]);
+            }
+
+            $latest_product_stock = ProductStock::where('id', $request->id)->first();
+
+            $product->total_stock = $product->total_stock - $latest_product_stock->quantity;
+            $product->save();
+
+            $latest_product_stock->quantity = $request->quantity;
+            $latest_product_stock->remarks = $request->remarks;
+            $latest_product_stock->save();
+
+
+            $product->total_stock = $product->total_stock + $request->quantity;
+            $product->save();
+
+            DB::commit();
+
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully add product stock.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::info('Failed to add stock on product: ' . $e);
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add product stock.',
+            ]);
+        }
+    }
+
     public function getAllProduct(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);
         $search  = $request->input('q');
 
         $query = Product::with([
+            'stocks',
             'unit',
             'categories',
             'subcategories',
@@ -305,6 +404,28 @@ class ProductController extends Controller
             ->appends($request->query());
 
         return $products;
+    }
+
+    public function getProductByID($id)
+    {
+        $product = Product::with([
+            'stocks',
+            'unit',
+            'categories',
+            'subcategories',
+            'divisions',
+            'tags',
+            'pictures',
+        ])->find($id);
+
+        if (!$product) {
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Cannot find product.',
+            ]);
+        }
+
+        return $product;
     }
 
     public function createTag(Request $request)
