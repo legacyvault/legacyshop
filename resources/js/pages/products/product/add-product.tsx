@@ -1,15 +1,16 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
+import { BreadcrumbItem, ICategories, IDivisions, ISubcats, ITags, IVariants, SharedData } from '@/types';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Bold, ChevronDown, Italic, Search, Underline, Upload, X } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 interface FormData {
     name: string;
     images: File[];
     description: string;
     price: string;
+    product_discount: string;
     unit: string;
     category: string[];
     subcategory: string[];
@@ -27,6 +28,7 @@ interface FormErrors {
     images?: string;
     description?: string;
     price?: string;
+    product_discount?: string;
     unit?: string;
     category?: string;
     subcategory?: string;
@@ -46,6 +48,7 @@ interface MultiSelectProps {
     onChange: (values: string[]) => void;
     placeholder: string;
     error?: string;
+    disabled?: boolean;
 }
 
 const HighlightedText: React.FC<{ text: string; highlight: string }> = ({ text, highlight }) => {
@@ -73,7 +76,7 @@ const HighlightedText: React.FC<{ text: string; highlight: string }> = ({ text, 
     );
 };
 
-const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, placeholder, error }) => {
+const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, placeholder, error, disabled = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [filteredOptions, setFilteredOptions] = useState(options);
@@ -129,6 +132,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
     };
 
     const handleDropdownToggle = () => {
+        if (disabled) return;
         setIsOpen(!isOpen);
         if (!isOpen) {
             setSearchTerm(''); // Clear search when opening
@@ -148,9 +152,9 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
         <div className="relative" ref={dropdownRef}>
             <div
                 onClick={handleDropdownToggle}
-                className={`flex min-h-[42px] w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                className={`flex min-h-[42px] w-full items-center justify-between rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
                     error ? 'border-red-500' : 'border-gray-300'
-                }`}
+                } ${disabled ? 'cursor-not-allowed bg-gray-50 text-gray-400' : 'cursor-pointer'}`}
             >
                 <div className="flex flex-wrap gap-1">
                     {values.length > 0 ? (
@@ -176,7 +180,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
                 <ChevronDown size={16} className={`text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </div>
 
-            {isOpen && (
+            {isOpen && !disabled && (
                 <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-300 bg-white shadow-lg">
                     {/* Search Input */}
                     <div className="border-b border-gray-200 p-2">
@@ -244,61 +248,18 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
     );
 };
 
-// Dummy discount values for each option
-const DISCOUNT_VALUES: {
-    subcategory: Record<string, string>;
-    division: Record<string, string>;
-    variant: Record<string, string>;
-} = {
-    subcategory: {
-        'subcategory 1': '10',
-        'subcategory 2': '15',
-    },
-    division: {
-        'division 1': '5',
-        'division 2': '8',
-    },
-    variant: {
-        'variant 1': '12',
-        'variant 2': '20',
-    },
-};
-
-// Options for multi-selects
-const OPTIONS = {
-    category: [
-        { value: 'pokemon', label: 'Pokemon' },
-        { value: 'one piece', label: 'One Piece' },
-        { value: 'naruto', label: 'Naruto' },
-        { value: 'dragon ball', label: 'Dragon Ball' },
-    ],
-    subcategory: [
-        { value: 'subcategory 1', label: 'Subcategory 1' },
-        { value: 'subcategory 2', label: 'Subcategory 2' },
-    ],
-    division: [
-        { value: 'division 1', label: 'Division 1' },
-        { value: 'division 2', label: 'Division 2' },
-    ],
-    variant: [
-        { value: 'variant 1', label: 'Variant 1' },
-        { value: 'variant 2', label: 'Variant 2' },
-    ],
-    tags: [
-        { value: 'tags 1', label: 'tags 1' },
-        { value: 'tags 2', label: 'tags 2' },
-    ],
-};
+// Helper to build options for MultiSelects from entities
+const toOptions = (items: { id: string; name: string }[] | undefined) => (items || []).map((i) => ({ value: i.id, label: i.name }));
 
 export default function AddProduct() {
-    const { props } = usePage();
-    const product = props.product;
-    const isEdit = !!product;
+    const { units, categories, subcats, divisions, variants, tags, product, id } = usePage<SharedData>().props;
+
+    const isEdit = !!id;
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: `${isEdit ? 'Edit' : 'Add'} Product`,
-            href: '/add-product',
+            href: '/products/add-product',
         },
     ];
 
@@ -307,6 +268,7 @@ export default function AddProduct() {
         images: [],
         description: '',
         price: '',
+        product_discount: '',
         unit: '',
         category: [],
         subcategory: [],
@@ -317,6 +279,125 @@ export default function AddProduct() {
         variantDiscounts: {},
         tags: [],
     });
+
+    // Build selection options and maps from server data
+    const allCategoryOptions = useMemo(() => toOptions((categories as ICategories[])?.map((c) => ({ id: c.id, name: c.name }))), [categories]);
+    const allSubcategoryOptions = useMemo(() => toOptions((subcats as ISubcats[])?.map((s) => ({ id: s.id, name: s.name }))), [subcats]);
+    const allDivisionOptions = useMemo(() => toOptions((divisions as IDivisions[])?.map((d) => ({ id: d.id, name: d.name }))), [divisions]);
+    const allVariantOptions = useMemo(() => toOptions((variants as IVariants[])?.map((v) => ({ id: v.id, name: v.name }))), [variants]);
+    const tagOptions = useMemo(() => toOptions((tags as ITags[])?.map((t) => ({ id: t.id, name: t.name }))), [tags]);
+
+    const subcatNameById = useMemo(() => {
+        const m: Record<string, string> = {};
+        (subcats as ISubcats[] | undefined)?.forEach((s) => (m[s.id] = s.name));
+        return m;
+    }, [subcats]);
+    const subcatDiscountById = useMemo(() => {
+        const m: Record<string, number> = {};
+        (subcats as ISubcats[] | undefined)?.forEach((s) => (m[s.id] = Number(s.discount || 0)));
+        return m;
+    }, [subcats]);
+    const divisionNameById = useMemo(() => {
+        const m: Record<string, string> = {};
+        (divisions as IDivisions[] | undefined)?.forEach((d) => (m[d.id] = d.name));
+        return m;
+    }, [divisions]);
+    const divisionDiscountById = useMemo(() => {
+        const m: Record<string, number> = {};
+        (divisions as IDivisions[] | undefined)?.forEach((d) => (m[d.id] = Number(d.discount || 0)));
+        return m;
+    }, [divisions]);
+    const variantNameById = useMemo(() => {
+        const m: Record<string, string> = {};
+        (variants as IVariants[] | undefined)?.forEach((v) => (m[v.id] = v.name));
+        return m;
+    }, [variants]);
+    const variantDiscountById = useMemo(() => {
+        const m: Record<string, number> = {};
+        (variants as IVariants[] | undefined)?.forEach((v) => (m[v.id] = Number(v.discount || 0)));
+        return m;
+    }, [variants]);
+
+    // Filtered options based on hierarchy selections
+    const categoryOptions = useMemo(() => {
+        const unitId = formData.unit;
+        if (!unitId) return [] as { value: string; label: string }[];
+        const cats = (categories as ICategories[] | undefined) || [];
+        return toOptions(cats.filter((c) => c.unit_id === unitId));
+    }, [categories, formData.unit]);
+
+    const subcategoryOptions = useMemo(() => {
+        if (formData.category.length === 0) return [] as { value: string; label: string }[];
+        const subs = (subcats as ISubcats[] | undefined) || [];
+        const set = new Set(formData.category);
+        return toOptions(subs.filter((s) => set.has(s.category_id)));
+    }, [subcats, formData.category]);
+
+    const divisionOptions = useMemo(() => {
+        if (formData.subcategory.length === 0) return [] as { value: string; label: string }[];
+        const divs = (divisions as IDivisions[] | undefined) || [];
+        const set = new Set(formData.subcategory);
+        return toOptions(divs.filter((d) => set.has(d.sub_category_id)));
+    }, [divisions, formData.subcategory]);
+
+    const variantOptions = useMemo(() => {
+        if (formData.division.length === 0) return [] as { value: string; label: string }[];
+        const vars = (variants as IVariants[] | undefined) || [];
+        const set = new Set(formData.division);
+        return toOptions(vars.filter((v) => set.has(v.division_id)));
+    }, [variants, formData.division]);
+
+    // Reset children selections when parent changes
+    useEffect(() => {
+        // When unit changes, clear categories and below
+        setFormData((prev) => ({
+            ...prev,
+            category: [],
+            subcategory: [],
+            division: [],
+            variant: [],
+            subcategoryDiscounts: {},
+            divisionDiscounts: {},
+            variantDiscounts: {},
+        }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.unit]);
+
+    useEffect(() => {
+        // When categories change, clear subcategory and below
+        setFormData((prev) => ({
+            ...prev,
+            subcategory: [],
+            division: [],
+            variant: [],
+            subcategoryDiscounts: {},
+            divisionDiscounts: {},
+            variantDiscounts: {},
+        }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.category.join(',')]);
+
+    useEffect(() => {
+        // When subcategories change, clear division and below
+        setFormData((prev) => ({
+            ...prev,
+            division: [],
+            variant: [],
+            divisionDiscounts: {},
+            variantDiscounts: {},
+        }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.subcategory.join(',')]);
+
+    useEffect(() => {
+        // When divisions change, clear variant
+        setFormData((prev) => ({
+            ...prev,
+            variant: [],
+            variantDiscounts: {},
+        }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.division.join(',')]);
 
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [errors, setErrors] = useState<FormErrors>({});
@@ -367,7 +448,7 @@ export default function AddProduct() {
                 ...(prev[discountField] ?? {}), // ✅ ensure object
                 [selectedValue]: {
                     source,
-                    value: source === 'manual' ? '' : DISCOUNT_VALUES[type][selectedValue] || '',
+                    value: '',
                 },
             },
         }));
@@ -525,69 +606,131 @@ export default function AddProduct() {
         const basePrice = Number(formData.price) || 0;
         let finalPrice = basePrice;
 
-        // Apply subcategory discounts
-        Object.values(formData.subcategoryDiscounts).forEach((discount) => {
-            if (discount.value) {
-                finalPrice = finalPrice * (1 - Number(discount.value) / 100);
+        // Apply subcategory discounts based on selected source
+        formData.subcategory.forEach((id) => {
+            const d = formData.subcategoryDiscounts[id];
+            if (!d) return;
+            if (d.source === 'manual' && d.value) {
+                finalPrice = finalPrice * (1 - Number(d.value) / 100);
+            } else if (d.source === id) {
+                const def = subcatDiscountById[id] || 0;
+                if (def > 0) finalPrice = finalPrice * (1 - def / 100);
             }
         });
 
         // Apply division discounts
-        Object.values(formData.divisionDiscounts).forEach((discount) => {
-            if (discount.value) {
-                finalPrice = finalPrice * (1 - Number(discount.value) / 100);
+        formData.division.forEach((id) => {
+            const d = formData.divisionDiscounts[id];
+            if (!d) return;
+            if (d.source === 'manual' && d.value) {
+                finalPrice = finalPrice * (1 - Number(d.value) / 100);
+            } else if (d.source === id) {
+                const def = divisionDiscountById[id] || 0;
+                if (def > 0) finalPrice = finalPrice * (1 - def / 100);
             }
         });
 
         // Apply variant discounts
-        Object.values(formData.variantDiscounts).forEach((discount) => {
-            if (discount.value) {
-                finalPrice = finalPrice * (1 - Number(discount.value) / 100);
+        formData.variant.forEach((id) => {
+            const d = formData.variantDiscounts[id];
+            if (!d) return;
+            if (d.source === 'manual' && d.value) {
+                finalPrice = finalPrice * (1 - Number(d.value) / 100);
+            } else if (d.source === id) {
+                const def = variantDiscountById[id] || 0;
+                if (def > 0) finalPrice = finalPrice * (1 - def / 100);
             }
         });
 
         return finalPrice;
     };
 
-    // Handle form submission
-    const handleSubmit = () => {
-        // Basic validation
+    // Handle form submission (integrated)
+    const handleSubmit = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         const newErrors: FormErrors = {};
 
-        if (!formData.name.trim()) {
-            newErrors.name = 'Product name is required';
-        }
+        if (!formData.name.trim()) newErrors.name = 'Product name is required';
+        if (!formData.price) newErrors.price = 'Price is required';
+        if (!formData.unit) newErrors.unit = 'Unit is required';
+        if (formData.images.length === 0) newErrors.images = 'At least one image is required';
 
-        if (formData.images.length === 0) {
-            newErrors.images = 'At least one image is required';
-        }
-
-        // Add other validations as needed...
+        console.log(formData);
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             return;
         }
 
-        const submitData = {
-            ...formData,
-            price: Number(formData.price),
-            finalPrice: calculateFinalPrice(),
-            // The images array will contain the File objects
-            imageCount: formData.images.length,
-        };
+        const fd = new FormData();
+        fd.append('product_name', formData.name);
+        fd.append('product_price', String(Number(formData.price)));
+        fd.append('product_discount', String(Number(formData.product_discount)));
+        fd.append('description', formData.description);
+        fd.append('product_discount', '0');
+        fd.append('unit_id', formData.unit);
 
-        console.log('Form submitted:', submitData);
-        console.log(
-            'Images:',
-            formData.images.map((img) => ({
-                name: img.name,
-                size: img.size,
-                type: img.type,
-            })),
-        );
+        formData.images.forEach((file) => fd.append('pictures[]', file));
+        formData.tags.forEach((id) => fd.append('tag_id[]', id));
+        formData.category.forEach((id) => fd.append('categories[]', id));
 
-        alert(`Form submitted successfully with ${formData.images.length} images! Check console for data.`);
+        formData.subcategory.forEach((id, i) => {
+            const d = formData.subcategoryDiscounts[id];
+            const useDefault = d && d.source !== 'manual';
+            fd.append(`sub_categories[${i}][id]`, id);
+            if (useDefault) {
+                fd.append(`sub_categories[${i}][use_subcategory_discount]`, '1');
+                fd.append(`sub_categories[${i}][manual_discount]`, '0');
+            } else {
+                fd.append(`sub_categories[${i}][use_subcategory_discount]`, '0');
+                fd.append(`sub_categories[${i}][manual_discount]`, String(Number(d?.value || 0)));
+            }
+        });
+
+        formData.division.forEach((id, i) => {
+            const d = formData.divisionDiscounts[id];
+            const useDefault = d && d.source !== 'manual';
+            fd.append(`divisions[${i}][id]`, id);
+            if (useDefault) {
+                fd.append(`divisions[${i}][use_division_discount]`, '1');
+                fd.append(`divisions[${i}][manual_discount]`, '0');
+            } else {
+                fd.append(`divisions[${i}][use_division_discount]`, '0');
+                fd.append(`divisions[${i}][manual_discount]`, String(Number(d?.value || 0)));
+            }
+        });
+
+        formData.variant.forEach((id, i) => {
+            const d = formData.variantDiscounts[id];
+            const useDefault = d && d.source !== 'manual';
+            fd.append(`variants[${i}][id]`, id);
+            if (useDefault) {
+                fd.append(`variants[${i}][use_variant_discount]`, '1');
+                fd.append(`variants[${i}][manual_discount]`, '0');
+            } else {
+                fd.append(`variants[${i}][use_variant_discount]`, '0');
+                fd.append(`variants[${i}][manual_discount]`, String(Number(d?.value || 0)));
+            }
+        });
+        console.log('masuk dsini');
+        console.log(formData);
+        router.post(route('product.add-product'), fd, {
+            forceFormData: true,
+            onError: (err) => {
+                const mapped: FormErrors = {};
+                if ((err as any).product_name) mapped.name = (err as any).product_name as string;
+                if ((err as any).product_price) mapped.price = (err as any).product_price as string;
+                if ((err as any).description) mapped.description = (err as any).description as string;
+                if ((err as any).unit_id) mapped.unit = (err as any).unit_id as string;
+                if ((err as any).categories) mapped.category = (err as any).categories as string;
+                if ((err as any).tag_id) mapped.tags = (err as any).tag_id as string;
+                if (Object.keys(err as any).some((k) => k.startsWith('pictures'))) mapped.images = 'Invalid pictures uploaded';
+                if (Object.keys(err as any).some((k) => k.startsWith('sub_categories'))) mapped.subcategory = 'Invalid subcategory selection';
+                if (Object.keys(err as any).some((k) => k.startsWith('divisions'))) mapped.division = 'Invalid division selection';
+                if (Object.keys(err as any).some((k) => k.startsWith('variants'))) mapped.variant = 'Invalid variant selection';
+                setErrors(mapped);
+            },
+        });
     };
 
     const finalPrice = calculateFinalPrice();
@@ -740,19 +883,54 @@ export default function AddProduct() {
                     {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
                 </div>
 
+                {/*  Product Discount Field */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">Producr Discount</label>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            value={formData.product_discount}
+                            onChange={(e) => handleInputChange('product_discount', e.target.value)}
+                            className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
+                                errors.product_discount ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="Enter discount percentage"
+                            maxLength={3}
+                        />
+                        <span className="absolute top-2 right-3 text-gray-500">%</span>
+                    </div>
+                </div>
+
                 {/* Unit Field */}
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Unit *</label>
                     <select
                         value={formData.unit}
-                        onChange={(e) => handleInputChange('unit', e.target.value)}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData((prev) => ({
+                                ...prev,
+                                unit: val,
+                                category: [],
+                                subcategory: [],
+                                division: [],
+                                variant: [],
+                                subcategoryDiscounts: {},
+                                divisionDiscounts: {},
+                                variantDiscounts: {},
+                            }));
+                        }}
                         className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
                             errors.unit ? 'border-red-500' : 'border-gray-300'
                         }`}
                     >
-                        <option value="">Select Unit</option>
-                        <option value="pokemon">Unit 1</option>
-                        <option value="one piece">Unit 2</option>
+                        <option value={''}>Select Unit</option>
+                        {units.length > 0 &&
+                            units.map((unit) => (
+                                <option key={unit.id} value={unit.id}>
+                                    {unit.name}
+                                </option>
+                            ))}
                     </select>
                     {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit}</p>}
                 </div>
@@ -761,11 +939,12 @@ export default function AddProduct() {
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Category *</label>
                     <MultiSelect
-                        options={OPTIONS.category}
+                        options={categoryOptions}
                         values={formData.category}
-                        onChange={(values) => handleInputChange('category', values)}
-                        placeholder="Select categories"
+                        onChange={(values) => setFormData((prev) => ({ ...prev, category: values }))}
+                        placeholder={formData.unit ? 'Select categories' : 'Select unit first'}
                         error={errors.category}
+                        disabled={!formData.unit}
                     />
                     {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
                 </div>
@@ -774,14 +953,15 @@ export default function AddProduct() {
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Sub Category *</label>
                     <MultiSelect
-                        options={OPTIONS.subcategory}
+                        options={subcategoryOptions}
                         values={formData.subcategory}
                         onChange={(values) => {
-                            handleInputChange('subcategory', values);
+                            setFormData((prev) => ({ ...prev, subcategory: values }));
                             initializeDiscounts('subcategory', values);
                         }}
-                        placeholder="Select subcategories"
+                        placeholder={formData.category.length ? 'Select subcategories' : 'Select category first'}
                         error={errors.subcategory}
+                        disabled={formData.category.length === 0}
                     />
                     {errors.subcategory && <p className="mt-1 text-sm text-red-500">{errors.subcategory}</p>}
                 </div>
@@ -796,7 +976,7 @@ export default function AddProduct() {
                         <div className="space-y-4">
                             {formData.subcategory.map((sub) => (
                                 <div key={sub} className="rounded-md border border-blue-300 bg-white p-3">
-                                    <div className="mb-2 text-sm font-medium">{sub}</div>
+                                    <div className="mb-2 text-sm font-medium">{subcatNameById[sub] || sub}</div>
 
                                     <div className="space-y-2">
                                         <div className="text-sm text-blue-600">
@@ -812,7 +992,7 @@ export default function AddProduct() {
                                                         className="text-blue-600"
                                                     />
                                                     <span>
-                                                        Use "{sub}" discount ({DISCOUNT_VALUES.subcategory[sub] || 'N/A'}%)
+                                                        Use "{subcatNameById[sub] || sub}" discount ({subcatDiscountById[sub] ?? 'N/A'}%)
                                                     </span>
                                                 </label>
                                                 <label className="flex items-center space-x-2">
@@ -855,14 +1035,15 @@ export default function AddProduct() {
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Division *</label>
                     <MultiSelect
-                        options={OPTIONS.division}
+                        options={divisionOptions}
                         values={formData.division}
                         onChange={(values) => {
-                            handleInputChange('division', values);
+                            setFormData((prev) => ({ ...prev, division: values }));
                             initializeDiscounts('division', values);
                         }}
-                        placeholder="Select divisions"
+                        placeholder={formData.subcategory.length ? 'Select divisions' : 'Select subcategory first'}
                         error={errors.division}
+                        disabled={formData.subcategory.length === 0}
                     />
                     {errors.division && <p className="mt-1 text-sm text-red-500">{errors.division}</p>}
                 </div>
@@ -877,7 +1058,7 @@ export default function AddProduct() {
                         <div className="space-y-4">
                             {formData.division.map((div) => (
                                 <div key={div} className="rounded-md border border-blue-300 bg-white p-3">
-                                    <div className="mb-2 text-sm font-medium">{div}</div>
+                                    <div className="mb-2 text-sm font-medium">{divisionNameById[div] || div}</div>
 
                                     <div className="space-y-2">
                                         <div className="text-sm text-blue-600">
@@ -893,7 +1074,7 @@ export default function AddProduct() {
                                                         className="text-blue-600"
                                                     />
                                                     <span>
-                                                        Use "{div}" discount ({DISCOUNT_VALUES.division[div] || 'N/A'}%)
+                                                        Use "{divisionNameById[div] || div}" discount ({divisionDiscountById[div] ?? 'N/A'}%)
                                                     </span>
                                                 </label>
                                                 <label className="flex items-center space-x-2">
@@ -936,14 +1117,15 @@ export default function AddProduct() {
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Variant *</label>
                     <MultiSelect
-                        options={OPTIONS.variant}
+                        options={variantOptions}
                         values={formData.variant}
                         onChange={(values) => {
-                            handleInputChange('variant', values);
+                            setFormData((prev) => ({ ...prev, variant: values }));
                             initializeDiscounts('variant', values);
                         }}
-                        placeholder="Select variants"
+                        placeholder={formData.division.length ? 'Select variants' : 'Select division first'}
                         error={errors.variant}
+                        disabled={formData.division.length === 0}
                     />
                     {errors.variant && <p className="mt-1 text-sm text-red-500">{errors.variant}</p>}
                 </div>
@@ -957,7 +1139,7 @@ export default function AddProduct() {
                         <div className="space-y-4">
                             {formData.variant.map((variant) => (
                                 <div key={variant} className="rounded-md border border-blue-300 bg-white p-3">
-                                    <div className="mb-2 text-sm font-medium">{variant}</div>
+                                    <div className="mb-2 text-sm font-medium">{variantNameById[variant] || variant}</div>
 
                                     <div className="space-y-2">
                                         <div className="text-sm text-blue-600">
@@ -973,7 +1155,8 @@ export default function AddProduct() {
                                                         className="text-blue-600"
                                                     />
                                                     <span>
-                                                        Use "{variant}" discount ({DISCOUNT_VALUES.variant[variant] || 'N/A'}%)
+                                                        Use "{variantNameById[variant] || variant}" discount ({variantDiscountById[variant] ?? 'N/A'}
+                                                        %)
                                                     </span>
                                                 </label>
                                                 <label className="flex items-center space-x-2">
@@ -1016,7 +1199,7 @@ export default function AddProduct() {
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Tags *</label>
                     <MultiSelect
-                        options={OPTIONS.tags}
+                        options={tagOptions}
                         values={formData.tags}
                         onChange={(values) => {
                             handleInputChange('tags', values);
@@ -1038,43 +1221,46 @@ export default function AddProduct() {
                             </div>
 
                             {/* Subcategory discounts */}
-                            {Object.entries(formData.subcategoryDiscounts).map(
-                                ([key, discount]) =>
-                                    discount.value && (
-                                        <div key={key} className="flex justify-between text-blue-600">
-                                            <span>
-                                                {key} Discount ({discount.value}%):
-                                            </span>
-                                            <span>-Rp {formatRupiah(String((Number(formData.price) * Number(discount.value)) / 100))}</span>
-                                        </div>
-                                    ),
-                            )}
+                            {formData.subcategory.map((id) => {
+                                const d = formData.subcategoryDiscounts[id];
+                                const applied = d?.source === 'manual' ? Number(d.value || 0) : d?.source === id ? subcatDiscountById[id] || 0 : 0;
+                                return applied ? (
+                                    <div key={id} className="flex justify-between text-blue-600">
+                                        <span>
+                                            {subcatNameById[id] || id} Discount ({applied}%):
+                                        </span>
+                                        <span>-Rp {formatRupiah(String((Number(formData.price) * applied) / 100))}</span>
+                                    </div>
+                                ) : null;
+                            })}
 
                             {/* Division discounts */}
-                            {Object.entries(formData.divisionDiscounts).map(
-                                ([key, discount]) =>
-                                    discount.value && (
-                                        <div key={key} className="flex justify-between text-green-600">
-                                            <span>
-                                                {key} Discount ({discount.value}%):
-                                            </span>
-                                            <span>-Rp {formatRupiah(String((Number(formData.price) * Number(discount.value)) / 100))}</span>
-                                        </div>
-                                    ),
-                            )}
+                            {formData.division.map((id) => {
+                                const d = formData.divisionDiscounts[id];
+                                const applied = d?.source === 'manual' ? Number(d.value || 0) : d?.source === id ? divisionDiscountById[id] || 0 : 0;
+                                return applied ? (
+                                    <div key={id} className="flex justify-between text-green-600">
+                                        <span>
+                                            {divisionNameById[id] || id} Discount ({applied}%):
+                                        </span>
+                                        <span>-Rp {formatRupiah(String((Number(formData.price) * applied) / 100))}</span>
+                                    </div>
+                                ) : null;
+                            })}
 
                             {/* Variant discounts */}
-                            {Object.entries(formData.variantDiscounts).map(
-                                ([key, discount]) =>
-                                    discount.value && (
-                                        <div key={key} className="flex justify-between text-purple-600">
-                                            <span>
-                                                {key} Discount ({discount.value}%):
-                                            </span>
-                                            <span>-Rp {formatRupiah(String((Number(formData.price) * Number(discount.value)) / 100))}</span>
-                                        </div>
-                                    ),
-                            )}
+                            {formData.variant.map((id) => {
+                                const d = formData.variantDiscounts[id];
+                                const applied = d?.source === 'manual' ? Number(d.value || 0) : d?.source === id ? variantDiscountById[id] || 0 : 0;
+                                return applied ? (
+                                    <div key={id} className="flex justify-between text-purple-600">
+                                        <span>
+                                            {variantNameById[id] || id} Discount ({applied}%):
+                                        </span>
+                                        <span>-Rp {formatRupiah(String((Number(formData.price) * applied) / 100))}</span>
+                                    </div>
+                                ) : null;
+                            })}
 
                             <hr className="my-2" />
                             <div className="flex justify-between font-medium">
@@ -1091,7 +1277,7 @@ export default function AddProduct() {
                 )}
 
                 {/* Submit Button */}
-                <div className="flex gap-4 pt-4">
+                <form onSubmit={handleSubmit} className="flex gap-4 pt-4">
                     <Button
                         type="button"
                         className="bg-secondary px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/80"
@@ -1099,8 +1285,8 @@ export default function AddProduct() {
                     >
                         Back
                     </Button>
-                    <Button onClick={handleSubmit}>{isEdit ? 'Edit' : 'Create'} Product</Button>
-                </div>
+                    <Button type="submit">{isEdit ? 'Edit' : 'Create'} Product</Button>
+                </form>
             </div>
         </AppLayout>
     );

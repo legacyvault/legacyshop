@@ -162,7 +162,7 @@ class ProductController extends Controller
             'product_price'    => 'required|numeric|min:1000',
             'description'      => 'required|string',
             'product_discount' => 'nullable|numeric',
-            'unit_id'          => 'required|exists:units,id',
+            'unit_id'          => 'required|exists:unit,id',
 
             'pictures'   => 'nullable|array',
             'pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
@@ -171,22 +171,22 @@ class ProductController extends Controller
             'tag_id.*'      => 'exists:tags,id',
 
             'categories'    => 'nullable|array',
-            'categories.*'  => 'exists:categories,id',
+            'categories.*'  => 'exists:category,id',
 
             'sub_categories'          => 'nullable|array',
-            'sub_categories.*.id'     => 'exists:sub_categories,id',
+            'sub_categories.*.id'     => 'exists:sub_category,id',
             'sub_categories.*.stock'  => 'nullable|integer',
             'sub_categories.*.use_subcategory_discount' => 'nullable',
             'sub_categories.*.manual_discount' => 'nullable|numeric',
 
             'divisions'          => 'nullable|array',
-            'divisions.*.id'     => 'exists:divisions,id',
+            'divisions.*.id'     => 'exists:division,id',
             'divisions.*.stock'  => 'nullable|integer',
             'divisions.*.use_division_discount' => 'nullable',
             'divisions.*.manual_discount' => 'nullable|numeric',
 
             'variants'          => 'nullable|array',
-            'variants.*.id'     => 'exists:variants,id',
+            'variants.*.id'     => 'exists:variant,id',
             'variants.*.stock'  => 'nullable|integer',
             'variants.*.use_variant_discount' => 'nullable',
             'variants.*.manual_discount' => 'nullable|numeric',

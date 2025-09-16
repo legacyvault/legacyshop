@@ -17,41 +17,6 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
-
-    Route::prefix('products')->group(function () {
-
-        Route::get('product', function () {
-            return Inertia::render('products/product/index');
-        })->name('product');
-
-        Route::prefix('product')->group(function () {
-            Route::get('add-product/{id?}', function ($id = null) {
-                $product = $id ? 'edit' : null; //temporary solution
-
-                //enable when there's get product api
-                // if ($id) {
-                //     $product = Product::findOrFail($id); // preload product if editing
-                // }
-
-                return Inertia::render('products/product/add-product', [
-                    'product' => $product,
-                ]);
-            })->name('add-product');
-
-            Route::get('viewprod/{id?}', function ($id = null) {
-                $product = $id ? 'edit' : null; //temporary solution
-
-                //enable when there's get product api
-                // if ($id) {
-                //     $product = Product::findOrFail($id); // preload product if editing
-                // }
-
-                return Inertia::render('products/product/view-product', [
-                    'product' => $product,
-                ]);
-            })->name('view-product');
-        });
-    });
 });
 
 #API 
@@ -69,7 +34,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::get('postal-code-list/{cityName}', [LocationController::class, 'getPostalCodeList'])->name('postal_code.list');
 
     //Product API
-    Route::post('add-product', [ProductController::class, 'addProduct'])->name('addProduct');
+    Route::post('add-product', [ProductController::class, 'addProduct'])->name('product.add-product');
     Route::get('products', [ProductController::class, 'getAllProduct'])->name('products');
     Route::post('add-product-stock', [ProductController::class, 'addStock'])->name('product.add-stock');
     Route::post('update-product-stock', [ProductController::class, 'updateLatestStock'])->name('product.update-stock');
@@ -175,6 +140,23 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('category', [ViewController::class, 'categoryPage']);
         Route::get('unit', [ViewController::class, 'unitPage']);
         Route::get('tags', [ViewController::class, 'tagsPage']);
+
+        //PRODUCT ROUTES
+        Route::get('product', [ViewController::class, 'productPage']);
+        Route::get('add-product/{id?}', [ViewController::class , 'addProdPage']);
+
+        Route::get('viewprod/{id?}', function ($id = null) {
+            $product = $id ? 'edit' : null; //temporary solution
+
+            //enable when there's get product api
+            // if ($id) {
+            //     $product = Product::findOrFail($id); // preload product if editing
+            // }
+
+            return Inertia::render('products/product/view-product', [
+                'product' => $product,
+            ]);
+        })->name('view-product');
 
         //SUBCAT ROUTES
         Route::get('subcategory', [ViewController::class, 'subcatPage'])->name('subcategory');
