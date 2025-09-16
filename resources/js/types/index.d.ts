@@ -69,6 +69,7 @@ export interface IUnit {
     id: string;
     name: string;
     description: string;
+    categories: ICategories[];
 }
 
 export interface ICategories {
@@ -77,6 +78,7 @@ export interface ICategories {
     description: string;
     unit_id: string;
     unit: IUnit;
+    sub_categories: ISubcats[];
 }
 
 export interface ITags {
@@ -95,6 +97,7 @@ export interface ISubcats {
     total_stock: number;
     category: ICategories;
     stocks: IStocks[];
+    divisions: IDivisions[];
 }
 
 export interface IStocks {
@@ -115,6 +118,7 @@ export interface IDivisions {
     sub_category_id: string;
     total_stock: number;
     stocks: IStocks[];
+    variants: IVariants[];
 }
 
 export interface IVariants {

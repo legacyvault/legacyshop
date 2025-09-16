@@ -160,6 +160,40 @@ class ViewController extends Controller
         ]);
     }
 
+    public function productPage(Request $request){
+        $product = $this->productController->getAllProduct($request);
 
+        return Inertia::render('products/product/index', [
+            'products' => $product,
+            'filters'  => $request->only('q','per_page'),
+        ]);
+    }
+
+    public function addProdPage($id = null)
+    {
+        $units = $this->productController->getAllUnit();
+        $categories = $this->productController->getAllCategory();
+        $subcats = $this->subcategoryController->getAllSubCategory();
+        $divisions = $this->divisionController->getAllDivision();
+        $variants = $this->variantController->getAllVariant();
+        $tags = $this->productController->getAllTags();
+
+        $selectedProd = null;
+
+        if ($id) {
+            $selectedProd = $this->productController->getProductByID($id);
+        }
+
+        return Inertia::render('products/product/add-product', [
+            'units' => $units,
+            'categories' => $categories,
+            'subcats' => $subcats,
+            'divisions' => $divisions,
+            'variants' => $variants,
+            'tags' => $tags,
+            'id' => $id,
+            'product' => $selectedProd,
+        ]);
+    }
 
 }
