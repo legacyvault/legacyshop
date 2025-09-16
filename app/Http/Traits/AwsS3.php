@@ -37,7 +37,6 @@ trait AwsS3
             'Bucket'      => env('AWS_S3_BUCKET'),
             'Key'         => $filename,
             'Body'        => fopen($file->getRealPath(), 'r'),
-            'ACL'         => 'public-read',
             'ContentType' => $file->getMimeType()
         ]);
 

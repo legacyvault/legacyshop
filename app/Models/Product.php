@@ -31,8 +31,9 @@ class Product extends Model
 
     public function tags()
     {
-        return $this->belongsToMany(Tags::class, 'product_tag');
+        return $this->belongsToMany(Tags::class, 'product_tag', 'product_id', 'tag_id');
     }
+
 
     public function categories()
     {
@@ -50,6 +51,13 @@ class Product extends Model
     {
         return $this->belongsToMany(Division::class, 'product_division')
             ->withPivot(['use_division_discount', 'manual_discount', 'stock'])
+            ->withTimestamps();
+    }
+
+    public function variants()
+    {
+        return $this->belongsToMany(Variant::class, 'product_variant')
+            ->withPivot(['use_variant_discount', 'manual_discount', 'stock'])
             ->withTimestamps();
     }
 
