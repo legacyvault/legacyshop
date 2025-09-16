@@ -62,7 +62,7 @@ Route::group(['prefix' => 'v1/cognito'], function () {
     Route::post('register', [AwsCognitoAuthController::class, 'registerUser'])->name('cognito.register');
 });
 
-Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], function () {
     //Location API
     Route::get('province-list', [LocationController::class, 'getProvinceList'])->name('province.list');
     Route::get('city-list/{geonameId}', [LocationController::class, 'getCitiesList'])->name('cities.list');
