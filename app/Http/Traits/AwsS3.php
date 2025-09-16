@@ -42,4 +42,22 @@ trait AwsS3
 
         return rtrim(env('AWS_S3_ENDPOINT'), '/') . '/' . env('AWS_S3_BUCKET') . '/' . $filename;
     }
+
+    public function deleteFromS3(string $fileUrl): void
+    {
+        try {
+            $bucket = env('AWS_S3_BUCKET');
+
+            $parsedUrl = parse_url($fileUrl, PHP_URL_PATH);
+
+            $key = ltrim(str_replace($bucket, '', $parsedUrl), '/');
+
+            $this->getS3Client()->deleteObject([
+                'Bucket' => $bucket,
+                'Key'    => $key,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Failed to delete S3 file: " . $e->getMessage());
+        }
+    }
 }

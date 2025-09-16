@@ -35,6 +35,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
 
     //Product API
     Route::post('add-product', [ProductController::class, 'addProduct'])->name('product.add-product');
+    Route::post('update-product', [ProductController::class, 'editProduct'])->name('product.edit-product');
     Route::get('products', [ProductController::class, 'getAllProduct'])->name('products');
     Route::post('add-product-stock', [ProductController::class, 'addStock'])->name('product.add-stock');
     Route::post('update-product-stock', [ProductController::class, 'updateLatestStock'])->name('product.update-stock');
@@ -93,9 +94,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::post('add-variant-stock', [VariantController::class, 'addStock'])->name('variant.add-stock');
     Route::post('update-variant-stock', [VariantController::class, 'updateLatestStock'])->name('variant.update-stock');
     Route::get('variant/{id}', [VariantController::class, 'getVariantById'])->name('variant.id');
+});
 
+Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
 });
+
 
 //CHANGE LANGUAGE
 Route::get('/lang/{lang}', function ($lang) {
@@ -143,7 +147,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
         //PRODUCT ROUTES
         Route::get('product', [ViewController::class, 'productPage']);
-        Route::get('add-product/{id?}', [ViewController::class , 'addProdPage']);
+        Route::get('add-product/{id?}', [ViewController::class, 'addProdPage']);
 
         Route::get('viewprod/{id?}', function ($id = null) {
             $product = $id ? 'edit' : null; //temporary solution
