@@ -18,21 +18,21 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
-    Route::prefix('products')->group(function() {
-    
+    Route::prefix('products')->group(function () {
+
         Route::get('product', function () {
             return Inertia::render('products/product/index');
         })->name('product');
 
-        Route::prefix('product')->group(function() {
+        Route::prefix('product')->group(function () {
             Route::get('add-product/{id?}', function ($id = null) {
                 $product = $id ? 'edit' : null; //temporary solution
-        
+
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-        
+
                 return Inertia::render('products/product/add-product', [
                     'product' => $product,
                 ]);
@@ -40,20 +40,18 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
             Route::get('viewprod/{id?}', function ($id = null) {
                 $product = $id ? 'edit' : null; //temporary solution
-        
+
                 //enable when there's get product api
                 // if ($id) {
                 //     $product = Product::findOrFail($id); // preload product if editing
                 // }
-        
+
                 return Inertia::render('products/product/view-product', [
                     'product' => $product,
                 ]);
             })->name('view-product');
         });
-
     });
-
 });
 
 #API 
@@ -64,7 +62,7 @@ Route::group(['prefix' => 'v1/cognito'], function () {
     Route::post('register', [AwsCognitoAuthController::class, 'registerUser'])->name('cognito.register');
 });
 
-Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], function () {
     //Location API
     Route::get('province-list', [LocationController::class, 'getProvinceList'])->name('province.list');
     Route::get('city-list/{geonameId}', [LocationController::class, 'getCitiesList'])->name('cities.list');
@@ -72,7 +70,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 
     //Product API
     Route::post('add-product', [ProductController::class, 'addProduct'])->name('addProduct');
-    Route::post('product', [ProductController::class, 'getAllProduct'])->name('product');
+    Route::get('products', [ProductController::class, 'getAllProduct'])->name('products');
+    Route::post('add-product-stock', [ProductController::class, 'addStock'])->name('product.add-stock');
+    Route::post('update-product-stock', [ProductController::class, 'updateLatestStock'])->name('product.update-stock');
+    Route::get('product/{id}', [ProductController::class, 'getProductByID'])->name('product.id');
 
     //Profile API
     Route::post('update-profile', [UserController::class, 'updateProfile'])->name('profile.edit');
@@ -97,7 +98,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 
 
     //Unit API
-    Route::prefix('products')->group(function (){
+    Route::prefix('products')->group(function () {
         Route::get('unit', [ProductController::class, 'getAllUnit'])->name('unit');
     });
 
@@ -119,7 +120,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('add-division-stock', [DivisionController::class, 'addStock'])->name('division.add-stock');
     Route::post('update-division-stock', [DivisionController::class, 'updateLatestStock'])->name('division.update-stock');
     Route::get('division/{id}', [DivisionController::class, 'getDivisionById'])->name('division.id');
-    
+
     //Variant API
     Route::post('create-variant', [VariantController::class, 'createVariant'])->name('variant.create');
     Route::post('update-variant', [VariantController::class, 'updateVariant'])->name('variant.update');
@@ -127,7 +128,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('add-variant-stock', [VariantController::class, 'addStock'])->name('variant.add-stock');
     Route::post('update-variant-stock', [VariantController::class, 'updateLatestStock'])->name('variant.update-stock');
     Route::get('variant/{id}', [VariantController::class, 'getVariantById'])->name('variant.id');
-    
+
     Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
 });
 
@@ -145,9 +146,9 @@ Route::get('/lang/{lang}', function ($lang) {
 
 //ROUTES
 Route::get('/', function () {
-    return Inertia::render('welcome',['translations' => [ 
-        'home' => Lang::get('WelcomeTrans'), 
-        'navbar' => Lang::get('HeaderTrans') 
+    return Inertia::render('welcome', ['translations' => [
+        'home' => Lang::get('WelcomeTrans'),
+        'navbar' => Lang::get('HeaderTrans')
     ]]);
 })->name('home');
 
@@ -170,31 +171,30 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
-    Route::prefix('products')->group(function() {
+    Route::prefix('products')->group(function () {
         Route::get('category', [ViewController::class, 'categoryPage']);
         Route::get('unit', [ViewController::class, 'unitPage']);
         Route::get('tags', [ViewController::class, 'tagsPage']);
 
         //SUBCAT ROUTES
         Route::get('subcategory', [ViewController::class, 'subcatPage'])->name('subcategory');
-        Route::prefix('subcategory')->group(function() {
-            Route::get('viewsub/{id}',[ViewController::class, 'viewSubcatPage']);
-            Route::get('addsub/{id?}',[ViewController::class, 'addSubcatPage']);
+        Route::prefix('subcategory')->group(function () {
+            Route::get('viewsub/{id}', [ViewController::class, 'viewSubcatPage']);
+            Route::get('addsub/{id?}', [ViewController::class, 'addSubcatPage']);
         });
 
         //DIVISION ROUTE
         Route::get('division', [ViewController::class, 'divisionPage'])->name('division');
-        Route::prefix('division')->group(function() {
-            Route::get('viewdiv/{id}',[ViewController::class, 'viewDivPage']);
-            Route::get('adddiv/{id?}',[ViewController::class, 'addDivPage']);
+        Route::prefix('division')->group(function () {
+            Route::get('viewdiv/{id}', [ViewController::class, 'viewDivPage']);
+            Route::get('adddiv/{id?}', [ViewController::class, 'addDivPage']);
         });
 
         //VARIANT ROUTES
-        Route::get('variant',[ViewController::class, 'variantPage'])->name('variant');
-        Route::prefix('variant')->group(function() {
-            Route::get('viewvar/{id}',[ViewController::class, 'viewVarPage']);
-            Route::get('addvar/{id?}',[ViewController::class, 'addVarPage']);
+        Route::get('variant', [ViewController::class, 'variantPage'])->name('variant');
+        Route::prefix('variant')->group(function () {
+            Route::get('viewvar/{id}', [ViewController::class, 'viewVarPage']);
+            Route::get('addvar/{id?}', [ViewController::class, 'addVarPage']);
         });
-
     });
 });
