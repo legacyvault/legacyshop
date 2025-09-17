@@ -196,4 +196,12 @@ class ViewController extends Controller
         ]);
     }
 
+    public function viewProdPage($id){
+        $selectedProd = $this->productController->getProductByID($id);
+
+        return Inertia::render('products/product/view-product', [
+            'product' => $selectedProd
+        ]);
+    }
+
 }

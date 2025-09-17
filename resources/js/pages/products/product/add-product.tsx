@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, ICategories, IDivisions, ISubcats, ITags, IVariants, SharedData } from '@/types';
+import { BreadcrumbItem, ICategories, IDivisions, IProducts, ISubcats, ITags, IVariants, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Bold, ChevronDown, Italic, Search, Underline, Upload, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -256,6 +256,8 @@ export default function AddProduct() {
 
     const isEdit = !!id;
 
+    const selectedProd: IProducts = product as IProducts;
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: `${isEdit ? 'Edit' : 'Add'} Product`,
@@ -279,6 +281,8 @@ export default function AddProduct() {
         variantDiscounts: {},
         tags: [],
     });
+    // Prevent cascading reset effects during initial prefill
+    const [isInitializing, setIsInitializing] = useState(false);
 
     // Build selection options and maps from server data
     const allCategoryOptions = useMemo(() => toOptions((categories as ICategories[])?.map((c) => ({ id: c.id, name: c.name }))), [categories]);
@@ -350,6 +354,7 @@ export default function AddProduct() {
     // Reset children selections when parent changes
     useEffect(() => {
         // When unit changes, clear categories and below
+        if (isInitializing) return;
         setFormData((prev) => ({
             ...prev,
             category: [],
@@ -365,6 +370,7 @@ export default function AddProduct() {
 
     useEffect(() => {
         // When categories change, clear subcategory and below
+        if (isInitializing) return;
         setFormData((prev) => ({
             ...prev,
             subcategory: [],
@@ -379,6 +385,7 @@ export default function AddProduct() {
 
     useEffect(() => {
         // When subcategories change, clear division and below
+        if (isInitializing) return;
         setFormData((prev) => ({
             ...prev,
             division: [],
@@ -391,6 +398,7 @@ export default function AddProduct() {
 
     useEffect(() => {
         // When divisions change, clear variant
+        if (isInitializing) return;
         setFormData((prev) => ({
             ...prev,
             variant: [],
@@ -402,6 +410,24 @@ export default function AddProduct() {
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [errors, setErrors] = useState<FormErrors>({});
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+    // Prefill when editing
+    usePrefillProduct(isEdit, selectedProd, setIsInitializing, setFormData);
+
+    // Existing pictures (edit mode) and removal tracking
+    const [existingPictures, setExistingPictures] = useState<IProducts['pictures']>(selectedProd?.pictures || []);
+    const [removePictureIds, setRemovePictureIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (isEdit) {
+            setExistingPictures((selectedProd?.pictures || []).map((p) => ({ ...p })));
+            setRemovePictureIds([]);
+        }
+    }, [isEdit, selectedProd]);
+
+    const toggleRemoveExistingPicture = (picId: string) => {
+        setRemovePictureIds((prev) => (prev.includes(picId) ? prev.filter((id) => id !== picId) : [...prev, picId]));
+    };
 
     const validateImage = (file: File): string | null => {
         const maxSize = 2 * 1024 * 1024; // 2MB in bytes
@@ -514,12 +540,13 @@ export default function AddProduct() {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
 
-        // Check if adding these files would exceed the limit
-        const totalImages = formData.images.length + files.length;
+        // Respect 5-image cap including existing kept images
+        const existingKept = existingPictures.filter((p) => !removePictureIds.includes(p.id)).length;
+        const totalImages = existingKept + formData.images.length + files.length;
         if (totalImages > 5) {
             setErrors((prev) => ({
                 ...prev,
-                images: `Maximum 5 images allowed. You're trying to add ${files.length} more to ${formData.images.length} existing images.`,
+                images: `Maximum 5 images allowed. You can add only ${Math.max(0, 5 - (existingKept + formData.images.length))} more image(s).`,
             }));
             return;
         }
@@ -653,9 +680,8 @@ export default function AddProduct() {
         if (!formData.name.trim()) newErrors.name = 'Product name is required';
         if (!formData.price) newErrors.price = 'Price is required';
         if (!formData.unit) newErrors.unit = 'Unit is required';
-        if (formData.images.length === 0) newErrors.images = 'At least one image is required';
-
-        console.log(formData);
+        // Only require new images for create; allow empty on edit
+        if (!isEdit && formData.images.length === 0) newErrors.images = 'At least one image is required';
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
@@ -665,12 +691,15 @@ export default function AddProduct() {
         const fd = new FormData();
         fd.append('product_name', formData.name);
         fd.append('product_price', String(Number(formData.price)));
-        fd.append('product_discount', String(Number(formData.product_discount)));
+        fd.append('product_discount', formData.product_discount);
         fd.append('description', formData.description);
-        fd.append('product_discount', '0');
         fd.append('unit_id', formData.unit);
 
         formData.images.forEach((file) => fd.append('pictures[]', file));
+        // Removing selected existing pictures on edit
+        if (isEdit && removePictureIds.length > 0) {
+            removePictureIds.forEach((id) => fd.append('remove_picture_ids[]', id));
+        }
         formData.tags.forEach((id) => fd.append('tag_id[]', id));
         formData.category.forEach((id) => fd.append('categories[]', id));
 
@@ -712,9 +741,9 @@ export default function AddProduct() {
                 fd.append(`variants[${i}][manual_discount]`, String(Number(d?.value || 0)));
             }
         });
-        console.log('masuk dsini');
-        console.log(formData);
-        router.post(route('product.add-product'), fd, {
+        // Submit to create or update endpoint
+        const targetRoute = isEdit ? route('product.edit-product', String(selectedProd?.id ?? '')) : route('product.add-product');
+        router.post(targetRoute, fd, {
             forceFormData: true,
             onError: (err) => {
                 const mapped: FormErrors = {};
@@ -736,10 +765,52 @@ export default function AddProduct() {
     const finalPrice = calculateFinalPrice();
     const hasDiscount = finalPrice < Number(formData.price || 0);
 
+    // Compute remaining slots and counts for UI
+    const existingKeptCount = existingPictures.filter((p) => !removePictureIds.includes(p.id)).length;
+    const remainingSlots = Math.max(0, 5 - (isEdit ? existingKeptCount + formData.images.length : formData.images.length));
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={breadcrumbs[0].title} />
             <div className="p-6">
+                {/* Existing Images (Edit Mode) */}
+                {isEdit && (
+                    <div className="mb-6">
+                        <label className="mb-2 block text-sm font-medium">Existing Images</label>
+                        {existingPictures.length > 0 ? (
+                            <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                                {existingPictures.map((pic) => {
+                                    const marked = removePictureIds.includes(pic.id);
+                                    return (
+                                        <div
+                                            key={pic.id}
+                                            className={`group relative rounded-lg border ${marked ? 'opacity-60 ring-2 ring-red-400' : ''}`}
+                                        >
+                                            <img src={pic.url} alt={pic.id} className="h-24 w-24 rounded-lg object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleRemoveExistingPicture(pic.id)}
+                                                className={`absolute -top-2 -right-2 rounded-full px-2 py-1 text-xs font-medium shadow ${
+                                                    marked ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                                                }`}
+                                            >
+                                                {marked ? 'Undo' : 'Remove'}
+                                            </button>
+                                            {marked && (
+                                                <div className="absolute bottom-1 left-1 rounded bg-red-500 px-1 py-0.5 text-[10px] text-white">
+                                                    To remove
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-500">No existing images.</p>
+                        )}
+                        <p className="text-xs text-gray-500">You can mark images for removal. Total images allowed is 5 including any new uploads.</p>
+                    </div>
+                )}
                 {/* Name Field */}
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Product Name *</label>
@@ -779,11 +850,11 @@ export default function AddProduct() {
                     )}
 
                     {/* Upload Button - Only show if less than 5 images */}
-                    {formData.images.length < 5 && (
+                    {remainingSlots > 0 && (
                         <label className="flex h-32 w-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
                             <Upload className="h-8 w-8 text-gray-400" />
                             <p className="mt-2 text-xs text-gray-500">Upload Images</p>
-                            <p className="text-xs text-gray-400">{5 - formData.images.length} remaining</p>
+                            <p className="text-xs text-gray-400">{remainingSlots} remaining</p>
                             <input
                                 type="file"
                                 accept="image/*"
@@ -803,7 +874,11 @@ export default function AddProduct() {
                     {errors.images && <p className="mt-1 text-sm text-red-500">{errors.images}</p>}
 
                     {/* Image count display */}
-                    {formData.images.length > 0 && <p className="mt-2 text-sm text-gray-600">{formData.images.length} of 5 images selected</p>}
+                    {(formData.images.length > 0 || (isEdit && existingKeptCount > 0)) && (
+                        <p className="mt-2 text-sm text-gray-600">
+                            {isEdit ? existingKeptCount + formData.images.length : formData.images.length} of 5 images counted
+                        </p>
+                    )}
                 </div>
 
                 {/* Rich Text Description */}
@@ -885,7 +960,7 @@ export default function AddProduct() {
 
                 {/*  Product Discount Field */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Producr Discount</label>
+                    <label className="mb-2 block text-sm font-medium">Product Discount</label>
                     <div className="relative">
                         <input
                             type="text"
@@ -1220,6 +1295,14 @@ export default function AddProduct() {
                                 <span>Rp {formatRupiah(formData.price)}</span>
                             </div>
 
+                            {/* Product Discounts */}
+                            {formData.product_discount && (
+                                <div className="flex justify-between text-orange-600">
+                                    <span>Product Discount ({formData.product_discount}%)</span>
+                                    <span>-Rp {formatRupiah(String((Number(formData.price) * Number(formData.product_discount)) / 100))}</span>
+                                </div>
+                            )}
+
                             {/* Subcategory discounts */}
                             {formData.subcategory.map((id) => {
                                 const d = formData.subcategoryDiscounts[id];
@@ -1290,4 +1373,55 @@ export default function AddProduct() {
             </div>
         </AppLayout>
     );
+}
+
+// Prefill form when editing
+// This effect is placed after component to ensure helpers exist
+export function usePrefillProduct(
+    isEdit: boolean,
+    selectedProd: IProducts | undefined,
+    setIsInitializing: React.Dispatch<React.SetStateAction<boolean>>,
+    setFormData: React.Dispatch<React.SetStateAction<FormData>>,
+) {
+    useEffect(() => {
+        if (!isEdit || !selectedProd) return;
+
+        setIsInitializing(true);
+        // Build discount maps defaulting to using each entity's default discount
+        const subDiscounts: Record<string, { source: string; value: string }> = {};
+        const divDiscounts: Record<string, { source: string; value: string }> = {};
+        const varDiscounts: Record<string, { source: string; value: string }> = {};
+
+        (selectedProd.subcategories || []).forEach((s) => {
+            subDiscounts[s.id] = { source: s.id, value: '' };
+        });
+        (selectedProd.divisions || []).forEach((d) => {
+            divDiscounts[d.id] = { source: d.id, value: '' };
+        });
+        (selectedProd.variants || []).forEach((v) => {
+            varDiscounts[v.id] = { source: v.id, value: '' };
+        });
+
+        setFormData((prev) => ({
+            ...prev,
+            name: selectedProd.product_name || '',
+            description: selectedProd.description || '',
+            price: String(selectedProd.product_price ?? ''),
+            product_discount: String(selectedProd.product_discount ?? ''),
+            unit: selectedProd.unit_id || '',
+            category: (selectedProd.categories || []).map((c) => c.id),
+            subcategory: (selectedProd.subcategories || []).map((s) => s.id),
+            division: (selectedProd.divisions || []).map((d) => d.id),
+            variant: (selectedProd.variants || []).map((v) => v.id),
+            tags: (selectedProd.tags || []).map((t) => t.id),
+            subcategoryDiscounts: subDiscounts,
+            divisionDiscounts: divDiscounts,
+            variantDiscounts: varDiscounts,
+            // images left empty; existing pictures handled server-side
+        }));
+
+        // Allow reset effects after single batch update
+        // Small timeout to ensure dependent effects skip this cycle
+        setTimeout(() => setIsInitializing(false), 0);
+    }, [isEdit, selectedProd, setFormData, setIsInitializing]);
 }

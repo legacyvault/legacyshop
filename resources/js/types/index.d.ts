@@ -39,6 +39,7 @@ export interface SharedData {
     subcats: ISubcats[];
     divisions: IDivisions[];
     variants: IVariants[];
+    products: IRootProducts;
 }
 
 export interface User {
@@ -133,4 +134,38 @@ export interface IVariants {
     stocks: IStocks[];
     total_stock: number;
     type: 'text' | 'color' | '';
+}
+
+export interface IRootProducts {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    data: IProducts[];
+}
+
+export interface IProducts {
+    categories: ICategories[];
+    created_at: string;
+    description: string;
+    divisions: IDivisions[];
+    id: string;
+    pictures: {
+        created_at: string;
+        id: string;
+        product_id: string;
+        updated_at: string;
+        url: string;
+    }[];
+    product_discount: number;
+    product_name: string;
+    product_price: number;
+    stocks: IStocks[];
+    subcategories: ISubcats[];
+    tags: ITags[];
+    total_stock: number;
+    unit: IUnit;
+    unit_id: string;
+    updated_at: string;
+    variants: IVariants[];
 }

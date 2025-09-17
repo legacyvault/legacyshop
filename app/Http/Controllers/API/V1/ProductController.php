@@ -448,7 +448,7 @@ class ProductController extends Controller
             }
 
             DB::commit();
-            return redirect()->back()->with('alert', [
+            return redirect()->route('product')->with('alert', [
                 'type' => 'success',
                 'message' => 'Product updated successfully.',
             ]);
@@ -550,6 +550,7 @@ class ProductController extends Controller
             'categories',
             'subcategories',
             'divisions',
+            'variants',
             'tags',
             'pictures',
         ])->find($id);
