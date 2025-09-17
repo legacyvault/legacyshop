@@ -190,6 +190,27 @@ class SubCategoryController extends Controller
         return $data;
     }
 
+    public function getSubCategoryPaginated(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage <= 0) { $perPage = 15; }
+        $search   = $request->input('q');
+        $sortBy   = $request->input('sort_by', 'name');
+        $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $allowedSorts = ['id','name','description','price','discount','total_stock','category_id','created_at'];
+        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
+
+        $query = SubCategory::query()->with(['stocks','divisions','category']);
+        if ($search) {
+            $query->where(function($q) use ($search){
+                $q->where('name','like',"%{$search}%")
+                  ->orWhere('description','like',"%{$search}%");
+            });
+        }
+
+        return $query->orderBy($sortBy,$sortDir)->paginate($perPage)->appends($request->query());
+    }
+
     public function getSubCategoryById($id)
     {
         $data = SubCategory::with([

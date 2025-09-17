@@ -34,11 +34,17 @@ export interface SharedData {
     translations: any;
     locale: string;
     units: IUnit[];
+    unitsPaginated: IRootUnits;
     categories: ICategories[];
+    categoriesPaginated?: IRootCategories;
     tags: ITags[];
+    tagsPaginated?: IRootTags;
     subcats: ISubcats[];
+    subcatsPaginated?: IRootSubcats;
     divisions: IDivisions[];
+    divisionsPaginated?: IRootDivisions;
     variants: IVariants[];
+    variantsPaginated?: IRootVariants;
     products: IRootProducts;
 }
 
@@ -141,7 +147,69 @@ export interface IRootProducts {
     from: number;
     last_page: number;
     per_page: number;
+    total?: number;
+    to?: number;
     data: IProducts[];
+}
+
+export interface IRootUnits {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: IUnit[];
+}
+
+export interface IRootCategories {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: ICategories[];
+}
+
+export interface IRootTags {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: ITags[];
+}
+
+export interface IRootSubcats {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: ISubcats[];
+}
+
+export interface IRootDivisions {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: IDivisions[];
+}
+
+export interface IRootVariants {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: IVariants[];
 }
 
 export interface IProducts {

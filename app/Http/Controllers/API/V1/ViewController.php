@@ -25,22 +25,23 @@ class ViewController extends Controller
         $this->variantController = new VariantController();
     }
     
-    public function unitPage(){
-
-        $units = $this ->productController->getAllUnit();
+    public function unitPage(Request $request){
+        $unitsPaginated = $this->productController->getUnitPaginated($request);
 
         return Inertia::render('products/unit/index', [
-            'units' => $units
+            'unitsPaginated' => $unitsPaginated,
+            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
         ]);
     }
 
-    public function categoryPage(){
+    public function categoryPage(Request $request){
         $units = $this ->productController->getAllUnit();
-        $categories = $this->productController->getAllCategory();
+        $categoriesPaginated = $this->productController->getCategoryPaginated($request);
 
         return Inertia::render('products/category/index', [
             'units' => $units,
-            'categories' => $categories
+            'categoriesPaginated' => $categoriesPaginated,
+            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
         ]);
     }
 
@@ -56,19 +57,21 @@ class ViewController extends Controller
         ]);
     }
 
-    public function tagsPage(){
-        $tags = $this->productController->getAllTags();
+    public function tagsPage(Request $request){
+        $tagsPaginated = $this->productController->getTagsPaginated($request);
 
         return Inertia::render('products/tags/index', [
-            'tags' => $tags
+            'tagsPaginated' => $tagsPaginated,
+            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
         ]);
     }
 
-    public function subcatPage(){
-        $subcat = $this->subcategoryController->getAllSubCategory();
+    public function subcatPage(Request $request){
+        $subcatsPaginated = $this->subcategoryController->getSubCategoryPaginated($request);
 
         return Inertia::render('products/subcategory/index', [
-            'subcats' => $subcat
+            'subcatsPaginated' => $subcatsPaginated,
+            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
         ]);
     }
 
@@ -96,11 +99,12 @@ class ViewController extends Controller
         ]);
     }
 
-    public function divisionPage(){
-        $division = $this->divisionController->getAllDivision();
+    public function divisionPage(Request $request){
+        $divisionsPaginated = $this->divisionController->getDivisionPaginated($request);
 
         return Inertia::render('products/division/index', [
-            'divisions' => $division
+            'divisionsPaginated' => $divisionsPaginated,
+            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
         ]);
     }
 
@@ -128,11 +132,12 @@ class ViewController extends Controller
         ]);
     }
 
-    public function variantPage(){
-        $variant = $this->variantController->getAllVariant();
+    public function variantPage(Request $request){
+        $variantsPaginated = $this->variantController->getVariantPaginated($request);
 
         return Inertia::render('products/variant/index', [
-            'variants' => $variant
+            'variantsPaginated' => $variantsPaginated,
+            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
         ]);
     }
 
@@ -165,7 +170,7 @@ class ViewController extends Controller
 
         return Inertia::render('products/product/index', [
             'products' => $product,
-            'filters'  => $request->only('q','per_page'),
+            'filters'  => $request->only('q','per_page','sort_by','sort_dir','page'),
         ]);
     }
 

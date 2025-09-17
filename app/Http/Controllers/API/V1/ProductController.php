@@ -138,6 +138,27 @@ class ProductController extends Controller
         return $data;
     }
 
+    public function getCategoryPaginated(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage <= 0) { $perPage = 15; }
+        $search   = $request->input('q');
+        $sortBy   = $request->input('sort_by', 'name');
+        $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $allowedSorts = ['id','name','description','unit_id'];
+        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
+
+        $query = Category::query()->with(['unit','sub_categories']);
+        if ($search) {
+            $query->where(function($q) use ($search){
+                $q->where('name','like',"%{$search}%")
+                  ->orWhere('description','like',"%{$search}%");
+            });
+        }
+
+        return $query->orderBy($sortBy,$sortDir)->paginate($perPage)->appends($request->query());
+    }
+
     public function getCategoryById($id)
     {
         $data = Category::with('unit')->find($id);
@@ -520,6 +541,10 @@ class ProductController extends Controller
     {
         $perPage = (int) $request->input('per_page', 15);
         $search  = $request->input('q');
+        $sortBy  = $request->input('sort_by', 'product_name');
+        $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $allowedSorts = ['id','product_name','description','product_price','total_stock','created_at'];
+        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'product_name'; }
 
         $query = Product::with([
             'stocks',
@@ -532,14 +557,15 @@ class ProductController extends Controller
         ]);
 
         if ($search) {
-            $query->where('product_name', 'like', "%{$search}%");
+            $query->where(function($q) use ($search){
+                $q->where('product_name','like',"%{$search}%")
+                  ->orWhere('description','like',"%{$search}%");
+            });
         }
 
-        $products = $query->orderBy('product_name', 'asc')
+        return $query->orderBy($sortBy,$sortDir)
             ->paginate($perPage)
             ->appends($request->query());
-
-        return $products;
     }
 
     public function getProductByID($id)
@@ -627,6 +653,27 @@ class ProductController extends Controller
         return $data;
     }
 
+    public function getTagsPaginated(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage <= 0) { $perPage = 15; }
+        $search   = $request->input('q');
+        $sortBy   = $request->input('sort_by', 'name');
+        $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $allowedSorts = ['id','name','description'];
+        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
+
+        $query = Tags::query();
+        if ($search) {
+            $query->where(function($q) use ($search){
+                $q->where('name','like',"%{$search}%")
+                  ->orWhere('description','like',"%{$search}%");
+            });
+        }
+
+        return $query->orderBy($sortBy,$sortDir)->paginate($perPage)->appends($request->query());
+    }
+
     public function createUnit(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -683,5 +730,38 @@ class ProductController extends Controller
     {
         $data = Unit::orderBy('name', 'asc')->with('categories')->get();
         return $data;
+    }
+
+    public function getUnitPaginated(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage <= 0) {
+            $perPage = 15;
+        }
+
+        $search   = $request->input('q');
+        $sortBy   = $request->input('sort_by', 'name');
+        $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        // Whitelist sortable columns to prevent SQL injection
+        $allowedSorts = ['id', 'name', 'description'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'name';
+        }
+
+        $query = Unit::query()->with('categories');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $units = $query->orderBy($sortBy, $sortDir)
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return $units;
     }
 }
