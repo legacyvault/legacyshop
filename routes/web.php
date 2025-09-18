@@ -129,6 +129,8 @@ Route::get('/register', function () {
     return Inertia::render('auth/register');
 })->name('register');
 
+Route::get('/list-products', [ViewController::class, 'frontListProducts']);
+
 Route::middleware(['ensureToken'])->group(function () {
     Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
 });

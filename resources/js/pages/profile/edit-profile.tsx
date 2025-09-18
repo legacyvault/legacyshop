@@ -14,7 +14,6 @@ interface EditProfileFormProps {
 }
 
 export default function EditProfileForm({ profile }: EditProfileFormProps) {
-    console.log(profile);
     const [countries, setCountries] = useState<Country[]>([]);
 
     const { data, setData, post, processing, errors, isDirty } = useForm({
