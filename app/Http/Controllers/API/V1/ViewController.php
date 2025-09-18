@@ -209,4 +209,15 @@ class ViewController extends Controller
         ]);
     }
 
+    public function frontListProducts(Request $request){
+        $products = $this->productController->getAllProduct($request);
+        return Inertia::render('front/products/index', [
+            'products' => $products,
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ],
+        ]);
+    }
+    
 }

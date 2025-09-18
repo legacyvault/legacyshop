@@ -28,7 +28,11 @@ function FrontChildLayout({ children, auth, locale, translations }: PropsWithChi
             <DialogHandler />
             <FrontHeader auth={auth} locale={locale} translations={translations} />
             <div className="relative min-h-screen">
-                <div className={`absolute inset-0 z-10 bg-foreground ${isCartOpen ? 'opacity-75' : 'opacity-0'}`}></div>
+                <div
+                    className={`absolute inset-0 z-10 bg-foreground transition-opacity ${
+                        isCartOpen ? 'opacity-75 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                    }`}
+                ></div>
                 {children}
                 <FrontFooter />
             </div>

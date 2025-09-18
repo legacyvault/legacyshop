@@ -4,7 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { Auth } from '@/types';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { SearchIcon } from 'lucide-react';
 
 interface IPropsHeader {
@@ -13,7 +13,19 @@ interface IPropsHeader {
     translations: any;
 }
 
+const NavBottom = [
+    {
+        title: 'home',
+        url: '/',
+    },
+    {
+        title: 'products',
+        url: '/list-products',
+    },
+];
+
 export default function FrontHeader({ auth, locale, translations }: IPropsHeader) {
+    const page = usePage();
     const getInitials = useInitials();
 
     return (
@@ -21,6 +33,19 @@ export default function FrontHeader({ auth, locale, translations }: IPropsHeader
             <Link href={route('locale.switch', locale === 'en' ? 'id' : 'en')} className="rounded bg-gray-200 px-4 py-2">
                 Switch to {locale === 'en' ? 'Bahasa' : 'English'}
             </Link>
+            {auth.user && auth.user.role === 'admin' && (
+                <div className="hidden border-b bg-gray-50 md:block">
+                    <div className="mx-auto max-w-7xl px-4">
+                        <div className="flex items-center justify-between py-2 text-xs text-gray-600">
+                            <div className="flex items-center gap-4">
+                                <Link href="/dashboard" prefetch>
+                                    <span className="flex items-center gap-1">Back to Dashboard</span>
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Main header */}
             <div className="mx-auto max-w-7xl px-4">
                 <div className="flex items-center justify-between py-3 md:py-4">
@@ -93,19 +118,15 @@ export default function FrontHeader({ auth, locale, translations }: IPropsHeader
                 </div>
             </div>
 
-            {auth.user && auth.user.role === 'admin' && (
-                <div className="hidden border-b bg-gray-50 md:block">
-                    <div className="mx-auto max-w-7xl px-4">
-                        <div className="flex items-center justify-between py-2 text-xs text-gray-600">
-                            <div className="flex items-center gap-4">
-                                <Link href="/dashboard" prefetch>
-                                    <span className="flex items-center gap-1">Back to Dashboard</span>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
+            <div className="mx-auto max-w-7xl px-4 pb-4">
+                <div className="flex flex-row gap-8 px-2">
+                    {NavBottom.map((nav, i) => (
+                        <Link key={i} href={nav.url}>
+                            <h1 className={`font-bold uppercase ${page.url === nav.url ? 'opacity-70' : ''}`}>{nav.title}</h1>
+                        </Link>
+                    ))}
                 </div>
-            )}
+            </div>
 
             {/* Mobile search bar */}
             <div className="px-4 pb-4 md:hidden">
