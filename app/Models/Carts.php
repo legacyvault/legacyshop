@@ -11,10 +11,11 @@ class Carts extends Model
     use HasFactory, HasUuids;
 
     protected $table = 'carts';
-    
+
     protected $fillable = [
         'user_id',
         'product_id',
+        'category_id',
         'sub_category_id',
         'division_id',
         'variant_id',
@@ -24,6 +25,11 @@ class Carts extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
     }
 
     public function subCategory()
