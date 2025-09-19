@@ -16,6 +16,7 @@ class CartsController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'product_id'      => 'required|exists:product,id',
+            'category_id'      => 'required|exists:category,id',
             'sub_category_id' => 'nullable|exists:sub_category,id',
             'division_id'     => 'nullable|exists:division,id',
             'variant_id'      => 'nullable|exists:variant,id',
@@ -32,6 +33,7 @@ class CartsController extends Controller
                 [
                     'user_id'        => Auth::id(),
                     'product_id'     => $request->product_id,
+                    'category_id'     => $request->category_id,
                     'sub_category_id' => $request->sub_category_id,
                     'division_id'    => $request->division_id,
                     'variant_id'     => $request->variant_id,
