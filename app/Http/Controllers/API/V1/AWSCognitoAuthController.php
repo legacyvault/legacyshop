@@ -75,7 +75,6 @@ class AWSCognitoAuthController extends Controller
                     'type' => 'success',
                     'message' => 'Sign Up successful.',
                 ]);
-
             } else {
                 $response = [
                     'data' => '',
@@ -152,6 +151,51 @@ class AWSCognitoAuthController extends Controller
         }
     }
 
+    public function callback(Request $request)
+    {
+        $code = $request->get('code');
+
+        $clientId = env('AWS_COGNITO_CLIENT_ID');
+        $clientSecret = env('AWS_COGNITO_CLIENT_SECRET');
+        $redirectUri = 'http://127.0.0.1:8000/callback';
+
+        $response = Http::asForm()->post('https://<your-domain>.auth.ap-southeast-1.amazoncognito.com/oauth2/token', [
+            'grant_type' => 'authorization_code',
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'code' => $code,
+            'redirect_uri' => $redirectUri,
+        ]);
+
+        $tokens = $response->json();
+
+        if (isset($tokens['access_token'])) {
+            // Decode id_token untuk dapat email/nama user
+            $idToken = $tokens['id_token'];
+            $payload = json_decode(base64_decode(explode('.', $idToken)[1]), true);
+
+            $email = $payload['email'] ?? null;
+
+            // Cari user di DB, kalau belum ada, create
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                ['name' => $payload['name'] ?? '']
+            );
+
+            // Simpan token ke user
+            $user->auth_token = $tokens['access_token'];
+            $user->refresh_token = $tokens['refresh_token'] ?? null;
+            $user->save();
+
+            // Login ke Laravel
+            Auth::login($user);
+
+            return redirect()->route('dashboard')->with('success', 'Logged in with Google!');
+        }
+
+        return redirect()->route('login')->with('error', 'Google login failed');
+    }
+
     public function logout(Request $request)
     {
         try {
@@ -172,6 +216,8 @@ class AWSCognitoAuthController extends Controller
             $user->auth_token = null;
             $user->refresh_token = null;
             $user->save();
+
+            Auth::logout();
 
             return redirect()->route('login')->with('success', 'Logout successful.');
         } catch (\Exception $e) {

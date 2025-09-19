@@ -191,10 +191,10 @@ trait Cognito
                 'ClientSecret' => env('AWS_COGNITO_CLIENT_SECRET'),
                 'Token' => $refresh_token,
             ]);
-
+            Log::info('Security Audit: AWS Revoke Token Success');  
             return true;
         } catch (AwsException $e) {
-            Log::error($e->getMessage());
+            Log::error('Security Audit: ERROR Revoke token: ' . $e->getMessage());
             return false;
         }
     }
