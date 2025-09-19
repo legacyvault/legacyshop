@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
 
@@ -50,6 +50,18 @@ export default function Login({ status, canResetPassword }: LoginProps) {
             setErrorAlert(true);
         }
     }, [typedErrors]);
+
+    const handleGoogleLogin = () => {
+        const url =
+            'https://ap-southeast-1sdnp2rn2s.auth.ap-southeast-1.amazoncognito.com/oauth2/authorize' +
+            '?response_type=code' +
+            `&client_id=3vtom2c3e04fi2h6302fq86s44` +
+            '&redirect_uri=https://d84l1y8p4kdic.cloudfront.net' +
+            '&identity_provider=Google' +
+            '&scope=email+openid+profile';
+
+        window.location.assign(url);
+    };
 
     return (
         <>
@@ -113,13 +125,10 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
                             Log in
                         </Button>
-
-                        <Link href={'google.com'}>
-                            <Button className="w-full" variant={'outline'} tabIndex={4}>
-                                <img src="./google-icon.png" className="h-4 w-4" />
-                                Log in with Google
-                            </Button>
-                        </Link>
+                        <Button className="w-full" variant={'outline'} tabIndex={4} type="button" onClick={handleGoogleLogin}>
+                            <img src="./google-icon.png" className="h-4 w-4" />
+                            Log in with Google
+                        </Button>
                     </div>
 
                     <div className="text-center text-sm text-muted-foreground">
