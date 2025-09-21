@@ -543,6 +543,12 @@ class ProductController extends Controller
         $search  = $request->input('q');
         $sortBy  = $request->input('sort_by', 'product_name');
         $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $unitIds      = $request->input('unit_ids', []);
+        $categoryIds  = $request->input('category_ids', []);
+        $subcatIds    = $request->input('subcat_ids', []);
+        $divisionIds  = $request->input('division_ids', []);
+        $variantIds   = $request->input('variant_ids', []);
+        $tagIds       = $request->input('tag_ids', []);
         $allowedSorts = ['id','product_name','description','product_price','total_stock','created_at'];
         if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'product_name'; }
 
@@ -560,6 +566,54 @@ class ProductController extends Controller
             $query->where(function($q) use ($search){
                 $q->where('product_name','like',"%{$search}%")
                   ->orWhere('description','like',"%{$search}%");
+            })
+            ->orWhereHas('unit', function($uq) use ($search){
+                $uq->where('name','like',"%{$search}%");
+            })
+            ->orWhereHas('categories', function($cq) use ($search){
+                $cq->where('name','like',"%{$search}%");
+            })
+            ->orWhereHas('subcategories', function($sq) use ($search){
+                $sq->where('name','like',"%{$search}%");
+            })
+            ->orWhereHas('divisions', function($dq) use ($search){
+                $dq->where('name','like',"%{$search}%");
+            })
+            ->orWhereHas('variants', function($vq) use ($search){
+                $vq->where('name','like',"%{$search}%");
+            })
+            ->orWhereHas('tags', function($tq) use ($search){
+                $tq->where('name','like',"%{$search}%");
+            });
+        }
+
+        // Exact filters by IDs
+        if (is_array($unitIds) && count($unitIds) > 0) {
+            $query->whereIn('unit_id', $unitIds);
+        }
+        if (is_array($categoryIds) && count($categoryIds) > 0) {
+            $query->whereHas('categories', function($q) use ($categoryIds){
+                $q->whereIn('id', $categoryIds);
+            });
+        }
+        if (is_array($subcatIds) && count($subcatIds) > 0) {
+            $query->whereHas('subcategories', function($q) use ($subcatIds){
+                $q->whereIn('id', $subcatIds);
+            });
+        }
+        if (is_array($divisionIds) && count($divisionIds) > 0) {
+            $query->whereHas('divisions', function($q) use ($divisionIds){
+                $q->whereIn('id', $divisionIds);
+            });
+        }
+        if (is_array($variantIds) && count($variantIds) > 0) {
+            $query->whereHas('variants', function($q) use ($variantIds){
+                $q->whereIn('id', $variantIds);
+            });
+        }
+        if (is_array($tagIds) && count($tagIds) > 0) {
+            $query->whereHas('tags', function($q) use ($tagIds){
+                $q->whereIn('id', $tagIds);
             });
         }
 
