@@ -5,7 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IProducts, IRootProducts, SharedData } from '@/types';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronsUpDown, Scale } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -193,14 +193,9 @@ export default function FrontProducts() {
                         </div>
 
                         {/* Products Grid */}
-                        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
                             {products.map((p) => (
-                                <ProductCard
-                                    key={p.id}
-                                    product={p}
-                                    checked={selectedIds.has(p.id)}
-                                    onToggleCompare={(checked) => toggleCompare(p.id, checked)}
-                                />
+                                <ProductCard key={p.id} product={p} onClick={() => router.get(`/view-product/${p.id}`)} />
                             ))}
                         </div>
                     </section>

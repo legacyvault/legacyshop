@@ -290,7 +290,7 @@ class ProductController extends Controller
             }
 
             DB::commit();
-            return redirect()->back()->with('alert', [
+            return redirect()->route('product')->with('alert', [
                 'type' => 'success',
                 'message' => 'Product added successfully.',
             ]);

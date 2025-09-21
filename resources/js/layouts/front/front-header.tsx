@@ -71,6 +71,7 @@ export default function FrontHeader({ auth, locale, translations }: IPropsHeader
                     {/* Right section - Actions */}
                     <div className="flex w-64 items-center gap-2 md:gap-4">
                         {/* User section */}
+
                         {auth.user ? (
                             <>
                                 {/* Shopping cart */}
@@ -98,21 +99,25 @@ export default function FrontHeader({ auth, locale, translations }: IPropsHeader
                                 </DropdownMenu>
                             </>
                         ) : (
-                            <div className="flex items-center gap-2">
-                                <Link
-                                    href={route('login')}
-                                    className="hidden rounded-lg px-4 py-2 text-sm font-medium text-foreground capitalize transition-colors hover:bg-muted md:inline-block"
-                                >
-                                    {translations.navbar.sign_in}
-                                </Link>
-                                <Link
-                                    href={route('register')}
-                                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                                >
-                                    <span className="hidden capitalize md:inline">{translations.navbar.register}</span>
-                                    <span className="capitalize md:hidden">{translations.navbar.register}</span>
-                                </Link>
-                            </div>
+                            <>
+                                {/* Shopping cart */}
+                                <CartDropdown />
+                                <div className="flex items-center gap-2">
+                                    <Link
+                                        href={route('login')}
+                                        className="hidden rounded-lg px-4 py-2 text-sm font-medium text-foreground capitalize transition-colors hover:bg-muted md:inline-block"
+                                    >
+                                        {translations.navbar.sign_in}
+                                    </Link>
+                                    <Link
+                                        href={route('register')}
+                                        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                                    >
+                                        <span className="hidden capitalize md:inline">{translations.navbar.register}</span>
+                                        <span className="capitalize md:hidden">{translations.navbar.register}</span>
+                                    </Link>
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>
