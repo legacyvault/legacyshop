@@ -9,24 +9,33 @@ interface IPropsHeader {
     auth: Auth;
     locale: string;
     translations: any;
+    searchValue?: string;
+    onSearchChange?: (value: string) => void;
 }
 
-export default function FrontLayout({ auth, locale, translations, children }: PropsWithChildren<IPropsHeader>) {
+export default function FrontLayout({ auth, locale, translations, children, searchValue, onSearchChange }: PropsWithChildren<IPropsHeader>) {
     return (
         <>
             <CartProvider>
-                <FrontChildLayout children={children} auth={auth} locale={locale} translations={translations} />
+                <FrontChildLayout
+                    children={children}
+                    auth={auth}
+                    locale={locale}
+                    translations={translations}
+                    searchValue={searchValue}
+                    onSearchChange={onSearchChange}
+                />
             </CartProvider>
         </>
     );
 }
 
-function FrontChildLayout({ children, auth, locale, translations }: PropsWithChildren<IPropsHeader>) {
+function FrontChildLayout({ children, auth, locale, translations, searchValue, onSearchChange }: PropsWithChildren<IPropsHeader>) {
     const { isCartOpen } = useCart();
     return (
         <>
             <DialogHandler />
-            <FrontHeader auth={auth} locale={locale} translations={translations} />
+            <FrontHeader auth={auth} locale={locale} translations={translations} searchValue={searchValue} onSearchChange={onSearchChange} />
             <div className="relative min-h-screen">
                 <div
                     className={`absolute inset-0 z-10 bg-foreground transition-opacity ${

@@ -4,13 +4,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { Auth } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, router } from '@inertiajs/react';
 import { SearchIcon } from 'lucide-react';
+import { useState, ChangeEvent } from 'react';
 
 interface IPropsHeader {
     auth: Auth;
     locale: string;
     translations: any;
+    searchValue?: string;
+    onSearchChange?: (value: string) => void;
 }
 
 const NavBottom = [
@@ -24,9 +27,21 @@ const NavBottom = [
     },
 ];
 
-export default function FrontHeader({ auth, locale, translations }: IPropsHeader) {
+export default function FrontHeader({ auth, locale, translations, searchValue, onSearchChange }: IPropsHeader) {
     const page = usePage();
     const getInitials = useInitials();
+    const [internalQuery, setInternalQuery] = useState('');
+    const value = searchValue !== undefined ? searchValue : internalQuery;
+    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (onSearchChange) onSearchChange(e.target.value);
+        else setInternalQuery(e.target.value);
+    };
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            const q = value.trim();
+            router.get('/list-products', q ? { q } : {});
+        }
+    };
 
     return (
         <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
@@ -62,6 +77,9 @@ export default function FrontHeader({ auth, locale, translations }: IPropsHeader
                             <input
                                 type="text"
                                 placeholder={translations.navbar.search}
+                                value={value}
+                                onChange={handleChange}
+                                onKeyDown={handleKeyDown}
                                 className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-12 text-sm text-gray-700 placeholder-gray-500 transition-all md:py-3"
                             />
                             <SearchIcon className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -139,6 +157,9 @@ export default function FrontHeader({ auth, locale, translations }: IPropsHeader
                     <input
                         type="text"
                         placeholder={translations.navbar.search}
+                        value={value}
+                        onChange={handleChange}
+                        onKeyDown={handleKeyDown}
                         className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-12 text-sm text-gray-700 placeholder-gray-500 transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                     />
                     <SearchIcon className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-400" />
