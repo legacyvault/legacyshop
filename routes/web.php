@@ -146,6 +146,8 @@ Route::get('/register', function () {
 
 Route::get('/list-products', [ViewController::class, 'frontListProducts']);
 
+Route::get('/view-product/{id}', [ViewController::class, 'frontViewProduct']);
+
 Route::middleware(['ensureToken'])->group(function () {
     Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
 });

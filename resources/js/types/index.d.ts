@@ -216,7 +216,7 @@ export interface IProducts {
     categories: ICategories[];
     created_at: string;
     description: string;
-    divisions: IDivisions[];
+    divisions: (IDivisions & { pivot: IPivotDivisionProd })[];
     id: string;
     pictures: {
         created_at: string;
@@ -229,11 +229,41 @@ export interface IProducts {
     product_name: string;
     product_price: number;
     stocks: IStocks[];
-    subcategories: ISubcats[];
+    subcategories: (ISubcats & { pivot: IPivotSubcatProd })[];
     tags: ITags[];
     total_stock: number;
     unit: IUnit;
     unit_id: string;
     updated_at: string;
-    variants: IVariants[];
+    variants: (IVariants & { pivot: IPivotVariantProd })[];
+}
+
+export interface IPivotDivisionProd {
+    created_at: string;
+    division_id: string;
+    manual_discount: number;
+    product_id: string;
+    stock: number | null;
+    updated_at: string;
+    use_division_discount: number;
+}
+
+export interface IPivotSubcatProd {
+    created_at: string;
+    sub_category_id: string;
+    manual_discount: number;
+    product_id: string;
+    stock: number | null;
+    updated_at: string;
+    use_subcategory_discount: number;
+}
+
+export interface IPivotVariantProd {
+    created_at: string;
+    variant_id: string;
+    manual_discount: number;
+    product_id: string;
+    stock: number | null;
+    updated_at: string;
+    use_variant_discount: number;
 }

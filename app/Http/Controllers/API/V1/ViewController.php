@@ -219,5 +219,17 @@ class ViewController extends Controller
             ],
         ]);
     }
+
+    public function frontViewProduct($id){
+        $selectedProd = $this->productController->getProductByID($id);
+
+        return Inertia::render('front/products/product-detail', [
+            'product' => $selectedProd,
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ],
+        ]);
+    }
     
 }
