@@ -15,6 +15,7 @@ class Unit extends Model
     protected $fillable = [
         'name',
         'description',
+        'picture_url'
     ];
 
     public function categories()

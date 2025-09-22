@@ -20,6 +20,7 @@ class VariantController extends Controller
             'description' => 'string|nullable',
             'division_id' => 'required|exists:division,id',
             'price' => 'required|numeric',
+            'usd_price' => 'required|numeric',
             'discount' => 'nullable|numeric',
             'type' => 'required|in:color,text',
             'color' => 'required_if:type,color|string|nullable'
@@ -153,6 +154,7 @@ class VariantController extends Controller
             'division_id' => 'required|exists:division,id',
             'description' => 'string|nullable',
             'price' => 'required|numeric',
+            'usd_price' => 'required|numeric',
             'discount' => 'nullable|numeric',
             'type' => 'required|in:color,text',
             'color' => 'required_if:type,color|string|nullable'

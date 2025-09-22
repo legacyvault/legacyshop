@@ -20,6 +20,7 @@ class SubCategoryController extends Controller
             'description' => 'string|nullable',
             'category_id' => 'required|exists:category,id',
             'price' => 'required|numeric',
+            'usd_price' => 'required|numeric',
             'discount' => 'nullable|numeric'
         ]);
 
@@ -154,6 +155,7 @@ class SubCategoryController extends Controller
             'category_id' => 'required|exists:category,id',
             'description' => 'string|nullable',
             'price' => 'required|numeric',
+            'usd_price' => 'required|numeric',
             'discount' => 'nullable|numeric'
         ]);
 

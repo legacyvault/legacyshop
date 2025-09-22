@@ -78,6 +78,18 @@ export default function Welcome() {
             </Head>
             <div className="">
                 <FrontLayout auth={auth} locale={locale} translations={translations}>
+                    {/* BANNER */}
+                    <section className="min-h-[400px] w-full bg-[url('/banner-example.jpg')] bg-cover"></section>
+
+                    <div className="mx-auto my-12 max-w-2xl">
+                        <h1 className="text-center text-4xl font-bold">Welcome to Legacy Vault</h1>
+                        <h4 className="font- mt-4 text-center text-lg">
+                            At LegacyVault, we believe every detail matters. When we say custom, we mean truly one-of-a-kind. Our skilled design team
+                            pours passion and precision into creating extended backgrounds that elevate your favorite cards into stunning works of
+                            art.
+                        </h4>
+                    </div>
+
                     {/* HERO + SEQUENCE SECTION */}
                     <section className="relative flex h-[200vh] w-full flex-col bg-primary">
                         {/* Image sequence pinned behind */}

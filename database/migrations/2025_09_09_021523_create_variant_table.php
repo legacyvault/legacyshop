@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('color')->nullable();
             $table->string('description')->nullable();
             $table->float('price');
+            $table->float('usd_price');
             $table->float('discount')->default(0);
             $table->integer('total_stock')->default(0);
             $table->timestamps();
