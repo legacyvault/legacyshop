@@ -4,9 +4,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { Auth } from '@/types';
-import { Link, usePage, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { SearchIcon } from 'lucide-react';
-import { useState, ChangeEvent } from 'react';
+import { ChangeEvent, useState } from 'react';
 
 interface IPropsHeader {
     auth: Auth;
