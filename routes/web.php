@@ -129,12 +129,7 @@ Route::get('/lang/{lang}', function ($lang) {
 
 
 //ROUTES
-Route::get('/', function () {
-    return Inertia::render('welcome', ['translations' => [
-        'home' => Lang::get('WelcomeTrans'),
-        'navbar' => Lang::get('HeaderTrans')
-    ]]);
-})->name('home');
+Route::get('/', [ViewController::class, 'welcomePage'])->name('home');
 
 Route::get('/login', function () {
     return Inertia::render('auth/login');
