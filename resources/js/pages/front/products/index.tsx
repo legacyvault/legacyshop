@@ -36,8 +36,9 @@ export default function FrontProducts() {
     // Use backend payload as-is
     const products = useMemo<IProducts[]>(() => (productsPayload?.data ?? []) as IProducts[], [productsPayload]);
 
-    const [compareOpen, setCompareOpen] = useState(false);
-    const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
+    // COMPARE FEATURE: ENABLE WHEN NEEDED
+    // const [compareOpen, setCompareOpen] = useState(false);
+    // const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
     const [search, setSearch] = useState(String((filters as any)?.q || ''));
 
     // Filter UI state, initialized from server query
@@ -46,13 +47,15 @@ export default function FrontProducts() {
     const [selectedSubcats, setSelectedSubcats] = useState<Set<string>>(new Set(((filters as any)?.subcat_ids ?? []).map(String)));
     const [selectedDivisions, setSelectedDivisions] = useState<Set<string>>(new Set(((filters as any)?.division_ids ?? []).map(String)));
     const [selectedVariants, setSelectedVariants] = useState<Set<string>>(new Set(((filters as any)?.variant_ids ?? []).map(String)));
-    const initialField = ((filters as any)?.sort_by === 'product_name'
-        ? 'name'
-        : (filters as any)?.sort_by === 'product_price'
-          ? 'price'
-          : (filters as any)?.sort_by === 'created_at'
-            ? 'date'
-            : 'date') as 'price' | 'name' | 'date';
+    const initialField = (
+        (filters as any)?.sort_by === 'product_name'
+            ? 'name'
+            : (filters as any)?.sort_by === 'product_price'
+              ? 'price'
+              : (filters as any)?.sort_by === 'created_at'
+                ? 'date'
+                : 'date'
+    ) as 'price' | 'name' | 'date';
     const initialOrder = ((filters as any)?.sort_dir ?? 'default') as 'default' | 'asc' | 'desc';
     const [sortField, setSortField] = useState<'price' | 'name' | 'date'>(initialField);
     const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>(initialOrder);
@@ -84,13 +87,13 @@ export default function FrontProducts() {
         const savedRaw = sessionStorage.getItem(STORAGE_KEY);
         const hasAnyUrl = Boolean(
             (filters as any)?.q ||
-            (filters as any)?.sort_by ||
-            (filters as any)?.sort_dir ||
-            ((filters as any)?.unit_ids || []).length ||
-            ((filters as any)?.category_ids || []).length ||
-            ((filters as any)?.subcat_ids || []).length ||
-            ((filters as any)?.division_ids || []).length ||
-            ((filters as any)?.variant_ids || []).length,
+                (filters as any)?.sort_by ||
+                (filters as any)?.sort_dir ||
+                ((filters as any)?.unit_ids || []).length ||
+                ((filters as any)?.category_ids || []).length ||
+                ((filters as any)?.subcat_ids || []).length ||
+                ((filters as any)?.division_ids || []).length ||
+                ((filters as any)?.variant_ids || []).length,
         );
         if (!hasAnyUrl && savedRaw) {
             try {
@@ -106,19 +109,21 @@ export default function FrontProducts() {
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(params));
     }, [search, selectedUnits, selectedCategories, selectedSubcats, selectedDivisions, selectedVariants, sortField, sortOrder, currentPage]);
 
-    const formatPrice = (price: number) =>
-        new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(price);
-    const productImage = (p: IProducts) => p.pictures?.[0]?.url || 'https://via.placeholder.com/600x800?text=No+Image';
-    const productSalePrice = (p: IProducts) => {
-        const price = Number(p.product_price ?? 0);
-        const d = Number(p.product_discount ?? 0);
-        return d > 0 ? Math.round(price - (price * d) / 100) : price;
-    };
+    // ENABLE WHEN NEEDED
+    // COMPARE FEATURES
+    // const formatPrice = (price: number) =>
+    //     new Intl.NumberFormat('id-ID', {
+    //         style: 'currency',
+    //         currency: 'IDR',
+    //         minimumFractionDigits: 0,
+    //         maximumFractionDigits: 0,
+    //     }).format(price);
+    // const productImage = (p: IProducts) => p.pictures?.[0]?.url || 'https://via.placeholder.com/600x800?text=No+Image';
+    // const productSalePrice = (p: IProducts) => {
+    //     const price = Number(p.product_price ?? 0);
+    //     const d = Number(p.product_discount ?? 0);
+    //     return d > 0 ? Math.round(price - (price * d) / 100) : price;
+    // };
 
     return (
         <FrontLayout auth={auth} translations={translations} locale={locale} searchValue={search} onSearchChange={setSearch}>

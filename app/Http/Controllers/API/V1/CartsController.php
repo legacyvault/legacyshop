@@ -123,10 +123,6 @@ class CartsController extends Controller
                     'carts' => $carts,
                 ]);
             }
-            return redirect()->back()->with([
-                'success' => 'Successfully get carts.',
-                'carts' => $carts,
-            ]);
         } catch (\Exception $e) {
             Log::error('Get cart failed: ' . $e->getMessage());
             if ($request->expectsJson()) {
@@ -135,10 +131,6 @@ class CartsController extends Controller
                     'message' => 'Failed to get carts.'
                 ], 500);
             }
-            return back()->with('alert', [
-                'type' => 'error',
-                'message' => 'Failed to get carts.',
-            ]);
         }
     }
 }

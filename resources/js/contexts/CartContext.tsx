@@ -1,6 +1,6 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import { router } from '@inertiajs/react';
 import type { Auth } from '@/types';
+import { router } from '@inertiajs/react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 export interface CartItem {
     // Composite id to differentiate option combos when needed
@@ -25,10 +25,7 @@ interface CartContextType {
     items: CartItem[];
     totalItems: number;
     totalPrice: number;
-    addItem: (
-        item: Omit<CartItem, 'quantity' | 'serverId'>,
-        options?: { quantity?: number; meta?: CartItem['meta'] }
-    ) => Promise<void> | void;
+    addItem: (item: Omit<CartItem, 'quantity' | 'serverId'>, options?: { quantity?: number; meta?: CartItem['meta'] }) => Promise<void> | void;
     removeItem: (id: string) => void;
     updateQuantity: (id: string, quantity: number) => void;
     clearCart: () => void;
@@ -140,8 +137,9 @@ export const CartProvider = ({ children, auth }: CartProviderProps) => {
 
     // Save to session storage for guest (and as a backup for auth)
     useEffect(() => {
+        if (isAuthenticated) return;
         saveToSession(items);
-    }, [items]);
+    }, [items, isAuthenticated]);
 
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
     const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -175,7 +173,7 @@ export const CartProvider = ({ children, auth }: CartProviderProps) => {
                         {
                             preserveScroll: true,
                             onFinish: () => resolve(),
-                        }
+                        },
                     );
                 });
                 await fetchServerCart();
@@ -207,7 +205,7 @@ export const CartProvider = ({ children, auth }: CartProviderProps) => {
                         void fetchServerCart();
                     },
                     onError: () => setItems((prev) => prev.filter((i) => i.id !== id)),
-                }
+                },
             );
         } else {
             setItems((prevItems) => prevItems.filter((item) => item.id !== id));
@@ -238,7 +236,7 @@ export const CartProvider = ({ children, auth }: CartProviderProps) => {
                         void fetchServerCart();
                     },
                     onError: () => setItems((prev) => prev.map((it) => (it.id === id ? { ...it, quantity } : it))),
-                }
+                },
             );
         } else {
             setItems((prevItems) => prevItems.map((item) => (item.id === id ? { ...item, quantity } : item)));

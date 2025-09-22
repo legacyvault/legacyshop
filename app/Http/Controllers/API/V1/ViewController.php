@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
+use App\Models\Carts;
+use Illuminate\Support\Facades\Auth;
 
 class ViewController extends Controller
 {
@@ -15,6 +17,7 @@ class ViewController extends Controller
     protected $subcategoryController;
     protected $divisionController;
     protected $variantController;
+    protected $cartController;
 
     public function __construct(Request $request)
     {
@@ -23,6 +26,7 @@ class ViewController extends Controller
         $this->subcategoryController = new SubCategoryController();
         $this->divisionController = new DivisionController();
         $this->variantController = new VariantController();
+        $this->cartController = new CartsController();
     }
     
     public function unitPage(Request $request){
@@ -255,6 +259,36 @@ class ViewController extends Controller
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
+            ],
+        ]);
+    }
+
+    public function cartPage(Request $request,$id=null){
+
+        $carts = null;
+
+        if (Auth::check()) {
+            if ((int) Auth::id() === (int) $id) {
+                $carts = Carts::with([
+                    'product',
+                    'product.unit',
+                    'product.categories',
+                    'product.subcategories',
+                    'product.divisions',
+                    'product.variants',
+                    'product.pictures',
+                ])
+                ->where('user_id', $id)
+                ->get();
+            }
+        }
+    
+        return Inertia::render('front/carts/index', [
+            'carts' => $carts,
+            'filters'  => $request->only('q','per_page','sort_by','sort_dir','page'),
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans'),
             ],
         ]);
     }
