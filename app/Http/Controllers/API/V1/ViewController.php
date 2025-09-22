@@ -28,35 +28,38 @@ class ViewController extends Controller
         $this->variantController = new VariantController();
         $this->cartController = new CartsController();
     }
-    
-    public function unitPage(Request $request){
+
+    public function unitPage(Request $request)
+    {
         $unitsPaginated = $this->productController->getUnitPaginated($request);
 
         return Inertia::render('products/unit/index', [
             'unitsPaginated' => $unitsPaginated,
-            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page')
         ]);
     }
 
-    public function categoryPage(Request $request){
-        $units = $this ->productController->getAllUnit();
+    public function categoryPage(Request $request)
+    {
+        $units = $this->productController->getAllUnit();
         $categoriesPaginated = $this->productController->getCategoryPaginated($request);
 
         return Inertia::render('products/category/index', [
             'units' => $units,
             'categoriesPaginated' => $categoriesPaginated,
-            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page')
         ]);
     }
 
-    public function profilePage(){
+    public function profilePage()
+    {
         $profile = $this->userController->getProfile();
 
         return Inertia::render('profile/index', [
             'profile' => $profile,
-            'translations' => [        
-                'home' => Lang::get('WelcomeTrans'), 
-                'navbar' => Lang::get('HeaderTrans') 
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
             ]
         ]);
     }
@@ -69,28 +72,30 @@ class ViewController extends Controller
 
         return Inertia::render('welcome', [
             'products' => $products,
-            'translations' => [        
-                'home' => Lang::get('WelcomeTrans'), 
-                'navbar' => Lang::get('HeaderTrans') 
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
             ]
         ]);
     }
 
-    public function tagsPage(Request $request){
+    public function tagsPage(Request $request)
+    {
         $tagsPaginated = $this->productController->getTagsPaginated($request);
 
         return Inertia::render('products/tags/index', [
             'tagsPaginated' => $tagsPaginated,
-            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page')
         ]);
     }
 
-    public function subcatPage(Request $request){
+    public function subcatPage(Request $request)
+    {
         $subcatsPaginated = $this->subcategoryController->getSubCategoryPaginated($request);
 
         return Inertia::render('products/subcategory/index', [
             'subcatsPaginated' => $subcatsPaginated,
-            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page')
         ]);
     }
 
@@ -102,7 +107,7 @@ class ViewController extends Controller
         if ($id) {
             $selectedSubCat = $this->subcategoryController->getSubCategoryById($id);
         }
-    
+
         return Inertia::render('products/subcategory/add-subcategory', [
             'id' => $id,
             'subcat' => $selectedSubCat,
@@ -118,12 +123,13 @@ class ViewController extends Controller
         ]);
     }
 
-    public function divisionPage(Request $request){
+    public function divisionPage(Request $request)
+    {
         $divisionsPaginated = $this->divisionController->getDivisionPaginated($request);
 
         return Inertia::render('products/division/index', [
             'divisionsPaginated' => $divisionsPaginated,
-            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page')
         ]);
     }
 
@@ -135,7 +141,7 @@ class ViewController extends Controller
         if ($id) {
             $selectedDiv = $this->divisionController->getDivisionById($id);
         }
-    
+
         return Inertia::render('products/division/add-division', [
             'id' => $id,
             'division' => $selectedDiv,
@@ -151,12 +157,13 @@ class ViewController extends Controller
         ]);
     }
 
-    public function variantPage(Request $request){
+    public function variantPage(Request $request)
+    {
         $variantsPaginated = $this->variantController->getVariantPaginated($request);
 
         return Inertia::render('products/variant/index', [
             'variantsPaginated' => $variantsPaginated,
-            'filters' => $request->only('q','per_page','sort_by','sort_dir','page')
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page')
         ]);
     }
 
@@ -168,7 +175,7 @@ class ViewController extends Controller
         if ($id) {
             $selectedVar = $this->variantController->getVariantById($id);
         }
-    
+
         return Inertia::render('products/variant/add-variant', [
             'id' => $id,
             'divisions' => $divisions,
@@ -184,12 +191,13 @@ class ViewController extends Controller
         ]);
     }
 
-    public function productPage(Request $request){
+    public function productPage(Request $request)
+    {
         $product = $this->productController->getAllProduct($request);
 
         return Inertia::render('products/product/index', [
             'products' => $product,
-            'filters'  => $request->only('q','per_page','sort_by','sort_dir','page'),
+            'filters'  => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page'),
         ]);
     }
 
@@ -220,7 +228,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function viewProdPage($id){
+    public function viewProdPage($id)
+    {
         $selectedProd = $this->productController->getProductByID($id);
 
         return Inertia::render('products/product/view-product', [
@@ -228,7 +237,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function frontListProducts(Request $request){
+    public function frontListProducts(Request $request)
+    {
         $products = $this->productController->getAllProduct($request);
         $units = $this->productController->getAllUnit();
         $categories = $this->productController->getAllCategory();
@@ -243,7 +253,7 @@ class ViewController extends Controller
             'subcats' => $subcats,
             'divisions' => $divisions,
             'variants' => $variants,
-            'filters' => $request->only('q','per_page','sort_by','sort_dir','page','unit_ids','category_ids','subcat_ids','division_ids','variant_ids','tag_ids'),
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'unit_ids', 'category_ids', 'subcat_ids', 'division_ids', 'variant_ids', 'tag_ids'),
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -251,7 +261,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function frontViewProduct($id){
+    public function frontViewProduct($id)
+    {
         $selectedProd = $this->productController->getProductByID($id);
 
         return Inertia::render('front/products/product-detail', [
@@ -263,7 +274,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function cartPage(Request $request,$id=null){
+    public function cartPage(Request $request, $id = null)
+    {
 
         $carts = null;
 
@@ -277,20 +289,23 @@ class ViewController extends Controller
                     'product.divisions',
                     'product.variants',
                     'product.pictures',
+                    'category',
+                    'subCategory',
+                    'division',
+                    'variant',
                 ])
-                ->where('user_id', $id)
-                ->get();
+                    ->where('user_id', $id)
+                    ->get();
             }
         }
-    
+
         return Inertia::render('front/carts/index', [
             'carts' => $carts,
-            'filters'  => $request->only('q','per_page','sort_by','sort_dir','page'),
+            'filters'  => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page'),
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans'),
             ],
         ]);
     }
-    
 }
