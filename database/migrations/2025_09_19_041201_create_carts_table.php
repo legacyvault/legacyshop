@@ -13,12 +13,25 @@ return new class extends Migration
     {
         Schema::create('carts', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('product_id')->constrained()->onDelete('cascade');
-            $table->foreignId('category_id')->constrained('category')->onDelete('cascade');
-            $table->foreignId('sub_category_id')->nullable()->constrained('sub_category')->onDelete('cascade');
-            $table->foreignId('division_id')->nullable()->constrained('division')->onDelete('cascade');
-            $table->foreignId('variant_id')->nullable()->constrained('variant')->onDelete('cascade');
+
+            $table->uuid('user_id');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+
+            $table->uuid('product_id');
+            $table->foreign('product_id')->references('id')->on('products')->onDelete('cascade');
+
+            $table->uuid('category_id');
+            $table->foreign('category_id')->references('id')->on('category')->onDelete('cascade');
+
+            $table->uuid('sub_category_id')->nullable();
+            $table->foreign('sub_category_id')->references('id')->on('sub_category')->onDelete('cascade');
+
+            $table->uuid('division_id')->nullable();
+            $table->foreign('division_id')->references('id')->on('division')->onDelete('cascade');
+
+            $table->uuid('variant_id')->nullable();
+            $table->foreign('variant_id')->references('id')->on('variant')->onDelete('cascade');
+
             $table->integer('quantity')->default(1);
         });
     }
