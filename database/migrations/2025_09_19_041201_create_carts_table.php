@@ -33,6 +33,8 @@ return new class extends Migration
             $table->foreign('variant_id')->references('id')->on('variant')->onDelete('cascade');
 
             $table->integer('quantity')->default(1);
+
+            $table->timestamps();
         });
     }
 

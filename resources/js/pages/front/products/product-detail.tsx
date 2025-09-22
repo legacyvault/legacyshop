@@ -119,13 +119,27 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
     const mainImage = pictures?.[activeIndex]?.url || 'https://via.placeholder.com/600x800?text=No+Image';
 
+    const disableButtonCart = useMemo(() => !selectedCat, [selectedCat]);
+
     const handleAddToCart = () => {
-        const id = `${product.id}`;
+        const meta = {
+            product_id: String(product.id),
+            category_id: selectedCat?.id ? String(selectedCat.id) : undefined,
+            sub_category_id: selectedSubcat?.id ? String(selectedSubcat.id) : undefined,
+            division_id: selectedDiv?.id ? String(selectedDiv.id) : undefined,
+            variant_id: selectedVar?.id ? String(selectedVar.id) : undefined,
+        };
+        const compositeId = [
+            meta.product_id ?? '',
+            meta.category_id ?? '-',
+            meta.sub_category_id ?? '-',
+            meta.division_id ?? '-',
+            meta.variant_id ?? '-',
+        ].join('|');
         const name = `${product.product_name}`;
-        const existing = items.find((i) => i.id === id)?.quantity ?? 0;
-        addItem({ id, name, price: finalPrice, image: mainImage });
+        const existing = items.find((i) => i.id === compositeId)?.quantity ?? 0;
         const targetQty = Math.max(1, existing + selectedQty);
-        updateQuantity(id, targetQty);
+        void addItem({ id: compositeId, name, price: finalPrice, image: mainImage, meta }, { quantity: targetQty, meta });
         openCart(true);
     };
 
@@ -259,7 +273,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                             <div className="flex flex-wrap gap-2">
                                 {subcategories.map((v) => {
                                     const active = selectedSubcat?.id === v.id;
-                                    const disabled = (selectedSubcat?.total_stock ?? 0) < 1;
+                                    // LAST IMPLEMENTATION
+                                    // const disabled = (selectedSubcat?.total_stock ?? 0) < 1;
+                                    const disabled = false;
                                     return (
                                         <button
                                             key={v.id}
@@ -406,14 +422,12 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
                         {/* Actions */}
                         <div className="space-y-2">
-                            <Button className="w-full" onClick={handleAddToCart}>
+                            <Button className="w-full" onClick={handleAddToCart} disabled={disableButtonCart}>
                                 + Add to Cart
                             </Button>
-                            <Link href="/checkout" className="block">
-                                <Button variant="outline" className="w-full">
-                                    Buy Now
-                                </Button>
-                            </Link>
+                            <Button variant="outline" className="w-full">
+                                Buy Now
+                            </Button>
                         </div>
                     </div>
                 </section>

@@ -16,7 +16,7 @@ interface IPropsHeader {
 export default function FrontLayout({ auth, locale, translations, children, searchValue, onSearchChange }: PropsWithChildren<IPropsHeader>) {
     return (
         <>
-            <CartProvider>
+            <CartProvider auth={auth}>
                 <FrontChildLayout
                     children={children}
                     auth={auth}

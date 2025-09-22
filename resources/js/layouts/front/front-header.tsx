@@ -4,9 +4,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { Auth } from '@/types';
-import { Link, usePage, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { SearchIcon } from 'lucide-react';
-import { useState, ChangeEvent } from 'react';
+import { ChangeEvent, useState } from 'react';
 
 interface IPropsHeader {
     auth: Auth;
@@ -93,7 +93,7 @@ export default function FrontHeader({ auth, locale, translations, searchValue, o
                         {auth.user ? (
                             <>
                                 {/* Shopping cart */}
-                                <CartDropdown />
+                                <CartDropdown auth={auth} />
                                 <DropdownMenu>
                                     <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50">
                                         <div className="hidden items-center gap-2 md:flex">
@@ -119,7 +119,7 @@ export default function FrontHeader({ auth, locale, translations, searchValue, o
                         ) : (
                             <>
                                 {/* Shopping cart */}
-                                <CartDropdown />
+                                <CartDropdown auth={auth} />
                                 <div className="flex items-center gap-2">
                                     <Link
                                         href={route('login')}

@@ -145,6 +145,7 @@ Route::get('/view-product/{id}', [ViewController::class, 'frontViewProduct']);
 
 Route::middleware(['ensureToken'])->group(function () {
     Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
+    Route::get('view-cart/{id?}', [ViewController::class, 'cartPage'])->name('page.cart');
 });
 
 
