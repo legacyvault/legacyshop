@@ -22,6 +22,8 @@ class Carts extends Model
         'quantity'
     ];
 
+    protected $appends = ['price_per_product'];
+
     public function product()
     {
         return $this->belongsTo(Product::class);
@@ -45,5 +47,89 @@ class Carts extends Model
     public function variant()
     {
         return $this->belongsTo(Variant::class);
+    }
+
+    public function getPricePerProductAttribute()
+    {
+        $total = 0;
+
+        if ($this->product) {
+            $price = $this->product->product_price;
+
+            if ($this->product->product_discount) {
+                $discountPercent = $this->product->product_discount;
+                $price = $price - ($price * $discountPercent / 100);
+            }
+
+            $total += $price;
+        }
+
+        if ($this->subCategory) {
+            $price = $this->subCategory->price ?? 0;
+
+            $pivot = $this->product?->subcategories()
+                ->where('sub_category_id', $this->sub_category_id)
+                ->first()?->pivot;
+
+            if ($pivot) {
+                if ($pivot->use_subcategory_discount && $this->subCategory->discount) {
+                    $discountPercent = $this->subCategory->discount;
+                    $price = $price - ($price * $discountPercent / 100);
+                }
+
+                if ($pivot->manual_discount) {
+                    $discountPercent = $pivot->manual_discount;
+                    $price = $price - ($price * $discountPercent / 100);
+                }
+            }
+
+            $total += $price;
+        }
+
+        if ($this->division) {
+            $price = $this->division->price ?? 0;
+
+            $pivot = $this->product?->divisions()
+                ->where('division_id', $this->division_id)
+                ->first()?->pivot;
+
+            if ($pivot) {
+                if ($pivot->use_division_discount && $this->division->discount) {
+                    $discountPercent = $this->division->discount;
+                    $price = $price - ($price * $discountPercent / 100);
+                }
+
+                if ($pivot->manual_discount) {
+                    $discountPercent = $pivot->manual_discount;
+                    $price = $price - ($price * $discountPercent / 100);
+                }
+            }
+
+            $total += $price;
+        }
+
+        if ($this->variant) {
+            $price = $this->variant->price ?? 0;
+
+            $pivot = $this->product?->variants()
+                ->where('variant_id', $this->variant_id)
+                ->first()?->pivot;
+
+            if ($pivot) {
+                if ($pivot->use_variant_discount && $this->variant->discount) {
+                    $discountPercent = $this->variant->discount;
+                    $price = $price - ($price * $discountPercent / 100);
+                }
+
+                if ($pivot->manual_discount) {
+                    $discountPercent = $pivot->manual_discount;
+                    $price = $price - ($price * $discountPercent / 100);
+                }
+            }
+
+            $total += $price;
+        }
+
+        return max($total, 0);
     }
 }

@@ -107,6 +107,10 @@ class CartsController extends Controller
 
             $carts = Carts::with([
                 'product',
+                'category',
+                'subCategory',
+                'division',
+                'variant',
                 'product.unit',
                 'product.categories',
                 'product.subcategories',
