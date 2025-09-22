@@ -43,6 +43,44 @@ trait AwsS3
         return rtrim(env('AWS_S3_ENDPOINT'), '/') . '/' . env('AWS_S3_BUCKET') . '/' . $filename;
     }
 
+    public function uploadUnitImageToS3($file, $unitId = null): string
+    {
+        $extension = $file->getClientOriginalExtension();
+        $random    = mt_rand(100000, 999999);
+
+        $pathPrefix = $unitId ? "unit/{$unitId}" : "unit";
+
+        $filename = "{$pathPrefix}/image-{$random}." . $extension;
+
+        $this->getS3Client()->putObject([
+            'Bucket'      => env('AWS_S3_BUCKET'),
+            'Key'         => $filename,
+            'Body'        => fopen($file->getRealPath(), 'r'),
+            'ContentType' => $file->getMimeType(),
+        ]);
+
+        return rtrim(env('AWS_S3_ENDPOINT'), '/') . '/' . env('AWS_S3_BUCKET') . '/' . $filename;
+    }
+
+    public function uploadBannerImageToS3($file, $bannerId = null): string
+    {
+        $extension = $file->getClientOriginalExtension();
+        $random    = mt_rand(100000, 999999);
+
+        $pathPrefix = $bannerId ? "banner/{$bannerId}" : "banner";
+
+        $filename = "{$pathPrefix}/image-{$random}." . $extension;
+
+        $this->getS3Client()->putObject([
+            'Bucket'      => env('AWS_S3_BUCKET'),
+            'Key'         => $filename,
+            'Body'        => fopen($file->getRealPath(), 'r'),
+            'ContentType' => $file->getMimeType(),
+        ]);
+
+        return rtrim(env('AWS_S3_ENDPOINT'), '/') . '/' . env('AWS_S3_BUCKET') . '/' . $filename;
+    }
+
     public function deleteFromS3(string $fileUrl): void
     {
         try {

@@ -17,6 +17,7 @@ class Division extends Model
         'description',
         'sub_category_id',
         'price',
+        'usd_price',
         'discount',
         'total_stock'
     ];

@@ -38,7 +38,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
             {/* Cart Icon Button */}
             <button
                 onClick={() => openCart(!isCartOpen)}
-                className="relative rounded-lg p-2 transition-colors hover:bg-muted focus:ring-2 focus:ring-ring focus:outline-none"
+                className="relative rounded-lg p-2 transition-colors hover:bg-muted focus:ring-2 focus:ring-ring focus:outline-none cursor-pointer"
             >
                 <ShoppingCart className="h-5 w-5 text-foreground md:h-6 md:w-6" />
                 {totalItems > 0 && (

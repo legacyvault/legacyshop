@@ -7,6 +7,7 @@ use App\Http\Controllers\API\V1\ProductController;
 use App\Http\Controllers\API\V1\UserController;
 use App\Http\Controllers\API\V1\ViewController;
 use App\Http\Controllers\API\V1\DivisionController;
+use App\Http\Controllers\API\V1\MiscController;
 use App\Http\Controllers\API\V1\SubCategoryController;
 use App\Http\Controllers\API\V1\VariantController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,15 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Product API
     Route::get('product/{id}', [ProductController::class, 'getProductByID'])->name('product.id');
     Route::get('products', [ProductController::class, 'getAllProduct'])->name('products');
+    Route::get('products-showcase', [ProductController::class, 'getAllShowcaseProduct'])->name('products.showcase');
+
+    //Running Text API
+    Route::get('running-text', [MiscController::class, 'getAllRunningText'])->name('running-text');
+    Route::get('active-running-text', [MiscController::class, 'getActiveRunningText'])->name('active.running-text');
+
+    //Banner API
+    Route::get('all-banner', [MiscController::class, 'getAllBanner'])->name('all-banner');
+    Route::get('active-banner', [MiscController::class, 'getActiveBanner'])->name('active.banner');
 
     //Carts API
     Route::post('add-cart', [CartsController::class, 'addToCart'])->name('add.cart');
@@ -80,6 +90,13 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::post('add-product-stock', [ProductController::class, 'addStock'])->name('product.add-stock');
     Route::post('update-product-stock', [ProductController::class, 'updateLatestStock'])->name('product.update-stock');
 
+    //RunningText API
+    Route::post('add-running-text', [MiscController::class, 'createRunningText'])->name('add-runningtext');
+    Route::post('update-running-text', [MiscController::class, 'updateRunningText'])->name('edit-runningtext');
+
+    //Banner API
+    Route::post('add-banner', [MiscController::class, 'createBanner'])->name('add-banner');
+    Route::post('update-banner', [MiscController::class, 'updateBanner'])->name('edit-banner');
 
     //Category API
     Route::post('create-category', [ProductController::class, 'createCategory'])->name('category.create');

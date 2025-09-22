@@ -95,7 +95,7 @@ export default function FrontHeader({ auth, locale, translations, searchValue, o
                                 {/* Shopping cart */}
                                 <CartDropdown auth={auth} />
                                 <DropdownMenu>
-                                    <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50">
+                                    <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50 cursor-pointer">
                                         <div className="hidden items-center gap-2 md:flex">
                                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
                                                 {getInitials(auth.user.email)}

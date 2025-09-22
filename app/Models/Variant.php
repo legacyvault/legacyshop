@@ -17,6 +17,7 @@ class Variant extends Model
         'description',
         'division_id',
         'price',
+        'usd_price',
         'discount',
         'total_stock',
         'type',
