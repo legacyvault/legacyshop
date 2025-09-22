@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('unit', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('description')->nullable();
+            $table->string('picture_url')->nullable();
             $table->string('name');
             $table->timestamps();
         });

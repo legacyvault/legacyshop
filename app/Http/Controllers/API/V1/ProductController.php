@@ -11,6 +11,7 @@ use App\Models\ProductStock;
 use App\Models\Tags;
 use App\Models\Type;
 use App\Models\Unit;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -141,22 +142,26 @@ class ProductController extends Controller
     public function getCategoryPaginated(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);
-        if ($perPage <= 0) { $perPage = 15; }
+        if ($perPage <= 0) {
+            $perPage = 15;
+        }
         $search   = $request->input('q');
         $sortBy   = $request->input('sort_by', 'name');
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSorts = ['id','name','description','unit_id'];
-        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
+        $allowedSorts = ['id', 'name', 'description', 'unit_id'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'name';
+        }
 
-        $query = Category::query()->with(['unit','sub_categories']);
+        $query = Category::query()->with(['unit', 'sub_categories']);
         if ($search) {
-            $query->where(function($q) use ($search){
-                $q->where('name','like',"%{$search}%")
-                  ->orWhere('description','like',"%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        return $query->orderBy($sortBy,$sortDir)->paginate($perPage)->appends($request->query());
+        return $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
     }
 
     public function getCategoryById($id)
@@ -180,10 +185,13 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'product_name'     => 'required|string|max:255',
+            'product_sku'     => 'required|string|max:255|unique:product,product_sku',
             'product_price'    => 'required|numeric|min:1000',
+            'product_usd_price'    => 'required|numeric|min:1',
             'description'      => 'required|string',
             'product_discount' => 'nullable|numeric',
             'unit_id'          => 'required|exists:unit,id',
+            'is_showcase'          => 'nullable',
 
             'pictures'   => 'nullable|array',
             'pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
@@ -223,9 +231,12 @@ class ProductController extends Controller
             $product = Product::create([
                 'product_name'     => $request->product_name,
                 'product_price'    => $request->product_price,
+                'product_sku'     => $request->product_sku,
+                'product_usd_price'    => $request->product_usd_price,
                 'product_discount' => $request->product_discount ?? 0,
                 'description'      => $request->description,
                 'unit_id'          => $request->unit_id,
+                'is_showcase'          => $request->is_showcase,
             ]);
 
             // Sync tags (no pivot)
@@ -353,9 +364,16 @@ class ProductController extends Controller
         $validator = Validator::make($request->all(), [
             'product_name'     => 'required|string|max:255',
             'product_price'    => 'required|numeric|min:1000',
+            'product_sku'     => [
+                'required',
+                'string',
+                Rule::unique('product', 'product_sku')->ignore($request->id),
+            ],
+            'product_usd_price'    => 'required|numeric|min:1',
             'description'      => 'required|string',
             'product_discount' => 'nullable|numeric',
             'unit_id'          => 'required|exists:unit,id',
+            'is_showcase'          => 'nullable',
 
             'pictures'   => 'nullable|array',
             'pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
@@ -403,6 +421,7 @@ class ProductController extends Controller
                 'product_discount' => $request->product_discount ?? 0,
                 'description'      => $request->description,
                 'unit_id'          => $request->unit_id,
+                'is_showcase'          => $request->is_showcase,
             ]);
 
             // Sync tags
@@ -549,8 +568,10 @@ class ProductController extends Controller
         $divisionIds  = $request->input('division_ids', []);
         $variantIds   = $request->input('variant_ids', []);
         $tagIds       = $request->input('tag_ids', []);
-        $allowedSorts = ['id','product_name','description','product_price','total_stock','created_at'];
-        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'product_name'; }
+        $allowedSorts = ['id', 'product_name', 'description', 'product_price', 'total_stock', 'created_at'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'product_name';
+        }
 
         $query = Product::with([
             'stocks',
@@ -563,28 +584,28 @@ class ProductController extends Controller
         ]);
 
         if ($search) {
-            $query->where(function($q) use ($search){
-                $q->where('product_name','like',"%{$search}%")
-                  ->orWhere('description','like',"%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             })
-            ->orWhereHas('unit', function($uq) use ($search){
-                $uq->where('name','like',"%{$search}%");
-            })
-            ->orWhereHas('categories', function($cq) use ($search){
-                $cq->where('name','like',"%{$search}%");
-            })
-            ->orWhereHas('subcategories', function($sq) use ($search){
-                $sq->where('name','like',"%{$search}%");
-            })
-            ->orWhereHas('divisions', function($dq) use ($search){
-                $dq->where('name','like',"%{$search}%");
-            })
-            ->orWhereHas('variants', function($vq) use ($search){
-                $vq->where('name','like',"%{$search}%");
-            })
-            ->orWhereHas('tags', function($tq) use ($search){
-                $tq->where('name','like',"%{$search}%");
-            });
+                ->orWhereHas('unit', function ($uq) use ($search) {
+                    $uq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('categories', function ($cq) use ($search) {
+                    $cq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('subcategories', function ($sq) use ($search) {
+                    $sq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('divisions', function ($dq) use ($search) {
+                    $dq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('variants', function ($vq) use ($search) {
+                    $vq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('tags', function ($tq) use ($search) {
+                    $tq->where('name', 'like', "%{$search}%");
+                });
         }
 
         // Exact filters by IDs
@@ -592,32 +613,120 @@ class ProductController extends Controller
             $query->whereIn('unit_id', $unitIds);
         }
         if (is_array($categoryIds) && count($categoryIds) > 0) {
-            $query->whereHas('categories', function($q) use ($categoryIds){
+            $query->whereHas('categories', function ($q) use ($categoryIds) {
                 $q->whereIn('id', $categoryIds);
             });
         }
         if (is_array($subcatIds) && count($subcatIds) > 0) {
-            $query->whereHas('subcategories', function($q) use ($subcatIds){
+            $query->whereHas('subcategories', function ($q) use ($subcatIds) {
                 $q->whereIn('id', $subcatIds);
             });
         }
         if (is_array($divisionIds) && count($divisionIds) > 0) {
-            $query->whereHas('divisions', function($q) use ($divisionIds){
+            $query->whereHas('divisions', function ($q) use ($divisionIds) {
                 $q->whereIn('id', $divisionIds);
             });
         }
         if (is_array($variantIds) && count($variantIds) > 0) {
-            $query->whereHas('variants', function($q) use ($variantIds){
+            $query->whereHas('variants', function ($q) use ($variantIds) {
                 $q->whereIn('id', $variantIds);
             });
         }
         if (is_array($tagIds) && count($tagIds) > 0) {
-            $query->whereHas('tags', function($q) use ($tagIds){
+            $query->whereHas('tags', function ($q) use ($tagIds) {
                 $q->whereIn('id', $tagIds);
             });
         }
 
-        return $query->orderBy($sortBy,$sortDir)
+        return $query->orderBy($sortBy, $sortDir)
+            ->paginate($perPage)
+            ->appends($request->query());
+    }
+
+    public function getAllShowcaseProduct(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 15);
+        $search  = $request->input('q');
+        $sortBy  = $request->input('sort_by', 'product_name');
+        $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $unitIds      = $request->input('unit_ids', []);
+        $categoryIds  = $request->input('category_ids', []);
+        $subcatIds    = $request->input('subcat_ids', []);
+        $divisionIds  = $request->input('division_ids', []);
+        $variantIds   = $request->input('variant_ids', []);
+        $tagIds       = $request->input('tag_ids', []);
+        $allowedSorts = ['id', 'product_name', 'description', 'product_price', 'total_stock', 'created_at'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'product_name';
+        }
+
+        $query = Product::with([
+            'stocks',
+            'unit',
+            'categories',
+            'subcategories',
+            'divisions',
+            'tags',
+            'pictures',
+        ])
+            ->where('is_showcase', true);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            })
+                ->orWhereHas('unit', function ($uq) use ($search) {
+                    $uq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('categories', function ($cq) use ($search) {
+                    $cq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('subcategories', function ($sq) use ($search) {
+                    $sq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('divisions', function ($dq) use ($search) {
+                    $dq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('variants', function ($vq) use ($search) {
+                    $vq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('tags', function ($tq) use ($search) {
+                    $tq->where('name', 'like', "%{$search}%");
+                });
+        }
+
+        // Exact filters by IDs
+        if (is_array($unitIds) && count($unitIds) > 0) {
+            $query->whereIn('unit_id', $unitIds);
+        }
+        if (is_array($categoryIds) && count($categoryIds) > 0) {
+            $query->whereHas('categories', function ($q) use ($categoryIds) {
+                $q->whereIn('id', $categoryIds);
+            });
+        }
+        if (is_array($subcatIds) && count($subcatIds) > 0) {
+            $query->whereHas('subcategories', function ($q) use ($subcatIds) {
+                $q->whereIn('id', $subcatIds);
+            });
+        }
+        if (is_array($divisionIds) && count($divisionIds) > 0) {
+            $query->whereHas('divisions', function ($q) use ($divisionIds) {
+                $q->whereIn('id', $divisionIds);
+            });
+        }
+        if (is_array($variantIds) && count($variantIds) > 0) {
+            $query->whereHas('variants', function ($q) use ($variantIds) {
+                $q->whereIn('id', $variantIds);
+            });
+        }
+        if (is_array($tagIds) && count($tagIds) > 0) {
+            $query->whereHas('tags', function ($q) use ($tagIds) {
+                $q->whereIn('id', $tagIds);
+            });
+        }
+
+        return $query->orderBy($sortBy, $sortDir)
             ->paginate($perPage)
             ->appends($request->query());
     }
@@ -710,44 +819,62 @@ class ProductController extends Controller
     public function getTagsPaginated(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);
-        if ($perPage <= 0) { $perPage = 15; }
+        if ($perPage <= 0) {
+            $perPage = 15;
+        }
         $search   = $request->input('q');
         $sortBy   = $request->input('sort_by', 'name');
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSorts = ['id','name','description'];
-        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
+        $allowedSorts = ['id', 'name', 'description'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'name';
+        }
 
         $query = Tags::query();
         if ($search) {
-            $query->where(function($q) use ($search){
-                $q->where('name','like',"%{$search}%")
-                  ->orWhere('description','like',"%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        return $query->orderBy($sortBy,$sortDir)->paginate($perPage)->appends($request->query());
+        return $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
     }
 
     public function createUnit(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|unique:unit,name',
-            'description' => 'string|nullable'
+            'name'        => 'required|string|unique:unit,name',
+            'description' => 'string|nullable',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $create = Unit::create([
-            'name' => $request->name,
-            'description' => $request->description
-        ]);
+        try {
+            DB::beginTransaction();
+            $pictureUrl = null;
+            if ($request->hasFile('image')) {
+                $pictureUrl = $this->uploadUnitImageToS3($request->file('image'));
+            }
 
-        if ($create) {
-            return redirect()->back()->with('success', 'Successfully create unit.');
-        } else {
-            return redirect()->back()->with('error', 'Failed to create unit.');
+            $create = Unit::create([
+                'name'        => $request->name,
+                'description' => $request->description,
+                'picture_url' => $pictureUrl,
+            ]);
+
+            if ($create) {
+                DB::commit();
+                return redirect()->back()->with('success', 'Successfully create unit.');
+            } else {
+                return redirect()->back()->with('error', 'Failed to create unit.');
+            }
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to create unit: ' . $e);
         }
     }
 
@@ -760,24 +887,40 @@ class ProductController extends Controller
                 'string',
                 Rule::unique('unit', 'name')->ignore($request->id),
             ],
-            'description' => 'string|nullable'
+            'description' => 'string|nullable',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $data = Unit::find($request->id);
+        try {
+            DB::beginTransaction();
+            $unit = Unit::find($request->id);
 
-        if (!$data) {
-            return redirect()->back()->with('error', 'Unit not found.');
+            if (!$unit) {
+                return redirect()->back()->with('error', 'Unit not found.');
+            }
+
+            if ($request->hasFile('image')) {
+                if ($unit->picture_url) {
+                    $this->deleteFromS3($unit->picture_url);
+                }
+                $unit->picture_url = $this->uploadUnitImageToS3($request->file('image'), $unit->id);
+            }
+
+            $unit->name        = $request->name;
+            $unit->description = $request->description;
+            $unit->save();
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully update unit.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to update unit: ' . $e);
+            return redirect()->back()->with('error', 'Failed update unit.');
         }
-
-        $data->name = $request->name;
-        $data->description = $request->description;
-        $data->save();
-
-        return redirect()->back()->with('success', 'Successfully update unit.');
     }
 
     public function getAllUnit()
@@ -808,7 +951,7 @@ class ProductController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 

@@ -6,20 +6,15 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Unit extends Model
+class Banner extends Model
 {
     use HasFactory, HasUuids;
 
-    protected $table = 'unit';
+    protected $table = 'banner';
 
     protected $fillable = [
-        'name',
-        'description',
+        'banner_text',
+        'is_active',
         'picture_url'
     ];
-
-    public function categories()
-    {
-        return $this->hasMany(Category::class);
-    }
 }

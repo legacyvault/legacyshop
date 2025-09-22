@@ -20,6 +20,7 @@ class DivisionController extends Controller
             'description' => 'string|nullable',
             'sub_category_id' => 'required|exists:sub_category,id',
             'price' => 'required|numeric',
+            'usd_price' => 'required|numeric',
             'discount' => 'nullable|numeric'
         ]);
 
@@ -151,6 +152,7 @@ class DivisionController extends Controller
             'sub_category_id' => 'required|exists:sub_category,id',
             'description' => 'string|nullable',
             'price' => 'required|numeric',
+            'usd_price' => 'required|numeric',
             'discount' => 'nullable|numeric'
         ]);
 

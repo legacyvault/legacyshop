@@ -17,6 +17,7 @@ class SubCategory extends Model
         'description',
         'category_id',
         'price',
+        'usd_price',
         'discount',
         'total_stock'
     ];
