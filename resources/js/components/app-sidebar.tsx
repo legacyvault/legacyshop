@@ -44,6 +44,17 @@ const mainNavItems: NavItem[] = [
             },
         ],
     },
+    {
+        title: 'Misc',
+        href: '/misc',
+        icon: PackageOpen,
+        child: [
+            {
+                title: 'Running Text',
+                href: '/misc/view-running-text',
+            },
+        ],
+    },
 ];
 
 const footerNavItems: NavItem[] = [

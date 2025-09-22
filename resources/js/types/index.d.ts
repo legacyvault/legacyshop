@@ -46,6 +46,13 @@ export interface SharedData {
     variants: IVariants[];
     variantsPaginated?: IRootVariants;
     products: IRootProducts;
+    runningText: IRunningText[];
+}
+
+export interface IRunningText {
+    id: string;
+    running_text: string;
+    is_active: boolean;
 }
 
 export interface User {

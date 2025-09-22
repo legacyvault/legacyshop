@@ -33,12 +33,12 @@ class MiscController extends Controller
         ]);
 
         if ($create) {
-            return redirect()->route('subcategory')->with('alert', [
+            return redirect()->back()->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully create running text.',
             ]);
         } else {
-            return redirect()->route('subcategory')->with('alert', [
+            return redirect()->back()->with('alert', [
                 'type' => 'error',
                 'message' => 'Failed to create running text.',
             ]);
@@ -67,7 +67,7 @@ class MiscController extends Controller
         $data->is_active = $request->is_active;
         $data->save();
 
-        return redirect()->route('subcategory')->with('alert', [
+        return redirect()->back()->with('alert', [
             'type' => 'success',
             'message' => 'Successfully create running text.',
         ]);

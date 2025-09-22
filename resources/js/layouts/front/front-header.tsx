@@ -3,11 +3,11 @@ import { CartDropdown } from '@/components/CartDropdown';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
-import { Auth } from '@/types';
+import { Auth, IRunningText } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { SearchIcon } from 'lucide-react';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 interface IPropsHeader {
     auth: Auth;
@@ -34,6 +34,8 @@ export default function FrontHeader({ auth, locale, translations, searchValue, o
     const [internalQuery, setInternalQuery] = useState('');
     const value = searchValue !== undefined ? searchValue : internalQuery;
     const marqueeRef = useRef<HTMLDivElement | null>(null);
+    const [runningTexts, setRunningTexts] = useState<IRunningText[]>([]);
+    const [isRTLoading, setIsRTLoading] = useState(true);
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         if (onSearchChange) onSearchChange(e.target.value);
         else setInternalQuery(e.target.value);
@@ -45,10 +47,11 @@ export default function FrontHeader({ auth, locale, translations, searchValue, o
         }
     };
 
-    // Simple GSAP marquee under the admin "Back to Dashboard" bar
-    useEffect(() => {
+    // GSAP marquee: re-init when content changes (ensures seamless loop)
+    useLayoutEffect(() => {
         const el = marqueeRef.current;
         if (!el) return;
+        if (isRTLoading) return; // disable animation until running texts load
 
         const setup = () => {
             const sequenceWidth = el.scrollWidth / 2; // we render the content twice
@@ -77,6 +80,31 @@ export default function FrontHeader({ auth, locale, translations, searchValue, o
             window.removeEventListener('resize', onResize);
             tween && tween.kill();
         };
+        // Depend on runningTexts content length so we re-measure when it changes
+    }, [runningTexts.length, isRTLoading]);
+
+    // Fetch active running texts for the marquee
+    useEffect(() => {
+        let active = true;
+        const load = async () => {
+            try {
+                setIsRTLoading(true);
+                const url = route('active.running-text');
+                const res = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                if (!res.ok) return;
+                const data = (await res.json()) as IRunningText[];
+                if (!active) return;
+                setRunningTexts(Array.isArray(data) ? data : []);
+            } catch (e) {
+                // noop
+            } finally {
+                if (active) setIsRTLoading(false);
+            }
+        };
+        void load();
+        return () => {
+            active = false;
+        };
     }, []);
 
     return (
@@ -99,22 +127,30 @@ export default function FrontHeader({ auth, locale, translations, searchValue, o
             )}
 
             <div className="relative overflow-hidden">
-                <div ref={marqueeRef} className="flex gap-8 py-2 text-[11px] whitespace-nowrap text-gray-600 uppercase will-change-transform">
-                    {/* sequence A */}
-                    {Array.from({ length: 10 }).map((_, i) => (
-                        <div className="flex" key={`a-${i}`}>
-                            <img src="/poke-icon.png" className="me-4 h-4 w-full" />
-                            <span>Hot deals today · Free shipping over $50 · New arrivals weekly</span>
-                        </div>
-                    ))}
-                    {/* sequence B (duplicate) for seamless loop */}
-                    {Array.from({ length: 10 }).map((_, i) => (
-                        <div className="flex" key={`b-${i}`}>
-                            <img src="/poke-icon.png" className="me-4 h-4 w-full" />
-                            <span>Hot deals today · Free shipping over $50 · New arrivals weekly</span>
-                        </div>
-                    ))}
-                </div>
+                {runningTexts.length > 0 && (
+                    <div ref={marqueeRef} className="flex gap-8 py-2 text-[11px] whitespace-nowrap text-gray-600 uppercase will-change-transform">
+                        {/* sequence A: repeat to ensure adequate width */}
+                        {Array.from({ length: runningTexts.length >= 6 ? 2 : runningTexts.length >= 3 ? 4 : 8 })
+                            .flatMap((_, repIdx) =>
+                                runningTexts.map((t, i) => (
+                                    <div className="flex" key={`a-${repIdx}-${i}-${t.id}`}>
+                                        <img src="/poke-icon.png" className="me-4 h-4 w-4" />
+                                        <span>{t.running_text}</span>
+                                    </div>
+                                )),
+                            )}
+                        {/* sequence B: duplicate for seamless loop */}
+                        {Array.from({ length: runningTexts.length >= 6 ? 2 : runningTexts.length >= 3 ? 4 : 8 })
+                            .flatMap((_, repIdx) =>
+                                runningTexts.map((t, i) => (
+                                    <div className="flex" key={`b-${repIdx}-${i}-${t.id}`}>
+                                        <img src="/poke-icon.png" className="me-4 h-4 w-4" />
+                                        <span>{t.running_text}</span>
+                                    </div>
+                                )),
+                            )}
+                    </div>
+                )}
             </div>
             {/* Sticky header containing main header + nav + mobile search */}
             <header className="sticky top-0 z-50 w-full bg-white shadow-sm">

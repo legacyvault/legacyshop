@@ -28,6 +28,10 @@ Route::group(['prefix' => 'v1/cognito'], function () {
 Route::group(['prefix' => 'v1/cognito'], function () {
     Route::post('register', [AwsCognitoAuthController::class, 'registerUser'])->name('cognito.register');
 });
+Route::group(['prefix' => 'v1'], function (){
+    Route::get('active-running-text', [MiscController::class, 'getActiveRunningText'])->name('active.running-text');
+});
+
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Location API
@@ -42,7 +46,6 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 
     //Running Text API
     Route::get('running-text', [MiscController::class, 'getAllRunningText'])->name('running-text');
-    Route::get('active-running-text', [MiscController::class, 'getActiveRunningText'])->name('active.running-text');
 
     //Banner API
     Route::get('all-banner', [MiscController::class, 'getAllBanner'])->name('all-banner');
@@ -205,4 +208,9 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
             Route::get('addvar/{id?}', [ViewController::class, 'addVarPage']);
         });
     });
+
+    Route::prefix('misc')->group(function () {
+        Route::get('view-running-text', [ViewController::class, 'runningTextPage']);
+    });
+
 });
