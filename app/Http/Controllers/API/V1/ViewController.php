@@ -57,6 +57,21 @@ class ViewController extends Controller
         ]);
     }
 
+    public function welcomePage(Request $request)
+    {
+        // Ensure only first 5 products are fetched for the landing page
+        $request->merge(['per_page' => 5]);
+        $products = $this->productController->getAllProduct($request);
+
+        return Inertia::render('welcome', [
+            'products' => $products,
+            'translations' => [        
+                'home' => Lang::get('WelcomeTrans'), 
+                'navbar' => Lang::get('HeaderTrans') 
+            ]
+        ]);
+    }
+
     public function tagsPage(Request $request){
         $tagsPaginated = $this->productController->getTagsPaginated($request);
 
