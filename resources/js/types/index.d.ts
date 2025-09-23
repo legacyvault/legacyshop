@@ -47,7 +47,7 @@ export interface SharedData {
     variantsPaginated?: IRootVariants;
     products: IRootProducts;
     runningText: IRunningText[];
-    banner: IBanner;
+    banner: IBanner[];
 }
 
 export interface IBanner {

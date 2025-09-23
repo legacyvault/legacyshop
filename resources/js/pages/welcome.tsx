@@ -2,7 +2,7 @@ import ImageSequence from '@/components/image-sequence';
 import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
 import FrontLayout from '@/layouts/front/front-layout';
-import { IRootProducts, type SharedData } from '@/types';
+import { IBanner, IRootProducts, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -70,6 +70,8 @@ export default function Welcome() {
 
     const { products: productsPayload, units, banner } = usePage<SharedData>().props;
 
+    const activeBanner: IBanner = banner as unknown as IBanner;
+
     return (
         <>
             <Head title="Welcome">
@@ -79,16 +81,16 @@ export default function Welcome() {
             <div className="">
                 <FrontLayout auth={auth} locale={locale} translations={translations}>
                     {/* BANNER */}
-                    {banner && (
+                    {activeBanner && (
                         <>
                             <section
                                 className="min-h-[400px] w-full bg-cover bg-center bg-no-repeat"
-                                style={{ backgroundImage: `url('${banner?.picture_url ?? '/banner-example.jpg'}')` }}
+                                style={{ backgroundImage: `url('${activeBanner?.picture_url ?? '/banner-example.jpg'}')` }}
                             ></section>
 
                             <div className="mx-auto my-12 max-w-6xl">
                                 <h1 className="text-center text-4xl font-bold">Welcome to Legacy Vault</h1>
-                                <h4 className="mt-4 text-center text-lg font-medium">{banner.banner_text}</h4>
+                                <h4 className="mt-4 text-center text-lg font-medium">{activeBanner.banner_text}</h4>
 
                                 <div className="text-center">
                                     <Button className="mt-4">See More Cases</Button>
