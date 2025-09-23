@@ -71,9 +71,13 @@ class ViewController extends Controller
         // Ensure only first 5 products are fetched for the landing page
         $request->merge(['per_page' => 5]);
         $products = $this->productController->getAllProduct($request);
+        $units = $this->productController->getAllUnit();
+        $banner = $this->miscController->getActiveBanner();
 
         return Inertia::render('welcome', [
             'products' => $products,
+            'units' => $units,
+            'banner' => $banner,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')

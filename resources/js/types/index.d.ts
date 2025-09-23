@@ -47,7 +47,7 @@ export interface SharedData {
     variantsPaginated?: IRootVariants;
     products: IRootProducts;
     runningText: IRunningText[];
-    banner: IBanner[];
+    banner: IBanner;
 }
 
 export interface IBanner {
@@ -91,6 +91,7 @@ export interface IUnit {
     id: string;
     name: string;
     description: string;
+    picture_url?: string;
     categories: ICategories[];
 }
 

@@ -16,6 +16,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface UnitForm {
     name: string;
     description: string;
+    image: File | null;
 }
 
 type EditUnitForm = UnitForm & {
@@ -33,14 +34,20 @@ export default function Unit() {
     const { data, setData, post, processing, errors } = useForm<Required<UnitForm>>({
         name: '',
         description: '',
+        image: null,
     });
 
     const [openAdd, isOpenAdd] = useState(false);
 
     const submitHandler = (e: any) => {
         e.preventDefault();
+        const fd = new FormData();
+        fd.append('name', data.name);
+        fd.append('description', data.description);
+        if (data.image instanceof File) fd.append('image', data.image);
 
-        post(route('unit.create'), {
+        router.post(route('unit.create'), fd, {
+            forceFormData: true,
             onSuccess: () => {
                 isOpenAdd(false);
             },
@@ -66,10 +73,11 @@ export default function Unit() {
 }
 
 function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
-    const { data, setData, post, processing, errors } = useForm<Required<EditUnitForm>>({
+    const { data, setData, post, processing, errors } = useForm<Required<EditUnitForm & { image: File | null }>>({
         id: '',
         name: '',
         description: '',
+        image: null,
     });
 
     const [openEdit, isOpenEdit] = useState(false);
@@ -85,7 +93,13 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
 
     const SubmitHandler = (e: any) => {
         e.preventDefault();
-        post(route('unit.update'), {
+        const fd = new FormData();
+        fd.append('id', (data as any).id);
+        fd.append('name', data.name);
+        fd.append('description', data.description);
+        if ((data as any).image instanceof File) fd.append('image', (data as any).image);
+        router.post(route('unit.update'), fd, {
+            forceFormData: true,
             onSuccess: () => {
                 isOpenEdit(false);
             },

@@ -846,7 +846,7 @@ class ProductController extends Controller
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string|unique:unit,name',
             'description' => 'string|nullable',
-            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -888,7 +888,7 @@ class ProductController extends Controller
                 Rule::unique('unit', 'name')->ignore($request->id),
             ],
             'description' => 'string|nullable',
-            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
         ]);
 
         if ($validator->fails()) {

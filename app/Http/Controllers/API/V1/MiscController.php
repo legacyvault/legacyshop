@@ -133,7 +133,7 @@ class MiscController extends Controller
 
             DB::commit();
 
-            return redirect()->route('subcategory')->with('alert', [
+            return redirect()->back()->with('alert', [
                 'type'    => 'success',
                 'message' => 'Successfully create banner.',
             ]);
@@ -141,7 +141,7 @@ class MiscController extends Controller
             DB::rollBack();
             Log::error('[ERROR] Failed to create banner: ' . $e->getMessage());
 
-            return redirect()->route('subcategory')->with('alert', [
+            return redirect()->back()->with('alert', [
                 'type'    => 'error',
                 'message' => 'Failed to create banner.',
             ]);
