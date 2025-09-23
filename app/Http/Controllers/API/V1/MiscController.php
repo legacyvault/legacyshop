@@ -20,37 +20,42 @@ class MiscController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'running_text' => 'required|string',
-            'is_active' => 'nullable'
+            'is_active'    => 'nullable|boolean'
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
+        if ($request->boolean('is_active')) {
+            RunningText::where('is_active', true)->update(['is_active' => false]);
+        }
+
         $create = RunningText::create([
             'running_text' => $request->running_text,
-            'is_active' => $request->is_active,
+            'is_active'    => $request->boolean('is_active'),
         ]);
 
         if ($create) {
             return redirect()->route('subcategory')->with('alert', [
-                'type' => 'success',
+                'type'    => 'success',
                 'message' => 'Successfully create running text.',
             ]);
         } else {
             return redirect()->route('subcategory')->with('alert', [
-                'type' => 'error',
+                'type'    => 'error',
                 'message' => 'Failed to create running text.',
             ]);
         }
     }
 
+
     public function updateRunningText(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id' => 'required|exists:running_text,id',
+            'id'           => 'required|exists:running_text,id',
             'running_text' => 'required|string',
-            'is_active' => 'nullable'
+            'is_active'    => 'nullable|boolean'
         ]);
 
         if ($validator->fails()) {
@@ -63,15 +68,22 @@ class MiscController extends Controller
             return redirect()->back()->with('error', 'Running text not found.');
         }
 
+        if ($request->boolean('is_active')) {
+            RunningText::where('id', '!=', $data->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
+        }
+
         $data->running_text = $request->running_text;
-        $data->is_active = $request->is_active;
+        $data->is_active = $request->boolean('is_active');
         $data->save();
 
         return redirect()->route('subcategory')->with('alert', [
-            'type' => 'success',
-            'message' => 'Successfully create running text.',
+            'type'    => 'success',
+            'message' => 'Successfully update running text.',
         ]);
     }
+
 
     public function getAllRunningText()
     {
@@ -82,7 +94,9 @@ class MiscController extends Controller
 
     public function getActiveRunningText()
     {
-        $data = RunningText::orderBy('created_at', 'desc')->where('is_active', true)->get();
+        $data = RunningText::where('is_active', true)
+            ->latest()
+            ->first();
 
         return $data;
     }
@@ -91,8 +105,8 @@ class MiscController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'banner_text' => 'required|string',
-            'is_active' => 'nullable',
-            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'is_active'   => 'nullable|boolean',
+            'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -101,42 +115,46 @@ class MiscController extends Controller
 
         try {
             DB::beginTransaction();
+
             $pictureUrl = null;
             if ($request->hasFile('image')) {
                 $pictureUrl = $this->uploadBannerImageToS3($request->file('image'));
             }
 
+            if ($request->boolean('is_active')) {
+                Banner::where('is_active', true)->update(['is_active' => false]);
+            }
+
             $create = Banner::create([
                 'banner_text' => $request->banner_text,
-                'is_active' => $request->is_active,
+                'is_active'   => $request->boolean('is_active'),
                 'picture_url' => $pictureUrl,
             ]);
 
-            if ($create) {
-                DB::commit();
-                return redirect()->route('subcategory')->with('alert', [
-                    'type' => 'success',
-                    'message' => 'Successfully create banner.',
-                ]);
-            } else {
-                return redirect()->route('subcategory')->with('alert', [
-                    'type' => 'error',
-                    'message' => 'Failed to create banner.',
-                ]);
-            }
+            DB::commit();
+
+            return redirect()->route('subcategory')->with('alert', [
+                'type'    => 'success',
+                'message' => 'Successfully create banner.',
+            ]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('[ERROR] Failed to create banner: ' . $e);
+            Log::error('[ERROR] Failed to create banner: ' . $e->getMessage());
+
+            return redirect()->route('subcategory')->with('alert', [
+                'type'    => 'error',
+                'message' => 'Failed to create banner.',
+            ]);
         }
     }
 
     public function updateBanner(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id' => 'required|exists:banner,id',
-            'banner_text' => 'string|required',
-            'is_active' => 'nullable',
-            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'id'          => 'required|exists:banner,id',
+            'banner_text' => 'required|string',
+            'is_active'   => 'nullable|boolean',
+            'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -145,8 +163,8 @@ class MiscController extends Controller
 
         try {
             DB::beginTransaction();
-            $banner = Banner::find($request->id);
 
+            $banner = Banner::find($request->id);
             if (!$banner) {
                 return redirect()->back()->with('error', 'Banner not found.');
             }
@@ -159,15 +177,23 @@ class MiscController extends Controller
             }
 
             $banner->banner_text = $request->banner_text;
-            $banner->is_active = $request->is_active;
-            $banner->save();
 
+            if ($request->boolean('is_active')) {
+                Banner::where('is_active', true)
+                    ->where('id', '!=', $banner->id)
+                    ->update(['is_active' => false]);
+            }
+            $banner->is_active = $request->boolean('is_active');
+
+            $banner->save();
             DB::commit();
+
             return redirect()->back()->with('success', 'Successfully update banner.');
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('[ERROR] Failed to update banner: ' . $e);
-            return redirect()->back()->with('error', 'Failed update banner.');
+            Log::error('[ERROR] Failed to update banner: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to update banner.');
         }
     }
 
@@ -180,7 +206,9 @@ class MiscController extends Controller
 
     public function getActiveBanner()
     {
-        $data = Banner::orderBy('created_at', 'desc')->where('is_active', true)->get();
+        $data = Banner::orderBy('created_at', 'desc')->where('is_active', true)
+            ->latest()
+            ->first();
 
         return $data;
     }
