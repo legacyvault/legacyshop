@@ -247,19 +247,13 @@ class ViewController extends Controller
     {
         $products = $this->productController->getAllProduct($request);
         $units = $this->productController->getAllUnit();
-        $categories = $this->productController->getAllCategory();
-        $subcats = $this->subcategoryController->getAllSubCategory();
-        $divisions = $this->divisionController->getAllDivision();
-        $variants = $this->variantController->getAllVariant();
+        $tags = $this->productController->getAllTags();
 
         return Inertia::render('front/products/index', [
             'products' => $products,
             'units' => $units,
-            'categories' => $categories,
-            'subcats' => $subcats,
-            'divisions' => $divisions,
-            'variants' => $variants,
-            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'unit_ids', 'category_ids', 'subcat_ids', 'division_ids', 'variant_ids', 'tag_ids'),
+            'tags' => $tags,
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'unit_ids', 'tag_ids'),
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
