@@ -318,4 +318,12 @@ class ViewController extends Controller
             'runningText' => $runningText,
         ]);
     }
+
+    public function bannerPage(){
+        $banner = $this->miscController->getAllBanner();
+
+        return Inertia::render('misc/banner', [
+            'banner' => $banner
+        ]);
+    }
 }

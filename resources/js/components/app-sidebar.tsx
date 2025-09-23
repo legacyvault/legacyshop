@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { LayoutGrid, PackageOpen, Store } from 'lucide-react';
+import { Cable, LayoutGrid, PackageOpen, Store } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -47,11 +47,15 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Misc',
         href: '/misc',
-        icon: PackageOpen,
+        icon: Cable,
         child: [
             {
                 title: 'Running Text',
                 href: '/misc/view-running-text',
+            },
+            {
+                title: 'Banner',
+                href: '/misc/view-banner',
             },
         ],
     },

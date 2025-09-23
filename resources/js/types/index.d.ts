@@ -47,6 +47,14 @@ export interface SharedData {
     variantsPaginated?: IRootVariants;
     products: IRootProducts;
     runningText: IRunningText[];
+    banner: IBanner[];
+}
+
+export interface IBanner {
+    id: string;
+    banner_text: string;
+    is_active: boolean;
+    picture_url: string;
 }
 
 export interface IRunningText {

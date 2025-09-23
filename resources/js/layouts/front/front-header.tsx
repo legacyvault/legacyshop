@@ -120,9 +120,10 @@ export default function FrontHeader({ auth, locale, translations, searchValue, o
                 const url = route('active.running-text');
                 const res = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
                 if (!res.ok) return;
-                const data = (await res.json()) as IRunningText[];
+                const data = await res.json();
                 if (!active) return;
-                setRunningTexts(Array.isArray(data) ? data : []);
+                const list: IRunningText[] = Array.isArray(data) ? data : data && typeof data === 'object' ? [data as IRunningText] : [];
+                setRunningTexts(list);
             } catch (e) {
                 // noop
             } finally {

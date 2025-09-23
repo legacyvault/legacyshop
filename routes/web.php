@@ -30,6 +30,7 @@ Route::group(['prefix' => 'v1/cognito'], function () {
 });
 Route::group(['prefix' => 'v1'], function (){
     Route::get('active-running-text', [MiscController::class, 'getActiveRunningText'])->name('active.running-text');
+    Route::get('active-banner', [MiscController::class, 'getActiveBanner'])->name('active.banner');
 });
 
 
@@ -49,7 +50,6 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 
     //Banner API
     Route::get('all-banner', [MiscController::class, 'getAllBanner'])->name('all-banner');
-    Route::get('active-banner', [MiscController::class, 'getActiveBanner'])->name('active.banner');
 
     //Carts API
     Route::post('add-cart', [CartsController::class, 'addToCart'])->name('add.cart');
@@ -210,7 +210,9 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
     });
 
     Route::prefix('misc')->group(function () {
+        Route::redirect('/', '/misc/view-running-text');
         Route::get('view-running-text', [ViewController::class, 'runningTextPage']);
+        Route::get('view-banner', [ViewController::class, 'bannerPage']);
     });
 
 });

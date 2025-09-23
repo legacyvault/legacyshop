@@ -2,11 +2,12 @@ import ImageSequence from '@/components/image-sequence';
 import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
 import FrontLayout from '@/layouts/front/front-layout';
+import type { IBanner } from '@/types';
 import { IRootProducts, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -42,6 +43,7 @@ export default function Welcome() {
     const textRef1 = useRef<HTMLDivElement | null>(null);
     const textRef2 = useRef<HTMLDivElement | null>(null);
     const bottomRef = useRef<HTMLDivElement | null>(null);
+    const [activeBanner, setActiveBanner] = useState<IBanner | null>(null);
 
     useEffect(() => {
         if (!textRef1.current && !textRef2.current) return;
@@ -70,6 +72,28 @@ export default function Welcome() {
 
     const { products: productsPayload } = usePage<{ products?: IRootProducts }>().props;
 
+    // Fetch active banner (returns single object; handle array/object just in case)
+    useEffect(() => {
+        let mounted = true;
+        const load = async () => {
+            try {
+                const url = route('active.banner');
+                const res = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!mounted) return;
+                const banner: IBanner | null = Array.isArray(data) ? (data[0] ?? null) : (data ?? null);
+                setActiveBanner(banner);
+            } catch (_) {
+                // no-op: keep fallbacks
+            }
+        };
+        void load();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
     return (
         <>
             <Head title="Welcome">
@@ -79,15 +103,22 @@ export default function Welcome() {
             <div className="">
                 <FrontLayout auth={auth} locale={locale} translations={translations}>
                     {/* BANNER */}
-                    <section className="min-h-[400px] w-full bg-[url('/banner-example.jpg')] bg-cover"></section>
+                    <section
+                        className="min-h-[400px] w-full bg-cover bg-center bg-no-repeat"
+                        style={{ backgroundImage: `url('${activeBanner?.picture_url ?? '/banner-example.jpg'}')` }}
+                    ></section>
 
-                    <div className="mx-auto my-12 max-w-2xl">
-                        <h1 className="text-center text-4xl font-bold">Welcome to Legacy Vault</h1>
-                        <h4 className="font- mt-4 text-center text-lg">
-                            At LegacyVault, we believe every detail matters. When we say custom, we mean truly one-of-a-kind. Our skilled design team
-                            pours passion and precision into creating extended backgrounds that elevate your favorite cards into stunning works of
-                            art.
-                        </h4>
+                    <div className="mx-auto my-12 max-w-6xl">
+                        {activeBanner && (
+                            <>
+                                <h1 className="text-center text-4xl font-bold">Welcome to Legacy Vault</h1>
+                                <h4 className="mt-4 text-center text-lg font-medium">{activeBanner.banner_text}</h4>
+                            </>
+                        )}
+
+                        <div className="text-center">
+                            <Button className="mt-4">See More Cases</Button>
+                        </div>
                     </div>
 
                     {/* HERO + SEQUENCE SECTION */}
