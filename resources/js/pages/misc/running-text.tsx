@@ -9,7 +9,7 @@ import { useState } from 'react';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Misc - Running Text',
-        href: '/misc/category',
+        href: '/misc/view-running-text',
     },
 ];
 
@@ -46,7 +46,7 @@ export default function RunningText() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Products - Category" />
+            <Head title="Misc - Running Text" />
             <div className="p-4">
                 <Button onClick={() => isOpenAdd(true)}>Add Running Text</Button>
                 <RunnigTextDialog
