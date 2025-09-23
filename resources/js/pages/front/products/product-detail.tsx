@@ -102,12 +102,15 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     }, [selectedDiv]);
 
     const extraPriceVariant = useMemo(() => {
-        const basePrice = selectedSubcat?.price ?? 0;
+        const basePrice = selectedVar?.price ?? 0;
         const discountPct = selectedVar?.pivot.use_variant_discount === 1 ? (selectedVar.discount ?? 0) : (selectedVar?.pivot.manual_discount ?? 0);
         return Math.round(basePrice - (basePrice * discountPct) / 100);
     }, [selectedVar]);
 
     const basePrice = product.product_price;
+    const basePriceWithExtra = useMemo(() => {
+        return basePrice + (selectedSubcat?.price ?? 0) + (selectedDiv?.price ?? 0) + (selectedVar?.price ?? 0);
+    }, [selectedSubcat, selectedDiv, selectedVar]);
     const discountPct = Number(product.product_discount);
     const finalPrice = useMemo(() => {
         if (!discountPct) return Math.round(basePrice);
@@ -237,7 +240,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                         <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(finalPrice)}</div>
                         {discountPct > 0 && (
                             <>
-                                <span className="text-sm text-destructive line-through">{formatPrice(basePrice)}</span>
+                                <span className="text-sm text-destructive line-through">{formatPrice(basePriceWithExtra)}</span>
                                 <Badge variant="destructive">{discountPct}%</Badge>
                             </>
                         )}

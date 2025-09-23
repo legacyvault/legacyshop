@@ -18,6 +18,7 @@ class ViewController extends Controller
     protected $divisionController;
     protected $variantController;
     protected $cartController;
+    protected $miscController;
 
     public function __construct(Request $request)
     {
@@ -27,6 +28,7 @@ class ViewController extends Controller
         $this->divisionController = new DivisionController();
         $this->variantController = new VariantController();
         $this->cartController = new CartsController();
+        $this->miscController = new MiscController();
     }
 
     public function unitPage(Request $request)
@@ -306,6 +308,22 @@ class ViewController extends Controller
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans'),
             ],
+        ]);
+    }
+
+    public function runningTextPage(){
+        $runningText = $this->miscController->getAllRunningText();
+
+        return Inertia::render('misc/running-text', [
+            'runningText' => $runningText,
+        ]);
+    }
+
+    public function bannerPage(){
+        $banner = $this->miscController->getAllBanner();
+
+        return Inertia::render('misc/banner', [
+            'banner' => $banner
         ]);
     }
 }

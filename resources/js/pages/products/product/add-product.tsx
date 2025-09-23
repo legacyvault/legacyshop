@@ -18,9 +18,9 @@ interface FormData {
     variant: string[];
     tags: string[];
     // New discount structure - each value has its own discount settings
-    subcategoryDiscounts: Record<string, { source: string; value: string }>; // e.g., { "subcategory 1": { source: "subcategory 1", value: "10" } }
-    divisionDiscounts: Record<string, { source: string; value: string }>;
-    variantDiscounts: Record<string, { source: string; value: string }>;
+    subcategoryDiscounts: Record<string, { source: string; value: string; base_price: number }>; // e.g., { "subcategory 1": { source: "subcategory 1", value: "10" } }
+    divisionDiscounts: Record<string, { source: string; value: string; base_price: number }>;
+    variantDiscounts: Record<string, { source: string; value: string; base_price: number }>;
 }
 
 interface FormErrors {
@@ -507,7 +507,7 @@ export default function AddProduct() {
             // Add new selections with default settings
             values.forEach((value) => {
                 if (!newDiscounts[value]) {
-                    newDiscounts[value] = { source: '', value: '' };
+                    newDiscounts[value] = { source: '', value: '', base_price: 0 };
                 }
             });
 
@@ -633,15 +633,18 @@ export default function AddProduct() {
         const basePrice = Number(formData.price) || 0;
         let finalPrice = basePrice;
 
+        // Apply product discounts
+        finalPrice = finalPrice - (basePrice * Number(formData.product_discount)) / 100;
+
         // Apply subcategory discounts based on selected source
         formData.subcategory.forEach((id) => {
             const d = formData.subcategoryDiscounts[id];
             if (!d) return;
             if (d.source === 'manual' && d.value) {
-                finalPrice = finalPrice * (1 - Number(d.value) / 100);
+                finalPrice = finalPrice + (d.base_price - (d.base_price * Number(d.value)) / 100);
             } else if (d.source === id) {
                 const def = subcatDiscountById[id] || 0;
-                if (def > 0) finalPrice = finalPrice * (1 - def / 100);
+                if (def > 0) finalPrice = finalPrice + (d.base_price - (d.base_price * Number(def)) / 100);
             }
         });
 
@@ -650,10 +653,10 @@ export default function AddProduct() {
             const d = formData.divisionDiscounts[id];
             if (!d) return;
             if (d.source === 'manual' && d.value) {
-                finalPrice = finalPrice * (1 - Number(d.value) / 100);
+                finalPrice = finalPrice + (d.base_price - (d.base_price * Number(d.value)) / 100);
             } else if (d.source === id) {
                 const def = divisionDiscountById[id] || 0;
-                if (def > 0) finalPrice = finalPrice * (1 - def / 100);
+                if (def > 0) finalPrice = finalPrice + (d.base_price - (d.base_price * Number(def)) / 100);
             }
         });
 
@@ -662,10 +665,10 @@ export default function AddProduct() {
             const d = formData.variantDiscounts[id];
             if (!d) return;
             if (d.source === 'manual' && d.value) {
-                finalPrice = finalPrice * (1 - Number(d.value) / 100);
+                finalPrice = finalPrice + (d.base_price - (d.base_price * Number(d.value)) / 100);
             } else if (d.source === id) {
                 const def = variantDiscountById[id] || 0;
-                if (def > 0) finalPrice = finalPrice * (1 - def / 100);
+                if (def > 0) finalPrice = finalPrice + (d.base_price - (d.base_price * Number(def)) / 100);
             }
         });
 
@@ -763,7 +766,6 @@ export default function AddProduct() {
     };
 
     const finalPrice = calculateFinalPrice();
-    const hasDiscount = finalPrice < Number(formData.price || 0);
 
     // Compute remaining slots and counts for UI
     const existingKeptCount = existingPictures.filter((p) => !removePictureIds.includes(p.id)).length;
@@ -1298,8 +1300,10 @@ export default function AddProduct() {
                             {/* Product Discounts */}
                             {formData.product_discount && (
                                 <div className="flex justify-between text-orange-600">
-                                    <span>Product Discount ({formData.product_discount}%)</span>
-                                    <span>-Rp {formatRupiah(String((Number(formData.price) * Number(formData.product_discount)) / 100))}</span>
+                                    <span>
+                                        Product Discount {formData.product_discount}% (-Rp{' '}
+                                        {formatRupiah(String((Number(formData.price) * Number(formData.product_discount)) / 100))})
+                                    </span>
                                 </div>
                             )}
 
@@ -1310,9 +1314,13 @@ export default function AddProduct() {
                                 return applied ? (
                                     <div key={id} className="flex justify-between text-blue-600">
                                         <span>
-                                            {subcatNameById[id] || id} Discount ({applied}%):
+                                            {subcatNameById[id] || id}
+                                            <br />
+                                            Rp. {formatRupiah(d.base_price.toString())}
+                                            <br />
+                                            Discount {applied}% ( -Rp {formatRupiah(String((Number(d.base_price) * applied) / 100))})
                                         </span>
-                                        <span>-Rp {formatRupiah(String((Number(formData.price) * applied) / 100))}</span>
+                                        <span>Rp {formatRupiah(String(d.base_price - (Number(d.base_price) * applied) / 100))}</span>
                                     </div>
                                 ) : null;
                             })}
@@ -1324,9 +1332,13 @@ export default function AddProduct() {
                                 return applied ? (
                                     <div key={id} className="flex justify-between text-green-600">
                                         <span>
-                                            {divisionNameById[id] || id} Discount ({applied}%):
+                                            {divisionNameById[id] || id}
+                                            <br />
+                                            Rp. {formatRupiah(d.base_price.toString())}
+                                            <br />
+                                            Discount {applied}% ( -Rp {formatRupiah(String((Number(d.base_price) * applied) / 100))})
                                         </span>
-                                        <span>-Rp {formatRupiah(String((Number(formData.price) * applied) / 100))}</span>
+                                        <span>Rp {formatRupiah(String(d.base_price - (Number(d.base_price) * applied) / 100))}</span>
                                     </div>
                                 ) : null;
                             })}
@@ -1338,9 +1350,13 @@ export default function AddProduct() {
                                 return applied ? (
                                     <div key={id} className="flex justify-between text-purple-600">
                                         <span>
-                                            {variantNameById[id] || id} Discount ({applied}%):
+                                            {variantNameById[id] || id}
+                                            <br />
+                                            Rp. {formatRupiah(d.base_price.toString())}
+                                            <br />
+                                            Discount {applied}% ( -Rp {formatRupiah(String((Number(d.base_price) * applied) / 100))})
                                         </span>
-                                        <span>-Rp {formatRupiah(String((Number(formData.price) * applied) / 100))}</span>
+                                        <span>Rp {formatRupiah(String(d.base_price - (Number(d.base_price) * applied) / 100))}</span>
                                     </div>
                                 ) : null;
                             })}
@@ -1348,13 +1364,11 @@ export default function AddProduct() {
                             <hr className="my-2" />
                             <div className="flex justify-between font-medium">
                                 <span>Final Price:</span>
-                                <span className={hasDiscount ? 'text-green-600' : ''}>Rp {formatRupiah(String(Math.round(finalPrice)))}</span>
+                                <span>Rp {formatRupiah(String(Math.round(finalPrice)))}</span>
                             </div>
-                            {hasDiscount && (
-                                <div className="text-xs text-gray-500">
-                                    Total discount: Rp {formatRupiah(String(Number(formData.price) - Math.round(finalPrice)))}
-                                </div>
-                            )}
+                            <div className="text-xs text-gray-500">
+                                Total discount: Rp {formatRupiah(String(Math.round(finalPrice) - Number(formData.price)))}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1388,18 +1402,30 @@ export function usePrefillProduct(
 
         setIsInitializing(true);
         // Build discount maps defaulting to using each entity's default discount
-        const subDiscounts: Record<string, { source: string; value: string }> = {};
-        const divDiscounts: Record<string, { source: string; value: string }> = {};
-        const varDiscounts: Record<string, { source: string; value: string }> = {};
+        const subDiscounts: Record<string, { source: string; value: string; base_price: number }> = {};
+        const divDiscounts: Record<string, { source: string; value: string; base_price: number }> = {};
+        const varDiscounts: Record<string, { source: string; value: string; base_price: number }> = {};
 
         (selectedProd.subcategories || []).forEach((s) => {
-            subDiscounts[s.id] = { source: s.id, value: '' };
+            subDiscounts[s.id] = {
+                source: s.pivot.use_subcategory_discount === 1 ? s.id : 'manual',
+                value: s.pivot.use_subcategory_discount === 1 ? '' : s.pivot.manual_discount.toString(),
+                base_price: s.price,
+            };
         });
         (selectedProd.divisions || []).forEach((d) => {
-            divDiscounts[d.id] = { source: d.id, value: '' };
+            divDiscounts[d.id] = {
+                source: d.pivot.use_division_discount === 1 ? d.id : 'manual',
+                value: d.pivot.use_division_discount === 1 ? '' : d.pivot.manual_discount.toString(),
+                base_price: d.price,
+            };
         });
         (selectedProd.variants || []).forEach((v) => {
-            varDiscounts[v.id] = { source: v.id, value: '' };
+            varDiscounts[v.id] = {
+                source: v.pivot.use_variant_discount === 1 ? v.id : 'manual',
+                value: v.pivot.use_variant_discount === 1 ? '' : v.pivot.manual_discount.toString(),
+                base_price: v.price,
+            };
         });
 
         setFormData((prev) => ({
