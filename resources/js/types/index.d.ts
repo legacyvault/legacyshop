@@ -252,6 +252,8 @@ export interface IProducts {
     unit_id: string;
     updated_at: string;
     variants: (IVariants & { pivot: IPivotVariantProd })[];
+    product_sku: string;
+    product_usd_price: number;
 }
 
 export interface IPivotDivisionProd {

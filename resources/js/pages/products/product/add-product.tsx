@@ -12,6 +12,8 @@ interface FormData {
     price: string;
     product_discount: string;
     unit: string;
+    product_sku: string;
+    product_usd_price: string;
     category: string[];
     subcategory: string[];
     division: string[];
@@ -35,6 +37,8 @@ interface FormErrors {
     division?: string;
     variant?: string;
     tags?: string;
+    product_sku?: string;
+    product_usd_price?: string;
     // New discount error structure
     subcategoryDiscounts?: Record<string, string>;
     divisionDiscounts?: Record<string, string>;
@@ -280,6 +284,8 @@ export default function AddProduct() {
         divisionDiscounts: {},
         variantDiscounts: {},
         tags: [],
+        product_sku: '',
+        product_usd_price: '',
     });
     // Prevent cascading reset effects during initial prefill
     const [isInitializing, setIsInitializing] = useState(false);
@@ -628,6 +634,12 @@ export default function AddProduct() {
         handleInputChange('price', value);
     };
 
+    // Handle price usd input
+    const handlePriceUsdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        handleInputChange('product_usd_price', value);
+    };
+
     // Calculate final price with discounts
     const calculateFinalPrice = () => {
         const basePrice = Number(formData.price) || 0;
@@ -697,6 +709,8 @@ export default function AddProduct() {
         fd.append('product_discount', formData.product_discount);
         fd.append('description', formData.description);
         fd.append('unit_id', formData.unit);
+        fd.append('product_sku', formData.product_sku);
+        fd.append('product_usd_price', formData.product_usd_price);
 
         formData.images.forEach((file) => fd.append('pictures[]', file));
         // Removing selected existing pictures on edit
@@ -826,6 +840,21 @@ export default function AddProduct() {
                         placeholder="Enter product name"
                     />
                     {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+                </div>
+
+                {/* SKU Field */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">SKU *</label>
+                    <input
+                        type="text"
+                        value={formData.product_sku}
+                        onChange={(e) => handleInputChange('product_sku', e.target.value)}
+                        className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                            errors.product_sku ? 'border-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter product SKU"
+                    />
+                    {errors.product_sku && <p className="mt-1 text-sm text-red-500">{errors.product_sku}</p>}
                 </div>
 
                 {/* Multiple Image Upload */}
@@ -958,6 +987,24 @@ export default function AddProduct() {
                         />
                     </div>
                     {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
+                </div>
+
+                {/* USD Price Field */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">Price (USD) *</label>
+                    <div className="relative">
+                        <span className="absolute top-2 left-3 text-gray-500">$ </span>
+                        <input
+                            type="text"
+                            value={formatRupiah(formData.product_usd_price)}
+                            onChange={handlePriceUsdChange}
+                            className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
+                                errors.price ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="0"
+                        />
+                    </div>
+                    {errors.product_usd_price && <p className="mt-1 text-sm text-red-500">{errors.product_usd_price}</p>}
                 </div>
 
                 {/*  Product Discount Field */}
@@ -1430,6 +1477,8 @@ export function usePrefillProduct(
 
         setFormData((prev) => ({
             ...prev,
+            product_sku: selectedProd.product_sku || '',
+            product_usd_price: String(selectedProd.product_usd_price) || '',
             name: selectedProd.product_name || '',
             description: selectedProd.description || '',
             price: String(selectedProd.product_price ?? ''),
