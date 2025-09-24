@@ -50,6 +50,11 @@ export default function ViewDivision() {
         return new Intl.NumberFormat('id-ID').format(Number(number));
     };
 
+    const formatUsd = (value: string) => {
+        const number = value.replace(/\D/g, '');
+        return new Intl.NumberFormat('en-US').format(Number(number));
+    };
+
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -167,6 +172,12 @@ export default function ViewDivision() {
                                 <div className="space-y-2">
                                     <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Price</h3>
                                     <p className="text-xl font-bold text-primary">Rp. {formatRupiah(selectedDivision.price.toString())}</p>
+                                </div>
+
+                                {/* USD Price */}
+                                <div className="space-y-2">
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Price (USD)</h3>
+                                    <p className="text-xl font-bold text-primary">$ {formatUsd(selectedDivision.usd_price.toString())}</p>
                                 </div>
 
                                 {/* discount */}

@@ -18,7 +18,12 @@ class Product extends Model
         'unit_id',
         'product_price',
         'product_usd_price',
-        'product_discount'
+        'product_discount',
+        'is_showcase'
+    ];
+
+    protected $casts = [
+        'is_showcase' => 'boolean',
     ];
 
     public function stocks()

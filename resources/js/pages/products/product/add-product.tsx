@@ -12,11 +12,14 @@ interface FormData {
     price: string;
     product_discount: string;
     unit: string;
+    product_sku: string;
+    product_usd_price: string;
     category: string[];
     subcategory: string[];
     division: string[];
     variant: string[];
     tags: string[];
+    is_showcase: boolean;
     // New discount structure - each value has its own discount settings
     subcategoryDiscounts: Record<string, { source: string; value: string; base_price: number }>; // e.g., { "subcategory 1": { source: "subcategory 1", value: "10" } }
     divisionDiscounts: Record<string, { source: string; value: string; base_price: number }>;
@@ -35,6 +38,9 @@ interface FormErrors {
     division?: string;
     variant?: string;
     tags?: string;
+    product_sku?: string;
+    product_usd_price?: string;
+    is_showcase?: string;
     // New discount error structure
     subcategoryDiscounts?: Record<string, string>;
     divisionDiscounts?: Record<string, string>;
@@ -280,6 +286,9 @@ export default function AddProduct() {
         divisionDiscounts: {},
         variantDiscounts: {},
         tags: [],
+        product_sku: '',
+        product_usd_price: '',
+        is_showcase: false,
     });
     // Prevent cascading reset effects during initial prefill
     const [isInitializing, setIsInitializing] = useState(false);
@@ -628,6 +637,12 @@ export default function AddProduct() {
         handleInputChange('price', value);
     };
 
+    // Handle price usd input
+    const handlePriceUsdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        handleInputChange('product_usd_price', value);
+    };
+
     // Calculate final price with discounts
     const calculateFinalPrice = () => {
         const basePrice = Number(formData.price) || 0;
@@ -697,6 +712,9 @@ export default function AddProduct() {
         fd.append('product_discount', formData.product_discount);
         fd.append('description', formData.description);
         fd.append('unit_id', formData.unit);
+        fd.append('product_sku', formData.product_sku);
+        fd.append('product_usd_price', formData.product_usd_price);
+        fd.append('is_showcase', formData.is_showcase ? '1' : '0');
 
         formData.images.forEach((file) => fd.append('pictures[]', file));
         // Removing selected existing pictures on edit
@@ -756,6 +774,7 @@ export default function AddProduct() {
                 if ((err as any).unit_id) mapped.unit = (err as any).unit_id as string;
                 if ((err as any).categories) mapped.category = (err as any).categories as string;
                 if ((err as any).tag_id) mapped.tags = (err as any).tag_id as string;
+                if ((err as any).is_showcase) mapped.is_showcase = (err as any).is_showcase as string;
                 if (Object.keys(err as any).some((k) => k.startsWith('pictures'))) mapped.images = 'Invalid pictures uploaded';
                 if (Object.keys(err as any).some((k) => k.startsWith('sub_categories'))) mapped.subcategory = 'Invalid subcategory selection';
                 if (Object.keys(err as any).some((k) => k.startsWith('divisions'))) mapped.division = 'Invalid division selection';
@@ -826,6 +845,21 @@ export default function AddProduct() {
                         placeholder="Enter product name"
                     />
                     {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+                </div>
+
+                {/* SKU Field */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">SKU *</label>
+                    <input
+                        type="text"
+                        value={formData.product_sku}
+                        onChange={(e) => handleInputChange('product_sku', e.target.value)}
+                        className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                            errors.product_sku ? 'border-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter product SKU"
+                    />
+                    {errors.product_sku && <p className="mt-1 text-sm text-red-500">{errors.product_sku}</p>}
                 </div>
 
                 {/* Multiple Image Upload */}
@@ -960,6 +994,24 @@ export default function AddProduct() {
                     {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
                 </div>
 
+                {/* USD Price Field */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">Price (USD) *</label>
+                    <div className="relative">
+                        <span className="absolute top-2 left-3 text-gray-500">$ </span>
+                        <input
+                            type="text"
+                            value={formatRupiah(formData.product_usd_price)}
+                            onChange={handlePriceUsdChange}
+                            className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
+                                errors.price ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="0"
+                        />
+                    </div>
+                    {errors.product_usd_price && <p className="mt-1 text-sm text-red-500">{errors.product_usd_price}</p>}
+                </div>
+
                 {/*  Product Discount Field */}
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Product Discount</label>
@@ -976,6 +1028,24 @@ export default function AddProduct() {
                         />
                         <span className="absolute top-2 right-3 text-gray-500">%</span>
                     </div>
+                </div>
+
+                {/* Showcase Toggle */}
+                <div className="mb-6">
+                    <label htmlFor="is_showcase" className="mb-2 block text-sm font-medium">
+                        Showcase Product
+                    </label>
+                    <div className="flex items-center gap-3">
+                        <input
+                            id="is_showcase"
+                            type="checkbox"
+                            checked={formData.is_showcase}
+                            onChange={(e) => handleInputChange('is_showcase', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-gray-600">Display this product on the showcase section.</span>
+                    </div>
+                    {errors.is_showcase && <p className="mt-1 text-sm text-red-500">{errors.is_showcase}</p>}
                 </div>
 
                 {/* Unit Field */}
@@ -1430,6 +1500,8 @@ export function usePrefillProduct(
 
         setFormData((prev) => ({
             ...prev,
+            product_sku: selectedProd.product_sku || '',
+            product_usd_price: String(selectedProd.product_usd_price) || '',
             name: selectedProd.product_name || '',
             description: selectedProd.description || '',
             price: String(selectedProd.product_price ?? ''),
@@ -1443,6 +1515,7 @@ export function usePrefillProduct(
             subcategoryDiscounts: subDiscounts,
             divisionDiscounts: divDiscounts,
             variantDiscounts: varDiscounts,
+            is_showcase: Boolean(selectedProd.is_showcase),
             // images left empty; existing pictures handled server-side
         }));
 

@@ -39,6 +39,11 @@ function SubcategoriesTable({ subcatsPaginated, filters }: PropsSubcatTable) {
         return new Intl.NumberFormat('id-ID').format(Number(number));
     };
 
+    const formatUsd = (value: string) => {
+        const number = value.replace(/\D/g, '');
+        return new Intl.NumberFormat('en-US').format(Number(number));
+    };
+
     const currentPage = subcatsPaginated?.current_page ?? 1;
     const perPage = subcatsPaginated?.per_page ?? 15;
 
@@ -47,7 +52,7 @@ function SubcategoriesTable({ subcatsPaginated, filters }: PropsSubcatTable) {
         router.get('/products/subcategory', { ...filters, q, page: 1 }, { preserveState: true, replace: true });
     };
 
-    const toggleSort = (column: 'id' | 'name' | 'description' | 'price' | 'discount' | 'total_stock') => {
+    const toggleSort = (column: 'id' | 'name' | 'description' | 'price' | 'usd_price' | 'discount' | 'total_stock') => {
         const sort_by = column;
         const sort_dir = filters?.sort_by === column && filters?.sort_dir === 'asc' ? 'desc' : 'asc';
         router.get('/products/subcategory', { ...filters, sort_by, sort_dir }, { preserveState: true, replace: true });
@@ -90,7 +95,10 @@ function SubcategoriesTable({ subcatsPaginated, filters }: PropsSubcatTable) {
                                 </th>
                                 <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Category</th>
                                 <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('price')}>
-                                    Price {filters?.sort_by === 'price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                                    Price (IDR) {filters?.sort_by === 'price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                                </th>
+                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('usd_price')}>
+                                    Price (USD) {filters?.sort_by === 'usd_price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                                 </th>
                                 <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('discount')}>
                                     Discount {filters?.sort_by === 'discount' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
@@ -110,6 +118,7 @@ function SubcategoriesTable({ subcatsPaginated, filters }: PropsSubcatTable) {
                                 <td className="border border-popover px-4 py-3">{subcat.description}</td>
                                 <td className="border border-popover px-4 py-3">{subcat.category.name}</td>
                                 <td className="border border-popover px-4 py-3">Rp. {formatRupiah(subcat.price.toString())}</td>
+                                <td className="border border-popover px-4 py-3">$ {formatUsd(subcat.usd_price.toString())}</td>
                                 <td className="border border-popover px-4 py-3">{subcat.discount}%</td>
                                 <td className="border border-popover px-4 py-3">{subcat.total_stock}</td>
                                 <td className="border border-popover px-4 py-3 text-right">
@@ -135,7 +144,7 @@ function SubcategoriesTable({ subcatsPaginated, filters }: PropsSubcatTable) {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan={8} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
+                            <td colSpan={9} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
                                 No sub categories found. Try adjusting your search.
                             </td>
                         </tr>

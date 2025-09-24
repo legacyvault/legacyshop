@@ -185,13 +185,13 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'product_name'     => 'required|string|max:255',
-            'product_sku'     => 'required|string|max:255|unique:product,product_sku',
+            'product_sku'     => 'required|string|max:255|unique:products,product_sku',
             'product_price'    => 'required|numeric|min:1000',
             'product_usd_price'    => 'required|numeric|min:1',
             'description'      => 'required|string',
             'product_discount' => 'nullable|numeric',
             'unit_id'          => 'required|exists:unit,id',
-            'is_showcase'          => 'nullable',
+            'is_showcase'          => 'nullable|boolean',
 
             'pictures'   => 'nullable|array',
             'pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
@@ -236,7 +236,7 @@ class ProductController extends Controller
                 'product_discount' => $request->product_discount ?? 0,
                 'description'      => $request->description,
                 'unit_id'          => $request->unit_id,
-                'is_showcase'          => $request->is_showcase,
+                'is_showcase'          => $request->boolean('is_showcase'),
             ]);
 
             // Sync tags (no pivot)
@@ -367,13 +367,13 @@ class ProductController extends Controller
             'product_sku'     => [
                 'required',
                 'string',
-                Rule::unique('product', 'product_sku')->ignore($request->id),
+                Rule::unique('products', 'product_sku')->ignore($request->id),
             ],
             'product_usd_price'    => 'required|numeric|min:1',
             'description'      => 'required|string',
             'product_discount' => 'nullable|numeric',
             'unit_id'          => 'required|exists:unit,id',
-            'is_showcase'          => 'nullable',
+            'is_showcase'          => 'nullable|boolean',
 
             'pictures'   => 'nullable|array',
             'pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
@@ -421,7 +421,7 @@ class ProductController extends Controller
                 'product_discount' => $request->product_discount ?? 0,
                 'description'      => $request->description,
                 'unit_id'          => $request->unit_id,
-                'is_showcase'          => $request->is_showcase,
+                'is_showcase'          => $request->boolean('is_showcase'),
             ]);
 
             // Sync tags
@@ -562,12 +562,23 @@ class ProductController extends Controller
         $search  = $request->input('q');
         $sortBy  = $request->input('sort_by', 'product_name');
         $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $unitIds      = $request->input('unit_ids', []);
-        $categoryIds  = $request->input('category_ids', []);
-        $subcatIds    = $request->input('subcat_ids', []);
-        $divisionIds  = $request->input('division_ids', []);
-        $variantIds   = $request->input('variant_ids', []);
-        $tagIds       = $request->input('tag_ids', []);
+
+        $unitFilter = $request->input('unit_ids', []);
+        if (!is_array($unitFilter)) {
+            $unitFilter = ($unitFilter !== null && $unitFilter !== '') ? [$unitFilter] : [];
+        }
+        $unitIds = array_map('strval', array_values(array_unique(array_filter($unitFilter, static function ($value) {
+            return $value !== null && $value !== '';
+        }))));
+
+        $tagFilter = $request->input('tag_ids', []);
+        if (!is_array($tagFilter)) {
+            $tagFilter = ($tagFilter !== null && $tagFilter !== '') ? [$tagFilter] : [];
+        }
+        $tagIds = array_map('strval', array_values(array_unique(array_filter($tagFilter, static function ($value) {
+            return $value !== null && $value !== '';
+        }))));
+
         $allowedSorts = ['id', 'product_name', 'description', 'product_price', 'total_stock', 'created_at'];
         if (!in_array($sortBy, $allowedSorts, true)) {
             $sortBy = 'product_name';
@@ -584,55 +595,36 @@ class ProductController extends Controller
         ]);
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('product_name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            })
-                ->orWhereHas('unit', function ($uq) use ($search) {
-                    $uq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('categories', function ($cq) use ($search) {
-                    $cq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('subcategories', function ($sq) use ($search) {
-                    $sq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('divisions', function ($dq) use ($search) {
-                    $dq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('variants', function ($vq) use ($search) {
-                    $vq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('tags', function ($tq) use ($search) {
-                    $tq->where('name', 'like', "%{$search}%");
-                });
+            $query->where(function ($searchQuery) use ($search) {
+                $searchQuery->where('product_name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('unit', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('categories', function ($cq) use ($search) {
+                        $cq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('subcategories', function ($sq) use ($search) {
+                        $sq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('divisions', function ($dq) use ($search) {
+                        $dq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('variants', function ($vq) use ($search) {
+                        $vq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('tags', function ($tq) use ($search) {
+                        $tq->where('name', 'like', "%{$search}%");
+                    });
+            });
         }
 
         // Exact filters by IDs
-        if (is_array($unitIds) && count($unitIds) > 0) {
+        if (count($unitIds) > 0) {
             $query->whereIn('unit_id', $unitIds);
         }
-        if (is_array($categoryIds) && count($categoryIds) > 0) {
-            $query->whereHas('categories', function ($q) use ($categoryIds) {
-                $q->whereIn('id', $categoryIds);
-            });
-        }
-        if (is_array($subcatIds) && count($subcatIds) > 0) {
-            $query->whereHas('subcategories', function ($q) use ($subcatIds) {
-                $q->whereIn('id', $subcatIds);
-            });
-        }
-        if (is_array($divisionIds) && count($divisionIds) > 0) {
-            $query->whereHas('divisions', function ($q) use ($divisionIds) {
-                $q->whereIn('id', $divisionIds);
-            });
-        }
-        if (is_array($variantIds) && count($variantIds) > 0) {
-            $query->whereHas('variants', function ($q) use ($variantIds) {
-                $q->whereIn('id', $variantIds);
-            });
-        }
-        if (is_array($tagIds) && count($tagIds) > 0) {
+
+        if (count($tagIds) > 0) {
             $query->whereHas('tags', function ($q) use ($tagIds) {
                 $q->whereIn('id', $tagIds);
             });
@@ -643,24 +635,9 @@ class ProductController extends Controller
             ->appends($request->query());
     }
 
-    public function getAllShowcaseProduct(Request $request)
+    public function getAllShowcaseProduct()
     {
-        $perPage = (int) $request->input('per_page', 15);
-        $search  = $request->input('q');
-        $sortBy  = $request->input('sort_by', 'product_name');
-        $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $unitIds      = $request->input('unit_ids', []);
-        $categoryIds  = $request->input('category_ids', []);
-        $subcatIds    = $request->input('subcat_ids', []);
-        $divisionIds  = $request->input('division_ids', []);
-        $variantIds   = $request->input('variant_ids', []);
-        $tagIds       = $request->input('tag_ids', []);
-        $allowedSorts = ['id', 'product_name', 'description', 'product_price', 'total_stock', 'created_at'];
-        if (!in_array($sortBy, $allowedSorts, true)) {
-            $sortBy = 'product_name';
-        }
-
-        $query = Product::with([
+        $data = Product::with([
             'stocks',
             'unit',
             'categories',
@@ -668,67 +645,9 @@ class ProductController extends Controller
             'divisions',
             'tags',
             'pictures',
-        ])
-            ->where('is_showcase', true);
+        ])->where('is_showcase', true)->get();
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('product_name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            })
-                ->orWhereHas('unit', function ($uq) use ($search) {
-                    $uq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('categories', function ($cq) use ($search) {
-                    $cq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('subcategories', function ($sq) use ($search) {
-                    $sq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('divisions', function ($dq) use ($search) {
-                    $dq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('variants', function ($vq) use ($search) {
-                    $vq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('tags', function ($tq) use ($search) {
-                    $tq->where('name', 'like', "%{$search}%");
-                });
-        }
-
-        // Exact filters by IDs
-        if (is_array($unitIds) && count($unitIds) > 0) {
-            $query->whereIn('unit_id', $unitIds);
-        }
-        if (is_array($categoryIds) && count($categoryIds) > 0) {
-            $query->whereHas('categories', function ($q) use ($categoryIds) {
-                $q->whereIn('id', $categoryIds);
-            });
-        }
-        if (is_array($subcatIds) && count($subcatIds) > 0) {
-            $query->whereHas('subcategories', function ($q) use ($subcatIds) {
-                $q->whereIn('id', $subcatIds);
-            });
-        }
-        if (is_array($divisionIds) && count($divisionIds) > 0) {
-            $query->whereHas('divisions', function ($q) use ($divisionIds) {
-                $q->whereIn('id', $divisionIds);
-            });
-        }
-        if (is_array($variantIds) && count($variantIds) > 0) {
-            $query->whereHas('variants', function ($q) use ($variantIds) {
-                $q->whereIn('id', $variantIds);
-            });
-        }
-        if (is_array($tagIds) && count($tagIds) > 0) {
-            $query->whereHas('tags', function ($q) use ($tagIds) {
-                $q->whereIn('id', $tagIds);
-            });
-        }
-
-        return $query->orderBy($sortBy, $sortDir)
-            ->paginate($perPage)
-            ->appends($request->query());
+        return $data;
     }
 
     public function getProductByID($id)
@@ -846,7 +765,7 @@ class ProductController extends Controller
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string|unique:unit,name',
             'description' => 'string|nullable',
-            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -888,7 +807,7 @@ class ProductController extends Controller
                 Rule::unique('unit', 'name')->ignore($request->id),
             ],
             'description' => 'string|nullable',
-            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
         ]);
 
         if ($validator->fails()) {

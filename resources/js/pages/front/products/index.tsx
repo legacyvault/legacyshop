@@ -17,6 +17,13 @@ function toggleSet(set: Set<string>, value: string, checked: boolean) {
     return next;
 }
 
+function hasFilterValue(value: unknown) {
+    if (Array.isArray(value)) {
+        return value.length > 0;
+    }
+    return value !== undefined && value !== null && value !== '';
+}
+
 export default function FrontProducts() {
     const {
         auth,
@@ -24,10 +31,7 @@ export default function FrontProducts() {
         locale,
         products: productsPayload,
         units,
-        categories,
-        divisions,
-        variants,
-        subcats,
+        tags,
         filters,
     } = usePage<SharedData>().props as SharedData & {
         products?: IRootProducts;
@@ -42,11 +46,27 @@ export default function FrontProducts() {
     const [search, setSearch] = useState(String((filters as any)?.q || ''));
 
     // Filter UI state, initialized from server query
-    const [selectedUnits, setSelectedUnits] = useState<Set<string>>(new Set(((filters as any)?.unit_ids ?? []).map(String)));
-    const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set(((filters as any)?.category_ids ?? []).map(String)));
-    const [selectedSubcats, setSelectedSubcats] = useState<Set<string>>(new Set(((filters as any)?.subcat_ids ?? []).map(String)));
-    const [selectedDivisions, setSelectedDivisions] = useState<Set<string>>(new Set(((filters as any)?.division_ids ?? []).map(String)));
-    const [selectedVariants, setSelectedVariants] = useState<Set<string>>(new Set(((filters as any)?.variant_ids ?? []).map(String)));
+    const [selectedUnits, setSelectedUnits] = useState<Set<string>>(() => {
+        const unitFilter = (filters as any)?.unit_ids;
+        if (Array.isArray(unitFilter)) {
+            return new Set(unitFilter.map(String));
+        }
+        if (unitFilter !== undefined && unitFilter !== null && unitFilter !== '') {
+            return new Set([String(unitFilter)]);
+        }
+        return new Set();
+    });
+    const [selectedTags, setSelectedTags] = useState<Set<string>>(() => {
+        const tagFilter = (filters as any)?.tag_ids;
+        if (Array.isArray(tagFilter)) {
+            return new Set(tagFilter.map(String));
+        }
+        if (tagFilter !== undefined && tagFilter !== null && tagFilter !== '') {
+            return new Set([String(tagFilter)]);
+        }
+        return new Set();
+    });
+
     const initialField = (
         (filters as any)?.sort_by === 'product_name'
             ? 'name'
@@ -63,11 +83,8 @@ export default function FrontProducts() {
     // Build query params for server requests
     const buildParams = (extra: Record<string, any> = {}) => ({
         q: search || undefined,
-        unit_ids: Array.from(selectedUnits),
-        category_ids: Array.from(selectedCategories),
-        subcat_ids: Array.from(selectedSubcats),
-        division_ids: Array.from(selectedDivisions),
-        variant_ids: Array.from(selectedVariants),
+        unit_ids: selectedUnits.size > 0 ? Array.from(selectedUnits) : undefined,
+        tag_ids: selectedTags.size > 0 ? Array.from(selectedTags) : undefined,
         sort_by: sortOrder === 'default' ? undefined : sortField === 'name' ? 'product_name' : sortField === 'price' ? 'product_price' : 'created_at',
         sort_dir: sortOrder === 'default' ? undefined : sortOrder,
         ...extra,
@@ -89,11 +106,12 @@ export default function FrontProducts() {
             (filters as any)?.q ||
                 (filters as any)?.sort_by ||
                 (filters as any)?.sort_dir ||
-                ((filters as any)?.unit_ids || []).length ||
-                ((filters as any)?.category_ids || []).length ||
-                ((filters as any)?.subcat_ids || []).length ||
-                ((filters as any)?.division_ids || []).length ||
-                ((filters as any)?.variant_ids || []).length,
+                hasFilterValue((filters as any)?.unit_ids) ||
+                hasFilterValue((filters as any)?.category_ids) ||
+                hasFilterValue((filters as any)?.subcat_ids) ||
+                hasFilterValue((filters as any)?.division_ids) ||
+                hasFilterValue((filters as any)?.variant_ids) ||
+                hasFilterValue((filters as any)?.tag_ids),
         );
         if (!hasAnyUrl && savedRaw) {
             try {
@@ -107,7 +125,7 @@ export default function FrontProducts() {
     useEffect(() => {
         const params = buildParams({ page: currentPage });
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(params));
-    }, [search, selectedUnits, selectedCategories, selectedSubcats, selectedDivisions, selectedVariants, sortField, sortOrder, currentPage]);
+    }, [search, selectedUnits, selectedTags, sortField, sortOrder, currentPage]);
 
     // ENABLE WHEN NEEDED
     // COMPARE FEATURES
@@ -145,13 +163,22 @@ export default function FrontProducts() {
                                     className="text-xs text-muted-foreground underline hover:text-foreground"
                                     onClick={() => {
                                         setSelectedUnits(new Set());
-                                        setSelectedCategories(new Set());
-                                        setSelectedSubcats(new Set());
-                                        setSelectedDivisions(new Set());
-                                        setSelectedVariants(new Set());
+                                        setSelectedTags(new Set());
                                         setSearch('');
                                         setSortField('date');
                                         setSortOrder('default');
+                                        router.get(
+                                            '/list-products',
+                                            buildParams({
+                                                q: undefined,
+                                                unit_ids: undefined,
+                                                tag_ids: undefined,
+                                                sort_by: undefined,
+                                                sort_dir: undefined,
+                                                page: 1,
+                                            }),
+                                            { preserveState: true, replace: true },
+                                        );
                                     }}
                                 >
                                     Clear all
@@ -185,17 +212,11 @@ export default function FrontProducts() {
                                                 setSortOrder(next);
                                                 router.get(
                                                     '/list-products',
-                                                    {
-                                                        q: search || undefined,
-                                                        unit_ids: Array.from(selectedUnits),
-                                                        category_ids: Array.from(selectedCategories),
-                                                        subcat_ids: Array.from(selectedSubcats),
-                                                        division_ids: Array.from(selectedDivisions),
-                                                        variant_ids: Array.from(selectedVariants),
+                                                    buildParams({
                                                         sort_by: next === 'default' ? undefined : sort_by,
                                                         sort_dir: next === 'default' ? undefined : next,
                                                         page: 1,
-                                                    },
+                                                    }),
                                                     { preserveState: true, replace: true },
                                                 );
                                             } else {
@@ -203,17 +224,7 @@ export default function FrontProducts() {
                                                 setSortOrder('asc');
                                                 router.get(
                                                     '/list-products',
-                                                    {
-                                                        q: search || undefined,
-                                                        unit_ids: Array.from(selectedUnits),
-                                                        category_ids: Array.from(selectedCategories),
-                                                        subcat_ids: Array.from(selectedSubcats),
-                                                        division_ids: Array.from(selectedDivisions),
-                                                        variant_ids: Array.from(selectedVariants),
-                                                        sort_by,
-                                                        sort_dir: 'asc',
-                                                        page: 1,
-                                                    },
+                                                    buildParams({ sort_by, sort_dir: 'asc', page: 1 }),
                                                     { preserveState: true, replace: true },
                                                 );
                                             }
@@ -240,165 +251,28 @@ export default function FrontProducts() {
                                 title="Unit"
                                 options={units.map((unit) => ({ value: String(unit.id), label: unit.name }))}
                                 selected={selectedUnits}
-                                onToggle={(v, c) => {
-                                    setSelectedUnits((s) => {
-                                        const next = toggleSet(s, v, c);
+                                onToggle={(value, checked) => {
+                                    setSelectedUnits((prev) => {
+                                        const next = toggleSet(prev, value, checked);
                                         router.get(
                                             '/list-products',
-                                            {
-                                                q: search || undefined,
-                                                unit_ids: Array.from(next),
-                                                category_ids: Array.from(selectedCategories),
-                                                subcat_ids: Array.from(selectedSubcats),
-                                                division_ids: Array.from(selectedDivisions),
-                                                variant_ids: Array.from(selectedVariants),
-                                                sort_by:
-                                                    sortOrder === 'default'
-                                                        ? undefined
-                                                        : sortField === 'name'
-                                                          ? 'product_name'
-                                                          : sortField === 'price'
-                                                            ? 'product_price'
-                                                            : 'created_at',
-                                                sort_dir: sortOrder === 'default' ? undefined : sortOrder,
-                                                page: 1,
-                                            },
+                                            buildParams({ unit_ids: next.size > 0 ? Array.from(next) : undefined, page: 1 }),
                                             { preserveState: true, replace: true },
                                         );
                                         return next;
                                     });
                                 }}
                             />
-
                             <FilterSection
-                                title="Category"
-                                options={categories.map((cat) => ({ value: String(cat.id), label: cat.name }))}
-                                selected={selectedCategories}
-                                onToggle={(v, c) => {
-                                    setSelectedCategories((s) => {
-                                        const next = toggleSet(s, v, c);
+                                title="Tags"
+                                options={(tags ?? []).map((tag) => ({ value: String(tag.id), label: tag.name }))}
+                                selected={selectedTags}
+                                onToggle={(value, checked) => {
+                                    setSelectedTags((prev) => {
+                                        const next = toggleSet(prev, value, checked);
                                         router.get(
                                             '/list-products',
-                                            {
-                                                q: search || undefined,
-                                                unit_ids: Array.from(selectedUnits),
-                                                category_ids: Array.from(next),
-                                                subcat_ids: Array.from(selectedSubcats),
-                                                division_ids: Array.from(selectedDivisions),
-                                                variant_ids: Array.from(selectedVariants),
-                                                sort_by:
-                                                    sortOrder === 'default'
-                                                        ? undefined
-                                                        : sortField === 'name'
-                                                          ? 'product_name'
-                                                          : sortField === 'price'
-                                                            ? 'product_price'
-                                                            : 'created_at',
-                                                sort_dir: sortOrder === 'default' ? undefined : sortOrder,
-                                                page: 1,
-                                            },
-                                            { preserveState: true, replace: true },
-                                        );
-                                        return next;
-                                    });
-                                }}
-                            />
-
-                            <FilterSection
-                                title="Sub Category"
-                                options={subcats.map((sub) => ({ value: String(sub.id), label: sub.name }))}
-                                selected={selectedSubcats}
-                                onToggle={(v, c) => {
-                                    setSelectedSubcats((s) => {
-                                        const next = toggleSet(s, v, c);
-                                        router.get(
-                                            '/list-products',
-                                            {
-                                                q: search || undefined,
-                                                unit_ids: Array.from(selectedUnits),
-                                                category_ids: Array.from(selectedCategories),
-                                                subcat_ids: Array.from(next),
-                                                division_ids: Array.from(selectedDivisions),
-                                                variant_ids: Array.from(selectedVariants),
-                                                sort_by:
-                                                    sortOrder === 'default'
-                                                        ? undefined
-                                                        : sortField === 'name'
-                                                          ? 'product_name'
-                                                          : sortField === 'price'
-                                                            ? 'product_price'
-                                                            : 'created_at',
-                                                sort_dir: sortOrder === 'default' ? undefined : sortOrder,
-                                                page: 1,
-                                            },
-                                            { preserveState: true, replace: true },
-                                        );
-                                        return next;
-                                    });
-                                }}
-                            />
-
-                            <FilterSection
-                                title="Division"
-                                options={divisions.map((div) => ({ value: String(div.id), label: div.name }))}
-                                selected={selectedDivisions}
-                                onToggle={(v, c) => {
-                                    setSelectedDivisions((s) => {
-                                        const next = toggleSet(s, v, c);
-                                        router.get(
-                                            '/list-products',
-                                            {
-                                                q: search || undefined,
-                                                unit_ids: Array.from(selectedUnits),
-                                                category_ids: Array.from(selectedCategories),
-                                                subcat_ids: Array.from(selectedSubcats),
-                                                division_ids: Array.from(next),
-                                                variant_ids: Array.from(selectedVariants),
-                                                sort_by:
-                                                    sortOrder === 'default'
-                                                        ? undefined
-                                                        : sortField === 'name'
-                                                          ? 'product_name'
-                                                          : sortField === 'price'
-                                                            ? 'product_price'
-                                                            : 'created_at',
-                                                sort_dir: sortOrder === 'default' ? undefined : sortOrder,
-                                                page: 1,
-                                            },
-                                            { preserveState: true, replace: true },
-                                        );
-                                        return next;
-                                    });
-                                }}
-                            />
-
-                            <FilterSection
-                                title="Variant"
-                                options={variants.map((item) => ({ value: String(item.id), label: item.name }))}
-                                selected={selectedVariants}
-                                onToggle={(v, c) => {
-                                    setSelectedVariants((s) => {
-                                        const next = toggleSet(s, v, c);
-                                        router.get(
-                                            '/list-products',
-                                            {
-                                                q: search || undefined,
-                                                unit_ids: Array.from(selectedUnits),
-                                                category_ids: Array.from(selectedCategories),
-                                                subcat_ids: Array.from(selectedSubcats),
-                                                division_ids: Array.from(selectedDivisions),
-                                                variant_ids: Array.from(next),
-                                                sort_by:
-                                                    sortOrder === 'default'
-                                                        ? undefined
-                                                        : sortField === 'name'
-                                                          ? 'product_name'
-                                                          : sortField === 'price'
-                                                            ? 'product_price'
-                                                            : 'created_at',
-                                                sort_dir: sortOrder === 'default' ? undefined : sortOrder,
-                                                page: 1,
-                                            },
+                                            buildParams({ tag_ids: next.size > 0 ? Array.from(next) : undefined, page: 1 }),
                                             { preserveState: true, replace: true },
                                         );
                                         return next;

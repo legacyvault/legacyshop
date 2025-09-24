@@ -39,6 +39,11 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
         return new Intl.NumberFormat('id-ID').format(Number(number));
     };
 
+    const formatUsd = (value: string) => {
+        const number = value.replace(/\D/g, '');
+        return new Intl.NumberFormat('en-US').format(Number(number));
+    };
+
     const currentPage = divisionsPaginated?.current_page ?? 1;
     const perPage = divisionsPaginated?.per_page ?? 15;
 
@@ -47,7 +52,7 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
         router.get('/products/division', { ...filters, q, page: 1 }, { preserveState: true, replace: true });
     };
 
-    const toggleSort = (column: 'id' | 'name' | 'description' | 'price' | 'discount' | 'total_stock') => {
+    const toggleSort = (column: 'id' | 'name' | 'description' | 'price' | 'usd_price' | 'discount' | 'total_stock') => {
         const sort_by = column;
         const sort_dir = filters?.sort_by === column && filters?.sort_dir === 'asc' ? 'desc' : 'asc';
         router.get('/products/division', { ...filters, sort_by, sort_dir }, { preserveState: true, replace: true });
@@ -91,7 +96,10 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
                                 </th>
                                 <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Sub Category</th>
                                 <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('price')}>
-                                    Price {filters?.sort_by === 'price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                                    Price (IDR) {filters?.sort_by === 'price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                                </th>
+                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('usd_price')}>
+                                    Price (USD) {filters?.sort_by === 'usd_price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                                 </th>
                                 <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('discount')}>
                                     Discount {filters?.sort_by === 'discount' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
@@ -110,7 +118,8 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
                                 <td className="border border-popover px-4 py-3">{div.name}</td>
                                 <td className="border border-popover px-4 py-3">{div.description}</td>
                                 <td className="border border-popover px-4 py-3">{div.sub_category.name}</td>
-                                <td className="border border-popover px-4 py-3">{formatRupiah(div.price.toString())}</td>
+                                <td className="border border-popover px-4 py-3">Rp. {formatRupiah(div.price.toString())}</td>
+                                <td className="border border-popover px-4 py-3">$ {formatUsd(div.usd_price.toString())}</td>
                                 <td className="border border-popover px-4 py-3">{div.discount}%</td>
                                 <td className="border border-popover px-4 py-3">{div.total_stock}</td>
                                 <td className="border border-popover px-4 py-3 text-right">
@@ -130,7 +139,7 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan={8} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
+                            <td colSpan={9} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
                                 No divisions found. Try adjusting your search.
                             </td>
                         </tr>

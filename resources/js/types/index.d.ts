@@ -91,6 +91,7 @@ export interface IUnit {
     id: string;
     name: string;
     description: string;
+    picture_url?: string;
     categories: ICategories[];
 }
 
@@ -120,6 +121,7 @@ export interface ISubcats {
     category: ICategories;
     stocks: IStocks[];
     divisions: IDivisions[];
+    usd_price: number;
 }
 
 export interface IStocks {
@@ -128,6 +130,7 @@ export interface IStocks {
     remarks: string;
     created_at: string;
     sub_category_id: string;
+    usd_price: number;
 }
 
 export interface IDivisions {
@@ -141,6 +144,7 @@ export interface IDivisions {
     total_stock: number;
     stocks: IStocks[];
     variants: IVariants[];
+    usd_price: number;
 }
 
 export interface IVariants {
@@ -251,6 +255,9 @@ export interface IProducts {
     unit_id: string;
     updated_at: string;
     variants: (IVariants & { pivot: IPivotVariantProd })[];
+    product_sku: string;
+    product_usd_price: number;
+    is_showcase: boolean;
 }
 
 export interface IPivotDivisionProd {
