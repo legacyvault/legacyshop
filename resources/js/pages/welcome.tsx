@@ -6,11 +6,82 @@ import { IBanner, IProducts, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
+    const [activeSlide, setActiveSlide] = useState(0);
+    const [visibleCount, setVisibleCount] = useState(1);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const calculateVisibleCount = () => {
+            const width = window.innerWidth;
+
+            if (width >= 1280) return 5;
+            if (width >= 1024) return 4;
+            if (width >= 768) return 3;
+            if (width >= 640) return 2;
+            return 1;
+        };
+
+        const updateVisibleCount = () => {
+            setVisibleCount(calculateVisibleCount());
+        };
+
+        updateVisibleCount();
+
+        window.addEventListener('resize', updateVisibleCount);
+
+        return () => {
+            window.removeEventListener('resize', updateVisibleCount);
+        };
+    }, []);
+
+    const slides = useMemo(() => {
+        if (!products.length || visibleCount < 1) return [];
+
+        const chunked: (IProducts | null)[][] = [];
+
+        for (let i = 0; i < products.length; i += visibleCount) {
+            const slice = products.slice(i, i + visibleCount);
+
+            if (slice.length < visibleCount) {
+                const placeholders = Array.from({ length: visibleCount - slice.length }, () => null);
+                chunked.push([...slice, ...placeholders]);
+            } else {
+                chunked.push(slice);
+            }
+        }
+
+        return chunked;
+    }, [products, visibleCount]);
+
+    useEffect(() => {
+        if (!slides.length) {
+            setActiveSlide(0);
+            return;
+        }
+
+        setActiveSlide((current) => Math.min(current, slides.length - 1));
+    }, [slides.length]);
+
+    if (!slides.length) {
+        return null;
+    }
+
+    const goToSlide = (direction: 'prev' | 'next') => {
+        setActiveSlide((current) => {
+            if (direction === 'prev') {
+                return current === 0 ? slides.length - 1 : current - 1;
+            }
+
+            return current === slides.length - 1 ? 0 : current + 1;
+        });
+    };
+
     return (
         <section className="py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -25,10 +96,87 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                     </Link>
                 </div>
 
-                {/* Product Grid */}
-                <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                    {products.map((product) => (
-                        <ProductCard key={product.id} product={product} onClick={() => router.get(`/view-product/${product.id}`)} />
+                {/* Product Carousel */}
+                <div className="relative">
+                    <button
+                        type="button"
+                        aria-label="Show previous products"
+                        onClick={() => goToSlide('prev')}
+                        className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
+                    >
+                        <span className="sr-only">Previous products</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-5 w-5"
+                        >
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                    </button>
+
+                    <div className="overflow-hidden">
+                        <div
+                            className="flex transition-transform duration-500 ease-out"
+                            style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+                        >
+                            {slides.map((slide, index) => (
+                                <div key={index} className="flex w-full min-w-full shrink-0 basis-full gap-4 px-1">
+                                    {slide.map((product, itemIndex) => (
+                                        <div key={product ? product.id : `placeholder-${itemIndex}`} className="flex-1 min-w-0">
+                                            {product ? (
+                                                <ProductCard
+                                                    product={product}
+                                                    onClick={() => router.get(`/view-product/${product.id}`)}
+                                                />
+                                            ) : (
+                                                <div className="h-full w-full opacity-0" aria-hidden="true" />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        aria-label="Show next products"
+                        onClick={() => goToSlide('next')}
+                        className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
+                    >
+                        <span className="sr-only">Next products</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-5 w-5"
+                        >
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div className="mt-6 flex items-center justify-center gap-2">
+                    {slides.map((_, index) => (
+                        <button
+                            key={`indicator-${index}`}
+                            type="button"
+                            onClick={() => setActiveSlide(index)}
+                            className={`h-2 w-8 rounded-full transition ${
+                                activeSlide === index ? 'bg-primary' : 'bg-muted'
+                            }`}
+                            aria-label={`Go to slide ${index + 1}`}
+                            aria-current={activeSlide === index}
+                        />
                     ))}
                 </div>
             </div>
