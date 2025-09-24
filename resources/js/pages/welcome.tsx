@@ -2,7 +2,7 @@ import ImageSequence from '@/components/image-sequence';
 import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
 import FrontLayout from '@/layouts/front/front-layout';
-import { IBanner, IRootProducts, type SharedData } from '@/types';
+import { IBanner, IProducts, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -10,7 +10,7 @@ import { useEffect, useRef } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const ProductCardsSection = ({ products }: { products: IRootProducts | undefined }) => {
+const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
     return (
         <section className="py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -27,7 +27,7 @@ const ProductCardsSection = ({ products }: { products: IRootProducts | undefined
 
                 {/* Product Grid */}
                 <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                    {products?.data.map((product) => (
+                    {products.map((product) => (
                         <ProductCard key={product.id} product={product} onClick={() => router.get(`/view-product/${product.id}`)} />
                     ))}
                 </div>
@@ -68,7 +68,7 @@ export default function Welcome() {
         });
     }, []);
 
-    const { products: productsPayload, units, banner } = usePage<SharedData>().props;
+    const { products: productsPayload, units, banner } = usePage<SharedData & { products: IProducts[] }>().props;
 
     const activeBanner: IBanner = banner as unknown as IBanner;
 

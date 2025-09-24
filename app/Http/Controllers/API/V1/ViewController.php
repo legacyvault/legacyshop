@@ -66,11 +66,9 @@ class ViewController extends Controller
         ]);
     }
 
-    public function welcomePage(Request $request)
+    public function welcomePage()
     {
-        // Ensure only first 5 products are fetched for the landing page
-        $request->merge(['per_page' => 5]);
-        $products = $this->productController->getAllProduct($request);
+        $products = $this->productController->getAllShowcaseProduct();
         $units = $this->productController->getAllUnit();
         $banner = $this->miscController->getActiveBanner();
 

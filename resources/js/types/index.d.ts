@@ -156,7 +156,6 @@ export interface IVariants {
     id: string;
     name: string;
     price: number;
-    usd_price: number;
     stocks: IStocks[];
     total_stock: number;
     type: 'text' | 'color' | '';
@@ -258,6 +257,7 @@ export interface IProducts {
     variants: (IVariants & { pivot: IPivotVariantProd })[];
     product_sku: string;
     product_usd_price: number;
+    is_showcase: boolean;
 }
 
 export interface IPivotDivisionProd {

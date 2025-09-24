@@ -61,7 +61,9 @@ function ProductsTable({ products, filters }: { products: IRootProducts; filters
             <div className="mt-4 flex items-center justify-between gap-2">
                 <div className="text-sm text-muted-foreground">
                     {products?.total ? (
-                        <>Showing {products.from ?? 0}-{products.to ?? 0} of {products.total}</>
+                        <>
+                            Showing {products.from ?? 0}-{products.to ?? 0} of {products.total}
+                        </>
                     ) : (
                         <>No results</>
                     )}
@@ -73,28 +75,42 @@ function ProductsTable({ products, filters }: { products: IRootProducts; filters
                     defaultValue={filters?.q || ''}
                     onChange={handleSearch}
                 />
-            </div>
-
-            {' '}
+            </div>{' '}
             <table className="mt-4 min-w-full border-collapse text-sm">
                 <thead>
                     <tr className="bg-sidebar-accent">
-                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('id')}>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('id')}
+                        >
                             # {filters?.sort_by === 'id' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
-                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('product_name')}>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('product_name')}
+                        >
                             Name {filters?.sort_by === 'product_name' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
-                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('description')}>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('description')}
+                        >
                             Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
                         <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Unit</th>
-                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('product_price')}>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('product_price')}
+                        >
                             Price {filters?.sort_by === 'product_price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
-                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('total_stock')}>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('total_stock')}
+                        >
                             Total Stocks {filters?.sort_by === 'total_stock' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Showcase</th>
                         <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
                     </tr>
                 </thead>
@@ -108,6 +124,7 @@ function ProductsTable({ products, filters }: { products: IRootProducts; filters
                                 <td className="border border-popover px-4 py-3">{prod.unit.name}</td>
                                 <td className="border border-popover px-4 py-3">Rp. {formatRupiah(prod.product_price.toString())}</td>
                                 <td className="border border-popover px-4 py-3">{prod.total_stock}</td>
+                                <td className="border border-popover px-4 py-3">{prod.is_showcase ? 'Yes' : 'No'}</td>
                                 <td className="border border-popover px-4 py-3 text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100">⋮</DropdownMenuTrigger>
@@ -125,19 +142,20 @@ function ProductsTable({ products, filters }: { products: IRootProducts; filters
                         ))
                     ) : (
                         <tr>
-                            <td colSpan={7} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
+                            <td colSpan={8} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
                                 No products found. Try adjusting your search.
                             </td>
                         </tr>
                     )}
                 </tbody>
             </table>
-
             <div className="mt-4 flex items-center justify-end gap-2">
                 <Button variant="outline" disabled={currentPage <= 1} onClick={() => goToPage(currentPage - 1)}>
                     Previous
                 </Button>
-                <span className="text-sm">Page {currentPage} of {products?.last_page ?? 1}</span>
+                <span className="text-sm">
+                    Page {currentPage} of {products?.last_page ?? 1}
+                </span>
                 <Button variant="outline" disabled={currentPage >= (products?.last_page ?? 1)} onClick={() => goToPage(currentPage + 1)}>
                     Next
                 </Button>
