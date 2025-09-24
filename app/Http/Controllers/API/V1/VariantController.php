@@ -177,6 +177,7 @@ class VariantController extends Controller
         $data->division_id = $request->division_id;
         $data->description = $request->description;
         $data->price = $request->price;
+        $data->usd_price = $request->usd_price;
         $data->discount = $request->discount;
         $data->type = $request->type;
         $data->color = $request->color;
@@ -202,7 +203,7 @@ class VariantController extends Controller
         $search   = $request->input('q');
         $sortBy   = $request->input('sort_by', 'name');
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSorts = ['id','name','description','price','discount','total_stock','division_id','created_at'];
+        $allowedSorts = ['id','name','description','price','usd_price','discount','total_stock','division_id','created_at'];
         if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
 
         $query = Variant::query()->with(['stocks','division']);

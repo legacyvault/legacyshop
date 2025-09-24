@@ -173,6 +173,7 @@ class DivisionController extends Controller
         $data->sub_category_id = $request->sub_category_id;
         $data->description = $request->description;
         $data->price = $request->price;
+        $data->usd_price = $request->usd_price;
         $data->discount = $request->discount;
         $data->save();
 
@@ -196,7 +197,7 @@ class DivisionController extends Controller
         $search   = $request->input('q');
         $sortBy   = $request->input('sort_by', 'name');
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSorts = ['id','name','description','price','discount','total_stock','sub_category_id','created_at'];
+        $allowedSorts = ['id','name','description','price','usd_price','discount','total_stock','sub_category_id','created_at'];
         if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
 
         $query = Division::query()->with(['stocks','variants','sub_category']);

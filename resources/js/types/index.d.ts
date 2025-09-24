@@ -121,6 +121,7 @@ export interface ISubcats {
     category: ICategories;
     stocks: IStocks[];
     divisions: IDivisions[];
+    usd_price: number;
 }
 
 export interface IStocks {
@@ -129,6 +130,7 @@ export interface IStocks {
     remarks: string;
     created_at: string;
     sub_category_id: string;
+    usd_price: number;
 }
 
 export interface IDivisions {
@@ -142,6 +144,7 @@ export interface IDivisions {
     total_stock: number;
     stocks: IStocks[];
     variants: IVariants[];
+    usd_price: number;
 }
 
 export interface IVariants {
@@ -153,6 +156,7 @@ export interface IVariants {
     id: string;
     name: string;
     price: number;
+    usd_price: number;
     stocks: IStocks[];
     total_stock: number;
     type: 'text' | 'color' | '';

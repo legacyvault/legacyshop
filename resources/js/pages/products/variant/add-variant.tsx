@@ -11,6 +11,7 @@ interface FormData {
     color: string;
     description: string;
     price: number;
+    usd_price: number;
     discount: number;
     division_id: string;
 }
@@ -36,6 +37,7 @@ export default function AddVariant() {
         color: isEdit ? (selectedVariant.color ?? '') : '',
         description: isEdit ? selectedVariant.description : '',
         price: isEdit ? selectedVariant.price : 0,
+        usd_price: isEdit ? selectedVariant.usd_price : 0,
         discount: isEdit ? selectedVariant.discount : 0,
         division_id: isEdit ? selectedVariant.division_id : '',
     });
@@ -46,10 +48,20 @@ export default function AddVariant() {
         return new Intl.NumberFormat('id-ID').format(Number(number));
     };
 
+    const formatUsd = (value: string) => {
+        const number = value.replace(/\D/g, '');
+        return new Intl.NumberFormat('en-US').format(Number(number));
+    };
+
     // Handle price input
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '');
         setData('price', Number(value));
+    };
+
+    const handleUsdPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        setData('usd_price', Number(value));
     };
 
     const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,6 +170,24 @@ export default function AddVariant() {
                         />
                     </div>
                     {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
+                </div>
+
+                {/* USD Price Field */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">Price (USD) *</label>
+                    <div className="relative">
+                        <span className="absolute top-2 left-3 text-gray-500">$</span>
+                        <input
+                            type="text"
+                            value={formatUsd(data.usd_price.toString())}
+                            onChange={handleUsdPriceChange}
+                            className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
+                                errors.usd_price ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="0"
+                        />
+                    </div>
+                    {errors.usd_price && <p className="mt-1 text-sm text-red-500">{errors.usd_price}</p>}
                 </div>
 
                 {/* Discount Field */}
