@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IBanner, SharedData } from '@/types';
-import { Head, useForm, usePage, router } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -125,7 +125,7 @@ function BannerTable({ banner }: PropsTable) {
             />
             {/* <CategoriesDialog open={openDelCat} isOpen={isOpenDelCat} type="delete" category={selectedCat} onSubmit={catSubmitHandler} /> */}
 
-            <table className="mt-4 min-w-full border-collapse text-sm">
+            <table className="mt-4 w-full table-fixed border-collapse text-sm">
                 <thead>
                     <tr className="bg-sidebar-accent">
                         <th className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground">#</th>
@@ -139,7 +139,7 @@ function BannerTable({ banner }: PropsTable) {
                         banner.map((item, i) => (
                             <tr key={item.id} className="hover:bg-gray-50">
                                 <td className="border border-popover px-4 py-3">{i + 1}</td>
-                                <td className="border border-popover px-4 py-3">{item.banner_text}</td>
+                                <td className="border border-popover px-4 py-3 break-words whitespace-normal">{item.banner_text}</td>
                                 <td className="border border-popover px-4 py-3">{item.is_active ? 'Yes' : 'No'}</td>
                                 <td className="border border-popover px-4 py-3 text-right">
                                     <DropdownMenu>

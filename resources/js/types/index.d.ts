@@ -159,6 +159,7 @@ export interface IVariants {
     stocks: IStocks[];
     total_stock: number;
     type: 'text' | 'color' | '';
+    usd_price: number;
 }
 
 export interface IRootProducts {

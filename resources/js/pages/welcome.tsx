@@ -102,7 +102,7 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                         type="button"
                         aria-label="Show previous products"
                         onClick={() => goToSlide('prev')}
-                        className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
+                        className="absolute top-1/2 left-0 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
                     >
                         <span className="sr-only">Previous products</span>
                         <svg
@@ -120,19 +120,13 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                     </button>
 
                     <div className="overflow-hidden">
-                        <div
-                            className="flex transition-transform duration-500 ease-out"
-                            style={{ transform: `translateX(-${activeSlide * 100}%)` }}
-                        >
+                        <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
                             {slides.map((slide, index) => (
                                 <div key={index} className="flex w-full min-w-full shrink-0 basis-full gap-4 px-1">
                                     {slide.map((product, itemIndex) => (
-                                        <div key={product ? product.id : `placeholder-${itemIndex}`} className="flex-1 min-w-0">
+                                        <div key={product ? product.id : `placeholder-${itemIndex}`} className="min-w-0 flex-1">
                                             {product ? (
-                                                <ProductCard
-                                                    product={product}
-                                                    onClick={() => router.get(`/view-product/${product.id}`)}
-                                                />
+                                                <ProductCard product={product} onClick={() => router.get(`/view-product/${product.id}`)} />
                                             ) : (
                                                 <div className="h-full w-full opacity-0" aria-hidden="true" />
                                             )}
@@ -147,7 +141,7 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                         type="button"
                         aria-label="Show next products"
                         onClick={() => goToSlide('next')}
-                        className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
+                        className="absolute top-1/2 right-0 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
                     >
                         <span className="sr-only">Next products</span>
                         <svg
@@ -171,9 +165,7 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                             key={`indicator-${index}`}
                             type="button"
                             onClick={() => setActiveSlide(index)}
-                            className={`h-2 w-8 rounded-full transition ${
-                                activeSlide === index ? 'bg-primary' : 'bg-muted'
-                            }`}
+                            className={`h-2 w-8 rounded-full transition ${activeSlide === index ? 'bg-primary' : 'bg-muted'}`}
                             aria-label={`Go to slide ${index + 1}`}
                             aria-current={activeSlide === index}
                         />
@@ -292,7 +284,7 @@ export default function Welcome() {
                             <h1 ref={textRef1} className="mb-6 text-5xl font-black drop-shadow-lg md:text-7xl">
                                 {translations.home.welcome}
                             </h1>
-                            <p ref={textRef2} className="max-w-2xl px-4 text-lg md:text-xl">
+                            <p ref={textRef2} className="max-w-2xl px-4 text-lg break-words whitespace-normal md:text-xl">
                                 {translations.home.description1}
                             </p>
                         </div>
