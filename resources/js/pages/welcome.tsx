@@ -103,8 +103,14 @@ export default function Welcome() {
                     {units.length > 0 && (
                         <section className="mx-auto my-48 max-w-6xl px-4">
                             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                                {units.slice(0, 3).map((unit) => (
-                                    <div key={unit.id} className="group relative aspect-[16/10] overflow-hidden rounded-xl shadow-md">
+                                {units.map((unit) => (
+                                    <button
+                                        key={unit.id}
+                                        type="button"
+                                        onClick={() => router.get('/list-products', { unit_ids: [String(unit.id)] })}
+                                        className="group relative aspect-[16/10] overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+                                        aria-label={`View products for ${unit.name}`}
+                                    >
                                         {/* Background image layer with hover upscale */}
                                         <div
                                             className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
@@ -120,7 +126,7 @@ export default function Welcome() {
                                         <div className="relative z-10 flex h-full flex-col justify-end p-4 text-white">
                                             <h3 className="text-xl font-semibold drop-shadow-sm">{unit.name}</h3>
                                         </div>
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
                         </section>
