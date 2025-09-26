@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\V1\ArticleController;
 use App\Http\Controllers\API\V1\AWSCognitoAuthController;
 use App\Http\Controllers\API\V1\CartsController;
 use App\Http\Controllers\API\V1\LocationController;
@@ -28,7 +29,7 @@ Route::group(['prefix' => 'v1/cognito'], function () {
 Route::group(['prefix' => 'v1/cognito'], function () {
     Route::post('register', [AwsCognitoAuthController::class, 'registerUser'])->name('cognito.register');
 });
-Route::group(['prefix' => 'v1'], function (){
+Route::group(['prefix' => 'v1'], function () {
     Route::get('active-running-text', [MiscController::class, 'getActiveRunningText'])->name('active.running-text');
     Route::get('active-banner', [MiscController::class, 'getActiveBanner'])->name('active.banner');
 });
@@ -50,6 +51,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 
     //Banner API
     Route::get('all-banner', [MiscController::class, 'getAllBanner'])->name('all-banner');
+
+    //Article API
+    Route::get('all-article', [ArticleController::class, 'getAllArticle'])->name('all-article');
+    Route::get('article/{id}', [ArticleController::class, 'getArticleById'])->name('article.id');
 
     //Carts API
     Route::post('add-cart', [CartsController::class, 'addToCart'])->name('add.cart');
@@ -100,6 +105,11 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Banner API
     Route::post('add-banner', [MiscController::class, 'createBanner'])->name('add-banner');
     Route::post('update-banner', [MiscController::class, 'updateBanner'])->name('edit-banner');
+
+    //Article API
+    Route::post('create-article', [ArticleController::class, 'createArticle'])->name('create-article');
+    Route::post('update-article', [ArticleController::class, 'updateArticle'])->name('edit-article');
+    Route::post('upload-article-img', [ArticleController::class, 'uploadArticleImage'])->name('upload-article-img');
 
     //Category API
     Route::post('create-category', [ProductController::class, 'createCategory'])->name('category.create');
@@ -216,5 +226,4 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('view-running-text', [ViewController::class, 'runningTextPage']);
         Route::get('view-banner', [ViewController::class, 'bannerPage']);
     });
-
 });
