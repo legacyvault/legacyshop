@@ -151,6 +151,8 @@ Route::get('/lang/{lang}', function ($lang) {
 //ROUTES
 Route::get('/', [ViewController::class, 'welcomePage'])->name('home');
 
+Route::get('/articles', [ViewController::class, 'frontArticlesPage'])->name('front.articles');
+
 Route::get('/login', function () {
     return Inertia::render('auth/login');
 })->name('login');
