@@ -10,6 +10,25 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const ArticlesSection = () => {
+    return (
+        <section className="py-16">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                {/* Section Header */}
+                <div className="mb-12 text-left">
+                    <h2 className="mb-4 text-5xl font-bold text-primary">NEWS & ARTICLES</h2>
+                    <p className="max-w-2xl text-xl text-muted-foreground">
+                        Premium UV protected trading card cases at unbeatable prices. Limited time offers available.
+                    </p>
+                    <Link href={'/articles'}>
+                        <Button className="mt-4">Explore More</Button>
+                    </Link>
+                </div>
+            </div>
+        </section>
+    );
+};
+
 const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
     const [activeSlide, setActiveSlide] = useState(0);
     const [visibleCount, setVisibleCount] = useState(1);
@@ -230,7 +249,7 @@ export default function Welcome() {
 
                             <div className="mx-auto my-12 max-w-6xl">
                                 <h1 className="text-center text-4xl font-bold">Welcome to Legacy Vault</h1>
-                                <h4 className="mt-4 text-center text-lg font-medium">{activeBanner.banner_text}</h4>
+                                <h4 className="mt-4 text-center text-lg font-medium break-words whitespace-normal">{activeBanner.banner_text}</h4>
 
                                 <div className="text-center">
                                     <Button className="mt-4">See More Cases</Button>
@@ -284,7 +303,7 @@ export default function Welcome() {
                             <h1 ref={textRef1} className="mb-6 text-5xl font-black drop-shadow-lg md:text-7xl">
                                 {translations.home.welcome}
                             </h1>
-                            <p ref={textRef2} className="max-w-2xl px-4 text-lg break-words whitespace-normal md:text-xl">
+                            <p ref={textRef2} className="max-w-2xl px-4 text-lg md:text-xl">
                                 {translations.home.description1}
                             </p>
                         </div>
@@ -303,6 +322,10 @@ export default function Welcome() {
 
                     <div className="my-8">
                         <ProductCardsSection products={productsPayload} />
+                    </div>
+
+                    <div className="my-8">
+                        <ArticlesSection />
                     </div>
                 </FrontLayout>
             </div>

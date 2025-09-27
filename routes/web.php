@@ -226,4 +226,9 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('view-running-text', [ViewController::class, 'runningTextPage']);
         Route::get('view-banner', [ViewController::class, 'bannerPage']);
     });
+
+    Route::prefix('admin-articles')->group(function() {
+        Route::get('/', [ViewController::class, 'adminArticlePage']);
+        Route::get('/add-articles', [ViewController::class, 'addArticlePage']);
+    });
 });

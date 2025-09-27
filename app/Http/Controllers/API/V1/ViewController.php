@@ -322,4 +322,23 @@ class ViewController extends Controller
             'banner' => $banner
         ]);
     }
+
+    public function frontArticlesPage()
+    {
+        return Inertia::render('front/articles/index', [
+            'articles' => null,
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ]
+        ]);
+    }
+
+    public function adminArticlePage(){
+        return Inertia::render('articles/index');
+    }
+
+    public function addArticlePage(){
+        return Inertia::render('articles/add-articles');
+    }
 }

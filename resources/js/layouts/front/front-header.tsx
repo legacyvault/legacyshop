@@ -26,6 +26,10 @@ const NavBottom = [
         title: 'products',
         url: '/list-products',
     },
+    {
+        title: 'articles',
+        url: '/articles',
+    },
 ];
 
 export default function FrontHeader({ auth, locale, translations, searchValue, onSearchChange }: IPropsHeader) {
