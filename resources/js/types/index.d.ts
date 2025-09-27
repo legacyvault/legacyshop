@@ -48,6 +48,8 @@ export interface SharedData {
     products: IRootProducts;
     runningText: IRunningText[];
     banner: IBanner[];
+    article?: IArticle;
+    articles?: IArticle[];
 }
 
 export interface IBanner {
@@ -159,6 +161,19 @@ export interface IVariants {
     stocks: IStocks[];
     total_stock: number;
     type: 'text' | 'color' | '';
+    usd_price: number;
+}
+
+export interface IArticle {
+    id: string;
+    title: string;
+    slug: string;
+    content: any[];
+    content_html: string | null;
+    is_published: boolean;
+    published_at: string | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface IRootProducts {

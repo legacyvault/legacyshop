@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Cable, LayoutGrid, PackageOpen, Store } from 'lucide-react';
+import { Cable, LayoutGrid, NotebookPen, PackageOpen, Store } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -58,6 +58,11 @@ const mainNavItems: NavItem[] = [
                 href: '/misc/view-banner',
             },
         ],
+    },
+    {
+        title: 'Articles',
+        href: '/admin-articles',
+        icon: NotebookPen,
     },
 ];
 

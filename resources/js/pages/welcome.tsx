@@ -10,6 +10,25 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const ArticlesSection = () => {
+    return (
+        <section className="py-16">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                {/* Section Header */}
+                <div className="mb-12 text-left">
+                    <h2 className="mb-4 text-5xl font-bold text-primary">NEWS & ARTICLES</h2>
+                    <p className="max-w-2xl text-xl text-muted-foreground">
+                        Premium UV protected trading card cases at unbeatable prices. Limited time offers available.
+                    </p>
+                    <Link href={'/articles'}>
+                        <Button className="mt-4">Explore More</Button>
+                    </Link>
+                </div>
+            </div>
+        </section>
+    );
+};
+
 const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
     const [activeSlide, setActiveSlide] = useState(0);
     const [visibleCount, setVisibleCount] = useState(1);
@@ -102,7 +121,7 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                         type="button"
                         aria-label="Show previous products"
                         onClick={() => goToSlide('prev')}
-                        className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
+                        className="absolute top-1/2 left-0 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
                     >
                         <span className="sr-only">Previous products</span>
                         <svg
@@ -120,19 +139,13 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                     </button>
 
                     <div className="overflow-hidden">
-                        <div
-                            className="flex transition-transform duration-500 ease-out"
-                            style={{ transform: `translateX(-${activeSlide * 100}%)` }}
-                        >
+                        <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
                             {slides.map((slide, index) => (
                                 <div key={index} className="flex w-full min-w-full shrink-0 basis-full gap-4 px-1">
                                     {slide.map((product, itemIndex) => (
-                                        <div key={product ? product.id : `placeholder-${itemIndex}`} className="flex-1 min-w-0">
+                                        <div key={product ? product.id : `placeholder-${itemIndex}`} className="min-w-0 flex-1">
                                             {product ? (
-                                                <ProductCard
-                                                    product={product}
-                                                    onClick={() => router.get(`/view-product/${product.id}`)}
-                                                />
+                                                <ProductCard product={product} onClick={() => router.get(`/view-product/${product.id}`)} />
                                             ) : (
                                                 <div className="h-full w-full opacity-0" aria-hidden="true" />
                                             )}
@@ -147,7 +160,7 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                         type="button"
                         aria-label="Show next products"
                         onClick={() => goToSlide('next')}
-                        className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
+                        className="absolute top-1/2 right-0 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
                     >
                         <span className="sr-only">Next products</span>
                         <svg
@@ -171,9 +184,7 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                             key={`indicator-${index}`}
                             type="button"
                             onClick={() => setActiveSlide(index)}
-                            className={`h-2 w-8 rounded-full transition ${
-                                activeSlide === index ? 'bg-primary' : 'bg-muted'
-                            }`}
+                            className={`h-2 w-8 rounded-full transition ${activeSlide === index ? 'bg-primary' : 'bg-muted'}`}
                             aria-label={`Go to slide ${index + 1}`}
                             aria-current={activeSlide === index}
                         />
@@ -238,7 +249,7 @@ export default function Welcome() {
 
                             <div className="mx-auto my-12 max-w-6xl">
                                 <h1 className="text-center text-4xl font-bold">Welcome to Legacy Vault</h1>
-                                <h4 className="mt-4 text-center text-lg font-medium">{activeBanner.banner_text}</h4>
+                                <h4 className="mt-4 text-center text-lg font-medium break-words whitespace-normal">{activeBanner.banner_text}</h4>
 
                                 <div className="text-center">
                                     <Button className="mt-4">See More Cases</Button>
@@ -311,6 +322,10 @@ export default function Welcome() {
 
                     <div className="my-8">
                         <ProductCardsSection products={productsPayload} />
+                    </div>
+
+                    <div className="my-8">
+                        <ArticlesSection />
                     </div>
                 </FrontLayout>
             </div>

@@ -161,6 +161,8 @@ Route::get('/lang/{lang}', function ($lang) {
 //ROUTES
 Route::get('/', [ViewController::class, 'welcomePage'])->name('home');
 
+Route::get('/articles', [ViewController::class, 'frontArticlesPage'])->name('front.articles');
+
 Route::get('/login', function () {
     return Inertia::render('auth/login');
 })->name('login');
@@ -223,5 +225,10 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::redirect('/', '/misc/view-running-text');
         Route::get('view-running-text', [ViewController::class, 'runningTextPage']);
         Route::get('view-banner', [ViewController::class, 'bannerPage']);
+    });
+
+    Route::prefix('admin-articles')->group(function() {
+        Route::get('/', [ViewController::class, 'adminArticlePage']);
+        Route::get('/add-articles', [ViewController::class, 'addArticlePage']);
     });
 });
