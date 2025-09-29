@@ -47,7 +47,7 @@ class ArticleController extends Controller
 
             DB::commit();
 
-            return back()->with('alert', [
+            return redirect()->route('admin-articles')->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully create article.',
             ]);
@@ -97,7 +97,7 @@ class ArticleController extends Controller
 
             DB::commit();
 
-            return back()->with('alert', [
+            return redirect()->route('admin-articles')->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully update article.',
             ]);
@@ -127,21 +127,27 @@ class ArticleController extends Controller
 
     public function uploadArticleImage(Request $request)
     {
-        $request->validate([
-            'image' => 'required|file|mimes:jpg,jpeg,png,gif|max:4096',
+        $validator = Validator::make($request->all(), [
+            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp', 'max:4096'],
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid image uploaded.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
 
         try {
             $url = $this->uploadArticleImageToS3($request->file('image'));
+            
+            return response()->json(['url' => $url]);
+        } catch (Exception $e) {
+            Log::error('Upload article image failed: ' . $e->getMessage());
 
-            return $url;
-        } catch (\Exception $e) {
-            Log::error("Upload article image failed: " . $e->getMessage());
-
-            return back()->with('alert', [
-                'type' => 'error',
+            return response()->json([
                 'message' => 'Failed to upload article image.',
-            ]);
+            ], 500);
         }
     }
 }

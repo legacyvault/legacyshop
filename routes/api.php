@@ -24,6 +24,3 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], function () {
-    Route::post('upload-article-img', [ArticleController::class, 'uploadArticleImage'])->name('upload-article-img');
-});
