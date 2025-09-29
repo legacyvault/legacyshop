@@ -109,7 +109,6 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Article API
     Route::post('create-article', [ArticleController::class, 'createArticle'])->name('create-article');
     Route::post('update-article', [ArticleController::class, 'updateArticle'])->name('edit-article');
-    Route::post('upload-article-img', [ArticleController::class, 'uploadArticleImage'])->name('upload-article-img');
 
     //Category API
     Route::post('create-category', [ProductController::class, 'createCategory'])->name('category.create');
