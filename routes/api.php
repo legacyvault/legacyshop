@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\V1\ArticleController;
 use App\Http\Controllers\API\V1\AwsCognitoAuthController;
 use App\Http\Controllers\API\V1\InventoryController;
 use App\Http\Controllers\API\V1\ProductController;
@@ -23,3 +24,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], function () {
+    Route::post('upload-article-img', [ArticleController::class, 'uploadArticleImage'])->name('upload-article-img');
+});
