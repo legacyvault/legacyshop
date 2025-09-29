@@ -12,8 +12,8 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import type { LucideIcon } from 'lucide-react';
 import {
     Bold,
@@ -31,7 +31,7 @@ import {
     Strikethrough,
     Undo2,
 } from 'lucide-react';
-import type { ChangeEvent, FormEvent, MouseEvent, ReactNode } from 'react';
+import type { ChangeEvent, FormEvent, ReactNode } from 'react';
 import { useMemo, useRef, useState } from 'react';
 
 export default function AddArticlePage() {
@@ -126,6 +126,7 @@ export default function AddArticlePage() {
 
         try {
             const url = await uploadArticleImage(file);
+            console.log(url);
             if (url) {
                 editor.chain().focus().setImage({ src: url }).run();
             }
@@ -208,11 +209,7 @@ export default function AddArticlePage() {
                         <p className="mt-1 text-sm text-muted-foreground">Compose a rich article with the editor and publish it for readers.</p>
                     </div>
                     <div className="flex gap-3">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => router.visit('/articles')}
-                        >
+                        <Button type="button" variant="outline" onClick={() => router.visit('/admin-articles')}>
                             Back to Articles
                         </Button>
                         <Button type="submit" form="article-form" disabled={processing}>
@@ -385,15 +382,9 @@ export default function AddArticlePage() {
                                             editor.chain().focus().redo().run();
                                         }}
                                     />
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={handleImageInputChange}
-                                    />
+                                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageInputChange} />
                                 </div>
-                                <EditorContent editor={editor} className="min-h-[320px] px-3 py-4" />
+                                <EditorContent editor={editor} className="tiptap-editor min-h-[320px] px-3 py-4" />
                             </div>
                             <InputError message={errors.content as unknown as string} />
                             <InputError message={imageUploadError ?? undefined} />
@@ -428,15 +419,6 @@ export default function AddArticlePage() {
                                 <InputError message={errors.published_at} />
                             </div>
                         </div>
-
-                        <div className="space-y-3 rounded-lg border border-border bg-card p-6 shadow-sm">
-                            <h2 className="text-base font-semibold text-foreground">Tips</h2>
-                            <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                                <li>Use headings to structure your content.</li>
-                                <li>Upload optimized images for faster load times.</li>
-                                <li>Leave publish date empty to publish immediately.</li>
-                            </ul>
-                        </div>
                     </aside>
                 </form>
             </div>
@@ -468,12 +450,17 @@ async function uploadArticleImage(file: File): Promise<string> {
     formData.append('image', file);
 
     const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+    const headers: Record<string, string> = {
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+    };
+    if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
 
     const response = await fetch(route('upload-article-img'), {
         method: 'POST',
         body: formData,
         credentials: 'include',
-        headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : undefined,
+        headers,
     });
 
     if (!response.ok) {
@@ -485,6 +472,7 @@ async function uploadArticleImage(file: File): Promise<string> {
 
     if (contentType.includes('application/json')) {
         const data = await response.json();
+        console.log(data);
         if (typeof data === 'string') return sanitizeUploadUrl(data);
         if (data && typeof data.url === 'string') return sanitizeUploadUrl(data.url);
     }
@@ -507,17 +495,20 @@ interface ToolbarButtonProps {
 }
 
 function ToolbarButton({ onClick, icon: Icon, label, isActive, disabled, children }: ToolbarButtonProps) {
-    const handleMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (disabled) return;
-        onClick?.();
-    };
-
     return (
         <button
             type="button"
-            onMouseDown={handleMouseDown}
+            onMouseDown={(event) => {
+                event.preventDefault();
+            }}
+            onPointerDown={(event) => {
+                event.preventDefault();
+            }}
+            onClick={(event) => {
+                event.preventDefault();
+                if (disabled) return;
+                onClick?.();
+            }}
             disabled={disabled}
             title={label}
             aria-label={label}

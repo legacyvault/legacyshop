@@ -109,6 +109,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Article API
     Route::post('create-article', [ArticleController::class, 'createArticle'])->name('create-article');
     Route::post('update-article', [ArticleController::class, 'updateArticle'])->name('edit-article');
+    Route::post('upload-article-img', [ArticleController::class, 'uploadArticleImage'])->name('upload-article-img');
 
     //Category API
     Route::post('create-category', [ProductController::class, 'createCategory'])->name('category.create');
@@ -228,6 +229,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
     Route::prefix('admin-articles')->group(function() {
         Route::get('/', [ViewController::class, 'adminArticlePage']);
-        Route::get('/add-articles', [ViewController::class, 'addArticlePage']);
+        Route::get('/add-articles/{id?}', [ViewController::class, 'addArticlePage']);
+        Route::get('/view-articles/{id}', [ViewController::class, 'viewArticlePage']);
     });
 });

@@ -19,6 +19,7 @@ class ViewController extends Controller
     protected $variantController;
     protected $cartController;
     protected $miscController;
+    protected $articleController;
 
     public function __construct(Request $request)
     {
@@ -29,6 +30,7 @@ class ViewController extends Controller
         $this->variantController = new VariantController();
         $this->cartController = new CartsController();
         $this->miscController = new MiscController();
+        $this->articleController = new ArticleController();
     }
 
     public function unitPage(Request $request)
@@ -335,10 +337,29 @@ class ViewController extends Controller
     }
 
     public function adminArticlePage(){
-        return Inertia::render('articles/index');
+        $articles = $this->articleController->getAllArticle();
+        return Inertia::render('articles/index', [
+            'articles' => $articles
+        ]);
     }
 
-    public function addArticlePage(){
-        return Inertia::render('articles/add-articles');
+    public function addArticlePage($id = null){
+        $article = null;
+
+        if ($id) {
+            $article = $this->articleController->getArticleById($id);
+        }
+
+        return Inertia::render('articles/add-articles', [
+            'id' => $id,
+            'article' => $article,
+        ]);
+    }
+
+    public function viewArticlePage($id){
+        $article = $this->articleController->getArticleById($id);
+        return Inertia::render('articles/view-articles', [
+            'article' => $article
+        ]);
     }
 }

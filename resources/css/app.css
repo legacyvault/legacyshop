@@ -13,6 +13,63 @@
     }
 }
 
+@layer components {
+    .tiptap-editor,
+    .tiptap-content {
+        @apply text-base leading-relaxed text-foreground;
+    }
+
+    .tiptap-editor:focus-visible,
+    .tiptap-content:focus-visible {
+        @apply outline-none ring-0;
+    }
+
+    .tiptap-editor p,
+    .tiptap-content p {
+        @apply mb-3;
+    }
+
+    .tiptap-editor h1,
+    .tiptap-content h1 {
+        @apply mb-4 text-3xl font-semibold leading-snug;
+    }
+
+    .tiptap-editor h2,
+    .tiptap-content h2 {
+        @apply mb-4 mt-6 text-2xl font-semibold leading-snug;
+    }
+
+    .tiptap-editor h3,
+    .tiptap-content h3 {
+        @apply mb-3 mt-5 text-xl font-semibold leading-snug;
+    }
+
+    .tiptap-editor ul,
+    .tiptap-content ul {
+        @apply mb-3 list-disc space-y-1 pl-6;
+    }
+
+    .tiptap-editor ol,
+    .tiptap-content ol {
+        @apply mb-3 list-decimal space-y-1 pl-6;
+    }
+
+    .tiptap-editor blockquote,
+    .tiptap-content blockquote {
+        @apply mb-4 border-l-4 border-primary/30 bg-muted/40 px-4 py-2 italic text-muted-foreground;
+    }
+
+    .tiptap-editor a,
+    .tiptap-content a {
+        @apply text-primary underline underline-offset-4 hover:text-primary/80;
+    }
+
+    .tiptap-editor img,
+    .tiptap-content img {
+        @apply my-4 max-w-full rounded-lg shadow;
+    }
+}
+
 @theme {
     --font-sans:
         'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
