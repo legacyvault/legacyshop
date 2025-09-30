@@ -162,6 +162,7 @@ Route::get('/lang/{lang}', function ($lang) {
 Route::get('/', [ViewController::class, 'welcomePage'])->name('home');
 
 Route::get('/articles', [ViewController::class, 'frontArticlesPage'])->name('front.articles');
+Route::get('/articles/{slug}', [ViewController::class, 'frontArticleView'])->name('front.articles-view');
 
 Route::get('/login', function () {
     return Inertia::render('auth/login');
@@ -228,7 +229,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
     });
 
     Route::prefix('admin-articles')->group(function() {
-        Route::get('/', [ViewController::class, 'adminArticlePage']);
+        Route::get('/', [ViewController::class, 'adminArticlePage'])->name('admin-articles');
         Route::get('/add-articles/{id?}', [ViewController::class, 'addArticlePage']);
         Route::get('/view-articles/{id}', [ViewController::class, 'viewArticlePage']);
     });

@@ -37,6 +37,7 @@ import { useMemo, useRef, useState } from 'react';
 export default function AddArticlePage() {
     const page = usePage<{ article?: IArticle; id?: string }>();
     const article = page.props.article;
+    console.log(article);
     const articleId = page.props.id ?? article?.id ?? '';
     const isEdit = Boolean(articleId);
 
@@ -50,6 +51,9 @@ export default function AddArticlePage() {
     const [slugEditedManually, setSlugEditedManually] = useState<boolean>(Boolean(article));
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+    const [imageCoverError, setImageCoverError] = useState<string | null>(null);
+    const [imageCoverPreview, setImageCoverPreview] = useState<string | null>(article?.image_cover ?? null);
+    const [isUploadingCover, setIsUploadingCover] = useState(false);
 
     const initialPublishedAt = useMemo(() => formatDatetimeLocal(article?.published_at ?? null), [article?.published_at]);
 
@@ -61,6 +65,7 @@ export default function AddArticlePage() {
         content_html: article?.content_html ?? '',
         is_published: article?.is_published ?? false,
         published_at: initialPublishedAt,
+        image_cover: article?.image_cover ?? null,
     });
 
     const { data, setData, post, processing, errors, reset, transform } = form;
@@ -95,6 +100,7 @@ export default function AddArticlePage() {
     const isEditorReady = Boolean(editor);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const imageCoverInputRef = useRef<HTMLInputElement>(null);
 
     const handleTitleChange = (value: string) => {
         setData('title', value);
@@ -115,6 +121,47 @@ export default function AddArticlePage() {
 
     const handleImageButtonClick = () => {
         fileInputRef.current?.click();
+    };
+
+    const handleImageCoverChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const MAX_SIZE_BYTES = 2 * 1024 * 1024;
+
+        if (file.size > MAX_SIZE_BYTES) {
+            setImageCoverError('Cover image must be 2 MB or smaller.');
+            event.target.value = '';
+            return;
+        }
+
+        setImageCoverError(null);
+        setIsUploadingCover(true);
+        const previousValue = data.image_cover;
+
+        void (async () => {
+            try {
+                const uploadedUrl = await uploadArticleImage(file);
+                setData('image_cover', uploadedUrl);
+                setImageCoverPreview(uploadedUrl);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Failed to upload cover image. Please try again.';
+                setImageCoverError(message);
+                setData('image_cover', previousValue ?? article?.image_cover ?? null);
+            } finally {
+                setIsUploadingCover(false);
+                event.target.value = '';
+            }
+        })();
+    };
+
+    const handleRemoveImageCover = () => {
+        setData('image_cover', null);
+        setImageCoverPreview(null);
+        setImageCoverError(null);
+        if (imageCoverInputRef.current) {
+            imageCoverInputRef.current.value = '';
+        }
     };
 
     const handleImageInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -171,6 +218,7 @@ export default function AddArticlePage() {
             content: editorJson.content ?? [],
             content_html: editorHtml,
             published_at: formData.is_published ? formData.published_at : null,
+            image_cover: formData.image_cover ?? null,
         }));
 
         const url = route(isEdit ? 'edit-article' : 'create-article');
@@ -182,6 +230,12 @@ export default function AddArticlePage() {
                     reset();
                     editor.commands.clearContent(true);
                     setSlugEditedManually(false);
+                    setImageCoverPreview(null);
+                    setImageCoverError(null);
+                    setData('image_cover', null);
+                    if (imageCoverInputRef.current) {
+                        imageCoverInputRef.current.value = '';
+                    }
                 }
             },
         });
@@ -191,6 +245,12 @@ export default function AddArticlePage() {
         setData('is_published', checked);
         if (!checked) {
             setData('published_at', null);
+            return;
+        }
+
+        if (!data.published_at) {
+            const now = formatDatetimeLocal(new Date());
+            setData('published_at', now);
         }
     };
 
@@ -393,6 +453,63 @@ export default function AddArticlePage() {
 
                     <aside className="space-y-6">
                         <div className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+                            <div className="space-y-1">
+                                <Label htmlFor="image_cover" className="text-base font-semibold">
+                                    Cover Image
+                                </Label>
+                                <p className="text-sm text-muted-foreground">Upload one image up to 2 MB for the article cover.</p>
+                            </div>
+                            {imageCoverPreview ? (
+                                <div className="space-y-3">
+                                    <div className="overflow-hidden rounded-md border border-border">
+                                        <img src={imageCoverPreview} alt="Selected cover" className="h-48 w-full object-cover" />
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => imageCoverInputRef.current?.click()}
+                                            disabled={isUploadingCover}
+                                        >
+                                            Replace image
+                                        </Button>
+                                        <Button type="button" variant="ghost" onClick={handleRemoveImageCover} disabled={isUploadingCover}>
+                                            Remove image
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => imageCoverInputRef.current?.click()}
+                                        disabled={isUploadingCover}
+                                    >
+                                        {isUploadingCover ? (
+                                            <span className="flex items-center gap-2">
+                                                <Loader2 className="size-4 animate-spin" />
+                                                Uploading…
+                                            </span>
+                                        ) : (
+                                            'Upload image'
+                                        )}
+                                    </Button>
+                                    <p className="text-xs text-muted-foreground">Supported types: JPG, JPEG, PNG, GIF, WEBP.</p>
+                                </div>
+                            )}
+                            <input
+                                ref={imageCoverInputRef}
+                                id="image_cover"
+                                name="image_cover"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleImageCoverChange}
+                            />
+                            <InputError message={imageCoverError ?? errors.image_cover} />
+                        </div>
+                        <div className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="is_published" className="text-base font-semibold">
                                     Publish
@@ -403,7 +520,7 @@ export default function AddArticlePage() {
                                     onCheckedChange={(value) => togglePublished(value === true)}
                                 />
                             </div>
-                            <p className="text-sm text-muted-foreground">
+                            {/* <p className="text-sm text-muted-foreground">
                                 Enable publish to make the article visible. Set a publish date to schedule visibility.
                             </p>
                             <div className="space-y-2">
@@ -417,7 +534,7 @@ export default function AddArticlePage() {
                                     aria-invalid={Boolean(errors.published_at)}
                                 />
                                 <InputError message={errors.published_at} />
-                            </div>
+                            </div> */}
                         </div>
                     </aside>
                 </form>
@@ -437,9 +554,9 @@ function generateSlug(value: string): string {
         .slice(0, 180);
 }
 
-function formatDatetimeLocal(value: string | null): string | null {
+function formatDatetimeLocal(value: string | Date | null): string | null {
     if (!value) return null;
-    const date = new Date(value);
+    const date = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(date.getTime())) return null;
     const pad = (input: number) => `${input}`.padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;

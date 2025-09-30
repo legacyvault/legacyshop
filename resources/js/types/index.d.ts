@@ -48,8 +48,8 @@ export interface SharedData {
     products: IRootProducts;
     runningText: IRunningText[];
     banner: IBanner[];
-    article?: IArticle;
-    articles?: IArticle[];
+    article: IArticle;
+    articles: IArticle[];
 }
 
 export interface IBanner {
@@ -174,6 +174,7 @@ export interface IArticle {
     published_at: string | null;
     created_at?: string;
     updated_at?: string;
+    image_cover: string | null;
 }
 
 export interface IRootProducts {

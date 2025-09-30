@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Carbon\Carbon;
 
 class ArticleController extends Controller
 {
@@ -28,6 +29,7 @@ class ArticleController extends Controller
             'content_html'  => ['nullable', 'string'],
             'is_published'  => ['boolean'],
             'published_at'  => ['nullable', 'date'],
+            'image_cover'   => ['nullable', 'string', 'max:2048'],
         ]);
 
         if ($validator->fails()) {
@@ -36,13 +38,26 @@ class ArticleController extends Controller
 
         try {
             DB::beginTransaction();
+
+            $imageCoverUrl = $request->input('image_cover');
+            $isPublished = $request->boolean('is_published');
+            $publishedAtInput = $request->input('published_at');
+            $publishedAt = null;
+
+            if ($isPublished) {
+                $publishedAt = $publishedAtInput
+                    ? Carbon::parse($publishedAtInput)
+                    : Carbon::now();
+            }
+
             Article::create([
                 'title'        => $request->title,
                 'slug'         => $request->slug,
                 'content'      => $request->content,
                 'content_html' => $request->content_html,
-                'is_published' => $request->boolean('is_published'),
-                'published_at' => $request->published_at,
+                'is_published' => $isPublished,
+                'published_at' => $publishedAt,
+                'image_cover'  => $imageCoverUrl,
             ]);
 
             DB::commit();
@@ -76,6 +91,7 @@ class ArticleController extends Controller
             'content_html'  => ['nullable', 'string'],
             'is_published'  => ['boolean'],
             'published_at'  => ['nullable', 'date'],
+            'image_cover'   => ['nullable', 'string', 'max:2048'],
         ]);
 
         if ($validator->fails()) {
@@ -86,13 +102,26 @@ class ArticleController extends Controller
             DB::beginTransaction();
             $article = Article::findOrFail($request->id);
 
+            $imageCoverUrl = $request->input('image_cover');
+
+            $isPublished = $request->boolean('is_published');
+            $publishedAtInput = $request->input('published_at');
+            $publishedAt = null;
+
+            if ($isPublished) {
+                $publishedAt = $publishedAtInput
+                    ? Carbon::parse($publishedAtInput)
+                    : ($article->published_at ?? Carbon::now());
+            }
+
             $article->update([
                 'title'         => $request->title,
                 'slug'          => $request->slug,
                 'content'       => $request->content,
                 'content_html'  => $request->content_html,
-                'is_published'  => $request->boolean('is_published'),
-                'published_at'  => $request->published_at,
+                'is_published'  => $isPublished,
+                'published_at'  => $publishedAt,
+                'image_cover'   => $imageCoverUrl,
             ]);
 
             DB::commit();
@@ -120,9 +149,18 @@ class ArticleController extends Controller
 
     public function getArticleById($id)
     {
-        $data = Article::find($id);
+        return Article::find($id);
+    }
 
-        return $data;
+    public function getArticleBySlug(string $slug)
+    {
+        $article = Article::whereNotNull('slug')->where('slug', $slug)->first();
+
+        if (!$article && is_numeric($slug)) {
+            return $this->getArticleById($slug);
+        }
+
+        return $article;
     }
 
     public function uploadArticleImage(Request $request)
@@ -149,5 +187,18 @@ class ArticleController extends Controller
                 'message' => 'Failed to upload article image.',
             ], 500);
         }
+    }
+
+    public function getNewestArticle()
+    {
+        $data = Article::orderBy('published_at')
+
+            ->where('is_published',true)
+            // ->where('published_at', '<=', Carbon::now())
+            ->orderBy('published_at', 'desc')
+            ->limit(3)
+            ->get();
+
+        return $data;
     }
 }

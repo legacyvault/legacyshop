@@ -73,11 +73,13 @@ class ViewController extends Controller
         $products = $this->productController->getAllShowcaseProduct();
         $units = $this->productController->getAllUnit();
         $banner = $this->miscController->getActiveBanner();
+        $articles = $this->articleController->getNewestArticle();
 
         return Inertia::render('welcome', [
             'products' => $products,
             'units' => $units,
             'banner' => $banner,
+            'articles' => $articles,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -326,9 +328,27 @@ class ViewController extends Controller
     }
 
     public function frontArticlesPage()
-    {
+    {  
+       $articles = $this->articleController->getAllArticle(); 
         return Inertia::render('front/articles/index', [
-            'articles' => null,
+            'articles' => $articles,
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ]
+        ]);
+    }
+
+    public function frontArticleView($slug)
+    {
+        $article = $this->articleController->getArticleBySlug($slug);
+
+        if (!$article) {
+            abort(404);
+        }
+
+        return Inertia::render('front/articles/view-article', [
+            'article' => $article,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
