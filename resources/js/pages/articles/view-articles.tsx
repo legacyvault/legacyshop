@@ -12,6 +12,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function ViewArticle() {
     const page = usePage<{ article: IArticle | null }>();
     const article = page.props.article;
+    console.log(article);
 
     const formatDateTime = (value?: string | null) => {
         if (!value) return '-';
@@ -67,15 +68,25 @@ export default function ViewArticle() {
 
                         <div className="rounded border border-border">
                             <div className="border-b border-border px-4 py-3">
+                                <h2 className="text-base font-semibold">Image Cover</h2>
+                            </div>
+                            <div
+                                className={`min-h-[400px] bg-cover bg-center px-4 py-6`}
+                                style={{
+                                    backgroundImage: `url('${article.image_cover}')`,
+                                }}
+                            ></div>
+                        </div>
+
+                        <div className="rounded border border-border">
+                            <div className="border-b border-border px-4 py-3">
                                 <h2 className="text-base font-semibold">Content</h2>
                             </div>
                             <div
                                 className="tiptap-content min-h-[200px] px-4 py-6"
                                 dangerouslySetInnerHTML={{ __html: article.content_html ?? '' }}
                             />
-                            {!article.content_html && (
-                                <p className="px-4 pb-6 text-sm text-muted-foreground">No content available.</p>
-                            )}
+                            {!article.content_html && <p className="px-4 pb-6 text-sm text-muted-foreground">No content available.</p>}
                         </div>
                     </div>
                 ) : (
