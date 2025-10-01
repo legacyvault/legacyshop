@@ -87,7 +87,7 @@ export const CartProvider = ({ children, auth }: CartProviderProps) => {
         const mapped: CartItem[] = list.map((row) => {
             const product = row.product ?? {};
             const name = product.product_name ?? 'Product';
-            const basePrice = Number(product.product_price ?? 0);
+            const basePrice = Number(row.price_per_product ?? 0);
             const image = product.pictures?.[0]?.url ?? undefined;
             const meta = {
                 product_id: String(row.product_id ?? product.id ?? ''),

@@ -302,6 +302,7 @@ class ViewController extends Controller
         }
 
         return Inertia::render('front/carts/index', [
+            'id' => $id,
             'carts' => $carts,
             'filters'  => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page'),
             'translations' => [
@@ -381,5 +382,9 @@ class ViewController extends Controller
         return Inertia::render('articles/view-articles', [
             'article' => $article
         ]);
+    }
+
+    public function checkoutPage(){
+        return Inertia::render('front/checkout/index');
     }
 }
