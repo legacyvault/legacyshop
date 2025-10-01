@@ -50,6 +50,26 @@ export interface SharedData {
     banner: IBanner[];
     article: IArticle;
     articles: IArticle[];
+    carts: ICart[];
+}
+
+export interface ICart{
+    category: ICategories[] | null;
+    category_id: string | null;
+    division: IDivisions[] | null;
+    division_id: string | null;
+    id: string;
+    price_per_product: number;
+    product: IProducts;
+    product_id: string;
+    quantity: number;
+    sub_category: ISubcats[] | null;
+    sub_category_id: string | null;
+    updated_at: string | Date;
+    created_at: string | Date;
+    user_id: string;
+    variant: IVariants[] | null;
+    variant_id: string | null;
 }
 
 export interface IBanner {

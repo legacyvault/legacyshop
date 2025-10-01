@@ -7,6 +7,7 @@ import { useCart } from '../contexts/CartContext';
 import { Button } from './ui/button';
 
 export const CartDropdown = ({ auth }: { auth: Auth }) => {
+    console.log(auth)
     const { items, totalItems, totalPrice, updateQuantity, removeItem, isCartOpen, openCart } = useCart();
 
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -124,7 +125,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
 
                                     {/* Action Buttons */}
                                     <div className="flex w-full gap-2">
-                                        <Link href={`/view-cart/${auth.user.id}`} className="w-full">
+                                        <Link href={auth.user ? `/view-cart/${auth.user.id}` : `/view-cart`} className="w-full">
                                             <Button className="w-full">View Cart</Button>
                                         </Link>
                                         <Link href="/checkout" className="w-full">
