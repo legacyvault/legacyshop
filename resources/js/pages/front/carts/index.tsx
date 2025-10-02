@@ -416,9 +416,12 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                             <span>Total</span>
                             <span>{formatCurrency(totals.subtotal)}</span>
                         </div>
-                        <Button className="mt-6 w-full" size="lg" disabled={!selectedItems.length}>
-                            Checkout{totals.count ? ` (${totals.count})` : ''}
-                        </Button>
+                        <Link href={'/checkout'}>
+                            <Button className="mt-6 w-full" size="lg" disabled={!selectedItems.length}>
+                                Checkout{totals.count ? ` (${totals.count})` : ''}
+                            </Button>             
+                        </Link>
+
                     </div>
 
                 </aside>
