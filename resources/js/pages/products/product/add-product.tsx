@@ -310,6 +310,11 @@ export default function AddProduct() {
         (subcats as ISubcats[] | undefined)?.forEach((s) => (m[s.id] = Number(s.discount || 0)));
         return m;
     }, [subcats]);
+    const subcatPriceById = useMemo(() => {
+        const m: Record<string, number> = {};
+        (subcats as ISubcats[] | undefined)?.forEach((s) => (m[s.id] = Number(s.price || 0)));
+        return m;
+    }, [subcats]);
     const divisionNameById = useMemo(() => {
         const m: Record<string, string> = {};
         (divisions as IDivisions[] | undefined)?.forEach((d) => (m[d.id] = d.name));
@@ -320,6 +325,11 @@ export default function AddProduct() {
         (divisions as IDivisions[] | undefined)?.forEach((d) => (m[d.id] = Number(d.discount || 0)));
         return m;
     }, [divisions]);
+    const divisionPriceById = useMemo(() => {
+        const m: Record<string, number> = {};
+        (divisions as IDivisions[] | undefined)?.forEach((d) => (m[d.id] = Number(d.price || 0)));
+        return m;
+    }, [divisions]);
     const variantNameById = useMemo(() => {
         const m: Record<string, string> = {};
         (variants as IVariants[] | undefined)?.forEach((v) => (m[v.id] = v.name));
@@ -328,6 +338,11 @@ export default function AddProduct() {
     const variantDiscountById = useMemo(() => {
         const m: Record<string, number> = {};
         (variants as IVariants[] | undefined)?.forEach((v) => (m[v.id] = Number(v.discount || 0)));
+        return m;
+    }, [variants]);
+    const variantPriceById = useMemo(() => {
+        const m: Record<string, number> = {};
+        (variants as IVariants[] | undefined)?.forEach((v) => (m[v.id] = Number(v.price || 0)));
         return m;
     }, [variants]);
 
@@ -476,33 +491,58 @@ export default function AddProduct() {
 
     const handleDiscountSourceChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, source: string) => {
         const discountField = `${type}Discounts` as 'subcategoryDiscounts' | 'divisionDiscounts' | 'variantDiscounts';
+        const priceMap =
+            type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
 
-        setFormData((prev) => ({
-            ...prev,
-            [discountField]: {
-                ...(prev[discountField] ?? {}), // ✅ ensure object
-                [selectedValue]: {
-                    source,
-                    value: '',
+        setFormData((prev) => {
+            const currentDiscounts = (prev[discountField] ?? {}) as Record<
+                string,
+                { source: string; value: string; base_price: number }
+            >;
+            const existing = currentDiscounts[selectedValue];
+            const basePrice = existing?.base_price ?? priceMap[selectedValue] ?? 0;
+
+            return {
+                ...prev,
+                [discountField]: {
+                    ...currentDiscounts,
+                    [selectedValue]: {
+                        ...(existing ?? { source: '', value: '', base_price: basePrice }),
+                        base_price: basePrice,
+                        source,
+                        value: '',
+                    },
                 },
-            },
-        }));
+            };
+        });
     };
 
     const handleDiscountValueChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, value: string) => {
         const discountField = `${type}Discounts` as 'subcategoryDiscounts' | 'divisionDiscounts' | 'variantDiscounts';
+        const priceMap =
+            type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
 
         if (Number(value) <= 100) {
-            setFormData((prev) => ({
-                ...prev,
-                [discountField]: {
-                    ...prev[discountField],
-                    [selectedValue]: {
-                        ...prev[discountField][selectedValue],
-                        value: value,
+            setFormData((prev) => {
+                const currentDiscounts = (prev[discountField] ?? {}) as Record<
+                    string,
+                    { source: string; value: string; base_price: number }
+                >;
+                const existing = currentDiscounts[selectedValue];
+                const basePrice = existing?.base_price ?? priceMap[selectedValue] ?? 0;
+
+                return {
+                    ...prev,
+                    [discountField]: {
+                        ...currentDiscounts,
+                        [selectedValue]: {
+                            ...(existing ?? { source: 'manual', value: '', base_price: basePrice }),
+                            base_price: basePrice,
+                            value: value,
+                        },
                     },
-                },
-            }));
+                };
+            });
         }
     };
 
@@ -512,11 +552,18 @@ export default function AddProduct() {
                 type === 'subcategory' ? prev.subcategoryDiscounts : type === 'division' ? prev.divisionDiscounts : prev.variantDiscounts;
 
             const newDiscounts = { ...currentDiscounts };
+            const priceMap =
+                type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
 
             // Add new selections with default settings
             values.forEach((value) => {
                 if (!newDiscounts[value]) {
-                    newDiscounts[value] = { source: '', value: '', base_price: 0 };
+                    newDiscounts[value] = { source: '', value: '', base_price: priceMap[value] ?? 0 };
+                } else if (newDiscounts[value].base_price !== (priceMap[value] ?? 0)) {
+                    newDiscounts[value] = {
+                        ...newDiscounts[value],
+                        base_price: priceMap[value] ?? 0,
+                    };
                 }
             });
 
@@ -1380,6 +1427,7 @@ export default function AddProduct() {
                             {/* Subcategory discounts */}
                             {formData.subcategory.map((id) => {
                                 const d = formData.subcategoryDiscounts[id];
+                                console.log(d);
                                 const applied = d?.source === 'manual' ? Number(d.value || 0) : d?.source === id ? subcatDiscountById[id] || 0 : 0;
                                 return applied ? (
                                     <div key={id} className="flex justify-between text-blue-600">
