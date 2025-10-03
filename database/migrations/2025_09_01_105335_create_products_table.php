@@ -22,6 +22,7 @@ return new class extends Migration
             $table->float('product_discount')->nullable();
             $table->string('unit_id');
             $table->boolean('is_showcase')->default(false);
+            $table->float('product_weight');
             $table->timestamps();
         });
     }

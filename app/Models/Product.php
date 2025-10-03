@@ -18,6 +18,7 @@ class Product extends Model
         'unit_id',
         'product_price',
         'product_usd_price',
+        'product_weight',
         'product_discount',
         'is_showcase'
     ];
