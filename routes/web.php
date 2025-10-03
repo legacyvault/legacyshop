@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\V1\ArticleController;
 use App\Http\Controllers\API\V1\AWSCognitoAuthController;
+use App\Http\Controllers\API\V1\BiteshipController;
 use App\Http\Controllers\API\V1\CartsController;
 use App\Http\Controllers\API\V1\LocationController;
 use App\Http\Controllers\API\V1\ProductController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\API\V1\DivisionController;
 use App\Http\Controllers\API\V1\MiscController;
 use App\Http\Controllers\API\V1\SubCategoryController;
 use App\Http\Controllers\API\V1\VariantController;
+use App\Http\Controllers\API\V1\WarehouseController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
@@ -36,6 +38,13 @@ Route::group(['prefix' => 'v1'], function () {
 
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+    //Biteship API
+    Route::get('all-warehouse', [WarehouseController::class, 'getAllWarehouse'])->name('warehouses');
+    Route::get('active-warehouse', [WarehouseController::class, 'getActiveWarehouse'])->name('warehouse.active');
+    Route::get('biteship/origin/{origin_id}', [BiteshipController::class, 'getBiteshipOriginWarehouse'])->name('origin.location');
+    Route::get('courier-list', [BiteshipController::class, 'getCourierList'])->name('courier.list');
+    Route::post('delivery-rates', [BiteshipController::class, 'getDeliveryRates'])->name('delivery.rates');
+
     //Location API
     Route::get('province-list', [LocationController::class, 'getProvinceList'])->name('province.list');
     Route::get('city-list/{geonameId}', [LocationController::class, 'getCitiesList'])->name('cities.list');
@@ -64,6 +73,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('update-profile', [UserController::class, 'updateProfile'])->name('profile.edit');
     Route::get('profile', [UserController::class, 'getProfile'])->name('profile.edit-view');
     Route::post('create-delivery-address', [UserController::class, 'createDeliveryAddress'])->name('create.delivery-address');
+    Route::post('update-delivery-address', [UserController::class, 'updateDeliveryAddress'])->name('update.delivery-address');
+    Route::get('delivery-address', [UserController::class, 'getAllDeliveryAddress'])->name('all.delivery-address');
+    Route::get('active-delivery-address', [UserController::class, 'getActiveDeliveryAddress'])->name('active.delivery-address');
+    Route::get('biteship/destination/{destination_id}', [BiteshipController::class, 'getBiteshipDestinationID'])->name('destination.location');
 
     Route::get('category', [ProductController::class, 'getAllCategory'])->name('category');
     Route::get('category/{id}', [ProductController::class, 'getCategoryById'])->name('category.id');
@@ -90,6 +103,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 });
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], function () {
+
+    //Warehouse API
+    Route::post('create-warehouse', [WarehouseController::class, 'createWarehouse'])->name('create.warehouse');
+    Route::post('update-warehouse', [WarehouseController::class, 'updateWarehouse'])->name('update.warehouse');
 
     //Product API
     Route::post('add-product', [ProductController::class, 'addProduct'])->name('product.add-product');
@@ -230,7 +247,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('view-banner', [ViewController::class, 'bannerPage']);
     });
 
-    Route::prefix('admin-articles')->group(function() {
+    Route::prefix('admin-articles')->group(function () {
         Route::get('/', [ViewController::class, 'adminArticlePage'])->name('admin-articles');
         Route::get('/add-articles/{id?}', [ViewController::class, 'addArticlePage']);
         Route::get('/view-articles/{id}', [ViewController::class, 'viewArticlePage']);

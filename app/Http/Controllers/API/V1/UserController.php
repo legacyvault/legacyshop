@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Lang;
 
@@ -18,9 +20,12 @@ class UserController extends Controller
 {
     protected $user;
 
+    private $apiKey;
+
     public function __construct(Request $request)
     {
         $this->user = $this->authenticateUser($request->header('Authorization'));
+        $this->apiKey = env('BITESHIP_API_KEY');
     }
 
     public function authenticateUser($token)
@@ -85,11 +90,16 @@ class UserController extends Controller
     public function createDeliveryAddress(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'name' => 'required|string',
+            'contact_name' => 'required|string',
+            'contact_phone' => 'required|string',
             'country' => 'required|string',
             'province' => 'required|string',
             'address' => 'required|string',
             'city' => 'required|string',
-            'postal_code' => 'required|string'
+            'postal_code' => 'required|string',
+            'latitude' => 'required|string',
+            'longitude' => 'required|string'
         ]);
 
         if ($validator->fails()) {
@@ -99,8 +109,31 @@ class UserController extends Controller
         $user = Auth::user();
         $profile = Profile::where('user_id', $user->id)->first();
         $hasAddress = DeliveryAddress::where('profile_id', $profile->id)->exists();
-        
+
+        $response = Http::withToken($this->apiKey)
+            ->post('https://api.biteship.com/v1/locations', [
+                'name'          => $request->name,
+                'contact_name'  => $request->contact_name,
+                'contact_phone' => $request->contact_phone,
+                'address'       => $request->address,
+                'note'          => null,
+                'postal_code'   => $request->postal_code,
+                'latitude'      => $request->latitude,
+                'longitude'     => $request->longitude,
+                'type'          => 'destination',
+            ]);
+
+        if (!$response->successful()) {
+            return redirect()->back()->with('error', 'Gagal create lokasi di Biteship');
+        }
+
+        $biteshipData = $response->json();
+
         $create = DeliveryAddress::create([
+            'name' => $request->name,
+            'contact_name' => $request->contact_name,
+            'contact_phone' => $request->contact_phone,
+            'biteship_destination_id' => $biteshipData['id'],
             'profile_id' => $profile->id,
             'country' => $request->country,
             'province' => $request->province,
@@ -108,6 +141,8 @@ class UserController extends Controller
             'city' => $request->city,
             'postal_code' => $request->postal_code,
             'is_active' => $hasAddress ? 0 : 1,
+            'latitude'      => $request->latitude,
+            'longitude'     => $request->longitude,
         ]);
 
         if ($create) {
@@ -115,5 +150,90 @@ class UserController extends Controller
         } else {
             return redirect()->back()->with('error', 'Failed to create delivery address.');
         }
+    }
+
+    public function updateDeliveryAddress(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id'            => 'required|exists:delivery_address,id',
+            'name'          => 'required|string',
+            'contact_name'  => 'required|string',
+            'contact_phone' => 'required|string',
+            'country'       => 'required|string',
+            'province'      => 'required|string',
+            'address'       => 'required|string',
+            'city'          => 'required|string',
+            'postal_code'   => 'required|string',
+            'latitude'      => 'required|string',
+            'longitude'     => 'required|string',
+            'is_active'     => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $deliveryAddress = DeliveryAddress::findOrFail($request->id);
+
+            $response = Http::withToken($this->apiKey)
+                ->post("https://api.biteship.com/v1/locations/{$deliveryAddress->biteship_destination_id}", [
+                    'name'          => $request->name,
+                    'contact_name'  => $request->contact_name,
+                    'contact_phone' => $request->contact_phone,
+                    'address'       => $request->address,
+                    'note'          => null,
+                    'postal_code'   => $request->postal_code,
+                    'latitude'      => $request->latitude,
+                    'longitude'     => $request->longitude
+                ]);
+
+            if (!$response->successful()) {
+                return redirect()->back()->with('error', 'Gagal update lokasi di Biteship');
+            }
+
+            if ($request->has('is_active') && $request->is_active) {
+                DeliveryAddress::where('profile_id', $deliveryAddress->profile_id)
+                    ->where('id', '!=', $deliveryAddress->id)
+                    ->update(['is_active' => false]);
+                $deliveryAddress->is_active = true;
+            }
+
+            $deliveryAddress->name          = $request->name;
+            $deliveryAddress->contact_name  = $request->contact_name;
+            $deliveryAddress->contact_phone = $request->contact_phone;
+            $deliveryAddress->country       = $request->country;
+            $deliveryAddress->province      = $request->province;
+            $deliveryAddress->address       = $request->address;
+            $deliveryAddress->city          = $request->city;
+            $deliveryAddress->postal_code   = $request->postal_code;
+            $deliveryAddress->latitude      = $request->latitude;
+            $deliveryAddress->longitude     = $request->longitude;
+            $deliveryAddress->save();
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully updated delivery address.');
+        } catch (Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Failed to update delivery address.');
+        }
+    }
+
+    public function getAllDeliveryAddress()
+    {
+        $data = DeliveryAddress::orderBy('name', 'asc')->get();
+
+        return $data;
+    }
+
+    public function getActiveDeliveryAddress()
+    {
+        $data = DeliveryAddress::where('is_active', true)
+            ->orderBy('name', 'asc')
+            ->first();
+
+        return $data;
     }
 }

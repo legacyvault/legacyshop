@@ -11,22 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('delivery_address', function (Blueprint $table) {
-            $table->id();
-            $table->string('profile_id');
+        Schema::create('warehouses', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('biteship_location_id');
             $table->string('name');
-            $table->string('biteship_destination_id');
             $table->string('contact_name');
             $table->string('contact_phone');
-            $table->string('biteship_location_id');
+            $table->longText('address');
             $table->string('country')->nullable();
-            $table->string('province')->nullable();
-            $table->longText('address')->nullable();
-            $table->string('city')->nullable();
             $table->string('postal_code')->nullable();
-            $table->boolean('is_active')->default(0);
             $table->double('latitude');
             $table->double('longitude');
+            $table->boolean('is_active')->default(false);
             $table->timestamps();
         });
     }
@@ -36,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('delivery_address');
+        Schema::dropIfExists('warehouses');
     }
 };
