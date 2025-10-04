@@ -53,7 +53,7 @@ export interface SharedData {
     carts: ICart[];
 }
 
-export interface ICart{
+export interface ICart {
     category: ICategories[] | null;
     category_id: string | null;
     division: IDivisions[] | null;
@@ -294,6 +294,7 @@ export interface IProducts {
     product_sku: string;
     product_usd_price: number;
     is_showcase: boolean;
+    product_weight: string;
 }
 
 export interface IPivotDivisionProd {
