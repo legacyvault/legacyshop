@@ -93,7 +93,6 @@ class UserController extends Controller
             'name' => 'required|string',
             'contact_name' => 'required|string',
             'contact_phone' => 'required|string',
-            'country' => 'required|string',
             'province' => 'required|string',
             'address' => 'required|string',
             'city' => 'required|string',
@@ -109,6 +108,19 @@ class UserController extends Controller
         $user = Auth::user();
         $profile = Profile::where('user_id', $user->id)->first();
         $hasAddress = DeliveryAddress::where('profile_id', $profile->id)->exists();
+
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        if (env('APP_ENV') == 'local') {
+            $ip = '36.84.152.11';
+        }
+
+        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
+        $location = $response->json();
+
+
+        if ($location['status'] == 'fail') {
+            return redirect()->back()->with('error', 'Failed to fetch location with IP');
+        }
 
         $response = Http::withToken($this->apiKey)
             ->post('https://api.biteship.com/v1/locations', [
@@ -135,7 +147,7 @@ class UserController extends Controller
             'contact_phone' => $request->contact_phone,
             'biteship_destination_id' => $biteshipData['id'],
             'profile_id' => $profile->id,
-            'country' => $request->country,
+            'country' => $location['countryCode'] ?? null,
             'province' => $request->province,
             'address' => $request->address,
             'city' => $request->city,
@@ -159,7 +171,6 @@ class UserController extends Controller
             'name'          => 'required|string',
             'contact_name'  => 'required|string',
             'contact_phone' => 'required|string',
-            'country'       => 'required|string',
             'province'      => 'required|string',
             'address'       => 'required|string',
             'city'          => 'required|string',
@@ -204,7 +215,6 @@ class UserController extends Controller
             $deliveryAddress->name          = $request->name;
             $deliveryAddress->contact_name  = $request->contact_name;
             $deliveryAddress->contact_phone = $request->contact_phone;
-            $deliveryAddress->country       = $request->country;
             $deliveryAddress->province      = $request->province;
             $deliveryAddress->address       = $request->address;
             $deliveryAddress->city          = $request->city;
