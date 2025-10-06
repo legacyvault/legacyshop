@@ -259,7 +259,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
     });
 
     Route::prefix('warehouse')->group(function () {
-        Route::get('/', [ViewController::class, 'warehousePage']);
+        Route::get('/', [ViewController::class, 'warehousePage'])->name('warehouse-admin.view');
         Route::get('add-warehouse/{id?}', [ViewController::class, 'addWarehousePage']);
     });
 });

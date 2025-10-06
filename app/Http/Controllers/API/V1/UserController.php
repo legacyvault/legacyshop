@@ -178,7 +178,7 @@ class UserController extends Controller
 
             DB::commit();
 
-            return redirect()->route('settings/delivery-address')->with('alert', [
+            return redirect()->route('profile.deliveryaddress.view')->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully create delivery address.'
             ]);
@@ -198,6 +198,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), [
             'id'            => 'required|exists:delivery_address,id',
             'name'          => 'required|string',
+
             'contact_name'  => 'required|string',
             'contact_phone' => 'required|string',
             'province'      => 'required|string',
@@ -256,9 +257,9 @@ class UserController extends Controller
             $deliveryAddress->save();
 
             DB::commit();
-            return redirect()->route('settings/delivery-address')->with('alert', [
+            return redirect()->route('profile.deliveryaddress.view')->with('alert', [
                 'type' => 'success',
-                'message' => 'Successfully update delivery address.'
+                'message' => 'Successfully create delivery address.'
             ]);
         } catch (Exception $e) {
             DB::rollback();
@@ -271,7 +272,7 @@ class UserController extends Controller
 
     public function getAllDeliveryAddress()
     {
-        $data = DeliveryAddress::orderBy('name', 'asc')->get();
+        $data = DeliveryAddress::orderBy('is_active', 'desc')->get();
 
         return $data;
     }

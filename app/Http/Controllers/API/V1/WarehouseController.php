@@ -49,7 +49,7 @@ class WarehouseController extends Controller
                     'contact_name'  => $request->contact_name,
                     'contact_phone' => $request->contact_phone,
                     'address'       => $request->address,
-                    'note'          => $request->note ?? null,
+                    'note'          => '',
                     'postal_code'   => $request->postal_code,
                     'latitude'      => $request->latitude,
                     'longitude'     => $request->longitude,
@@ -83,14 +83,13 @@ class WarehouseController extends Controller
             $warehouse->postal_code            = $request->postal_code;
             $warehouse->latitude               = $request->latitude;
             $warehouse->longitude              = $request->longitude;
-            $warehouse->note                   = $request->note ?? null;
             $warehouse->biteship_location_id   = $biteshipId;
             $warehouse->is_active              = $isActive;
             $warehouse->save();
 
             DB::commit();
 
-            return redirect()->back()->with('alert', [
+            return redirect()->route('warehouse-admin.view')->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully create warehouse.'
             ]);
@@ -143,7 +142,10 @@ class WarehouseController extends Controller
                 ]);
 
             if (!$response->successful()) {
-                return redirect()->back()->with('error', 'Gagal update lokasi di Biteship');
+                return redirect()->back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Gagal update lokasi di Biteship'
+                ]);
             }
 
             if ($request->has('is_active') && $request->is_active) {
@@ -164,10 +166,16 @@ class WarehouseController extends Controller
             $warehouse->save();
 
             DB::commit();
-            return redirect()->back()->with('success', 'Successfully updated warehouse.');
+            return redirect()->route('warehouse-admin.view')->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully updated warehouse.'
+            ]);
         } catch (Exception $e) {
             DB::rollback();
-            return redirect()->back()->with('error', 'Failed to update warehouse.');
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to update warehouse.'
+            ]);
         }
     }
 

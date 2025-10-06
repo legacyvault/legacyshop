@@ -44,7 +44,7 @@ function FrontChildLayout({ children, auth, locale, translations, searchValue, o
             <FrontHeader auth={auth} locale={locale} translations={translations} searchValue={searchValue} onSearchChange={onSearchChange} />
             <div className="relative min-h-screen bg-background">
                 <div
-                    className={`absolute inset-0 z-10 bg-foreground transition-opacity ${
+                    className={`absolute inset-0 z-40 bg-foreground transition-opacity ${
                         isCartOpen ? 'pointer-events-auto opacity-75' : 'pointer-events-none opacity-0'
                     }`}
                 ></div>

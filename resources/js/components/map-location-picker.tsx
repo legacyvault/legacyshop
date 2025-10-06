@@ -236,27 +236,27 @@ export default function MapLibreLocationPicker({
                 <Marker latitude={coords.lat} longitude={coords.lng} draggable onDragEnd={onMarkerDragEnd} />
             </Map>
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-4 pb-4">
-                <div className="pointer-events-auto w-full max-w-2xl rounded-md border border-gray-200 bg-white/95 p-4 text-sm shadow-sm backdrop-blur">
-                    <div className="grid hidden gap-4 text-sm text-gray-700 md:grid-cols-2">
-                        <div>
-                            <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">Latitude</p>
-                            <p className="mt-1 text-base font-semibold text-gray-900">{coords.lat.toFixed(6)}</p>
+            {address && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-4 pb-4">
+                    <div className="pointer-events-auto w-full max-w-2xl rounded-md border border-gray-200 bg-white/95 p-4 text-sm shadow-sm backdrop-blur">
+                        <div className="grid hidden gap-4 text-sm text-gray-700 md:grid-cols-2">
+                            <div>
+                                <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">Latitude</p>
+                                <p className="mt-1 text-base font-semibold text-gray-900">{coords.lat.toFixed(6)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">Longitude</p>
+                                <p className="mt-1 text-base font-semibold text-gray-900">{coords.lng.toFixed(6)}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">Longitude</p>
-                            <p className="mt-1 text-base font-semibold text-gray-900">{coords.lng.toFixed(6)}</p>
-                        </div>
-                    </div>
-                    {address && (
                         <div className="border-gray-100 text-sm text-gray-600">
                             <p className="text-xs font-bold tracking-wide text-gray-500 uppercase">Nearest address</p>
                             <p className="mt-1 text-gray-700">{address}</p>
                         </div>
-                    )}
-                    {featureId && <p className="mt-3 hidden text-xs text-gray-400">featureId: {featureId}</p>}
+                        {featureId && <p className="mt-3 hidden text-xs text-gray-400">featureId: {featureId}</p>}
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

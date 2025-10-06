@@ -21,6 +21,7 @@ class ViewController extends Controller
     protected $miscController;
     protected $articleController;
     protected $warehouseController;
+    protected $locationController;
 
     public function __construct(Request $request)
     {
@@ -33,6 +34,7 @@ class ViewController extends Controller
         $this->miscController = new MiscController();
         $this->articleController = new ArticleController();
         $this->warehouseController = new WarehouseController();
+        $this->locationController = new LocationController();
     }
 
     public function unitPage(Request $request)
@@ -411,7 +413,11 @@ class ViewController extends Controller
     }
 
     public function deliveryAddressProfilePage(){
+
+        $deliveryAddress = $this->userController->getAllDeliveryAddress();
+
         return Inertia::render('settings/delivery-address/index', [
+            'deliveryAddresses' => $deliveryAddress,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -420,7 +426,10 @@ class ViewController extends Controller
     }
 
     public function deliveryAddressProfileAddPage(){
+        $provinces = $this->locationController->getProvinceList();
+
         return Inertia::render('settings/delivery-address/add-delivery-address', [
+            'provinces' => $provinces,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')

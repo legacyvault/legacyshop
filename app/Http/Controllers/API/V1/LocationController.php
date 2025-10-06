@@ -48,20 +48,17 @@ class LocationController extends Controller
             ];
         });
 
-        return redirect()->back()->with([
-            'success' => 'Successfully get province.',
-            'provinces' => $provinces,
-        ]);
+        return $provinces;
     }
 
-    public function getCitiesList($geonameId)
+    public function getCitiesList(Request $request, $geonameId)
     {
         $cityResponse = Http::get("http://api.geonames.org/childrenJSON", [
             'geonameId' => $geonameId,
             'username'  => env('GEONAMES_USERNAME'),
         ]);
 
-        $cities = [];
+        $cities = collect();
         if ($cityResponse->successful()) {
             $cityData = $cityResponse->json();
             $cities = collect($cityData['geonames'])->map(function ($item) {
@@ -69,9 +66,17 @@ class LocationController extends Controller
                     'id'   => $item['geonameId'],
                     'name' => $item['name'],
                 ];
-            });
+            })->values();
         } else {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Failed get cities.'], 500);
+            }
+
             return redirect()->back()->with('error', 'Failed get cities.');
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['cities' => $cities->all()]);
         }
 
         return redirect()->back()->with([
