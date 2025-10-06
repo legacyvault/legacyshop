@@ -3,7 +3,7 @@ import { CartProvider, useCart } from '@/contexts/CartContext';
 import { Auth } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronRight, TruckIcon, User } from 'lucide-react';
+import { ChevronRight, MapPinned, User } from 'lucide-react';
 import { PropsWithChildren } from 'react';
 import FrontFooter from './front-footer';
 import FrontHeader from './front-header';
@@ -72,18 +72,18 @@ const settingsNavItems: SettingsNavItem[] = [
         icon: User,
     },
     {
-        title: 'Delivery Address',
+        title: 'Delivery addresses',
         href: '/settings/delivery-address-profile',
-        icon: TruckIcon,
+        icon: MapPinned,
     },
 ];
 
 function FrontSettingsShell({ children, currentPath }: PropsWithChildren<{ currentPath: string }>) {
     return (
-        <section className="bg-muted/30 py-10 sm:py-12 lg:py-16">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 sm:px-6 lg:flex-row lg:items-start lg:gap-12">
+        <section className="bg-muted/30 py-8 sm:py-12 lg:py-16">
+            <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12">
                 <FrontSettingsSidebar currentPath={currentPath} />
-                <div className="flex-1 lg:max-w-3xl">{children}</div>
+                <div className="min-w-0 lg:max-w-3xl">{children}</div>
             </div>
         </section>
     );
@@ -91,9 +91,14 @@ function FrontSettingsShell({ children, currentPath }: PropsWithChildren<{ curre
 
 function FrontSettingsSidebar({ currentPath }: { currentPath: string }) {
     return (
-        <aside className="lg:w-72">
-            <div className="space-y-4 rounded-3xl border border-border bg-card text-card-foreground shadow-sm lg:sticky lg:top-28">
-                <nav className="flex flex-col gap-1 px-3 py-4">
+        <aside className="sticky top-40 self-start">
+            <div className="space-y-4 rounded-3xl border border-border bg-card text-card-foreground shadow-sm">
+                <div className="border-b border-border px-6 py-6">
+                    <h2 className="text-lg font-semibold text-card-foreground">Account settings</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">Manage your profile</p>
+                </div>
+
+                <nav className="flex flex-col gap-1 px-3 pb-4">
                     {settingsNavItems.map((item) => {
                         const isActive = currentPath === item.href;
                         return (
