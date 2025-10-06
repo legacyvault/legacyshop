@@ -252,4 +252,9 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('/add-articles/{id?}', [ViewController::class, 'addArticlePage']);
         Route::get('/view-articles/{id}', [ViewController::class, 'viewArticlePage']);
     });
+
+    Route::prefix('warehouse')->group(function () {
+        Route::get('/', [ViewController::class, 'warehousePage']);
+        Route::get('add-warehouse/{id?}', [ViewController::class, 'addWarehousePage']);
+    });
 });

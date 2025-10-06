@@ -20,6 +20,7 @@ interface FormData {
     variant: string[];
     tags: string[];
     is_showcase: boolean;
+    product_weight: string;
     // New discount structure - each value has its own discount settings
     subcategoryDiscounts: Record<string, { source: string; value: string; base_price: number }>; // e.g., { "subcategory 1": { source: "subcategory 1", value: "10" } }
     divisionDiscounts: Record<string, { source: string; value: string; base_price: number }>;
@@ -41,6 +42,7 @@ interface FormErrors {
     product_sku?: string;
     product_usd_price?: string;
     is_showcase?: string;
+    product_weight?: string;
     // New discount error structure
     subcategoryDiscounts?: Record<string, string>;
     divisionDiscounts?: Record<string, string>;
@@ -289,15 +291,12 @@ export default function AddProduct() {
         product_sku: '',
         product_usd_price: '',
         is_showcase: false,
+        product_weight: '',
     });
     // Prevent cascading reset effects during initial prefill
     const [isInitializing, setIsInitializing] = useState(false);
 
     // Build selection options and maps from server data
-    const allCategoryOptions = useMemo(() => toOptions((categories as ICategories[])?.map((c) => ({ id: c.id, name: c.name }))), [categories]);
-    const allSubcategoryOptions = useMemo(() => toOptions((subcats as ISubcats[])?.map((s) => ({ id: s.id, name: s.name }))), [subcats]);
-    const allDivisionOptions = useMemo(() => toOptions((divisions as IDivisions[])?.map((d) => ({ id: d.id, name: d.name }))), [divisions]);
-    const allVariantOptions = useMemo(() => toOptions((variants as IVariants[])?.map((v) => ({ id: v.id, name: v.name }))), [variants]);
     const tagOptions = useMemo(() => toOptions((tags as ITags[])?.map((t) => ({ id: t.id, name: t.name }))), [tags]);
 
     const subcatNameById = useMemo(() => {
@@ -491,14 +490,10 @@ export default function AddProduct() {
 
     const handleDiscountSourceChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, source: string) => {
         const discountField = `${type}Discounts` as 'subcategoryDiscounts' | 'divisionDiscounts' | 'variantDiscounts';
-        const priceMap =
-            type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
+        const priceMap = type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
 
         setFormData((prev) => {
-            const currentDiscounts = (prev[discountField] ?? {}) as Record<
-                string,
-                { source: string; value: string; base_price: number }
-            >;
+            const currentDiscounts = (prev[discountField] ?? {}) as Record<string, { source: string; value: string; base_price: number }>;
             const existing = currentDiscounts[selectedValue];
             const basePrice = existing?.base_price ?? priceMap[selectedValue] ?? 0;
 
@@ -519,15 +514,11 @@ export default function AddProduct() {
 
     const handleDiscountValueChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, value: string) => {
         const discountField = `${type}Discounts` as 'subcategoryDiscounts' | 'divisionDiscounts' | 'variantDiscounts';
-        const priceMap =
-            type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
+        const priceMap = type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
 
         if (Number(value) <= 100) {
             setFormData((prev) => {
-                const currentDiscounts = (prev[discountField] ?? {}) as Record<
-                    string,
-                    { source: string; value: string; base_price: number }
-                >;
+                const currentDiscounts = (prev[discountField] ?? {}) as Record<string, { source: string; value: string; base_price: number }>;
                 const existing = currentDiscounts[selectedValue];
                 const basePrice = existing?.base_price ?? priceMap[selectedValue] ?? 0;
 
@@ -552,8 +543,7 @@ export default function AddProduct() {
                 type === 'subcategory' ? prev.subcategoryDiscounts : type === 'division' ? prev.divisionDiscounts : prev.variantDiscounts;
 
             const newDiscounts = { ...currentDiscounts };
-            const priceMap =
-                type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
+            const priceMap = type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
 
             // Add new selections with default settings
             values.forEach((value) => {
@@ -761,6 +751,7 @@ export default function AddProduct() {
         fd.append('unit_id', formData.unit);
         fd.append('product_sku', formData.product_sku);
         fd.append('product_usd_price', formData.product_usd_price);
+        fd.append('product_weight', formData.product_weight);
         fd.append('is_showcase', formData.is_showcase ? '1' : '0');
 
         formData.images.forEach((file) => fd.append('pictures[]', file));
@@ -1021,6 +1012,24 @@ export default function AddProduct() {
                     </div>
                     {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
                     <p className="mt-1 text-xs text-gray-500">Formatting: **bold**, *italic*, __underline__</p>
+                </div>
+
+                {/* Weight */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">Product Weight (gr) *</label>
+                    <div className="relative">
+                        <span className="absolute top-2 left-3 text-gray-500">gr</span>
+                        <input
+                            type="text"
+                            value={formData.product_weight}
+                            onChange={(e) => handleInputChange('product_weight', e.target.value)}
+                            className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
+                                errors.price ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="0"
+                        />
+                    </div>
+                    {errors.product_weight && <p className="mt-1 text-sm text-red-500">{errors.product_weight}</p>}
                 </div>
 
                 {/* Price Field */}
@@ -1545,9 +1554,10 @@ export function usePrefillProduct(
                 base_price: v.price,
             };
         });
-
+        console.log(selectedProd);
         setFormData((prev) => ({
             ...prev,
+            product_weight: selectedProd.product_weight || '',
             product_sku: selectedProd.product_sku || '',
             product_usd_price: String(selectedProd.product_usd_price) || '',
             name: selectedProd.product_name || '',

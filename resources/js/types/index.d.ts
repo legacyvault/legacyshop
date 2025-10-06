@@ -51,9 +51,11 @@ export interface SharedData {
     article: IArticle;
     articles: IArticle[];
     carts: ICart[];
+    warehouses?: IWarehouse[];
+    warehouse?: IWarehouse | null;
 }
 
-export interface ICart{
+export interface ICart {
     category: ICategories[] | null;
     category_id: string | null;
     division: IDivisions[] | null;
@@ -197,6 +199,22 @@ export interface IArticle {
     image_cover: string | null;
 }
 
+export interface IWarehouse {
+    id: string;
+    name: string;
+    contact_name: string;
+    contact_phone: string;
+    address: string;
+    country: string | null;
+    postal_code: string | null;
+    latitude: number | string;
+    longitude: number | string;
+    biteship_location_id: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface IRootProducts {
     current_page: number;
     from: number;
@@ -294,6 +312,7 @@ export interface IProducts {
     product_sku: string;
     product_usd_price: number;
     is_showcase: boolean;
+    product_weight: string;
 }
 
 export interface IPivotDivisionProd {
