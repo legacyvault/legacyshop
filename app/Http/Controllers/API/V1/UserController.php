@@ -136,7 +136,10 @@ class UserController extends Controller
             ]);
 
         if (!$response->successful()) {
-            return redirect()->back()->with('error', 'Gagal create lokasi di Biteship');
+            return redirect()->back()->with('alert',[
+                'type' => 'error',
+                'message' => 'Gagal create lokasi di Biteship'
+            ]);
         }
 
         $biteshipData = $response->json();
@@ -158,9 +161,15 @@ class UserController extends Controller
         ]);
 
         if ($create) {
-            return redirect()->back()->with('success', 'Successfully create delivery address.');
+            return redirect()->route('settings/delivery-address')->with('alert',[
+                'type' => 'success',
+                'message' => 'Successfully create delivery address.'
+            ]);
         } else {
-            return redirect()->back()->with('error', 'Failed to create delivery address.');
+            return redirect()->back()->with('alert',[
+                'type' => 'error',
+                'message' => 'Failed to create delivery address.'
+            ]);
         }
     }
 
@@ -202,7 +211,10 @@ class UserController extends Controller
                 ]);
 
             if (!$response->successful()) {
-                return redirect()->back()->with('error', 'Gagal update lokasi di Biteship');
+                return redirect()->back()->with('alert',[
+                    'type' => 'error',
+                    'message' => 'Gagal create lokasi di Biteship'
+                ]);
             }
 
             if ($request->has('is_active') && $request->is_active) {
@@ -224,10 +236,16 @@ class UserController extends Controller
             $deliveryAddress->save();
 
             DB::commit();
-            return redirect()->back()->with('success', 'Successfully updated delivery address.');
+            return redirect()->route('settings/delivery-address')->with('alert',[
+                'type' => 'success',
+                'message' => 'Successfully update delivery address.'
+            ]);
         } catch (Exception $e) {
             DB::rollback();
-            return redirect()->back()->with('error', 'Failed to update delivery address.');
+            return redirect()->back()->with('alert',[
+                'type' => 'error',
+                'message' => 'Failed to update delivery address.'
+            ]);
         }
     }
 

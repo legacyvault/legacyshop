@@ -197,7 +197,12 @@ Route::get('view-cart/{id?}', [ViewController::class, 'cartPage'])->name('page.c
 Route::get('checkout', [ViewController::class, 'checkoutPage']);
 
 Route::middleware(['ensureToken'])->group(function () {
-    Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
+    Route::prefix('settings')->group(function() {
+        Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
+        Route::get('delivery-address-profile', [ViewController::class, 'deliveryAddressProfilePage'])->name('profile.deliveryaddress.view');
+        Route::get('add-delivery-address-profile', [ViewController::class, 'deliveryAddressProfileAddPage'])->name('profile.deliveryaddress.add');
+    });
+
 });
 
 

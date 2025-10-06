@@ -409,4 +409,22 @@ class ViewController extends Controller
            'warehouse' => $warehouse
         ]);
     }
+
+    public function deliveryAddressProfilePage(){
+        return Inertia::render('settings/delivery-address/index', [
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ]
+        ]);
+    }
+
+    public function deliveryAddressProfileAddPage(){
+        return Inertia::render('settings/delivery-address/add-delivery-address', [
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ]
+        ]);
+    }
 }

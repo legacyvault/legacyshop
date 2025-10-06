@@ -67,8 +67,8 @@ export default function EditProfileForm({ profile }: EditProfileFormProps) {
     };
 
     return (
-        <div className="min-h-screen bg-background p-6">
-            <div className="mx-auto max-w-7xl">
+        <div className="bg-background p-6">
+            <div className="mx-auto max-w-3xl">
                 {/* Header */}
                 <div className="mb-8">
                     <div className="mb-2 flex items-center gap-3">
