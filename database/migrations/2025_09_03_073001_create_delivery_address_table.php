@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('biteship_destination_id');
             $table->string('contact_name');
             $table->string('contact_phone');
-            $table->string('biteship_location_id');
             $table->string('country')->nullable();
             $table->string('province')->nullable();
             $table->longText('address')->nullable();

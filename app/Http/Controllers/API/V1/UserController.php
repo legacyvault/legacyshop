@@ -98,75 +98,95 @@ class UserController extends Controller
             'city' => 'required|string',
             'postal_code' => 'required|string',
             'latitude' => 'required|string',
-            'longitude' => 'required|string'
+            'longitude' => 'required|string',
+            'is_active' => 'nullable|boolean'
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $user = Auth::user();
-        $profile = Profile::where('user_id', $user->id)->first();
-        $hasAddress = DeliveryAddress::where('profile_id', $profile->id)->exists();
+        try {
+            DB::beginTransaction();
 
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        if (env('APP_ENV') == 'local') {
-            $ip = '36.84.152.11';
-        }
+            $user = Auth::user();
+            $profile = Profile::where('user_id', $user->id)->first();
 
-        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
-        $location = $response->json();
+            $hasAddress = DeliveryAddress::where('profile_id', $profile->id)->exists();
+            $isActive = (bool) ($request->is_active ?? false);
 
+            // Ambil lokasi IP user
+            $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+            if (env('APP_ENV') == 'local') {
+                $ip = '36.84.152.11';
+            }
 
-        if ($location['status'] == 'fail') {
-            return redirect()->back()->with('error', 'Failed to fetch location with IP');
-        }
+            $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
+            $location = $response->json();
 
-        $response = Http::withToken($this->apiKey)
-            ->post('https://api.biteship.com/v1/locations', [
-                'name'          => $request->name,
-                'contact_name'  => $request->contact_name,
-                'contact_phone' => $request->contact_phone,
-                'address'       => $request->address,
-                'note'          => null,
-                'postal_code'   => $request->postal_code,
-                'latitude'      => $request->latitude,
-                'longitude'     => $request->longitude,
-                'type'          => 'destination',
+            if (!isset($location['status']) || $location['status'] === 'fail') {
+                return redirect()->back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Failed to fetch location from IP.'
+                ]);
+            }
+
+            // Create lokasi di Biteship
+            $response = Http::withToken($this->apiKey)
+                ->post('https://api.biteship.com/v1/locations', [
+                    'name'          => $request->name,
+                    'contact_name'  => $request->contact_name,
+                    'contact_phone' => $request->contact_phone,
+                    'address'       => $request->address,
+                    'note'          => null,
+                    'postal_code'   => $request->postal_code,
+                    'latitude'      => $request->latitude,
+                    'longitude'     => $request->longitude,
+                    'type'          => 'destination',
+                ]);
+
+            if (!$response->successful()) {
+                DB::rollBack();
+                return redirect()->back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Gagal create lokasi di Biteship.'
+                ]);
+            }
+
+            $biteshipData = $response->json();
+
+            if ($hasAddress && $isActive) {
+                DeliveryAddress::where('profile_id', $profile->id)
+                    ->update(['is_active' => false]);
+            }
+
+            DeliveryAddress::create([
+                'name'                    => $request->name,
+                'contact_name'            => $request->contact_name,
+                'contact_phone'           => $request->contact_phone,
+                'biteship_destination_id' => $biteshipData['id'],
+                'profile_id'              => $profile->id,
+                'country'                 => $location['countryCode'] ?? null,
+                'province'                => $request->province,
+                'address'                 => $request->address,
+                'city'                    => $request->city,
+                'postal_code'             => $request->postal_code,
+                'latitude'                => $request->latitude,
+                'longitude'               => $request->longitude,
+                'is_active'               => $hasAddress ? $isActive : ($request->is_active ?? true),
             ]);
 
-        if (!$response->successful()) {
-            return redirect()->back()->with('alert',[
-                'type' => 'error',
-                'message' => 'Gagal create lokasi di Biteship'
-            ]);
-        }
+            DB::commit();
 
-        $biteshipData = $response->json();
-
-        $create = DeliveryAddress::create([
-            'name' => $request->name,
-            'contact_name' => $request->contact_name,
-            'contact_phone' => $request->contact_phone,
-            'biteship_destination_id' => $biteshipData['id'],
-            'profile_id' => $profile->id,
-            'country' => $location['countryCode'] ?? null,
-            'province' => $request->province,
-            'address' => $request->address,
-            'city' => $request->city,
-            'postal_code' => $request->postal_code,
-            'is_active' => $hasAddress ? 0 : 1,
-            'latitude'      => $request->latitude,
-            'longitude'     => $request->longitude,
-        ]);
-
-        if ($create) {
-            return redirect()->route('settings/delivery-address')->with('alert',[
+            return redirect()->route('settings/delivery-address')->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully create delivery address.'
             ]);
-        } else {
-            return redirect()->back()->with('alert',[
+        } catch (Exception $e) {
+            Log::error('Failed to create delivery address: ' . $e->getMessage());
+            DB::rollBack();
+
+            return redirect()->back()->with('alert', [
                 'type' => 'error',
                 'message' => 'Failed to create delivery address.'
             ]);
@@ -211,7 +231,7 @@ class UserController extends Controller
                 ]);
 
             if (!$response->successful()) {
-                return redirect()->back()->with('alert',[
+                return redirect()->back()->with('alert', [
                     'type' => 'error',
                     'message' => 'Gagal create lokasi di Biteship'
                 ]);
@@ -236,13 +256,13 @@ class UserController extends Controller
             $deliveryAddress->save();
 
             DB::commit();
-            return redirect()->route('settings/delivery-address')->with('alert',[
+            return redirect()->route('settings/delivery-address')->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully update delivery address.'
             ]);
         } catch (Exception $e) {
             DB::rollback();
-            return redirect()->back()->with('alert',[
+            return redirect()->back()->with('alert', [
                 'type' => 'error',
                 'message' => 'Failed to update delivery address.'
             ]);
