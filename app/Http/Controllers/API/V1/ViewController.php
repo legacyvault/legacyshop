@@ -393,7 +393,7 @@ class ViewController extends Controller
     public function warehousePage(){
         $warehouse = $this->warehouseController->getAllWarehouse();
         return Inertia::render('warehouse/index', [
-            'warehouse' =>  $warehouse
+            'warehouses' =>  $warehouse
         ]);
     }
 
@@ -407,6 +407,24 @@ class ViewController extends Controller
         return Inertia::render('warehouse/add-warehouse', [
            'id' => $id,
            'warehouse' => $warehouse
+        ]);
+    }
+
+    public function deliveryAddressProfilePage(){
+        return Inertia::render('settings/delivery-address/index', [
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ]
+        ]);
+    }
+
+    public function deliveryAddressProfileAddPage(){
+        return Inertia::render('settings/delivery-address/add-delivery-address', [
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ]
         ]);
     }
 }

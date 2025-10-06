@@ -238,7 +238,7 @@ export default function MapLibreLocationPicker({
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-4 pb-4">
                 <div className="pointer-events-auto w-full max-w-2xl rounded-md border border-gray-200 bg-white/95 p-4 text-sm shadow-sm backdrop-blur">
-                    <div className="grid gap-4 text-sm text-gray-700 md:grid-cols-2">
+                    <div className="grid hidden gap-4 text-sm text-gray-700 md:grid-cols-2">
                         <div>
                             <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">Latitude</p>
                             <p className="mt-1 text-base font-semibold text-gray-900">{coords.lat.toFixed(6)}</p>
@@ -249,12 +249,12 @@ export default function MapLibreLocationPicker({
                         </div>
                     </div>
                     {address && (
-                        <div className="mt-3 border-t border-gray-100 pt-3 text-sm text-gray-600">
-                            <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">Nearest address</p>
+                        <div className="border-gray-100 text-sm text-gray-600">
+                            <p className="text-xs font-bold tracking-wide text-gray-500 uppercase">Nearest address</p>
                             <p className="mt-1 text-gray-700">{address}</p>
                         </div>
                     )}
-                    {featureId && <p className="mt-3 text-xs text-gray-400">featureId: {featureId}</p>}
+                    {featureId && <p className="mt-3 hidden text-xs text-gray-400">featureId: {featureId}</p>}
                 </div>
             </div>
         </div>

@@ -51,7 +51,7 @@ export interface SharedData {
     article: IArticle;
     articles: IArticle[];
     carts: ICart[];
-    warehouses?: IWarehouse[];
+    warehouses: IWarehouse[];
     warehouse?: IWarehouse | null;
 }
 
