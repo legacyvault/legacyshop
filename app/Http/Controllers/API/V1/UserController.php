@@ -178,7 +178,7 @@ class UserController extends Controller
 
             DB::commit();
 
-            return redirect()->route('settings/delivery-address')->with('alert', [
+            return redirect()->route('profile.deliveryaddress.view')->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully create delivery address.'
             ]);
@@ -198,6 +198,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), [
             'id'            => 'required|exists:delivery_address,id',
             'name'          => 'required|string',
+
             'contact_name'  => 'required|string',
             'contact_phone' => 'required|string',
             'province'      => 'required|string',
@@ -233,7 +234,7 @@ class UserController extends Controller
             if (!$response->successful()) {
                 return redirect()->back()->with('alert', [
                     'type' => 'error',
-                    'message' => 'Gagal create lokasi di Biteship'
+                    'message' => 'Gagal update lokasi di Biteship'
                 ]);
             }
 
@@ -256,7 +257,7 @@ class UserController extends Controller
             $deliveryAddress->save();
 
             DB::commit();
-            return redirect()->route('settings/delivery-address')->with('alert', [
+            return redirect()->route('profile.deliveryaddress.view')->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully update delivery address.'
             ]);
@@ -271,7 +272,7 @@ class UserController extends Controller
 
     public function getAllDeliveryAddress()
     {
-        $data = DeliveryAddress::orderBy('name', 'asc')->get();
+        $data = DeliveryAddress::orderBy('is_active', 'desc')->get();
 
         return $data;
     }
@@ -281,6 +282,12 @@ class UserController extends Controller
         $data = DeliveryAddress::where('is_active', true)
             ->orderBy('name', 'asc')
             ->first();
+
+        return $data;
+    }
+
+    public function getDeliveryAddressById($id){
+        $data = DeliveryAddress::where('id', $id)->first();
 
         return $data;
     }

@@ -200,7 +200,7 @@ Route::middleware(['ensureToken'])->group(function () {
     Route::prefix('settings')->group(function() {
         Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
         Route::get('delivery-address-profile', [ViewController::class, 'deliveryAddressProfilePage'])->name('profile.deliveryaddress.view');
-        Route::get('add-delivery-address-profile', [ViewController::class, 'deliveryAddressProfileAddPage'])->name('profile.deliveryaddress.add');
+        Route::get('add-delivery-address-profile/{id?}', [ViewController::class, 'deliveryAddressProfileAddPage'])->name('profile.deliveryaddress.add');
     });
 
 });
@@ -259,7 +259,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
     });
 
     Route::prefix('warehouse')->group(function () {
-        Route::get('/', [ViewController::class, 'warehousePage']);
+        Route::get('/', [ViewController::class, 'warehousePage'])->name('warehouse-admin.view');
         Route::get('add-warehouse/{id?}', [ViewController::class, 'addWarehousePage']);
     });
 });

@@ -79,7 +79,7 @@ function WarehouseTable({ warehouses }: { warehouses: IWarehouse[] }) {
                     ))
                 ) : (
                     <tr>
-                        <td colSpan={7} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
+                        <td colSpan={6} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
                             No Warehouse found. Try creating one from the Add Warehouse button.
                         </td>
                     </tr>

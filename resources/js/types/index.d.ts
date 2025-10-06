@@ -53,6 +53,30 @@ export interface SharedData {
     carts: ICart[];
     warehouses: IWarehouse[];
     warehouse?: IWarehouse | null;
+    provinces: IProvince[];
+    deliveryAddresses: IDeliveryAddress[];
+}
+
+export interface IDeliveryAddress {
+    id: string;
+    name: string;
+    contact_name: string;
+    contact_phone: string;
+    address: string;
+    country: string | null;
+    postal_code: string | null;
+    latitude: number | string;
+    longitude: number | string;
+    biteship_destination_id: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface IProvince {
+    id: string;
+    name: string;
+    code: string;
 }
 
 export interface ICart {

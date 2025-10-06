@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FrontLayout from '@/layouts/front/front-layout';
-import type { SharedData } from '@/types';
+import type { IProvince, SharedData } from '@/types';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type DeliveryAddress = {
     id: string;
@@ -41,11 +42,29 @@ interface FormData {
     is_active: boolean;
 }
 
-export default function AddDeliveryAddress() {
-    const { auth, locale, translations, id, deliveryAddress } = usePage<DeliveryAddressPageProps>().props;
+type City = {
+    id: string;
+    name: string;
+};
 
-    const isEdit = Boolean(id);
+export default function AddDeliveryAddress() {
+    const { auth, locale, translations, id, deliveryAddress, provinces } = usePage<DeliveryAddressPageProps>().props;
+
+    const isEdit = Boolean(id ?? deliveryAddress?.id);
     const addressData = deliveryAddress ?? null;
+    const [provinceQuery, setProvinceQuery] = useState('');
+    const [cityQuery, setCityQuery] = useState('');
+    const [selectedProvinceId, setSelectedProvinceId] = useState<string>(() => {
+        if (!addressData?.province) {
+            return '';
+        }
+
+        const match = (provinces as IProvince[] | undefined)?.find((province) => province.name === addressData.province);
+        return match?.id ?? '';
+    });
+    const [cities, setCities] = useState<City[]>([]);
+    const [isLoadingCities, setIsLoadingCities] = useState(false);
+    const [cityFetchError, setCityFetchError] = useState<string | null>(null);
 
     const { data, setData, post, processing, errors } = useForm<FormData>({
         id: addressData?.id ?? null,
@@ -58,8 +77,87 @@ export default function AddDeliveryAddress() {
         postal_code: addressData?.postal_code ?? '',
         latitude: addressData?.latitude?.toString() ?? '',
         longitude: addressData?.longitude?.toString() ?? '',
-        is_active: addressData?.is_active ?? false,
+        is_active: addressData?.is_active ?? true,
     });
+
+    const provinceList = useMemo(() => provinces ?? [], [provinces]);
+    const filteredProvinces = useMemo(() => {
+        const term = provinceQuery.trim().toLowerCase();
+
+        if (!term) {
+            return provinceList;
+        }
+
+        return provinceList.filter((province) => {
+            const name = province.name.toLowerCase();
+            const code = province.code?.toLowerCase() ?? '';
+
+            return name.includes(term) || (!!code && code.includes(term));
+        });
+    }, [provinceList, provinceQuery]);
+
+    const filteredCities = useMemo(() => {
+        const term = cityQuery.trim().toLowerCase();
+
+        if (!term) {
+            return cities;
+        }
+
+        return cities.filter((city) => city.name.toLowerCase().includes(term));
+    }, [cities, cityQuery]);
+
+    const fetchCities = useCallback(async (provinceId: string) => {
+        if (!provinceId) {
+            setCities([]);
+            return;
+        }
+
+        setIsLoadingCities(true);
+        setCityFetchError(null);
+
+        try {
+            const response = await fetch(route('cities.list', provinceId), {
+                headers: {
+                    Accept: 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch cities');
+            }
+
+            const payload: { cities?: City[] } = await response.json();
+            setCities(Array.isArray(payload.cities) ? payload.cities : []);
+        } catch (error) {
+            console.error(error);
+            setCityFetchError('Failed to load cities. Please try again.');
+            setCities([]);
+        } finally {
+            setIsLoadingCities(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!data.province) {
+            setSelectedProvinceId('');
+            return;
+        }
+
+        const match = provinceList.find((province) => province.name === data.province);
+        setSelectedProvinceId((prev) => {
+            const next = match?.id ?? '';
+            return next === prev ? prev : next;
+        });
+    }, [data.province, provinceList]);
+
+    useEffect(() => {
+        if (!selectedProvinceId) {
+            setCities([]);
+            return;
+        }
+
+        void fetchCities(selectedProvinceId);
+    }, [selectedProvinceId, fetchCities]);
 
     const selectedLocation = useMemo(() => {
         const latString = data.latitude.trim();
@@ -161,24 +259,114 @@ export default function AddDeliveryAddress() {
                         <div className="mb-4 grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="province">Province *</Label>
-                                <Input
-                                    id="province"
-                                    value={data.province}
-                                    onChange={(event) => setData('province', event.target.value)}
-                                    placeholder="DKI Jakarta"
-                                    aria-invalid={errors.province ? 'true' : undefined}
-                                />
+                                <Select
+                                    value={data.province || undefined}
+                                    onValueChange={(value) => {
+                                        setData('province', value);
+
+                                        const province = provinceList.find((item) => item.name === value);
+                                        setSelectedProvinceId(province?.id ?? '');
+                                        setData('city', '');
+                                        setCityQuery('');
+                                        setCities([]);
+                                        setCityFetchError(null);
+                                    }}
+                                    onOpenChange={(open) => {
+                                        if (!open) {
+                                            setProvinceQuery('');
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger id="province" aria-invalid={errors.province ? 'true' : undefined}>
+                                        <SelectValue placeholder="Select a province" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <div className="mb-1 px-1">
+                                            <Input
+                                                autoFocus
+                                                value={provinceQuery}
+                                                onChange={(event) => setProvinceQuery(event.target.value)}
+                                                onKeyDown={(event) => event.stopPropagation()}
+                                                onPointerDown={(event) => event.stopPropagation()}
+                                                placeholder="Search province..."
+                                                className="h-8"
+                                            />
+                                        </div>
+                                        {filteredProvinces.length > 0 ? (
+                                            filteredProvinces.map((province) => (
+                                                <SelectItem key={province.id} value={province.name}>
+                                                    <span className="flex flex-col">
+                                                        <span>{province.name}</span>
+                                                    </span>
+                                                </SelectItem>
+                                            ))
+                                        ) : (
+                                            <div className="px-2 py-6 text-center text-sm text-muted-foreground">No province found</div>
+                                        )}
+                                    </SelectContent>
+                                </Select>
                                 {errors.province && <p className="text-sm text-destructive">{errors.province}</p>}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="city">City *</Label>
-                                <Input
-                                    id="city"
-                                    value={data.city}
-                                    onChange={(event) => setData('city', event.target.value)}
-                                    placeholder="South Jakarta"
-                                    aria-invalid={errors.city ? 'true' : undefined}
-                                />
+                                <Select
+                                    value={data.city || undefined}
+                                    onValueChange={(value) => setData('city', value)}
+                                    disabled={!selectedProvinceId || isLoadingCities}
+                                    onOpenChange={(open) => {
+                                        if (open) {
+                                            if (selectedProvinceId && !isLoadingCities && cities.length === 0) {
+                                                void fetchCities(selectedProvinceId);
+                                            }
+                                        } else {
+                                            setCityQuery('');
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger id="city" aria-invalid={errors.city ? 'true' : undefined}>
+                                        <SelectValue
+                                            placeholder={
+                                                selectedProvinceId
+                                                    ? isLoadingCities
+                                                        ? 'Loading cities...'
+                                                        : 'Select a city'
+                                                    : 'Select a province first'
+                                            }
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {selectedProvinceId ? (
+                                            isLoadingCities ? (
+                                                <div className="px-3 py-4 text-sm text-muted-foreground">Loading cities...</div>
+                                            ) : cityFetchError ? (
+                                                <div className="px-3 py-4 text-sm text-destructive">{cityFetchError}</div>
+                                            ) : filteredCities.length > 0 ? (
+                                                <>
+                                                    <div className="mb-1 px-1">
+                                                        <Input
+                                                            autoFocus
+                                                            value={cityQuery}
+                                                            onChange={(event) => setCityQuery(event.target.value)}
+                                                            onKeyDown={(event) => event.stopPropagation()}
+                                                            onPointerDown={(event) => event.stopPropagation()}
+                                                            placeholder="Search city..."
+                                                            className="h-8"
+                                                        />
+                                                    </div>
+                                                    {filteredCities.map((city) => (
+                                                        <SelectItem key={city.id} value={city.name}>
+                                                            {city.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </>
+                                            ) : (
+                                                <div className="px-3 py-4 text-sm text-muted-foreground">No city found</div>
+                                            )
+                                        ) : (
+                                            <div className="px-3 py-4 text-sm text-muted-foreground">Select a province to see cities</div>
+                                        )}
+                                    </SelectContent>
+                                </Select>
                                 {errors.city && <p className="text-sm text-destructive">{errors.city}</p>}
                             </div>
                         </div>
