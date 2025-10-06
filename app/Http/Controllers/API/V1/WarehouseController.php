@@ -54,7 +54,10 @@ class WarehouseController extends Controller
                 ]);
 
             if (!$response->successful()) {
-                return redirect()->back()->with('error', 'Gagal create lokasi di Biteship');
+                return redirect()->back()->with('alert',[
+                    'type' => 'error',
+                    'message' => 'Gagal create lokasi di Biteship'
+                ]);
             }
 
             $biteshipData = $response->json();
@@ -77,10 +80,16 @@ class WarehouseController extends Controller
             $warehouse->save();
 
             DB::commit();
-            return redirect()->back()->with('success', 'Successfully create warehouse.');
+            return redirect()->route('warehouse')->with('alert',[
+                'type' => 'success',
+                'message' => 'Successfully create warehouse.'
+            ]);
         } catch (Exception $e) {
             DB::rollback();
-            return redirect()->back()->with('error', 'Failed to create warehouse.');
+            return redirect()->back()->with('alert',[
+                'type' => 'error',
+                'message' => 'Failed to create warehouse.'
+            ]);
         }
     }
 
@@ -164,6 +173,12 @@ class WarehouseController extends Controller
         $data = Warehouse::where('is_active', true)
             ->orderBy('name', 'asc')
             ->first();
+
+        return $data;
+    }
+
+    public function getWarehouseById($id){
+        $data = Warehouse::find($id);
 
         return $data;
     }

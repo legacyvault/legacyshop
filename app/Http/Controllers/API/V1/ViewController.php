@@ -20,6 +20,7 @@ class ViewController extends Controller
     protected $cartController;
     protected $miscController;
     protected $articleController;
+    protected $warehouseController;
 
     public function __construct(Request $request)
     {
@@ -31,6 +32,7 @@ class ViewController extends Controller
         $this->cartController = new CartsController();
         $this->miscController = new MiscController();
         $this->articleController = new ArticleController();
+        $this->warehouseController = new WarehouseController();
     }
 
     public function unitPage(Request $request)
@@ -386,5 +388,25 @@ class ViewController extends Controller
 
     public function checkoutPage(){
         return Inertia::render('front/checkout/index');
+    }
+
+    public function warehousePage(){
+        $warehouse = $this->warehouseController->getAllWarehouse();
+        return Inertia::render('warehouse/index', [
+            'warehouse' =>  $warehouse
+        ]);
+    }
+
+    public function addWarehousePage($id = null){
+        $warehouse = null;
+
+        if($id !== null){
+            $warehouse = $this->warehouseController->getWarehouseById($id);
+        }
+
+        return Inertia::render('warehouse/add-warehouse', [
+           'id' => $id,
+           'warehouse' => $warehouse
+        ]);
     }
 }

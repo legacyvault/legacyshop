@@ -51,6 +51,8 @@ export interface SharedData {
     article: IArticle;
     articles: IArticle[];
     carts: ICart[];
+    warehouses?: IWarehouse[];
+    warehouse?: IWarehouse | null;
 }
 
 export interface ICart {
@@ -195,6 +197,22 @@ export interface IArticle {
     created_at?: string;
     updated_at?: string;
     image_cover: string | null;
+}
+
+export interface IWarehouse {
+    id: string;
+    name: string;
+    contact_name: string;
+    contact_phone: string;
+    address: string;
+    country: string | null;
+    postal_code: string | null;
+    latitude: number | string;
+    longitude: number | string;
+    biteship_location_id: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface IRootProducts {
