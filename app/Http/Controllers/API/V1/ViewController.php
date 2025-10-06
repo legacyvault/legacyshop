@@ -393,7 +393,7 @@ class ViewController extends Controller
     public function warehousePage(){
         $warehouse = $this->warehouseController->getAllWarehouse();
         return Inertia::render('warehouse/index', [
-            'warehouse' =>  $warehouse
+            'warehouses' =>  $warehouse
         ]);
     }
 
