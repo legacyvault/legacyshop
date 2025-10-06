@@ -33,9 +33,11 @@ export default function DeliveryAddress() {
                                 <h2 className="font-medium">{addr.address}</h2>
                                 <h2 className="font-medium">{addr.postal_code}</h2>
                             </div>
-                            <Button className="pl-0" variant={'link'}>
-                                Edit Address
-                            </Button>
+                            <Link href={`/settings/add-delivery-address-profile/${addr.id}`}>
+                                <Button className="pl-0" variant={'link'}>
+                                    Edit Address
+                                </Button>
+                            </Link>
                         </div>
                     ))}
                 </>

@@ -234,7 +234,7 @@ class UserController extends Controller
             if (!$response->successful()) {
                 return redirect()->back()->with('alert', [
                     'type' => 'error',
-                    'message' => 'Gagal create lokasi di Biteship'
+                    'message' => 'Gagal update lokasi di Biteship'
                 ]);
             }
 
@@ -259,7 +259,7 @@ class UserController extends Controller
             DB::commit();
             return redirect()->route('profile.deliveryaddress.view')->with('alert', [
                 'type' => 'success',
-                'message' => 'Successfully create delivery address.'
+                'message' => 'Successfully update delivery address.'
             ]);
         } catch (Exception $e) {
             DB::rollback();
@@ -282,6 +282,12 @@ class UserController extends Controller
         $data = DeliveryAddress::where('is_active', true)
             ->orderBy('name', 'asc')
             ->first();
+
+        return $data;
+    }
+
+    public function getDeliveryAddressById($id){
+        $data = DeliveryAddress::where('id', $id)->first();
 
         return $data;
     }

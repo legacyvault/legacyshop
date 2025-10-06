@@ -50,7 +50,7 @@ type City = {
 export default function AddDeliveryAddress() {
     const { auth, locale, translations, id, deliveryAddress, provinces } = usePage<DeliveryAddressPageProps>().props;
 
-    const isEdit = Boolean(id);
+    const isEdit = Boolean(id ?? deliveryAddress?.id);
     const addressData = deliveryAddress ?? null;
     const [provinceQuery, setProvinceQuery] = useState('');
     const [cityQuery, setCityQuery] = useState('');

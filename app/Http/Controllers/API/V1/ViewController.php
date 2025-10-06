@@ -425,11 +425,19 @@ class ViewController extends Controller
         ]);
     }
 
-    public function deliveryAddressProfileAddPage(){
+    public function deliveryAddressProfileAddPage($id = null){
         $provinces = $this->locationController->getProvinceList();
+        
+        $deliveryAddress = null;
+        
+        if($id !== null){
+            $deliveryAddress = $this->userController->getDeliveryAddressById($id);
+        };
 
         return Inertia::render('settings/delivery-address/add-delivery-address', [
+            'id' => $id,
             'provinces' => $provinces,
+            'deliveryAddress' => $deliveryAddress,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
