@@ -16,12 +16,17 @@ class DeliveryAddress extends Model
     protected $fillable = [
         'name',
         'profile_id',
+        'biteship_destination_id',
+        'contact_name',
+        'contact_phone',
         'country',
         'province',
         'address',
         'city',
         'postal_code',
-        'is_active'
+        'is_active',
+        'latitude',
+        'longitude'
     ];
 
     public function profile()

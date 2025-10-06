@@ -32,6 +32,7 @@ class WarehouseController extends Controller
             'postal_code'   => 'nullable|string',
             'latitude'      => 'required|string',
             'longitude'     => 'required|string',
+            'is_active'     => 'nullable|boolean'
         ]);
 
         if ($validator->fails()) {
@@ -40,13 +41,15 @@ class WarehouseController extends Controller
 
         try {
             DB::beginTransaction();
+
+            // 1️⃣ Create lokasi di Biteship
             $response = Http::withToken($this->apiKey)
                 ->post('https://api.biteship.com/v1/locations', [
                     'name'          => $request->name,
                     'contact_name'  => $request->contact_name,
                     'contact_phone' => $request->contact_phone,
                     'address'       => $request->address,
-                    'note'          => null,
+                    'note'          => $request->note ?? null,
                     'postal_code'   => $request->postal_code,
                     'latitude'      => $request->latitude,
                     'longitude'     => $request->longitude,
@@ -54,39 +57,47 @@ class WarehouseController extends Controller
                 ]);
 
             if (!$response->successful()) {
-                return redirect()->back()->with('alert',[
+                DB::rollBack();
+                return redirect()->back()->with('alert', [
                     'type' => 'error',
                     'message' => 'Gagal create lokasi di Biteship'
                 ]);
             }
 
             $biteshipData = $response->json();
+            $biteshipId = $biteshipData['id'] ?? null;
 
-            $hasActive = Warehouse::where('is_active', true)
-                ->orderBy('name', 'asc')
-                ->first();
+            $hasAnyWarehouse = Warehouse::exists();
+            $isActive = (bool) ($request->is_active ?? false);
+
+            if ($hasAnyWarehouse && $isActive) {
+                Warehouse::where('is_active', true)->update(['is_active' => false]);
+            }
 
             $warehouse = new Warehouse();
-            $warehouse->name          = $request->name;
-            $warehouse->contact_name  = $request->contact_name;
-            $warehouse->contact_phone = $request->contact_phone;
-            $warehouse->address       = $request->address;
-            $warehouse->country       = $request->country ?? 'ID';
-            $warehouse->postal_code   = $request->postal_code;
-            $warehouse->latitude      = $request->latitude;
-            $warehouse->longitude     = $request->longitude;
-            $warehouse->biteship_location_id = $biteshipData['id'];
-            $warehouse->is_active     = $hasActive ? false : true;
+            $warehouse->name                   = $request->name;
+            $warehouse->contact_name           = $request->contact_name;
+            $warehouse->contact_phone          = $request->contact_phone;
+            $warehouse->address                = $request->address;
+            $warehouse->country                = $request->country ?? 'ID';
+            $warehouse->postal_code            = $request->postal_code;
+            $warehouse->latitude               = $request->latitude;
+            $warehouse->longitude              = $request->longitude;
+            $warehouse->note                   = $request->note ?? null;
+            $warehouse->biteship_location_id   = $biteshipId;
+            $warehouse->is_active              = $isActive;
             $warehouse->save();
 
             DB::commit();
-            return redirect()->route('warehouse')->with('alert',[
+
+            return redirect()->back()->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully create warehouse.'
             ]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
+            Log::error('Failed to create warehouse: ' . $e->getMessage());
             DB::rollback();
-            return redirect()->back()->with('alert',[
+            return redirect()->back()->with('alert', [
                 'type' => 'error',
                 'message' => 'Failed to create warehouse.'
             ]);
@@ -177,7 +188,8 @@ class WarehouseController extends Controller
         return $data;
     }
 
-    public function getWarehouseById($id){
+    public function getWarehouseById($id)
+    {
         $data = Warehouse::find($id);
 
         return $data;
