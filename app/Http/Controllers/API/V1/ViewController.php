@@ -389,7 +389,13 @@ class ViewController extends Controller
     }
 
     public function checkoutPage(){
-        return Inertia::render('front/checkout/index');
+        $deliveryAddresses = $this->userController->getAllDeliveryAddress();
+        $provinces = $this->locationController->getProvinceList();
+        
+        return Inertia::render('front/checkout/index',[
+            'provinces' => $provinces,
+            'deliveryAddresses' => $deliveryAddresses
+        ]);
     }
 
     public function warehousePage(){
@@ -413,10 +419,11 @@ class ViewController extends Controller
     }
 
     public function deliveryAddressProfilePage(){
-
+        $provinces = $this->locationController->getProvinceList();
         $deliveryAddress = $this->userController->getAllDeliveryAddress();
 
         return Inertia::render('settings/delivery-address/index', [
+            'provinces' => $provinces,
             'deliveryAddresses' => $deliveryAddress,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),

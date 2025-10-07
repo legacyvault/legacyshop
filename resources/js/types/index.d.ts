@@ -63,14 +63,16 @@ export interface IDeliveryAddress {
     contact_name: string;
     contact_phone: string;
     address: string;
-    country: string | null;
-    postal_code: string | null;
+    country: string;
+    postal_code: string;
     latitude: number | string;
     longitude: number | string;
     biteship_destination_id: string;
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    province: string;
+    city: string;
 }
 
 export interface IProvince {

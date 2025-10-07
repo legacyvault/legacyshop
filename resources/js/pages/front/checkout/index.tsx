@@ -1,23 +1,11 @@
+import AddDeliveryAddressModal from '@/components/add-delivery-address-modal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import FrontLayout from '@/layouts/front/front-layout';
-import { SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
-import {
-    BadgeCheck,
-    ChevronDown,
-    ChevronRight,
-    FileText,
-    MapPin,
-    ShieldCheck,
-    TicketPercent,
-} from 'lucide-react';
-
-const dummyAddress = {
-    label: 'alamat rumah',
-    recipient: 'Gifino Thoriq',
-    detail: 'Jalan cenderawasih I KAV 273, Pondok Aren, Kota Tangerang Selatan, Banten, 6285717548873',
-};
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { SharedData, type IDeliveryAddress } from '@/types';
+import { usePage } from '@inertiajs/react';
+import { BadgeCheck, Check, ChevronDown, ChevronRight, FileText, MapPin, ShieldCheck, TicketPercent } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const dummyItems = [
     {
@@ -33,8 +21,7 @@ const dummyItems = [
         shippingPrice: 7_000,
         shippingEstimate: 'Estimasi tiba besok - 4 Oct',
         shippingInsurancePrice: 5_500,
-        image:
-            'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=160&q=80',
+        image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=160&q=80',
     },
 ];
 
@@ -54,7 +41,40 @@ function formatCurrency(value: number) {
 }
 
 export default function Checkout() {
-    const { auth, translations, locale } = usePage<SharedData>().props;
+    const { deliveryAddresses, provinces } = usePage<SharedData>().props;
+
+    const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
+    const [selectedAddress, setSelectedAddress] = useState<IDeliveryAddress | null>(() => {
+        if (!addresses.length) return null;
+        return addresses.find((address) => address.is_active) ?? addresses[0];
+    });
+    const [isChangeAddressOpen, setIsChangeAddressOpen] = useState(false);
+
+    useEffect(() => {
+        if (!addresses.length) {
+            setSelectedAddress(null);
+            return;
+        }
+
+        setSelectedAddress((prev) => {
+            if (prev && addresses.some((address) => address.id === prev.id)) {
+                return prev;
+            }
+
+            return addresses.find((address) => address.is_active) ?? addresses[0];
+        });
+    }, [addresses]);
+
+    const addressInformation = useMemo(
+        () =>
+            selectedAddress
+                ? {
+                      destination_latitude: selectedAddress.latitude,
+                      destination_longitude: selectedAddress.longitude,
+                  }
+                : { destination_latitude: null, destination_longitude: null },
+        [selectedAddress],
+    );
 
     const subtotal = dummyItems.reduce((total, item) => total + item.price * item.quantity, 0);
     const protection = dummyItems.reduce((total, item) => total + item.protectionPrice, 0);
@@ -62,42 +82,148 @@ export default function Checkout() {
     const insurance = dummyItems.reduce((total, item) => total + item.shippingInsurancePrice, 0);
     const total = subtotal + protection + shipping + insurance;
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const handleModalChange = useCallback(
+        (nextOpen: boolean) => {
+            setIsModalOpen(nextOpen);
+            setIsChangeAddressOpen(false);
+            if (!nextOpen) {
+                route('checkout.page');
+            }
+        },
+        [setIsModalOpen],
+    );
+
+    const [selectedId, setSelectedId] = useState('');
+    const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<IDeliveryAddress | null>(null);
+
+    const editAddressHandler = (addr: IDeliveryAddress) => {
+        setSelectedId(addr.id);
+        setSelectedDeliveryAddress(addr);
+        setIsModalOpen(true);
+    };
+
     return (
         <>
+            <AddDeliveryAddressModal
+                open={isModalOpen}
+                onOpenChange={handleModalChange}
+                provinces={provinces}
+                deliveryAddress={selectedDeliveryAddress}
+                id={selectedId}
+                closeOnSuccess={true}
+            />
             <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Checkout</h1>
                 </div>
 
                 <div className="mb-2">
-                        <span onClick={() => window.history.back()} className='underline cursor-pointer'>Back to Cart</span>        
+                    <span onClick={() => window.history.back()} className="cursor-pointer underline">
+                        Back to Cart
+                    </span>
                 </div>
 
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
                     <div className="space-y-6">
-                        <Card className="gap-4 border border-border/60 bg-background shadow-sm">
+                        <Card
+                            className="gap-4 border border-border/60 bg-background shadow-sm"
+                            data-destination-latitude={addressInformation.destination_latitude ?? ''}
+                            data-destination-longitude={addressInformation.destination_longitude ?? ''}
+                        >
                             <CardHeader className="flex-row items-start justify-between gap-4 py-0 pt-6">
                                 <div className="space-y-4">
-                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                                        Alamat Pengiriman
-                                    </div>
+                                    <div className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Delivery Address</div>
                                     <div className="flex gap-3 text-sm">
                                         <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                                             <MapPin className="h-4 w-4" />
                                         </span>
                                         <div>
-                                            <div className="font-semibold capitalize text-foreground">
-                                                {dummyAddress.label} • {dummyAddress.recipient}
-                                            </div>
-                                            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                                                {dummyAddress.detail}
-                                            </p>
+                                            {selectedAddress ? (
+                                                <>
+                                                    <div className="font-semibold text-foreground capitalize">
+                                                        {selectedAddress.name} • {selectedAddress.contact_name}
+                                                    </div>
+                                                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{selectedAddress.address}</p>
+                                                    <p className="mt-1 text-xs text-muted-foreground">{selectedAddress.contact_phone}</p>
+                                                </>
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground">There is no delivery address yet.</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                                <Button variant="outline" size="sm">
-                                    Ganti
-                                </Button>
+                                <Dialog open={isChangeAddressOpen} onOpenChange={setIsChangeAddressOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm" disabled={!addresses.length}>
+                                            Change
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-xl">
+                                        <DialogHeader className="space-y-1">
+                                            <DialogTitle>Pick Delivery Address</DialogTitle>
+                                            <DialogDescription>Select one of the saved addresses to use for this order.</DialogDescription>
+                                        </DialogHeader>
+                                        <Button onClick={() => setIsModalOpen(true)} className="mb-4">
+                                            Add Delivery Address
+                                        </Button>
+                                        <div className="max-h-[60vh] space-y-3 overflow-y-auto py-2">
+                                            {addresses.length ? (
+                                                addresses.map((address) => {
+                                                    const isSelected = address.id === selectedAddress?.id;
+
+                                                    return (
+                                                        <div
+                                                            key={address.id}
+                                                            role="button"
+                                                            onClick={() => {
+                                                                setSelectedAddress(address);
+                                                                setIsChangeAddressOpen(false);
+                                                            }}
+                                                            className={`w-full rounded-lg border bg-background p-4 text-left transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
+                                                                isSelected
+                                                                    ? 'border-primary bg-primary/5'
+                                                                    : 'border-border/60 hover:border-primary/40'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="flex flex-1 items-start gap-3">
+                                                                    <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                                        <MapPin className="h-4 w-4" />
+                                                                    </span>
+                                                                    <div className="space-y-1 text-sm">
+                                                                        <div className="font-semibold text-foreground capitalize">
+                                                                            {address.name} • {address.contact_name}
+                                                                        </div>
+                                                                        <p className="text-sm leading-relaxed text-muted-foreground">
+                                                                            {address.address}
+                                                                        </p>
+                                                                        <p className="text-xs text-muted-foreground">{address.contact_phone}</p>
+                                                                        <Button
+                                                                            onClick={() => editAddressHandler(address)}
+                                                                            className="mt-4 pl-0"
+                                                                            variant={'link'}
+                                                                        >
+                                                                            Edit Address
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                                {isSelected && (
+                                                                    <span className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                                                        <Check className="h-4 w-4" />
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground">Kamu belum memiliki alamat pengiriman tersimpan.</p>
+                                            )}
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
                             </CardHeader>
                         </Card>
 
@@ -105,7 +231,7 @@ export default function Checkout() {
                             <Card key={item.id} className="gap-6 border border-border/60 bg-background shadow-sm">
                                 <CardHeader className="flex-col gap-3 pb-0">
                                     <div className="flex items-center justify-between gap-4">
-                                        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+                                        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold tracking-wide text-primary uppercase">
                                             <BadgeCheck className="h-4 w-4" />
                                             {item.store}
                                         </div>
@@ -148,7 +274,9 @@ export default function Checkout() {
                                             <button className="flex items-center gap-2 text-sm font-semibold text-primary">
                                                 <ShieldCheck className="h-4 w-4" />
                                                 Pakai Asuransi Pengiriman
-                                                <span className="font-normal text-muted-foreground">({formatCurrency(item.shippingInsurancePrice)})</span>
+                                                <span className="font-normal text-muted-foreground">
+                                                    ({formatCurrency(item.shippingInsurancePrice)})
+                                                </span>
                                             </button>
                                         </div>
                                     </div>
@@ -169,9 +297,7 @@ export default function Checkout() {
                         <Card className="gap-0 border border-border/60 bg-background shadow-sm">
                             <CardHeader className="flex-row items-center justify-between gap-3 py-6">
                                 <CardTitle className="text-lg font-semibold">Metode Pembayaran</CardTitle>
-                                <button className="text-sm font-semibold text-primary transition hover:text-primary/80">
-                                    Lihat Semua
-                                </button>
+                                <button className="text-sm font-semibold text-primary transition hover:text-primary/80">Lihat Semua</button>
                             </CardHeader>
                             <CardContent className="space-y-5">
                                 <div className="space-y-3">
@@ -222,9 +348,7 @@ export default function Checkout() {
 
                         <Card className="gap-4 border border-primary/40 bg-background shadow-md">
                             <CardHeader className="pb-0">
-                                <CardTitle className="text-lg font-semibold text-foreground">
-                                    Cek ringkasan transaksimu, yuk
-                                </CardTitle>
+                                <CardTitle className="text-lg font-semibold text-foreground">Cek ringkasan transaksimu, yuk</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3 text-sm">
                                 <div className="flex items-center justify-between text-muted-foreground">

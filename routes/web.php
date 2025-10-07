@@ -194,7 +194,7 @@ Route::get('/list-products', [ViewController::class, 'frontListProducts']);
 Route::get('/view-product/{id}', [ViewController::class, 'frontViewProduct']);
 
 Route::get('view-cart/{id?}', [ViewController::class, 'cartPage'])->name('page.cart');
-Route::get('checkout', [ViewController::class, 'checkoutPage']);
+Route::get('checkout', [ViewController::class, 'checkoutPage'])->name('checkout.page');
 
 Route::middleware(['ensureToken'])->group(function () {
     Route::prefix('settings')->group(function() {
