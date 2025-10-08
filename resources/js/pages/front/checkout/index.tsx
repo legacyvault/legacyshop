@@ -1,10 +1,11 @@
 import AddDeliveryAddressModal from '@/components/add-delivery-address-modal';
+import CourierListModal from '@/components/courier-list-modal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { SharedData, type IDeliveryAddress } from '@/types';
-import { usePage } from '@inertiajs/react';
-import { BadgeCheck, Check, ChevronDown, ChevronRight, FileText, MapPin, ShieldCheck, TicketPercent } from 'lucide-react';
+import { SharedData, type IDeliveryAddress, type IRatePricing } from '@/types';
+import { router, usePage, useRemember } from '@inertiajs/react';
+import { BadgeCheck, Check, ChevronRight, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck, TicketPercent } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const dummyItems = [
@@ -21,6 +22,7 @@ const dummyItems = [
         shippingPrice: 7_000,
         shippingEstimate: 'Estimasi tiba besok - 4 Oct',
         shippingInsurancePrice: 5_500,
+        weight: 200,
         image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=160&q=80',
     },
 ];
@@ -32,6 +34,10 @@ const dummyPayments = [
     { id: 'bri', name: 'BRI Virtual Account', accent: 'bg-[#DFF7F0] text-[#0E9F6E]' },
 ];
 
+function getRateId(rate: IRatePricing) {
+    return `${rate.courier_code}-${rate.courier_service_code}`;
+}
+
 function formatCurrency(value: number) {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -41,7 +47,7 @@ function formatCurrency(value: number) {
 }
 
 export default function Checkout() {
-    const { deliveryAddresses, provinces } = usePage<SharedData>().props;
+    const { deliveryAddresses, provinces, rates, warehouse, couriers } = usePage<SharedData>().props;
 
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
     const [selectedAddress, setSelectedAddress] = useState<IDeliveryAddress | null>(() => {
@@ -76,10 +82,205 @@ export default function Checkout() {
         [selectedAddress],
     );
 
+    const ratesPricing = useMemo(() => (rates && Array.isArray(rates.pricing) ? rates.pricing : []), [rates]);
+
+    const [isCourierModalOpen, setIsCourierModalOpen] = useRemember(false, 'checkout:isCourierModalOpen');
+    const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
+    const [isRequestingRates, setIsRequestingRates] = useState(false);
+    const [shouldAutoOpenCourier, setShouldAutoOpenCourier] = useRemember(false, 'checkout:shouldAutoOpenCourier');
+    const [hasRequestedInitialRates, setHasRequestedInitialRates] = useState(false);
+    const [lastRequestedRateKey, setLastRequestedRateKey] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!ratesPricing.length) {
+            setSelectedRateId(null);
+            return;
+        }
+
+        setSelectedRateId((prev) => {
+            if (prev && ratesPricing.some((rate) => getRateId(rate) === prev)) {
+                return prev;
+            }
+
+            return getRateId(ratesPricing[0]);
+        });
+    }, [ratesPricing]);
+
+    const selectedRate = useMemo(() => {
+        if (!ratesPricing.length) return null;
+        if (!selectedRateId) return ratesPricing[0];
+        return ratesPricing.find((rate) => getRateId(rate) === selectedRateId) ?? ratesPricing[0];
+    }, [ratesPricing, selectedRateId]);
+
+    const rateItemsPayload = useMemo(
+        () =>
+            dummyItems.map((item) => ({
+                name: item.name,
+                sku: item.id,
+                value: item.price,
+                quantity: item.quantity,
+                weight: item.weight ?? 1,
+            })),
+        [],
+    );
+
+    const warehouseKey = useMemo(() => {
+        if (!warehouse) return null;
+        if (typeof warehouse.id === 'string' && warehouse.id.length) {
+            return warehouse.id;
+        }
+        return `${warehouse.latitude ?? ''}-${warehouse.longitude ?? ''}`;
+    }, [warehouse]);
+
+    const rateKey = useMemo(() => {
+        if (!warehouseKey || !selectedAddress) {
+            return null;
+        }
+
+        return `${warehouseKey}-${selectedAddress.id}`;
+    }, [warehouseKey, selectedAddress]);
+
+    const hasRates = ratesPricing.length > 0;
+    const ratesError = rates && typeof rates.code === 'number' && rates.code >= 400 ? 'Tidak dapat memuat opsi pengiriman.' : null;
+
+    useEffect(() => {
+        if (!rateKey) {
+            if (hasRequestedInitialRates) {
+                setHasRequestedInitialRates(false);
+            }
+            if (lastRequestedRateKey !== null) {
+                setLastRequestedRateKey(null);
+            }
+            return;
+        }
+
+        if (lastRequestedRateKey && lastRequestedRateKey !== rateKey) {
+            setHasRequestedInitialRates(false);
+        }
+    }, [rateKey, lastRequestedRateKey, hasRequestedInitialRates]);
+
+    useEffect(() => {
+        if (!shouldAutoOpenCourier) {
+            return;
+        }
+
+        if (ratesPricing.length > 0) {
+            setIsCourierModalOpen(true);
+            setShouldAutoOpenCourier(false);
+            setIsRequestingRates(false);
+        }
+    }, [ratesPricing, shouldAutoOpenCourier, setIsCourierModalOpen, setShouldAutoOpenCourier, setIsRequestingRates]);
+
+    const requestRates = useCallback(
+        (options: { openModalOnSuccess?: boolean } = {}) => {
+            const { openModalOnSuccess = false } = options;
+            if (!warehouse || !selectedAddress) {
+                if (openModalOnSuccess) {
+                    setIsCourierModalOpen(true);
+                }
+                return;
+            }
+
+            if (!rateItemsPayload.length) {
+                if (openModalOnSuccess) {
+                    setIsCourierModalOpen(true);
+                }
+                return;
+            }
+
+            setIsRequestingRates(true);
+
+            if (openModalOnSuccess) {
+                setShouldAutoOpenCourier(true);
+                setIsCourierModalOpen(true);
+            } else {
+                setShouldAutoOpenCourier(false);
+            }
+
+            const payload = {
+                origin_latitude: Number(warehouse.latitude),
+                origin_longitude: Number(warehouse.longitude),
+                destination_latitude: Number(selectedAddress.latitude),
+                destination_longitude: Number(selectedAddress.longitude),
+                couriers: 'gojek,jne,anteraja',
+                items: rateItemsPayload,
+            };
+
+            router.post(route('delivery.rates'), payload, {
+                preserveScroll: true,
+                preserveState: true,
+                onFinish: () => {
+                    setIsRequestingRates(false);
+                },
+            });
+        },
+        [warehouse, selectedAddress, rateItemsPayload, setIsCourierModalOpen, setShouldAutoOpenCourier],
+    );
+
+    useEffect(() => {
+        if (!rateKey) {
+            return;
+        }
+
+        if (isRequestingRates) {
+            return;
+        }
+
+        if (!warehouse || !selectedAddress || !rateItemsPayload.length) {
+            return;
+        }
+
+        if (hasRates && lastRequestedRateKey === rateKey) {
+            return;
+        }
+
+        if (hasRequestedInitialRates && lastRequestedRateKey === rateKey) {
+            return;
+        }
+
+        setHasRequestedInitialRates(true);
+        setLastRequestedRateKey(rateKey);
+        requestRates();
+    }, [
+        rateKey,
+        warehouse,
+        selectedAddress,
+        rateItemsPayload,
+        hasRates,
+        isRequestingRates,
+        hasRequestedInitialRates,
+        lastRequestedRateKey,
+        requestRates,
+    ]);
+
+    const handleShippingButtonClick = useCallback(() => {
+        if (hasRates) {
+            setShouldAutoOpenCourier(false);
+            setIsCourierModalOpen(true);
+            return;
+        }
+
+        if (rateKey) {
+            setHasRequestedInitialRates(true);
+            setLastRequestedRateKey(rateKey);
+        }
+
+        requestRates({ openModalOnSuccess: true });
+    }, [hasRates, rateKey, requestRates, setIsCourierModalOpen, setShouldAutoOpenCourier, setHasRequestedInitialRates, setLastRequestedRateKey]);
+
+    const handleSelectRate = useCallback(
+        (rate: IRatePricing) => {
+            setSelectedRateId(getRateId(rate));
+            setIsCourierModalOpen(false);
+            setShouldAutoOpenCourier(false);
+        },
+        [setIsCourierModalOpen, setShouldAutoOpenCourier],
+    );
+
     const subtotal = dummyItems.reduce((total, item) => total + item.price * item.quantity, 0);
     const protection = dummyItems.reduce((total, item) => total + item.protectionPrice, 0);
-    const shipping = dummyItems.reduce((total, item) => total + item.shippingPrice, 0);
-    const insurance = dummyItems.reduce((total, item) => total + item.shippingInsurancePrice, 0);
+    const shipping = selectedRate?.price ?? 0;
+    const insurance = 0;
     const total = subtotal + protection + shipping + insurance;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -118,7 +319,6 @@ export default function Checkout() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Checkout</h1>
                 </div>
-
                 <div className="mb-2">
                     <span onClick={() => window.history.back()} className="cursor-pointer underline">
                         Back to Cart
@@ -227,6 +427,84 @@ export default function Checkout() {
                             </CardHeader>
                         </Card>
 
+                        <Card className="gap-4 border border-border/60 bg-background shadow-sm">
+                            <CardHeader className="flex-row items-start justify-between gap-4 py-0 pt-6">
+                                <div className="space-y-3">
+                                    <div className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Shipping Method</div>
+                                    {selectedRate ? (
+                                        <div className="space-y-1 text-sm">
+                                            <div className="font-semibold text-foreground">
+                                                {selectedRate.courier_name} • {selectedRate.courier_service_name}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                {selectedRate.description ?? 'Layanan pengiriman tersedia untuk alamat kamu.'}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-1 text-sm">
+                                            <p className="text-muted-foreground">Pilih layanan pengiriman yang tersedia untuk alamat kamu.</p>
+                                            {ratesError ? <p className="text-xs text-destructive">{ratesError}</p> : null}
+                                        </div>
+                                    )}
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleShippingButtonClick}
+                                    disabled={isRequestingRates || !selectedAddress || !warehouse}
+                                >
+                                    {isRequestingRates ? 'Loading...' : hasRates ? 'Change' : 'Load Rates'}
+                                </Button>
+                            </CardHeader>
+                            {selectedRate ? (
+                                <CardContent className="space-y-3 pt-0 text-sm">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {selectedRate.service_type ? (
+                                            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary uppercase">
+                                                {selectedRate.service_type}
+                                            </span>
+                                        ) : null}
+                                        {selectedRate.shipping_type ? (
+                                            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                                                {selectedRate.shipping_type}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                    {selectedRate.shipment_duration_range || selectedRate.duration ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            Estimasi {selectedRate.shipment_duration_range ?? selectedRate.duration}{' '}
+                                            {selectedRate.shipment_duration_unit ?? ''}
+                                        </p>
+                                    ) : null}
+                                    <p className="text-base font-semibold text-foreground">{formatCurrency(selectedRate.price)}</p>
+                                    {selectedRate.available_for_insurance ? (
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <ShieldCheck className="h-4 w-4" />
+                                            Available for Cash on Delivery
+                                        </div>
+                                    ) : null}
+                                    {selectedRate.available_for_cash_on_delivery ? (
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <CurrencyIcon className="h-4 w-4" />
+                                            Available for Cash on Delivery
+                                        </div>
+                                    ) : null}
+                                    {selectedRate.available_for_instant_waybill_id ? (
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <ReceiptText className="h-4 w-4" />
+                                            Available for Instant Waybill
+                                        </div>
+                                    ) : null}
+                                    {selectedRate.available_for_proof_of_delivery ? (
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <PackageCheck className="h-4 w-4" />
+                                            Available for Proof of Delivery
+                                        </div>
+                                    ) : null}
+                                </CardContent>
+                            ) : null}
+                        </Card>
+
                         {dummyItems.map((item) => (
                             <Card key={item.id} className="gap-6 border border-border/60 bg-background shadow-sm">
                                 <CardHeader className="flex-col gap-3 pb-0">
@@ -257,36 +535,6 @@ export default function Checkout() {
                                                 <span className="font-normal text-muted-foreground">({formatCurrency(item.protectionPrice)})</span>
                                             </button>
                                         </div>
-                                    </div>
-
-                                    <div className="rounded-2xl border border-dashed border-border bg-muted/30">
-                                        <button className="flex w-full items-center justify-between gap-2 border-b border-border/60 px-4 py-3 text-left text-sm font-semibold sm:text-base">
-                                            Reguler
-                                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                        </button>
-                                        <div className="space-y-4 px-4 py-4">
-                                            <div className="rounded-xl border border-primary/20 bg-background px-4 py-3 text-sm">
-                                                <div className="font-semibold text-foreground">
-                                                    {item.shippingService} ({formatCurrency(item.shippingPrice)})
-                                                </div>
-                                                <p className="mt-1 text-muted-foreground">{item.shippingEstimate}</p>
-                                            </div>
-                                            <button className="flex items-center gap-2 text-sm font-semibold text-primary">
-                                                <ShieldCheck className="h-4 w-4" />
-                                                Pakai Asuransi Pengiriman
-                                                <span className="font-normal text-muted-foreground">
-                                                    ({formatCurrency(item.shippingInsurancePrice)})
-                                                </span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-                                        <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
-                                            <FileText className="h-4 w-4" />
-                                            Kasih Catatan
-                                        </button>
-                                        <span className="text-xs text-muted-foreground">0/200</span>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -361,7 +609,7 @@ export default function Checkout() {
                                 </div>
                                 <div className="flex items-center justify-between text-muted-foreground">
                                     <span>Ongkos Kirim</span>
-                                    <span className="font-medium text-foreground">{formatCurrency(shipping)}</span>
+                                    <span className="font-medium text-foreground">{selectedRate ? formatCurrency(shipping) : '—'}</span>
                                 </div>
                                 <div className="flex items-center justify-between text-muted-foreground">
                                     <span>Asuransi Pengiriman</span>
@@ -384,6 +632,19 @@ export default function Checkout() {
                     </div>
                 </div>
             </section>
+            <CourierListModal
+                open={isCourierModalOpen}
+                onOpenChange={(open) => {
+                    setIsCourierModalOpen(open);
+                    if (!open) {
+                        setShouldAutoOpenCourier(false);
+                    }
+                }}
+                rates={ratesPricing}
+                selectedRateId={selectedRateId ?? undefined}
+                onSelect={handleSelectRate}
+                isLoading={isRequestingRates && !hasRates}
+            />
         </>
     );
 }

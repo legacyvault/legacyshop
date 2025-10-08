@@ -55,6 +55,51 @@ export interface SharedData {
     warehouse?: IWarehouse | null;
     provinces: IProvince[];
     deliveryAddresses: IDeliveryAddress[];
+    rates?: IRates | null;
+}
+
+export interface IRates {
+    code: number;
+    pricing: IRatePricing[];
+}
+
+export interface IRatePricing {
+    available_collection_method?: string[];
+    available_for_cash_on_delivery?: boolean;
+    available_for_instant_waybill_id?: boolean;
+    available_for_insurance?: boolean;
+    available_for_proof_of_delivery?: boolean;
+    company?: string;
+    courier_code: string;
+    courier_name: string;
+    courier_service_code: string;
+    courier_service_name: string;
+    currency?: string;
+    description?: string;
+    duration?: string;
+    price: number;
+    service_type?: string;
+    shipment_duration_range?: string;
+    shipment_duration_unit?: string;
+    shipping_fee?: number;
+    shipping_type?: string;
+    tax_lines?: unknown;
+    type?: string;
+}
+
+export interface IDeliveryRate {
+    courier_code: string;
+    courier_name: string;
+    courier_service_code: string;
+    courier_service_name: string;
+    description?: string;
+    service_type?: string;
+    shipping_type?: string;
+    price: number;
+    shipment_duration_range?: string;
+    shipment_duration_unit?: string;
+    duration?: string;
+    duration_unit?: string;
 }
 
 export interface IDeliveryAddress {
@@ -65,8 +110,8 @@ export interface IDeliveryAddress {
     address: string;
     country: string;
     postal_code: string;
-    latitude: number | string;
-    longitude: number | string;
+    latitude: number;
+    longitude: number;
     biteship_destination_id: string;
     is_active: boolean;
     created_at: string;
