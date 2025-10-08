@@ -8,24 +8,25 @@ import { router, usePage, useRemember } from '@inertiajs/react';
 import { BadgeCheck, Check, ChevronRight, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck, TicketPercent } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-const dummyItems = [
-    {
-        id: 'noir-gear',
-        store: 'Noir Gear Official',
-        name: 'Noir Timeless82 v2 Classic Edition Mechanical Keyboard Gasket Mount',
-        variant: 'Black, Tactile',
-        quantity: 1,
-        price: 909_000,
-        protectionLabel: 'Proteksi Rusak Total 3 bulan',
-        protectionPrice: 27_200,
-        shippingService: 'J&T',
-        shippingPrice: 7_000,
-        shippingEstimate: 'Estimasi tiba besok - 4 Oct',
-        shippingInsurancePrice: 5_500,
-        weight: 200,
-        image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=160&q=80',
-    },
-];
+const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
+const FALLBACK_IMAGE = '/banner-example.jpg';
+
+type CheckoutItem = {
+    id: string;
+    store: string;
+    name: string;
+    variant?: string;
+    attributes?: string[];
+    quantity: number;
+    price: number;
+    image?: string | null;
+    weight?: number;
+    source?: 'server' | 'local';
+    cartId?: string | null;
+    productId?: string | null;
+    protectionPrice?: number;
+    protectionLabel?: string | null;
+};
 
 const dummyPayments = [
     { id: 'mandiri', name: 'Mandiri Virtual Account', accent: 'bg-[#FFE8CC] text-[#E57E25]', selected: true },
@@ -46,8 +47,32 @@ function formatCurrency(value: number) {
     }).format(value);
 }
 
+function loadStoredCheckoutItems(): CheckoutItem[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = sessionStorage.getItem(CHECKOUT_ITEMS_STORAGE_KEY);
+        if (!raw) {
+            return [];
+        }
+        const parsed = JSON.parse(raw) as CheckoutItem[];
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+        return parsed.map((item) => ({
+            ...item,
+            quantity: Math.max(1, Number(item.quantity ?? 1)),
+            price: Number(item.price ?? 0),
+            weight: Number(item.weight ?? 0),
+            protectionPrice: Number(item.protectionPrice ?? 0),
+        }));
+    } catch (error) {
+        return [];
+    }
+}
+
 export default function Checkout() {
     const { deliveryAddresses, provinces, rates, warehouse, couriers } = usePage<SharedData>().props;
+    const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
 
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
     const [selectedAddress, setSelectedAddress] = useState<IDeliveryAddress | null>(() => {
@@ -114,14 +139,14 @@ export default function Checkout() {
 
     const rateItemsPayload = useMemo(
         () =>
-            dummyItems.map((item) => ({
+            checkoutItems.map((item) => ({
                 name: item.name,
                 sku: item.id,
                 value: item.price,
                 quantity: item.quantity,
-                weight: item.weight ?? 1,
+                weight: item.weight && item.weight > 0 ? item.weight : 1,
             })),
-        [],
+        [checkoutItems],
     );
 
     const warehouseKey = useMemo(() => {
@@ -142,6 +167,28 @@ export default function Checkout() {
 
     const hasRates = ratesPricing.length > 0;
     const ratesError = rates && typeof rates.code === 'number' && rates.code >= 400 ? 'Tidak dapat memuat opsi pengiriman.' : null;
+
+    useEffect(() => {
+        const refreshItems = () => {
+            setCheckoutItems(loadStoredCheckoutItems());
+        };
+
+        refreshItems();
+
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === CHECKOUT_ITEMS_STORAGE_KEY) {
+                refreshItems();
+            }
+        };
+
+        window.addEventListener('storage', handleStorage);
+        window.addEventListener('focus', refreshItems);
+
+        return () => {
+            window.removeEventListener('storage', handleStorage);
+            window.removeEventListener('focus', refreshItems);
+        };
+    }, []);
 
     useEffect(() => {
         if (!rateKey) {
@@ -277,11 +324,12 @@ export default function Checkout() {
         [setIsCourierModalOpen, setShouldAutoOpenCourier],
     );
 
-    const subtotal = dummyItems.reduce((total, item) => total + item.price * item.quantity, 0);
-    const protection = dummyItems.reduce((total, item) => total + item.protectionPrice, 0);
+    const subtotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    const protection = checkoutItems.reduce((total, item) => total + (item.protectionPrice ?? 0), 0);
     const shipping = selectedRate?.price ?? 0;
     const insurance = 0;
     const total = subtotal + protection + shipping + insurance;
+    const hasCheckoutItems = checkoutItems.length > 0;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -451,7 +499,7 @@ export default function Checkout() {
                                     variant="outline"
                                     size="sm"
                                     onClick={handleShippingButtonClick}
-                                    disabled={isRequestingRates || !selectedAddress || !warehouse}
+                                    disabled={isRequestingRates || !selectedAddress || !warehouse || !hasCheckoutItems}
                                 >
                                     {isRequestingRates ? 'Loading...' : hasRates ? 'Change' : 'Load Rates'}
                                 </Button>
@@ -505,7 +553,18 @@ export default function Checkout() {
                             ) : null}
                         </Card>
 
-                        {dummyItems.map((item) => (
+                        {!hasCheckoutItems ? (
+                            <Card className="border border-border/60 bg-background shadow-sm">
+                                <CardContent className="flex flex-col items-center gap-4 py-10 text-center text-sm text-muted-foreground">
+                                    <p>No items selected for checkout.</p>
+                                    <Button variant="outline" onClick={() => window.history.back()}>
+                                        Back to Cart
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : null}
+
+                        {checkoutItems.map((item) => (
                             <Card key={item.id} className="gap-6 border border-border/60 bg-background shadow-sm">
                                 <CardHeader className="flex-col gap-3 pb-0">
                                     <div className="flex items-center justify-between gap-4">
@@ -522,18 +581,22 @@ export default function Checkout() {
                                 <CardContent className="space-y-6">
                                     <div className="flex flex-col gap-4 sm:flex-row">
                                         <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted sm:h-28 sm:w-28">
-                                            <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                                            <img src={item.image ?? FALLBACK_IMAGE} alt={item.name} className="h-full w-full object-cover" />
                                         </div>
                                         <div className="flex-1 space-y-3">
                                             <div>
                                                 <h2 className="text-base font-semibold text-foreground sm:text-lg">{item.name}</h2>
-                                                <p className="text-sm text-muted-foreground">{item.variant}</p>
+                                                {item.variant ? <p className="text-sm text-muted-foreground">{item.variant}</p> : null}
                                             </div>
-                                            <button className="flex items-center gap-2 text-sm font-semibold text-primary">
-                                                <ShieldCheck className="h-4 w-4" />
-                                                {item.protectionLabel}
-                                                <span className="font-normal text-muted-foreground">({formatCurrency(item.protectionPrice)})</span>
-                                            </button>
+                                            {item.protectionLabel ? (
+                                                <button className="flex items-center gap-2 text-sm font-semibold text-primary">
+                                                    <ShieldCheck className="h-4 w-4" />
+                                                    {item.protectionLabel}
+                                                    <span className="font-normal text-muted-foreground">
+                                                        ({formatCurrency(item.protectionPrice ?? 0)})
+                                                    </span>
+                                                </button>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </CardContent>
@@ -596,37 +659,29 @@ export default function Checkout() {
 
                         <Card className="gap-4 border border-primary/40 bg-background shadow-md">
                             <CardHeader className="pb-0">
-                                <CardTitle className="text-lg font-semibold text-foreground">Cek ringkasan transaksimu, yuk</CardTitle>
+                                <CardTitle className="text-lg font-semibold text-foreground">Transaction Summary</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3 text-sm">
                                 <div className="flex items-center justify-between text-muted-foreground">
-                                    <span>Subtotal Produk</span>
+                                    <span>Subtotal</span>
                                     <span className="font-medium text-foreground">{formatCurrency(subtotal)}</span>
                                 </div>
                                 <div className="flex items-center justify-between text-muted-foreground">
-                                    <span>Proteksi</span>
-                                    <span className="font-medium text-foreground">{formatCurrency(protection)}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span>Ongkos Kirim</span>
+                                    <span>Shipping Rates</span>
                                     <span className="font-medium text-foreground">{selectedRate ? formatCurrency(shipping) : '—'}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span>Asuransi Pengiriman</span>
-                                    <span className="font-medium text-foreground">{formatCurrency(insurance)}</span>
                                 </div>
                             </CardContent>
                             <CardFooter className="flex flex-col gap-4 pb-6">
                                 <div className="flex w-full items-center justify-between text-base font-semibold text-foreground">
-                                    <span>Total Tagihan</span>
+                                    <span>Total Transaction</span>
                                     <span className="text-xl">{formatCurrency(total)}</span>
                                 </div>
-                                <Button size="lg" className="h-12 w-full text-base font-semibold">
-                                    Bayar Sekarang
+                                <Button size="lg" className="h-12 w-full text-base font-semibold" disabled={!hasCheckoutItems}>
+                                    Pay Now
                                 </Button>
-                                <p className="text-center text-xs leading-relaxed text-muted-foreground">
+                                {/* <p className="text-center text-xs leading-relaxed text-muted-foreground">
                                     Dengan melanjutkan pembayaran, kamu menyetujui S&amp;K Asuransi Pengiriman &amp; Proteksi.
-                                </p>
+                                </p> */}
                             </CardFooter>
                         </Card>
                     </div>

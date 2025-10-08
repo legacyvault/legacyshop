@@ -29,6 +29,7 @@ interface DetailedCartItem {
 }
 
 const FALLBACK_IMAGE = '/banner-example.jpg';
+const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 
 const formatCurrency = (value: number) =>
     new Intl.NumberFormat('id-ID', {
@@ -222,6 +223,35 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
     }, [detailedItems]);
 
     const selectedItems = useMemo(() => detailedItems.filter((item) => selectedIds.includes(item.id)), [detailedItems, selectedIds]);
+
+    useEffect(() => {
+        const payload = selectedItems.map((item) => {
+            const weightSource = item.cart?.product?.product_weight;
+            const parsedWeight = typeof weightSource === 'string' ? Number(weightSource) : Number(weightSource ?? 0);
+            return {
+                id: item.id,
+                store: item.vendorName,
+                name: item.productName,
+                variant: item.attributes.join(', '),
+                attributes: item.attributes,
+                quantity: item.quantity,
+                price: item.finalPrice,
+                image: item.imageUrl,
+                weight: Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : 0,
+                source: item.source,
+                cartId: item.cart?.id ?? null,
+                productId: item.cart?.product_id ?? item.cart?.product?.id ?? null,
+                protectionPrice: 0,
+                protectionLabel: null,
+            };
+        });
+
+        try {
+            sessionStorage.setItem(CHECKOUT_ITEMS_STORAGE_KEY, JSON.stringify(payload));
+        } catch (error) {
+            // Ignore write errors (e.g. private mode)
+        }
+    }, [selectedItems]);
 
     const totals = useMemo(() => {
         return selectedItems.reduce(
