@@ -59,16 +59,16 @@ class BiteshipController extends Controller
             ]);
         }
 
-        return $response;
+        return $response->json();
     }
 
     public function getDeliveryRates(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'origin_latitude'       => 'required|string',
-            'origin_longitude'      => 'required|string',
-            'destination_latitude'        => 'required|string',
-            'destination_longitude'       => 'required|string',
+            'origin_latitude'       => 'required|numeric',
+            'origin_longitude'      => 'required|numeric',
+            'destination_latitude'        => 'required|numeric',
+            'destination_longitude'       => 'required|numeric',
             'couriers'              => 'string',
             'items'                 => 'required|array',
             'items.*.name'          => 'required|string',
@@ -82,28 +82,42 @@ class BiteshipController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $response = Http::withToken($this->apiKey)
-            ->post('https://api.biteship.com/v1/rates/couriers', [
-                'origin_latitude'          => $request->origin_latitude,
-                'origin_longitude'  => $request->origin_longitude,
-                'destination_latitude' => $request->destination_latitude,
-                'destination_longitude'       => $request->destination_longitude,
-                'couriers'          => $request->couriers,
-                'items'   => $request->items
-            ]);
+        $response = Http::withToken($this->apiKey)->post(
+            'https://api.biteship.com/v1/rates/couriers',
+            [
+                'origin_latitude'       => (float) $request->input('origin_latitude'),
+                'origin_longitude'      => (float) $request->input('origin_longitude'),
+                'destination_latitude'  => (float) $request->input('destination_latitude'),
+                'destination_longitude' => (float) $request->input('destination_longitude'),
+                'couriers'              => "gojek",
+                'items' => collect($request->input('items', []))->map(fn ($i) => [
+                    'name'     => (string) $i['name'],
+                    'sku'      => (string) $i['sku'],
+                    'value'    => (float)  $i['value'],
+                    'quantity' => (int)    $i['quantity'],
+                    'weight'   => (float)  $i['weight'], // grams
+                ])->all(),
+            ]
+        );
 
-        if (!$response->successful()) {
-            return redirect()->back()->with('error', 'Failed to get courier rates');
-        }
+        $rates = $response->json();
 
-        if (!$response->successful()) {
-            return back()->with('alert', [
-                'type' => 'error',
-                'message' => 'System failed. Please contact Legacy Vault.',
-            ]);
-        }
+        return redirect()->route('checkout.page')
+        ->with('rates', $rates)
+        ->with('message', 'Courier rates loaded');
 
-        return $response;
+        // if (!$response->successful()) {
+        //     return back()->with('alert', [
+        //         'type' => 'error',
+        //         'message' => 'System failed. Please contact Legacy Vault.',
+        //     ]);
+        // }
+        
+        // $rates = $response;
+
+        // return redirect()->route('checkout.page')
+        // ->with('rates', $rates)
+        // ->with('message', 'Courier rates loaded');
     }
 
     public function getRates(Request $request)

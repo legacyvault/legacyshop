@@ -22,6 +22,7 @@ class ViewController extends Controller
     protected $articleController;
     protected $warehouseController;
     protected $locationController;
+    protected $biteshipController;
 
     public function __construct(Request $request)
     {
@@ -35,6 +36,7 @@ class ViewController extends Controller
         $this->articleController = new ArticleController();
         $this->warehouseController = new WarehouseController();
         $this->locationController = new LocationController();
+        $this->biteshipController = new BiteshipController();
     }
 
     public function unitPage(Request $request)
@@ -389,7 +391,19 @@ class ViewController extends Controller
     }
 
     public function checkoutPage(){
-        return Inertia::render('front/checkout/index');
+        $deliveryAddresses = $this->userController->getAllDeliveryAddress();
+        $provinces = $this->locationController->getProvinceList();
+        $warehouse = $this->warehouseController->getActiveWarehouse();
+        $couriers = $this->biteshipController->getCourierList();
+
+        return Inertia::render('front/checkout/index',[
+            'provinces' => $provinces,
+            'deliveryAddresses' => $deliveryAddresses,
+            'warehouse' => $warehouse,
+            'couriers' => $couriers,
+            'rates'             => fn () => session('rates', []),
+            'flashMessage'      => fn () => session('message'),
+        ]);
     }
 
     public function warehousePage(){
@@ -413,10 +427,11 @@ class ViewController extends Controller
     }
 
     public function deliveryAddressProfilePage(){
-
+        $provinces = $this->locationController->getProvinceList();
         $deliveryAddress = $this->userController->getAllDeliveryAddress();
 
         return Inertia::render('settings/delivery-address/index', [
+            'provinces' => $provinces,
             'deliveryAddresses' => $deliveryAddress,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),

@@ -1,18 +1,40 @@
+import AddDeliveryAddressModal from '@/components/add-delivery-address-modal';
 import { Button } from '@/components/ui/button';
 import FrontLayout from '@/layouts/front/front-layout';
-import { SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { IDeliveryAddress, SharedData } from '@/types';
+import { usePage } from '@inertiajs/react';
+import { useCallback, useState } from 'react';
 
 export default function DeliveryAddress() {
-    const { auth, locale, translations, deliveryAddresses } = usePage<SharedData>().props;
+    const { auth, locale, translations, deliveryAddresses, provinces } = usePage<SharedData>().props;
 
-    console.log(deliveryAddresses);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const handleModalChange = useCallback(
+        (nextOpen: boolean) => {
+            setIsModalOpen(nextOpen);
+
+            if (!nextOpen) {
+                route('profile.deliveryaddress.view');
+            }
+        },
+        [setIsModalOpen],
+    );
+
+    const [selectedId, setSelectedId] = useState('');
+    const [selectedAddress, setSelectedAddress] = useState<IDeliveryAddress | null>(null);
+
+    const editAddressHandler = (addr: IDeliveryAddress) => {
+        setSelectedId(addr.id);
+        setSelectedAddress(addr);
+        setIsModalOpen(true);
+    };
 
     return (
         <FrontLayout auth={auth} locale={locale} translations={translations}>
-            <Link href={'/settings/add-delivery-address-profile'}>
-                <Button className="mb-4">Add Delivery Address</Button>
-            </Link>
+            <Button onClick={() => setIsModalOpen(true)} className="mb-4">
+                Add Delivery Address
+            </Button>
 
             {deliveryAddresses.length > 0 ? (
                 <>
@@ -33,17 +55,24 @@ export default function DeliveryAddress() {
                                 <h2 className="font-medium">{addr.address}</h2>
                                 <h2 className="font-medium">{addr.postal_code}</h2>
                             </div>
-                            <Link href={`/settings/add-delivery-address-profile/${addr.id}`}>
-                                <Button className="pl-0" variant={'link'}>
-                                    Edit Address
-                                </Button>
-                            </Link>
+                            <Button onClick={() => editAddressHandler(addr)} className="pl-0" variant={'link'}>
+                                Edit Address
+                            </Button>
                         </div>
                     ))}
                 </>
             ) : (
                 <>No Delivery Address</>
             )}
+
+            <AddDeliveryAddressModal
+                open={isModalOpen}
+                onOpenChange={handleModalChange}
+                provinces={provinces}
+                deliveryAddress={selectedAddress}
+                id={selectedId}
+                closeOnSuccess={false}
+            />
         </FrontLayout>
     );
 }

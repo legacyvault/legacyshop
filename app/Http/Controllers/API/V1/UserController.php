@@ -178,7 +178,7 @@ class UserController extends Controller
 
             DB::commit();
 
-            return redirect()->route('profile.deliveryaddress.view')->with('alert', [
+            return redirect()->back()->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully create delivery address.'
             ]);
@@ -257,7 +257,7 @@ class UserController extends Controller
             $deliveryAddress->save();
 
             DB::commit();
-            return redirect()->route('profile.deliveryaddress.view')->with('alert', [
+            return redirect()->back()->with('alert', [
                 'type' => 'success',
                 'message' => 'Successfully update delivery address.'
             ]);
