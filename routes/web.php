@@ -13,6 +13,7 @@ use App\Http\Controllers\API\V1\MiscController;
 use App\Http\Controllers\API\V1\SubCategoryController;
 use App\Http\Controllers\API\V1\VariantController;
 use App\Http\Controllers\API\V1\WarehouseController;
+use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
@@ -38,6 +39,10 @@ Route::group(['prefix' => 'v1'], function () {
 
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+
+    //Checkout API
+    Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
+
     //Biteship API
     Route::get('all-warehouse', [WarehouseController::class, 'getAllWarehouse'])->name('warehouses');
     Route::get('active-warehouse', [WarehouseController::class, 'getActiveWarehouse'])->name('warehouse.active');
