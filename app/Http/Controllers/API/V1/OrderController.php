@@ -28,45 +28,47 @@ class OrderController extends Controller
     public function checkout(Request $request)
     {
         $request->validate([
-            'payment_method' => 'required|string', // e.g. qris
+            'payment_method' => 'required|string',
             'courier_code' => 'required|string',
             'courier_name' => 'required|string',
             'courier_service' => 'required|string',
             'courier_service_name' => 'required|string',
             'shipping_fee' => 'required|numeric',
-            'shipping_duration_range' => 'nullable|string',
-            'shipping_duration_unit' => 'nullable|string',
             'receiver_name' => 'required|string',
             'receiver_phone' => 'required|string',
             'receiver_address' => 'required|string',
             'receiver_postal_code' => 'required|string',
             'receiver_city' => 'required|string',
             'receiver_province' => 'required|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'nullable|uuid',
+            'items.*.product_name' => 'required|string',
+            'items.*.product_description' => 'nullable|string',
+
+            'items.*.category_id' => 'nullable|uuid',
+            'items.*.category_name' => 'nullable|string',
+            'items.*.category_description' => 'nullable|string',
+
+            'items.*.sub_category_id' => 'nullable|uuid',
+            'items.*.sub_category_name' => 'nullable|string',
+            'items.*.sub_category_description' => 'nullable|string',
+
+            'items.*.division_id' => 'nullable|uuid',
+            'items.*.division_name' => 'nullable|string',
+            'items.*.division_description' => 'nullable|string',
+
+            'items.*.variant_id' => 'nullable|uuid',
+            'items.*.variant_name' => 'nullable|string',
+            'items.*.variant_description' => 'nullable|string',
+
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
         ]);
 
         $user = $request->user();
 
-        $cartItems = Carts::with([
-            'product',
-            'category',
-            'subCategory',
-            'division',
-            'variant',
-            'product.unit',
-            'product.categories',
-            'product.subcategories',
-            'product.divisions',
-            'product.variants',
-            'product.pictures',
-        ])->where('user_id', $user->id)->get();
-        if ($cartItems->isEmpty()) {
-            return response()->json(['message' => 'Cart is empty'], 400);
-        }
-
-        $subtotal = $cartItems->sum(function ($cart) {
-            return $cart->price_per_product * $cart->quantity;
-        });
-
+        $items = $request->items;
+        $subtotal = collect($items)->sum(fn($item) => $item['quantity'] * $item['price']);
         $shippingFee = $request->shipping_fee;
         $grandTotal = $subtotal + $shippingFee;
 
@@ -83,18 +85,28 @@ class OrderController extends Controller
                 'status' => 'pending',
             ]);
 
-            foreach ($cartItems as $item) {
+            foreach ($items as $item) {
                 OrderItems::create([
                     'id' => Str::uuid(),
                     'order_id' => $order->id,
-                    'product_id' => $item->product_id,
-                    'category_id' => $item->category_id,
-                    'sub_category_id' => $item->sub_category_id,
-                    'division_id' => $item->division_id,
-                    'variant_id' => $item->variant_id,
-                    'quantity' => $item->quantity,
-                    'price' => $item->price_per_product,
-                    'total' => $item->quantity * $item->price_per_product,
+                    'product_id' => $item['product_id'] ?? null,
+                    'product_name' => $item['product_name'] ?? null,
+                    'product_description' => $item['product_description'] ?? null,
+                    'category_id' => $item['category_id'] ?? null,
+                    'category_name' => $item['category_name'] ?? null,
+                    'category_description' => $item['category_description'] ?? null,
+                    'sub_category_id' => $item['sub_category_id'] ?? null,
+                    'sub_category_name' => $item['sub_category_name'] ?? null,
+                    'sub_category_description' => $item['sub_category_description'] ?? null,
+                    'division_id' => $item['division_id'] ?? null,
+                    'division_name' => $item['division_name'] ?? null,
+                    'division_description' => $item['division_description'] ?? null,
+                    'variant_id' => $item['variant_id'] ?? null,
+                    'variant_name' => $item['variant_name'] ?? null,
+                    'variant_description' => $item['variant_description'] ?? null,
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                    'total' => $item['quantity'] * $item['price'],
                 ]);
             }
 
@@ -116,17 +128,15 @@ class OrderController extends Controller
                 'receiver_province' => $request->receiver_province,
             ]);
 
-            Carts::where('user_id', $user->id)->delete();
-
             DB::commit();
-
-            // 5️⃣ (Opsional) Kirim ke Midtrans QRIS untuk payment
+            // Call payment gateway
             return $this->createMidtransPayment($order);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Checkout failed', 'error' => $e->getMessage()], 500);
         }
     }
+
 
     public function createMidtransPayment($order)
     {
