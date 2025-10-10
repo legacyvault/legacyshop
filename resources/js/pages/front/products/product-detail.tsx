@@ -237,12 +237,14 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
                     {/* Price */}
                     <div className="my-4 flex items-end gap-3">
-                        <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(finalPrice)}</div>
-                        {discountPct > 0 && (
+                        {discountPct > 0 ? (
                             <>
+                                <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(finalPrice)}</div>
                                 <span className="text-sm text-destructive line-through">{formatPrice(basePriceWithExtra)}</span>
                                 <Badge variant="destructive">{discountPct}%</Badge>
                             </>
+                        ) : (
+                            <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(basePriceWithExtra)}</div>
                         )}
                     </div>
 
