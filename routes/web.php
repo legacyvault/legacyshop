@@ -13,6 +13,7 @@ use App\Http\Controllers\API\V1\MiscController;
 use App\Http\Controllers\API\V1\SubCategoryController;
 use App\Http\Controllers\API\V1\VariantController;
 use App\Http\Controllers\API\V1\WarehouseController;
+use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
@@ -38,12 +39,17 @@ Route::group(['prefix' => 'v1'], function () {
 
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+
+    //Checkout API
+    Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
+
     //Biteship API
     Route::get('all-warehouse', [WarehouseController::class, 'getAllWarehouse'])->name('warehouses');
     Route::get('active-warehouse', [WarehouseController::class, 'getActiveWarehouse'])->name('warehouse.active');
     Route::get('biteship/origin/{origin_id}', [BiteshipController::class, 'getBiteshipOriginWarehouse'])->name('origin.location');
     Route::get('courier-list', [BiteshipController::class, 'getCourierList'])->name('courier.list');
     Route::post('delivery-rates', [BiteshipController::class, 'getDeliveryRates'])->name('delivery.rates');
+    Route::post('delivery-rates/location-id', [BiteshipController::class, 'getDeliveryRatesByLocationID'])->name('delivery.rates.location');
 
     //Location API
     Route::get('province-list', [LocationController::class, 'getProvinceList'])->name('province.list');
@@ -197,12 +203,11 @@ Route::get('view-cart/{id?}', [ViewController::class, 'cartPage'])->name('page.c
 Route::get('checkout', [ViewController::class, 'checkoutPage'])->name('checkout.page');
 
 Route::middleware(['ensureToken'])->group(function () {
-    Route::prefix('settings')->group(function() {
+    Route::prefix('settings')->group(function () {
         Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
         Route::get('delivery-address-profile', [ViewController::class, 'deliveryAddressProfilePage'])->name('profile.deliveryaddress.view');
         Route::get('add-delivery-address-profile/{id?}', [ViewController::class, 'deliveryAddressProfileAddPage'])->name('profile.deliveryaddress.add');
     });
-
 });
 
 

@@ -89,8 +89,8 @@ class BiteshipController extends Controller
                 'origin_longitude'      => (float) $request->input('origin_longitude'),
                 'destination_latitude'  => (float) $request->input('destination_latitude'),
                 'destination_longitude' => (float) $request->input('destination_longitude'),
-                'couriers'              => "gojek",
-                'items' => collect($request->input('items', []))->map(fn ($i) => [
+                'couriers'              => (string) $request->input('couriers'),
+                'items' => collect($request->input('items', []))->map(fn($i) => [
                     'name'     => (string) $i['name'],
                     'sku'      => (string) $i['sku'],
                     'value'    => (float)  $i['value'],
@@ -103,8 +103,8 @@ class BiteshipController extends Controller
         $rates = $response->json();
 
         return redirect()->route('checkout.page')
-        ->with('rates', $rates)
-        ->with('message', 'Courier rates loaded');
+            ->with('rates', $rates)
+            ->with('message', 'Courier rates loaded');
 
         // if (!$response->successful()) {
         //     return back()->with('alert', [
@@ -112,7 +112,61 @@ class BiteshipController extends Controller
         //         'message' => 'System failed. Please contact Legacy Vault.',
         //     ]);
         // }
-        
+
+        // $rates = $response;
+
+        // return redirect()->route('checkout.page')
+        // ->with('rates', $rates)
+        // ->with('message', 'Courier rates loaded');
+    }
+
+    public function getDeliveryRatesByLocationID(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'origin_area_id'       => 'required|string',
+            'destination_area_id'       => 'required|string',
+            'couriers'              => 'string',
+            'items'                 => 'required|array',
+            'items.*.name'          => 'required|string',
+            'items.*.sku'           => 'required|string',
+            'items.*.value'         => 'required|numeric|min:0',
+            'items.*.quantity'      => 'required|integer|min:1',
+            'items.*.weight'        => 'required|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $response = Http::withToken($this->apiKey)->post(
+            'https://api.biteship.com/v1/rates/couriers',
+            [
+                'origin_area_id'       => (string) $request->input('origin_area_id'),
+                'destination_area_id'      => (string) $request->input('destination_area_id'),
+                'couriers'              => (string) $request->input('couriers'),
+                'items' => collect($request->input('items', []))->map(fn($i) => [
+                    'name'     => (string) $i['name'],
+                    'sku'      => (string) $i['sku'],
+                    'value'    => (float)  $i['value'],
+                    'quantity' => (int)    $i['quantity'],
+                    'weight'   => (float)  $i['weight'], // grams
+                ])->all(),
+            ]
+        );
+
+        $rates = $response->json();
+
+        return redirect()->route('checkout.page')
+            ->with('rates', $rates)
+            ->with('message', 'Courier rates loaded');
+
+        // if (!$response->successful()) {
+        //     return back()->with('alert', [
+        //         'type' => 'error',
+        //         'message' => 'System failed. Please contact Legacy Vault.',
+        //     ]);
+        // }
+
         // $rates = $response;
 
         // return redirect()->route('checkout.page')
