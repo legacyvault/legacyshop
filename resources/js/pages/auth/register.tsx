@@ -1,6 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
-import { FormEventHandler, useEffect, useState } from 'react';
+import { CheckCircle, Circle, LoaderCircle } from 'lucide-react';
+import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
@@ -48,6 +48,37 @@ export default function Register() {
             setErrorAlert(true);
         }
     }, [typedErrors]);
+
+    const passwordChecks = useMemo(() => {
+        const password = data.password;
+        const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSpecial = /[^A-Za-z0-9]/.test(password);
+        const metCategories = [hasLowercase, hasUppercase, hasNumber, hasSpecial].filter(Boolean).length;
+
+        return {
+            hasLowercase,
+            hasUppercase,
+            hasNumber,
+            hasSpecial,
+            hasMinimumLength: password.length >= 8,
+            meetsCategoryCount: metCategories >= 3,
+        };
+    }, [data.password]);
+
+    const showPasswordChecklist = data.password.length > 0;
+
+    const RequirementRow = ({ met, label }: { met: boolean; label: string }) => (
+        <div className="flex items-start gap-2">
+            {met ? (
+                <CheckCircle className="mt-0.5 h-4 w-4 text-emerald-500" aria-hidden />
+            ) : (
+                <Circle className="mt-0.5 h-4 w-4 text-muted-foreground" aria-hidden />
+            )}
+            <span className={`text-sm ${met ? 'text-emerald-600' : 'text-muted-foreground'}`}>{label}</span>
+        </div>
+    );
 
     return (
         <>
@@ -103,6 +134,35 @@ export default function Register() {
                                 placeholder="Password"
                             />
                             <InputError message={errors.password} />
+                            {showPasswordChecklist && (
+                                <div className="rounded-md border border-emerald-100 bg-emerald-50/50 p-4">
+                                    <p className="text-sm font-medium text-emerald-700">Your password must contain:</p>
+                                    <div className="mt-3 space-y-2">
+                                        <RequirementRow met={passwordChecks.hasMinimumLength} label="At least 8 characters" />
+                                        <div className="space-y-1.5">
+                                            <RequirementRow
+                                                met={passwordChecks.meetsCategoryCount}
+                                                label="At least 3 of the following:"
+                                            />
+                                            <div className="ml-6 space-y-1">
+                                                <RequirementRow
+                                                    met={passwordChecks.hasLowercase}
+                                                    label="Lowercase letters (a-z)"
+                                                />
+                                                <RequirementRow
+                                                    met={passwordChecks.hasUppercase}
+                                                    label="Uppercase letters (A-Z)"
+                                                />
+                                                <RequirementRow met={passwordChecks.hasNumber} label="Numbers (0-9)" />
+                                                <RequirementRow
+                                                    met={passwordChecks.hasSpecial}
+                                                    label="Special characters (e.g. !@#$%^&*)"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid gap-2">
