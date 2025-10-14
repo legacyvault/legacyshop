@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { SharedData, type IDeliveryAddress, type IRatePricing } from '@/types';
-import { router, usePage, useRemember } from '@inertiajs/react';
+import { Link, router, usePage, useRemember } from '@inertiajs/react';
 import { BadgeCheck, Check, ChevronRight, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck, TicketPercent } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -48,14 +48,16 @@ function formatCurrency(value: number) {
 }
 
 function loadStoredCheckoutItems(): CheckoutItem[] {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined') router.visit('/');
     try {
         const raw = sessionStorage.getItem(CHECKOUT_ITEMS_STORAGE_KEY);
         if (!raw) {
+            router.visit('/');
             return [];
         }
         const parsed = JSON.parse(raw) as CheckoutItem[];
         if (!Array.isArray(parsed)) {
+            router.visit('/');
             return [];
         }
         return parsed.map((item) => ({
@@ -66,12 +68,13 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
             protectionPrice: Number(item.protectionPrice ?? 0),
         }));
     } catch (error) {
+        router.visit('/');
         return [];
     }
 }
 
 export default function Checkout() {
-    const { deliveryAddresses, provinces, rates, warehouse, couriers } = usePage<SharedData>().props;
+    const { deliveryAddresses, provinces, rates, warehouse, couriers, auth } = usePage<SharedData>().props;
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
 
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
@@ -253,13 +256,13 @@ export default function Checkout() {
                 items: rateItemsPayload,
             };
 
-            router.post(route('delivery.rates'), payload, {
-                preserveScroll: true,
-                preserveState: true,
-                onFinish: () => {
-                    setIsRequestingRates(false);
-                },
-            });
+            // router.post(route('delivery.rates'), payload, {
+            //     preserveScroll: true,
+            //     preserveState: true,
+            //     onFinish: () => {
+            //         setIsRequestingRates(false);
+            //     },
+            // });
         },
         [warehouse, selectedAddress, rateItemsPayload, setIsCourierModalOpen, setShouldAutoOpenCourier],
     );
@@ -368,9 +371,9 @@ export default function Checkout() {
                     <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Checkout</h1>
                 </div>
                 <div className="mb-2">
-                    <span onClick={() => window.history.back()} className="cursor-pointer underline">
-                        Back to Cart
-                    </span>
+                    <Link href={auth.user ? `/view-cart/${auth.user.id}` : `/view-cart`}>
+                        <span className="cursor-pointer underline">Back to Cart</span>
+                    </Link>
                 </div>
 
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
