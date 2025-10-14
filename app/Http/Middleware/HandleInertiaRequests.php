@@ -6,6 +6,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
+use App\Models\Profile;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -39,12 +40,13 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
         $user = $request->user();
-
+        $profile = $user ? Profile::where('user_id', $user->id)->first() : null;
         $userPayload = $user ? [
             'id'   => $user->id,
             'name' => $user->name,
             'email'=> $user->email,
             'role' => $user->role,
+            'country' => $profile?->country
         ] : null;
     
         $accessToken = ($user && $user->role === 'admin')

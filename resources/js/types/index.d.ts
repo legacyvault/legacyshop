@@ -117,7 +117,13 @@ export interface IDeliveryAddress {
     created_at: string;
     updated_at: string;
     province: string;
+    province_code?: string | null;
     city: string;
+    city_code?: string | null;
+    district?: string | null;
+    district_code?: string | null;
+    village?: string | null;
+    village_code?: string | null;
 }
 
 export interface IProvince {
@@ -167,6 +173,7 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    country: string;
     [key: string]: unknown; // This allows for additional properties...
 }
 

@@ -39,6 +39,21 @@ class UserController extends Controller
         }
     }
 
+    protected function isIndonesiaCountry(?string $country): bool
+    {
+        if (!$country) {
+            return false;
+        }
+
+        $normalized = strtoupper(trim($country));
+
+        if (in_array($normalized, ['ID', 'IDN'], true)) {
+            return true;
+        }
+
+        return str_contains(strtolower($country), 'indonesia');
+    }
+
     public function getProfile()
     {
         $profile = Profile::where('user_id', Auth::id())->with('delivery_address')->first();
@@ -89,6 +104,17 @@ class UserController extends Controller
 
     public function createDeliveryAddress(Request $request)
     {
+        $user = Auth::user();
+        $profile = Profile::where('user_id', $user?->id)->first();
+        $isIndonesia = $this->isIndonesiaCountry($profile?->country);
+
+        if (!$profile) {
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Profile not found.',
+            ]);
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
             'contact_name' => 'required|string',
@@ -96,6 +122,8 @@ class UserController extends Controller
             'province' => 'required|string',
             'address' => 'required|string',
             'city' => 'required|string',
+            'district' => [$isIndonesia ? 'required' : 'nullable', 'string'],
+            'village' => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'postal_code' => 'required|string',
             'latitude' => 'required|string',
             'longitude' => 'required|string',
@@ -108,9 +136,6 @@ class UserController extends Controller
 
         try {
             DB::beginTransaction();
-
-            $user = Auth::user();
-            $profile = Profile::where('user_id', $user->id)->first();
 
             $hasAddress = DeliveryAddress::where('profile_id', $profile->id)->exists();
             $isActive = (bool) ($request->is_active ?? false);
@@ -170,6 +195,8 @@ class UserController extends Controller
                 'province'                => $request->province,
                 'address'                 => $request->address,
                 'city'                    => $request->city,
+                'district'                => $isIndonesia ? ($request->district ?: null) : null,
+                'village'                 => $isIndonesia ? ($request->village ?: null) : null,
                 'postal_code'             => $request->postal_code,
                 'latitude'                => $request->latitude,
                 'longitude'               => $request->longitude,
@@ -195,6 +222,9 @@ class UserController extends Controller
 
     public function updateDeliveryAddress(Request $request)
     {
+        $profile = Profile::where('user_id', Auth::id())->first();
+        $isIndonesia = $this->isIndonesiaCountry($profile?->country);
+
         $validator = Validator::make($request->all(), [
             'id'            => 'required|exists:delivery_address,id',
             'name'          => 'required|string',
@@ -204,6 +234,8 @@ class UserController extends Controller
             'province'      => 'required|string',
             'address'       => 'required|string',
             'city'          => 'required|string',
+            'district'      => [$isIndonesia ? 'required' : 'nullable', 'string'],
+            'village'       => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'postal_code'   => 'required|string',
             'latitude'      => 'required|string',
             'longitude'     => 'required|string',
@@ -251,6 +283,8 @@ class UserController extends Controller
             $deliveryAddress->province      = $request->province;
             $deliveryAddress->address       = $request->address;
             $deliveryAddress->city          = $request->city;
+            $deliveryAddress->district      = $isIndonesia ? ($request->district ?: null) : null;
+            $deliveryAddress->village       = $isIndonesia ? ($request->village ?: null) : null;
             $deliveryAddress->postal_code   = $request->postal_code;
             $deliveryAddress->latitude      = $request->latitude;
             $deliveryAddress->longitude     = $request->longitude;
