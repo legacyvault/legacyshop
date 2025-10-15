@@ -3,8 +3,8 @@ import CourierListModal from '@/components/courier-list-modal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { SharedData, type IDeliveryAddress, type IRatePricing } from '@/types';
-import { router, usePage, useRemember } from '@inertiajs/react';
+import { SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
+import { Link, router, usePage, useRemember } from '@inertiajs/react';
 import { BadgeCheck, Check, ChevronRight, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck, TicketPercent } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -48,14 +48,16 @@ function formatCurrency(value: number) {
 }
 
 function loadStoredCheckoutItems(): CheckoutItem[] {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined') router.visit('/');
     try {
         const raw = sessionStorage.getItem(CHECKOUT_ITEMS_STORAGE_KEY);
         if (!raw) {
+            router.visit('/');
             return [];
         }
         const parsed = JSON.parse(raw) as CheckoutItem[];
         if (!Array.isArray(parsed)) {
+            router.visit('/');
             return [];
         }
         return parsed.map((item) => ({
@@ -66,13 +68,28 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
             protectionPrice: Number(item.protectionPrice ?? 0),
         }));
     } catch (error) {
+        router.visit('/');
         return [];
     }
 }
 
+function formatDateTime(value: string | null | undefined) {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return new Intl.DateTimeFormat('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    }).format(date);
+}
+
 export default function Checkout() {
-    const { deliveryAddresses, provinces, rates, warehouse, couriers } = usePage<SharedData>().props;
+    const { deliveryAddresses, provinces, rates, warehouse, couriers, auth } = usePage<SharedData>().props;
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
+    const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
+        const defaultMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
+        return defaultMethod?.id ?? '';
+    });
 
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
     const [selectedAddress, setSelectedAddress] = useState<IDeliveryAddress | null>(() => {
@@ -330,6 +347,17 @@ export default function Checkout() {
     const insurance = 0;
     const total = subtotal + protection + shipping + insurance;
     const hasCheckoutItems = checkoutItems.length > 0;
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [checkoutError, setCheckoutError] = useState<string | null>(null);
+    const [checkoutResult, setCheckoutResult] = useState<IRootCheckoutOrderMidtrans | null>(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const canSubmit = Boolean(hasCheckoutItems && selectedAddress && selectedRate && selectedPaymentId);
+    const qrCodeUrl = useMemo(() => {
+        if (!checkoutResult?.midtrans_response?.actions?.length) return null;
+        const qrAction = checkoutResult.midtrans_response.actions.find((action) => action.name === 'generate-qr-code-v2');
+        return qrAction?.url ?? null;
+    }, [checkoutResult]);
+    const paymentExpiry = useMemo(() => formatDateTime(checkoutResult?.midtrans_response?.expiry_time ?? null), [checkoutResult]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -353,6 +381,94 @@ export default function Checkout() {
         setIsModalOpen(true);
     };
 
+    const handlePayNow = useCallback(async () => {
+        if (!selectedAddress || !selectedRate || !selectedPaymentId || !checkoutItems.length) {
+            return;
+        }
+
+        const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+        const headers: Record<string, string> = {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        };
+        if (csrfToken) {
+            headers['X-CSRF-TOKEN'] = csrfToken;
+        }
+
+        const itemsPayload = checkoutItems.map((item) => ({
+            product_id: item.productId ?? null,
+            product_name: item.name,
+            product_description: item.variant ?? null,
+            quantity: item.quantity,
+            price: item.price,
+        }));
+
+        const payload = {
+            payment_method: selectedPaymentId,
+            courier_code: selectedRate.courier_code,
+            courier_name: selectedRate.courier_name,
+            courier_service: selectedRate.courier_service_code,
+            courier_service_name: selectedRate.courier_service_name,
+            shipping_fee: Number(selectedRate.price ?? 0),
+            shipping_duration_range: selectedRate.shipment_duration_range ?? selectedRate.duration ?? null,
+            shipping_duration_unit: selectedRate.shipment_duration_unit ?? null,
+            receiver_name: selectedAddress.contact_name,
+            receiver_phone: selectedAddress.contact_phone,
+            receiver_address: selectedAddress.address,
+            receiver_postal_code: selectedAddress.postal_code,
+            receiver_city: selectedAddress.city,
+            receiver_province: selectedAddress.province,
+            items: itemsPayload,
+        };
+
+        setIsSubmitting(true);
+        setCheckoutError(null);
+        setCheckoutResult(null);
+        setIsPaymentModalOpen(false);
+
+        try {
+            const response = await fetch(route('order.checkout'), {
+                method: 'POST',
+                headers,
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+
+            const contentType = response.headers.get('content-type') ?? '';
+            const isJson = contentType.includes('application/json');
+
+            if (!response.ok) {
+                if (isJson) {
+                    const errorBody = await response.json();
+                    const errorMessage =
+                        (typeof errorBody?.message === 'string' && errorBody.message.length ? errorBody.message : null) ??
+                        'Checkout failed. Please try again.';
+                    setCheckoutError(errorMessage);
+                } else {
+                    const errorText = await response.text();
+                    setCheckoutError(errorText || 'Checkout failed. Please try again.');
+                }
+                return;
+            }
+
+            if (isJson) {
+                const data = (await response.json()) as IRootCheckoutOrderMidtrans;
+                setCheckoutResult(data);
+                setIsPaymentModalOpen(true);
+            } else {
+                await response.text();
+            }
+
+            sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
+        } catch (error) {
+            const fallbackError = error instanceof Error ? error.message : 'Unexpected error';
+            setCheckoutError(`Checkout failed. ${fallbackError}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [checkoutItems, selectedAddress, selectedPaymentId, selectedRate]);
+
     return (
         <>
             <AddDeliveryAddressModal
@@ -368,9 +484,9 @@ export default function Checkout() {
                     <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Checkout</h1>
                 </div>
                 <div className="mb-2">
-                    <span onClick={() => window.history.back()} className="cursor-pointer underline">
-                        Back to Cart
-                    </span>
+                    <Link href={auth.user ? `/view-cart/${auth.user.id}` : `/view-cart`}>
+                        <span className="cursor-pointer underline">Back to Cart</span>
+                    </Link>
                 </div>
 
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
@@ -467,7 +583,7 @@ export default function Checkout() {
                                                     );
                                                 })
                                             ) : (
-                                                <p className="text-sm text-muted-foreground">Kamu belum memiliki alamat pengiriman tersimpan.</p>
+                                                <p className="text-sm text-muted-foreground">You don't have any shipping addresses saved yet.</p>
                                             )}
                                         </div>
                                     </DialogContent>
@@ -490,7 +606,7 @@ export default function Checkout() {
                                         </div>
                                     ) : (
                                         <div className="space-y-1 text-sm">
-                                            <p className="text-muted-foreground">Pilih layanan pengiriman yang tersedia untuk alamat kamu.</p>
+                                            <p className="text-muted-foreground">Select the delivery service available for your address.</p>
                                             {ratesError ? <p className="text-xs text-destructive">{ratesError}</p> : null}
                                         </div>
                                     )}
@@ -615,10 +731,20 @@ export default function Checkout() {
                                     {dummyPayments.map((method) => (
                                         <label
                                             key={method.id}
+                                            htmlFor={`payment-${method.id}`}
                                             className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-border/70 bg-muted/20 px-4 py-3 transition hover:border-primary/50 hover:bg-background ${
-                                                method.selected ? 'border-primary bg-background' : ''
+                                                method.id === selectedPaymentId ? 'border-primary bg-background' : ''
                                             }`}
                                         >
+                                            <input
+                                                type="radio"
+                                                id={`payment-${method.id}`}
+                                                name="payment-method"
+                                                className="hidden"
+                                                value={method.id}
+                                                checked={method.id === selectedPaymentId}
+                                                onChange={() => setSelectedPaymentId(method.id)}
+                                            />
                                             <span className="flex items-center gap-3">
                                                 <span
                                                     className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${method.accent}`}
@@ -630,10 +756,10 @@ export default function Checkout() {
                                             <span className="flex items-center gap-2">
                                                 <span
                                                     className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                                                        method.selected ? 'border-primary' : 'border-border'
+                                                        method.id === selectedPaymentId ? 'border-primary' : 'border-border'
                                                     }`}
                                                 >
-                                                    {method.selected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                                                    {method.id === selectedPaymentId && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
                                                 </span>
                                             </span>
                                         </label>
@@ -676,9 +802,28 @@ export default function Checkout() {
                                     <span>Total Transaction</span>
                                     <span className="text-xl">{formatCurrency(total)}</span>
                                 </div>
-                                <Button size="lg" className="h-12 w-full text-base font-semibold" disabled={!hasCheckoutItems}>
-                                    Pay Now
+                                <Button
+                                    size="lg"
+                                    className="h-12 w-full text-base font-semibold"
+                                    disabled={!canSubmit || isSubmitting}
+                                    onClick={handlePayNow}
+                                >
+                                    {isSubmitting ? 'Processing...' : 'Pay Now'}
                                 </Button>
+                                {checkoutError ? (
+                                    <p className="text-center text-sm text-destructive">{checkoutError}</p>
+                                ) : null}
+                                {checkoutResult && !checkoutError ? (
+                                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                                        <p className="font-semibold">Checkout successful.</p>
+                                        <p className="mt-1">
+                                            {paymentExpiry
+                                                ? `Please scan the QR code and complete your payment before ${paymentExpiry}.`
+                                                : 'Follow the payment instructions to complete your order.'}
+                                            {' '}You can refresh this page after payment is confirmed.
+                                        </p>
+                                    </div>
+                                ) : null}
                                 {/* <p className="text-center text-xs leading-relaxed text-muted-foreground">
                                     Dengan melanjutkan pembayaran, kamu menyetujui S&amp;K Asuransi Pengiriman &amp; Proteksi.
                                 </p> */}
@@ -700,6 +845,34 @@ export default function Checkout() {
                 onSelect={handleSelectRate}
                 isLoading={isRequestingRates && !hasRates}
             />
+            <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-center text-xl font-semibold">Scan &amp; Pay</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Use your favourite payment app to scan this QR code and finish the transaction.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {qrCodeUrl ? (
+                        <div className="space-y-4">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="rounded-xl border border-dashed border-primary/50 bg-primary/5 p-4">
+                                    <img src={qrCodeUrl} alt="Midtrans QR Code" className="h-64 w-64 max-w-full rounded-md object-contain" />
+                                </div>
+                                <div className="text-center text-sm text-muted-foreground">
+                                    {paymentExpiry
+                                        ? `QR code expires at ${paymentExpiry}.`
+                                        : 'Complete the payment before the QR code expires.'}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            We could not load the QR code from Midtrans. Please review your order status from your account page.
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

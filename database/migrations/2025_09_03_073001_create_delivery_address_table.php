@@ -22,6 +22,8 @@ return new class extends Migration
             $table->string('province')->nullable();
             $table->longText('address')->nullable();
             $table->string('city')->nullable();
+            $table->string('district')->nullable();
+            $table->string('village')->nullable();
             $table->string('postal_code')->nullable();
             $table->boolean('is_active')->default(0);
             $table->double('latitude');

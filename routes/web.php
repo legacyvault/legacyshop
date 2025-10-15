@@ -13,7 +13,7 @@ use App\Http\Controllers\API\V1\MiscController;
 use App\Http\Controllers\API\V1\SubCategoryController;
 use App\Http\Controllers\API\V1\VariantController;
 use App\Http\Controllers\API\V1\WarehouseController;
-use App\Http\Controllers\OrderController;
+use App\Http\Controllers\API\V1\OrderController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
@@ -54,6 +54,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Location API
     Route::get('province-list', [LocationController::class, 'getProvinceList'])->name('province.list');
     Route::get('city-list/{geonameId}', [LocationController::class, 'getCitiesList'])->name('cities.list');
+    Route::get('district-list/{cityCode}', [LocationController::class, 'getDistrictList'])->name('districts.list');
+    Route::get('village-list/{districtCode}', [LocationController::class, 'getVillageList'])->name('villages.list');
     Route::get('postal-code-list/{cityName}', [LocationController::class, 'getPostalCodeList'])->name('postal_code.list');
 
     //Product API

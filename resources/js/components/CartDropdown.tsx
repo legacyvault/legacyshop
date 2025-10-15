@@ -2,9 +2,11 @@
 import { Auth } from '@/types';
 import { Link } from '@inertiajs/react';
 import { Minus, Plus, ShoppingBag, ShoppingCart, X } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { Button } from './ui/button';
+
+const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 
 export const CartDropdown = ({ auth }: { auth: Auth }) => {
     const { items, totalItems, totalPrice, updateQuantity, removeItem, isCartOpen, openCart } = useCart();
@@ -32,6 +34,35 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
             minimumFractionDigits: 0,
         }).format(price);
     };
+
+    const persistCheckoutItems = useCallback(() => {
+        if (typeof window === 'undefined' || items.length === 0) {
+            return;
+        }
+
+        const payload = items.map((item) => ({
+            id: item.id,
+            store: 'Legacy Vault',
+            name: item.name,
+            variant: undefined,
+            attributes: [],
+            quantity: Math.max(1, Number(item.quantity ?? 0)),
+            price: Number(item.price ?? 0),
+            image: item.image,
+            weight: 0,
+            source: item.serverId ? 'server' : 'local',
+            cartId: item.serverId ?? null,
+            productId: item.meta?.product_id ?? null,
+            protectionPrice: 0,
+            protectionLabel: null,
+        }));
+
+        try {
+            sessionStorage.setItem(CHECKOUT_ITEMS_STORAGE_KEY, JSON.stringify(payload));
+        } catch (error) {
+            // Ignore write errors (e.g. private mode)
+        }
+    }, [items]);
 
     return (
         <div className="relative z-20" ref={dropdownRef}>
@@ -127,7 +158,14 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                                         <Link href={auth.user ? `/view-cart/${auth.user.id}` : `/view-cart`} className="w-full">
                                             <Button className="w-full">View Cart</Button>
                                         </Link>
-                                        <Link href="/checkout" className="w-full">
+                                        <Link
+                                            href="/checkout"
+                                            className="w-full"
+                                            onClick={() => {
+                                                persistCheckoutItems();
+                                                openCart(false);
+                                            }}
+                                        >
                                             <Button className="w-full" variant={'outline'}>
                                                 Checkout
                                             </Button>

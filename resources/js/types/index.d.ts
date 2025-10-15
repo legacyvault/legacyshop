@@ -117,7 +117,13 @@ export interface IDeliveryAddress {
     created_at: string;
     updated_at: string;
     province: string;
+    province_code?: string | null;
     city: string;
+    city_code?: string | null;
+    district?: string | null;
+    district_code?: string | null;
+    village?: string | null;
+    village_code?: string | null;
 }
 
 export interface IProvince {
@@ -167,6 +173,7 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    country: string;
     [key: string]: unknown; // This allows for additional properties...
 }
 
@@ -414,4 +421,108 @@ export interface IPivotVariantProd {
     stock: number | null;
     updated_at: string;
     use_variant_discount: number;
+}
+
+// ORDER TYPE
+export interface IRootCheckoutOrderMidtrans {
+    message: string;
+    order: IDataOrderMidtrans;
+    midtrans_response: MidtransResponse;
+}
+
+export interface IDataOrderMidtrans {
+    id: string;
+    user_id: string;
+    subtotal: number;
+    shipping_fee: number;
+    grand_total: number;
+    payment_method: string;
+    payment_status: string;
+    status: string;
+    order_number: string;
+    updated_at: string;
+    created_at: string;
+    user: IUserDataOrderMidtrans;
+    shipment: IShipmentDataOrderMidtrans;
+    items: IItemDataOrderMidtrans[];
+}
+
+export interface IUserDataOrderMidtrans {
+    id: string;
+    email: string;
+    email_verified_at: any;
+    role: string;
+}
+
+export interface IShipmentDataOrderMidtrans {
+    id: string;
+    order_id: string;
+    courier_code: string;
+    courier_name: string;
+    courier_service: string;
+    courier_service_name: string;
+    shipping_duration_range: string;
+    shipping_duration_unit: string;
+    shipping_fee: string;
+    waybill_number: any;
+    receiver_name: string;
+    receiver_phone: string;
+    receiver_address: string;
+    receiver_postal_code: string;
+    receiver_city: string;
+    receiver_province: string;
+    status: string;
+    shipped_at: any;
+    delivered_at: any;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface IItemDataOrderMidtrans {
+    id: string;
+    order_id: string;
+    product_id: string;
+    product_name: string;
+    product_description: string;
+    category_id: any;
+    category_name: any;
+    category_description: any;
+    sub_category_id: any;
+    sub_category_name: any;
+    sub_category_description: any;
+    division_id: any;
+    division_name: any;
+    division_description: any;
+    variant_id: any;
+    variant_name: any;
+    variant_description: any;
+    quantity: number;
+    price: string;
+    total: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface MidtransResponse {
+    status_code: string;
+    status_message: string;
+    transaction_id: string;
+    order_id: string;
+    merchant_id: string;
+    gross_amount: string;
+    currency: string;
+    payment_type: string;
+    transaction_time: string;
+    transaction_status: string;
+    fraud_status: string;
+    actions: IActionMidtransResponse[];
+    acquirer: string;
+    qr_string: string;
+    expiry_time: string;
+}
+
+export interface IActionMidtransResponse {
+    name: string;
+    method: string;
+    url: string;
 }
