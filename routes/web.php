@@ -14,6 +14,7 @@ use App\Http\Controllers\API\V1\SubCategoryController;
 use App\Http\Controllers\API\V1\VariantController;
 use App\Http\Controllers\API\V1\WarehouseController;
 use App\Http\Controllers\API\V1\OrderController;
+use App\Http\Controllers\OrderHistoryController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
@@ -39,6 +40,9 @@ Route::group(['prefix' => 'v1'], function () {
 
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+
+    //History
+    Route::get('order-history', [OrderHistoryController::class, 'getUserOrderHistory'])->name('user.order-history');
 
     //Checkout API
     Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
@@ -111,6 +115,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 });
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], function () {
+
+    //History
+    Route::get('all-order-history', [OrderHistoryController::class, 'getAllOrderHistory'])->name('all.order-history');
 
     //Warehouse API
     Route::post('create-warehouse', [WarehouseController::class, 'createWarehouse'])->name('create.warehouse');
