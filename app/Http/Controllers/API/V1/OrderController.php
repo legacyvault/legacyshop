@@ -205,6 +205,10 @@ class OrderController extends Controller
                 $order->update([
                     'payment_status' => 'pending',
                     'status' => 'awaiting_payment',
+                    'transaction_id' => $result['transaction_id'],
+                    'transaction_status' => $result['transaction_status'],
+                    'transaction_time' => $result['transaction_time'],
+                    'transaction_expiry_time' => $result['expiry_time'],
                 ]);
 
                 return response()->json([
