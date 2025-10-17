@@ -30,6 +30,7 @@ class OrderController extends Controller
     {
         $request->validate([
             'payment_method' => 'required|string',
+            'bank_payment' => 'nullable',
             'courier_code' => 'required|string',
             'courier_name' => 'required|string',
             'courier_service' => 'required|string',
@@ -142,7 +143,7 @@ class OrderController extends Controller
 
             DB::commit();
             // Call payment gateway
-            return $this->createMidtransPayment($order);
+            return $this->createMidtransPayment($order, $request->payment_method, $request->bank_payment);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Checkout failed', 'error' => $e->getMessage()], 500);
@@ -150,7 +151,7 @@ class OrderController extends Controller
     }
 
 
-    public function createMidtransPayment($order)
+    public function createMidtransPayment($order, $payment_method, $bank)
     {
         try {
             $user = $order->user;
@@ -171,23 +172,44 @@ class OrderController extends Controller
                 'name' => 'Shipping Fee',
             ];
 
-            $payload = [
-                'payment_type' => $order->payment_method,
-                'transaction_details' => [
-                    'order_id' => $order->order_number,
-                    'gross_amount' => (int) $order->grand_total,
-                ],
-                'item_details' => $itemDetails,
-                'customer_details' => [
-                    'first_name' => $user->name,
-                    'last_name' => '',
-                    'email' => $user->email ?? 'noemail@example.com',
-                    'phone' => $order->shipment->receiver_phone ?? '',
-                ],
-                'qris' => [
-                    'acquirer' => 'gopay',
-                ],
-            ];
+            if ($payment_method == 'qris') {
+                $payload = [
+                    'payment_type' => 'qris',
+                    'transaction_details' => [
+                        'order_id' => $order->order_number,
+                        'gross_amount' => (int) $order->grand_total,
+                    ],
+                    'item_details' => $itemDetails,
+                    'customer_details' => [
+                        'first_name' => $user->name,
+                        'last_name' => '',
+                        'email' => $user->email ?? 'noemail@example.com',
+                        'phone' => $order->shipment->receiver_phone ?? '',
+                    ],
+                    'qris' => [
+                        'acquirer' => 'gopay',
+                    ],
+                ];
+            } else if ($payment_method == 'bank_transfer') {
+                $payload = [
+                    'payment_type' => 'bank_transfer',
+                    'transaction_details' => [
+                        'order_id' => $order->order_number,
+                        'gross_amount' => (int) $order->grand_total,
+                    ],
+                    'item_details' => $itemDetails,
+                    'customer_details' => [
+                        'first_name' => $user->name,
+                        'last_name' => '',
+                        'email' => $user->email ?? 'noemail@example.com',
+                        'phone' => $order->shipment->receiver_phone ?? '',
+                    ],
+                    'bank_transfer' => [
+                        'bank' => $bank,
+                    ],
+                ];
+            }
+
 
             // 🔹 Panggil API Midtrans
             $response = Http::withBasicAuth($this->serverKey, '')
