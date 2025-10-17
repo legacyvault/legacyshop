@@ -129,6 +129,17 @@ class OrderController extends Controller
                 'receiver_province' => $request->receiver_province,
             ]);
 
+            $productIds = collect($items)
+                ->pluck('product_id')
+                ->filter()
+                ->toArray();
+
+            if (!empty($productIds)) {
+                Carts::where('user_id', $user->id)
+                    ->whereIn('product_id', $productIds)
+                    ->delete();
+            }
+
             DB::commit();
             // Call payment gateway
             return $this->createMidtransPayment($order);
@@ -161,7 +172,7 @@ class OrderController extends Controller
             ];
 
             $payload = [
-                'payment_type' => 'qris',
+                'payment_type' => $order->payment_method,
                 'transaction_details' => [
                     'order_id' => $order->order_number,
                     'gross_amount' => (int) $order->grand_total,
