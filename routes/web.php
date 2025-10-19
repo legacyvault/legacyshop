@@ -226,6 +226,10 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
+    Route::prefix('orders')->group(function() {
+        Route::get('/', [ViewController::class, 'OrdersPage']);
+    });
+
     Route::prefix('products')->group(function () {
         Route::get('category', [ViewController::class, 'categoryPage']);
         Route::get('unit', [ViewController::class, 'unitPage']);

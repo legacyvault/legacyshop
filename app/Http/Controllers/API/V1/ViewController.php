@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\OrderHistoryController;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
@@ -23,6 +24,7 @@ class ViewController extends Controller
     protected $warehouseController;
     protected $locationController;
     protected $biteshipController;
+    protected $orderhistoryController;
 
     public function __construct(Request $request)
     {
@@ -37,6 +39,7 @@ class ViewController extends Controller
         $this->warehouseController = new WarehouseController();
         $this->locationController = new LocationController();
         $this->biteshipController = new BiteshipController();
+        $this->orderhistoryController= new OrderHistoryController();
     }
 
     public function unitPage(Request $request)
@@ -457,6 +460,16 @@ class ViewController extends Controller
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
             ]
+        ]);
+    }
+
+    public function OrdersPage(Request $request){
+
+        $ordersPaginated = $this->orderhistoryController->getAllOrderHistory($request);
+
+        return Inertia::render('orders/index', [
+            'ordersPaginated' => $ordersPaginated,
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'status', 'payment_status', 'transaction_status')
         ]);
     }
 }
