@@ -51,6 +51,7 @@ export interface SharedData {
     article: IArticle;
     articles: IArticle[];
     carts: ICart[];
+    ordersPaginated?: IOrdersPaginated;
     warehouses: IWarehouse[];
     warehouse?: IWarehouse | null;
     provinces: IProvince[];
@@ -313,6 +314,16 @@ export interface IRootUnits {
     data: IUnit[];
 }
 
+export interface IOrdersPaginated {
+    current_page: number;
+    from: number | null;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: IRootHistoryOrders[];
+}
+
 export interface IRootCategories {
     current_page: number;
     from: number;
@@ -421,6 +432,84 @@ export interface IPivotVariantProd {
     stock: number | null;
     updated_at: string;
     use_variant_discount: number;
+}
+
+export interface IOrderUser {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+}
+
+export interface IRootHistoryOrders {
+    created_at: string;
+    grand_total: string;
+    id: string;
+    items: IItemHistoryOrders[];
+    order_number: string;
+    paid_at: string | null;
+    payment_method: string;
+    payment_status: string;
+    shipment?: IShipmentHistoryOrders | null;
+    shipping_fee: string;
+    subtotal: string;
+    transaction_expiry_time: string | null;
+    transaction_id: string;
+    transaction_status: string;
+    transaction_time: string | null;
+    updated_at: string;
+    user?: IOrderUser | null;
+    user_id: string;
+    status: string;
+}
+
+export interface IShipmentHistoryOrders{
+    id: string;
+    order_id: string;
+    courier_code: string;
+    courier_name: string;
+    courier_service: string;
+    courier_service_name: string;
+    receiver_name: string;
+    receiver_phone: string;
+    receiver_address: string;
+    receiver_city: string;
+    receiver_province: string;
+    receiver_postal_code: string;
+    shipping_fee: string;
+    shipping_duration_range: string;
+    shipping_duration_unit: string;
+    waybill_number: string | null;
+    status: string;
+    shipped_at: string | null;
+    delivered_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface IItemHistoryOrders{
+    id: string;
+    order_id: string;
+    product_id: string;
+    product_name: string;
+    product_description: string | null;
+    variant_id: string | null;
+    variant_name: string | null;
+    variant_description: string | null;
+    category_id: string | null;
+    category_name: string | null;
+    category_description: string | null;
+    sub_category_id: string | null;
+    sub_category_name: string | null;
+    sub_category_description: string | null;
+    division_id: string | null;
+    division_name: string | null;
+    division_description: string | null;
+    price: string;
+    quantity: number;
+    total: string;
+    created_at: string;
+    updated_at: string;
 }
 
 // ORDER TYPE
