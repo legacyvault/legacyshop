@@ -46,6 +46,7 @@ class OrderController extends Controller
             'items.*.product_id' => 'nullable|uuid',
             'items.*.product_name' => 'required|string',
             'items.*.product_description' => 'nullable|string',
+            'items.*.product_image' => 'nullable|string',
 
             'items.*.category_id' => 'nullable|uuid',
             'items.*.category_name' => 'nullable|string',
@@ -94,6 +95,7 @@ class OrderController extends Controller
                     'product_id' => $item['product_id'] ?? null,
                     'product_name' => $item['product_name'] ?? null,
                     'product_description' => $item['product_description'] ?? null,
+                    'product_image' => $item['product_image'] ?? null,
                     'category_id' => $item['category_id'] ?? null,
                     'category_name' => $item['category_name'] ?? null,
                     'category_description' => $item['category_description'] ?? null,

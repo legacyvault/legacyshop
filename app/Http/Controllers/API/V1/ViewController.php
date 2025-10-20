@@ -472,4 +472,18 @@ class ViewController extends Controller
             'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'status', 'payment_status', 'transaction_status')
         ]);
     }
+
+    public function purchasesPage(Request $request){
+
+        $ordersPaginated = $this->orderhistoryController->getUserOrderHistory($request);
+
+        return Inertia::render('settings/purchases/index', [
+            'ordersPaginated' => $ordersPaginated,
+            'filters' => $request->only('q', 'status', 'payment_status', 'transaction_status', 'product_category', 'page', 'per_page'),
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ]
+        ]);
+    }
 }

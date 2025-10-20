@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
 import { Link, router, usePage, useRemember } from '@inertiajs/react';
-import { BadgeCheck, Check, ChevronRight, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck, TicketPercent } from 'lucide-react';
+import { BadgeCheck, Check, ChevronDown, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
@@ -29,10 +29,35 @@ type CheckoutItem = {
 };
 
 const dummyPayments = [
-    { id: 'mandiri', name: 'Mandiri Virtual Account', accent: 'bg-[#FFE8CC] text-[#E57E25]', selected: true },
-    { id: 'bca', name: 'BCA Virtual Account', accent: 'bg-[#DAE8FF] text-[#1A56DB]' },
-    { id: 'alfamart', name: 'Alfamart / Alfamidi / Lawson / Dan+Dan', accent: 'bg-[#FFE4EC] text-[#D1357F]' },
-    { id: 'bri', name: 'BRI Virtual Account', accent: 'bg-[#DFF7F0] text-[#0E9F6E]' },
+    { id: 'qris', name: 'Qris', accent: 'bg-[#FFE8CC] text-[#E57E25]', selected: true },
+    {
+        id: 'bank_transfer',
+        name: 'Bank Transfer',
+        accent: 'bg-[#DAE8FF] text-[#1A56DB]',
+        selected: false,
+        children: [
+            {
+                id: 'permata',
+                name: 'Permata Bank',
+                selected: false,
+            },
+            {
+                id: 'bca',
+                name: 'BCA',
+                selected: false,
+            },
+            {
+                id: 'bni',
+                name: 'BRI',
+                selected: false,
+            },
+            {
+                id: 'cimb',
+                name: 'CIMB',
+                selected: false,
+            },
+        ],
+    },
 ];
 
 function getRateId(rate: IRatePricing) {
@@ -86,10 +111,20 @@ function formatDateTime(value: string | null | undefined) {
 export default function Checkout() {
     const { deliveryAddresses, provinces, rates, warehouse, couriers, auth } = usePage<SharedData>().props;
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
+    console.log(checkoutItems);
+    const defaultPaymentMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
     const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
         const defaultMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
         return defaultMethod?.id ?? '';
     });
+    const [selectedBankPaymentId, setSelectedBankPaymentId] = useState<string | null>(() => {
+        if (defaultPaymentMethod?.children?.length) {
+            const defaultChild = defaultPaymentMethod.children.find((child) => child.selected) ?? defaultPaymentMethod.children[0];
+            return defaultChild?.id ?? null;
+        }
+        return null;
+    });
+    const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(() => defaultPaymentMethod?.id ?? null);
 
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
     const [selectedAddress, setSelectedAddress] = useState<IDeliveryAddress | null>(() => {
@@ -153,6 +188,7 @@ export default function Checkout() {
         if (!selectedRateId) return ratesPricing[0];
         return ratesPricing.find((rate) => getRateId(rate) === selectedRateId) ?? ratesPricing[0];
     }, [ratesPricing, selectedRateId]);
+    const selectedPaymentMethod = useMemo(() => dummyPayments.find((method) => method.id === selectedPaymentId) ?? null, [selectedPaymentId]);
 
     const rateItemsPayload = useMemo(
         () =>
@@ -340,6 +376,29 @@ export default function Checkout() {
         },
         [setIsCourierModalOpen, setShouldAutoOpenCourier],
     );
+    const handleSelectPaymentMethod = useCallback(
+        (methodId: string) => {
+            setSelectedPaymentId(methodId);
+            setExpandedPaymentId(methodId);
+
+            const method = dummyPayments.find((item) => item.id === methodId);
+            if (method?.children?.length) {
+                setSelectedBankPaymentId((prev) => {
+                    if (prev && method.children?.some((child) => child.id === prev)) {
+                        return prev;
+                    }
+                    const fallbackChild = method.children.find((child) => child.selected) ?? method.children[0];
+                    return fallbackChild?.id ?? null;
+                });
+            } else {
+                setSelectedBankPaymentId(null);
+            }
+        },
+        [setSelectedPaymentId, setSelectedBankPaymentId, setExpandedPaymentId],
+    );
+    const handleSelectBankPayment = useCallback((bankId: string) => {
+        setSelectedBankPaymentId(bankId);
+    }, []);
 
     const subtotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
     const protection = checkoutItems.reduce((total, item) => total + (item.protectionPrice ?? 0), 0);
@@ -351,7 +410,10 @@ export default function Checkout() {
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     const [checkoutResult, setCheckoutResult] = useState<IRootCheckoutOrderMidtrans | null>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const canSubmit = Boolean(hasCheckoutItems && selectedAddress && selectedRate && selectedPaymentId);
+    const requiresBankSelection = Boolean(selectedPaymentMethod?.children?.length);
+    const canSubmit = Boolean(
+        hasCheckoutItems && selectedAddress && selectedRate && selectedPaymentId && (!requiresBankSelection || selectedBankPaymentId),
+    );
     const qrCodeUrl = useMemo(() => {
         if (!checkoutResult?.midtrans_response?.actions?.length) return null;
         const qrAction = checkoutResult.midtrans_response.actions.find((action) => action.name === 'generate-qr-code-v2');
@@ -386,6 +448,12 @@ export default function Checkout() {
             return;
         }
 
+        const bankPaymentValue = selectedPaymentMethod?.children?.length && selectedBankPaymentId ? selectedBankPaymentId : null;
+
+        if (selectedPaymentMethod?.children?.length && !bankPaymentValue) {
+            return;
+        }
+
         const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
         const headers: Record<string, string> = {
             Accept: 'application/json',
@@ -400,12 +468,14 @@ export default function Checkout() {
             product_id: item.productId ?? null,
             product_name: item.name,
             product_description: item.variant ?? null,
+            product_image: item.image ?? null,
             quantity: item.quantity,
             price: item.price,
         }));
 
         const payload = {
             payment_method: selectedPaymentId,
+            bank_payment: bankPaymentValue,
             courier_code: selectedRate.courier_code,
             courier_name: selectedRate.courier_name,
             courier_service: selectedRate.courier_service_code,
@@ -467,7 +537,7 @@ export default function Checkout() {
         } finally {
             setIsSubmitting(false);
         }
-    }, [checkoutItems, selectedAddress, selectedPaymentId, selectedRate]);
+    }, [checkoutItems, selectedAddress, selectedPaymentId, selectedRate, selectedBankPaymentId, selectedPaymentMethod]);
 
     return (
         <>
@@ -723,62 +793,111 @@ export default function Checkout() {
                     <div className="space-y-6 lg:sticky lg:top-28">
                         <Card className="gap-0 border border-border/60 bg-background shadow-sm">
                             <CardHeader className="flex-row items-center justify-between gap-3 py-6">
-                                <CardTitle className="text-lg font-semibold">Metode Pembayaran</CardTitle>
-                                <button className="text-sm font-semibold text-primary transition hover:text-primary/80">Lihat Semua</button>
+                                <CardTitle className="text-lg font-semibold">Payment Method</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-5">
                                 <div className="space-y-3">
-                                    {dummyPayments.map((method) => (
-                                        <label
-                                            key={method.id}
-                                            htmlFor={`payment-${method.id}`}
-                                            className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-border/70 bg-muted/20 px-4 py-3 transition hover:border-primary/50 hover:bg-background ${
-                                                method.id === selectedPaymentId ? 'border-primary bg-background' : ''
-                                            }`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                id={`payment-${method.id}`}
-                                                name="payment-method"
-                                                className="hidden"
-                                                value={method.id}
-                                                checked={method.id === selectedPaymentId}
-                                                onChange={() => setSelectedPaymentId(method.id)}
-                                            />
-                                            <span className="flex items-center gap-3">
-                                                <span
-                                                    className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${method.accent}`}
-                                                >
-                                                    {method.name.slice(0, 2).toUpperCase()}
-                                                </span>
-                                                <span className="text-sm font-medium text-foreground">{method.name}</span>
-                                            </span>
-                                            <span className="flex items-center gap-2">
-                                                <span
-                                                    className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                                                        method.id === selectedPaymentId ? 'border-primary' : 'border-border'
-                                                    }`}
-                                                >
-                                                    {method.id === selectedPaymentId && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
-                                                </span>
-                                            </span>
-                                        </label>
-                                    ))}
-                                </div>
+                                    {dummyPayments.map((method) => {
+                                        const hasChildren = Array.isArray(method.children) && method.children.length > 0;
+                                        const isSelected = method.id === selectedPaymentId;
+                                        const isExpanded = hasChildren && expandedPaymentId === method.id;
 
-                                <button className="flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-left text-sm font-semibold text-primary transition hover:bg-primary/10">
-                                    <span className="flex items-center gap-3">
-                                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-                                            <TicketPercent className="h-4 w-4 text-primary" />
-                                        </span>
-                                        Makin hemat pakai promo
-                                    </span>
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
+                                        return (
+                                            <div
+                                                key={method.id}
+                                                className={`rounded-xl border border-border/70 bg-muted/20 transition hover:border-primary/50 hover:bg-background ${
+                                                    isSelected ? 'border-primary bg-background shadow-sm' : ''
+                                                } ${isExpanded ? 'ring-1 ring-primary/40' : ''}`}
+                                            >
+                                                <label
+                                                    htmlFor={`payment-${method.id}`}
+                                                    className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3"
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        id={`payment-${method.id}`}
+                                                        name="payment-method"
+                                                        className="hidden"
+                                                        value={method.id}
+                                                        checked={isSelected}
+                                                        onChange={() => handleSelectPaymentMethod(method.id)}
+                                                    />
+                                                    <span className="flex items-center gap-3">
+                                                        <span
+                                                            className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${method.accent}`}
+                                                        >
+                                                            {method.name.slice(0, 2).toUpperCase()}
+                                                        </span>
+                                                        <span className="text-sm font-medium text-foreground">{method.name}</span>
+                                                    </span>
+                                                    <span className="flex items-center gap-2">
+                                                        {hasChildren ? (
+                                                            <ChevronDown
+                                                                aria-hidden="true"
+                                                                className={`h-4 w-4 text-muted-foreground transition-transform ${
+                                                                    isExpanded ? 'rotate-180' : ''
+                                                                }`}
+                                                            />
+                                                        ) : null}
+                                                        <span
+                                                            className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                                                                isSelected ? 'border-primary' : 'border-border'
+                                                            }`}
+                                                        >
+                                                            {isSelected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                                {hasChildren ? (
+                                                    <div
+                                                        className={`${isExpanded ? 'block' : 'hidden'} border-t border-border/60 bg-muted/10 px-4 py-3`}
+                                                    >
+                                                        <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase">Select Bank</p>
+                                                        <div className="space-y-2">
+                                                            {method.children?.map((child) => {
+                                                                const isChildSelected = isSelected && selectedBankPaymentId === child.id;
 
-                                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                    <span>Bonus Cashback</span>
-                                    <span className="font-semibold text-primary">40.000</span>
+                                                                return (
+                                                                    <label
+                                                                        key={child.id}
+                                                                        htmlFor={`payment-${method.id}-${child.id}`}
+                                                                        className={`flex cursor-pointer items-center justify-between rounded-lg border border-transparent px-3 py-2 text-sm transition hover:bg-background ${
+                                                                            isChildSelected
+                                                                                ? 'border-primary bg-background text-foreground'
+                                                                                : 'text-muted-foreground'
+                                                                        }`}
+                                                                    >
+                                                                        <input
+                                                                            type="radio"
+                                                                            id={`payment-${method.id}-${child.id}`}
+                                                                            name={`payment-${method.id}-bank`}
+                                                                            className="hidden"
+                                                                            value={child.id}
+                                                                            checked={isChildSelected}
+                                                                            onChange={() => {
+                                                                                handleSelectPaymentMethod(method.id);
+                                                                                handleSelectBankPayment(child.id);
+                                                                            }}
+                                                                        />
+                                                                        <span>{child.name}</span>
+                                                                        <span
+                                                                            className={`flex h-4 w-4 items-center justify-center rounded-full border ${
+                                                                                isChildSelected ? 'border-primary bg-primary/10' : 'border-border'
+                                                                            }`}
+                                                                        >
+                                                                            {isChildSelected && (
+                                                                                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                                                            )}
+                                                                        </span>
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </CardContent>
                         </Card>
@@ -810,17 +929,15 @@ export default function Checkout() {
                                 >
                                     {isSubmitting ? 'Processing...' : 'Pay Now'}
                                 </Button>
-                                {checkoutError ? (
-                                    <p className="text-center text-sm text-destructive">{checkoutError}</p>
-                                ) : null}
+                                {checkoutError ? <p className="text-center text-sm text-destructive">{checkoutError}</p> : null}
                                 {checkoutResult && !checkoutError ? (
                                     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                                         <p className="font-semibold">Checkout successful.</p>
                                         <p className="mt-1">
                                             {paymentExpiry
                                                 ? `Please scan the QR code and complete your payment before ${paymentExpiry}.`
-                                                : 'Follow the payment instructions to complete your order.'}
-                                            {' '}You can refresh this page after payment is confirmed.
+                                                : 'Follow the payment instructions to complete your order.'}{' '}
+                                            You can refresh this page after payment is confirmed.
                                         </p>
                                     </div>
                                 ) : null}
@@ -860,9 +977,7 @@ export default function Checkout() {
                                     <img src={qrCodeUrl} alt="Midtrans QR Code" className="h-64 w-64 max-w-full rounded-md object-contain" />
                                 </div>
                                 <div className="text-center text-sm text-muted-foreground">
-                                    {paymentExpiry
-                                        ? `QR code expires at ${paymentExpiry}.`
-                                        : 'Complete the payment before the QR code expires.'}
+                                    {paymentExpiry ? `QR code expires at ${paymentExpiry}.` : 'Complete the payment before the QR code expires.'}
                                 </div>
                             </div>
                         </div>

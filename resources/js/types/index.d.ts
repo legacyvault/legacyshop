@@ -157,6 +157,7 @@ export interface IBanner {
     banner_text: string;
     is_active: boolean;
     picture_url: string;
+    url: string;
 }
 
 export interface IRunningText {
@@ -463,7 +464,7 @@ export interface IRootHistoryOrders {
     status: string;
 }
 
-export interface IShipmentHistoryOrders{
+export interface IShipmentHistoryOrders {
     id: string;
     order_id: string;
     courier_code: string;
@@ -487,7 +488,7 @@ export interface IShipmentHistoryOrders{
     updated_at: string;
 }
 
-export interface IItemHistoryOrders{
+export interface IItemHistoryOrders {
     id: string;
     order_id: string;
     product_id: string;

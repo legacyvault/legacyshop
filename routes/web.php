@@ -217,6 +217,7 @@ Route::middleware(['ensureToken'])->group(function () {
         Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
         Route::get('delivery-address-profile', [ViewController::class, 'deliveryAddressProfilePage'])->name('profile.deliveryaddress.view');
         Route::get('add-delivery-address-profile/{id?}', [ViewController::class, 'deliveryAddressProfileAddPage'])->name('profile.deliveryaddress.add');
+        Route::get('purchases', [ViewController::class, 'purchasesPage']);
     });
 });
 

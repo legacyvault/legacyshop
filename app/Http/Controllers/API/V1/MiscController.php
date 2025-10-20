@@ -104,9 +104,10 @@ class MiscController extends Controller
     public function createBanner(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'banner_text' => 'required|string',
+            'banner_text' => 'nullable|string',
             'is_active'   => 'nullable|boolean',
             'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'url'         => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -121,14 +122,11 @@ class MiscController extends Controller
                 $pictureUrl = $this->uploadBannerImageToS3($request->file('image'));
             }
 
-            if ($request->boolean('is_active')) {
-                Banner::where('is_active', true)->update(['is_active' => false]);
-            }
-
             $create = Banner::create([
                 'banner_text' => $request->banner_text,
                 'is_active'   => $request->boolean('is_active'),
                 'picture_url' => $pictureUrl,
+                'url'         => $request->url
             ]);
 
             DB::commit();
@@ -206,9 +204,7 @@ class MiscController extends Controller
 
     public function getActiveBanner()
     {
-        $data = Banner::orderBy('created_at', 'desc')->where('is_active', true)
-            ->latest()
-            ->first();
+        $data = Banner::orderBy('created_at', 'desc')->where('is_active', true)->get();
 
         return $data;
     }
