@@ -252,4 +252,27 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
+    public function getTransactionStatus($transaction_id)
+    {
+        $url = "{$this->apiUrl}/v2/{$transaction_id}/status";
+
+        $response = Http::withBasicAuth($this->serverKey, '')
+            ->withHeaders([
+                'Accept' => 'application/json',
+            ])
+            ->get($url);
+
+        if ($response->successful()) {
+            return $response->json();
+        }
+
+        Log::error('Midtrans Transaction Status Error', [
+            'transaction_id' => $transaction_id,
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+
+        return redirect()->back()->withErrors('Failed to get transaction status.')->withInput();
+    }
 }
