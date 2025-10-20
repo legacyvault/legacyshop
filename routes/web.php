@@ -46,6 +46,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 
     //Checkout API
     Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
+    Route::get('transaction-status/{transaction_id}', [OrderController::class, 'getTransactionStatus'])->name('transaction.status');
 
     //Biteship API
     Route::get('all-warehouse', [WarehouseController::class, 'getAllWarehouse'])->name('warehouses');
