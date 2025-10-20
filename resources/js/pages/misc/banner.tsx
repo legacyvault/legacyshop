@@ -17,6 +17,7 @@ interface Form {
     banner_text: string;
     is_active: boolean;
     image: File | null;
+    url: string;
 }
 
 interface PropsTable {
@@ -34,6 +35,7 @@ export default function RunningText() {
         banner_text: '',
         is_active: false,
         image: null,
+        url: '',
     });
 
     const [openAdd, isOpenAdd] = useState(false);
@@ -79,6 +81,7 @@ function BannerTable({ banner }: PropsTable) {
         banner_text: '',
         is_active: false,
         image: null,
+        url: '',
     });
 
     const [openEditCat, isOpenEditCat] = useState(false);

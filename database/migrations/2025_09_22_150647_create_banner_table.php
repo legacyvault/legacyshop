@@ -13,8 +13,9 @@ return new class extends Migration
     {
         Schema::create('banner', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->longText('banner_text');
+            $table->longText('banner_text')->nullable();
             $table->string('picture_url');
+            $table->string('url')->nullable();
             $table->boolean('is_active')->default(false);
             $table->timestamps();
         });

@@ -430,9 +430,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                             <Button className="w-full" onClick={handleAddToCart} disabled={disableButtonCart}>
                                 + Add to Cart
                             </Button>
-                            <Button variant="outline" className="w-full">
+                            {/* <Button variant="outline" className="w-full">
                                 Buy Now
-                            </Button>
+                            </Button> */}
                         </div>
                     </div>
                 </section>

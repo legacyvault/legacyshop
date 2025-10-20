@@ -18,6 +18,7 @@ return new class extends Migration
             $table->uuid('product_id')->nullable();
             $table->string('product_name')->nullable();
             $table->text('product_description')->nullable();
+            $table->string('product_image')->nullable();
 
             $table->uuid('category_id')->nullable();
             $table->string('category_name')->nullable();

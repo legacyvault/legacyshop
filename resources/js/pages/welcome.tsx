@@ -132,6 +132,83 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
     );
 };
 
+const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const hasMultiple = banners.length > 1;
+
+    useEffect(() => {
+        setCurrentIndex(0);
+    }, [banners.length]);
+
+    useEffect(() => {
+        if (!hasMultiple) return;
+
+        const intervalId = setInterval(() => {
+            setCurrentIndex((prev) => {
+                const nextIndex = prev + 1;
+                return nextIndex >= banners.length ? 0 : nextIndex;
+            });
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+    }, [banners.length, hasMultiple]);
+
+    if (!banners.length) {
+        return null;
+    }
+
+    const goToSlide = (index: number) => {
+        setCurrentIndex(index);
+    };
+
+    return (
+        <section className="relative h-[70vh] w-full overflow-hidden">
+            {banners.map((banner, index) => {
+                const isActive = index === currentIndex;
+
+                return (
+                    <div
+                        key={banner.id ?? index}
+                        className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700 ease-in-out ${
+                            isActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                        }`}
+                        style={{ backgroundImage: `url('${banner.picture_url ?? '/banner-example.jpg'}')` }}
+                    >
+                        <div className="absolute inset-0 bg-black/30" />
+                        {banner.banner_text && (
+                            <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-4 text-center text-background">
+                                <h1 className="text-6xl font-bold md:text-7xl">Welcome to Legacy Vault</h1>
+                                <h4 className="mt-4 text-lg font-medium">{banner.banner_text}</h4>
+                                <div>
+                                    <Button className="mt-6 bg-background text-foreground">Explore More</Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+
+            {hasMultiple && (
+                <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+                        {banners.map((banner, index) => {
+                            const isActive = index === currentIndex;
+
+                            return (
+                                <button
+                                    key={banner.id ?? `dot-${index}`}
+                                    type="button"
+                                    onClick={() => goToSlide(index)}
+                                    className={`h-2 w-2 rounded-full transition ${isActive ? 'w-6 bg-white' : 'bg-white/50'}`}
+                                    aria-label={`Go to banner ${index + 1}`}
+                                />
+                            );
+                        })}
+                </div>
+            )}
+        </section>
+    );
+};
+
 const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
     const [activeSlide, setActiveSlide] = useState(0);
     const [visibleCount, setVisibleCount] = useState(1);
@@ -332,7 +409,17 @@ export default function Welcome() {
 
     const { products: productsPayload, units, banner, articles } = usePage<SharedData & { products: IProducts[] }>().props;
 
-    const activeBanner: IBanner = banner as unknown as IBanner;
+    const activeBanner = useMemo(() => {
+        if (Array.isArray(banner)) {
+            return banner as IBanner[];
+        }
+
+        if (banner) {
+            return [banner as IBanner];
+        }
+
+        return [] as IBanner[];
+    }, [banner]);
 
     return (
         <>
@@ -343,27 +430,11 @@ export default function Welcome() {
             <div className="">
                 <FrontLayout auth={auth} locale={locale} translations={translations}>
                     {/* BANNER */}
-                    {activeBanner && (
-                        <>
-                            <section
-                                className="min-h-[400px] w-full bg-cover bg-center bg-no-repeat"
-                                style={{ backgroundImage: `url('${activeBanner?.picture_url ?? '/banner-example.jpg'}')` }}
-                            ></section>
-
-                            <div className="mx-auto my-12 max-w-6xl">
-                                <h1 className="text-center text-4xl font-bold">Welcome to Legacy Vault</h1>
-                                <h4 className="mt-4 text-center text-lg font-medium break-words whitespace-normal">{activeBanner.banner_text}</h4>
-
-                                <div className="text-center">
-                                    <Button className="mt-4">See More Cases</Button>
-                                </div>
-                            </div>
-                        </>
-                    )}
+                    {activeBanner.length > 0 && <BannerCarousel banners={activeBanner} />}
 
                     {/* UNIT SHOWCASE */}
                     {units.length > 0 && (
-                        <section className="mx-auto my-48 max-w-6xl px-4">
+                        <section className="mx-auto mt-24 mb-48 max-w-6xl px-4">
                             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                                 {units.map((unit) => (
                                     <button

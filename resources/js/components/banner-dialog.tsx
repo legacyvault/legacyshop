@@ -12,9 +12,9 @@ interface IBannerDialog {
     banner?: IBanner;
 
     //Inertia’s useForm
-    data: { id?: string; banner_text: string; is_active: boolean; image?: File | null };
+    data: { id?: string; banner_text: string; is_active: boolean; image?: File | null; url: string };
     setData: (field: any, value: any) => void;
-    errors: { banner_text?: string; is_active?: string; image?: string };
+    errors: { banner_text?: string; is_active?: string; image?: string; url?: string };
 
     onSubmit: (e: React.FormEvent) => void;
 }
@@ -29,11 +29,13 @@ export default function BannerDialog({ open, isOpen, type, banner, onSubmit, dat
                 setData('banner_text', banner.banner_text);
                 setData('is_active', banner.is_active);
                 setData('image', null);
+                setData('url', banner.url);
                 setImagePreview(banner.picture_url || null);
             } else if (type === 'add') {
                 setData('banner_text', '');
                 setData('is_active', false);
                 setData('image', null);
+                setData('url', '');
                 setImagePreview(null);
             }
         }
@@ -75,7 +77,7 @@ export default function BannerDialog({ open, isOpen, type, banner, onSubmit, dat
                     {type !== 'delete' ? (
                         <form method="POST" onSubmit={onSubmit} encType="multipart/form-data">
                             <div className="mb-6">
-                                <label className="mb-2 block text-sm font-medium">Text *</label>
+                                <label className="mb-2 block text-sm font-medium">Text</label>
                                 <textarea
                                     value={data.banner_text}
                                     onChange={(e) => setData('banner_text', e.target.value)}
@@ -85,6 +87,19 @@ export default function BannerDialog({ open, isOpen, type, banner, onSubmit, dat
                                     placeholder="Enter Text"
                                 />
                                 {errors.banner_text && <p className="mt-1 text-sm text-red-500">{errors.banner_text}</p>}
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium">Url</label>
+                                <textarea
+                                    value={data.url}
+                                    onChange={(e) => setData('url', e.target.value)}
+                                    className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                        errors.url ? 'border-red-500' : 'border-gray-200'
+                                    }`}
+                                    placeholder="Enter url"
+                                />
+                                {errors.url && <p className="mt-1 text-sm text-red-500">{errors.url}</p>}
                             </div>
 
                             {/* Image Upload (single) */}

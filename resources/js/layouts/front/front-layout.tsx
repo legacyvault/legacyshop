@@ -3,7 +3,7 @@ import { CartProvider, useCart } from '@/contexts/CartContext';
 import { Auth } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronRight, MapPinned, User } from 'lucide-react';
+import { ChevronRight, HandCoins, MapPinned, User } from 'lucide-react';
 import { PropsWithChildren } from 'react';
 import FrontFooter from './front-footer';
 import FrontHeader from './front-header';
@@ -75,6 +75,11 @@ const settingsNavItems: SettingsNavItem[] = [
         title: 'Delivery addresses',
         href: '/settings/delivery-address-profile',
         icon: MapPinned,
+    },
+    {
+        title: 'Purchases',
+        href: '/settings/purchases',
+        icon: HandCoins,
     },
 ];
 
