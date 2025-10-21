@@ -158,6 +158,8 @@ export interface IBanner {
     is_active: boolean;
     picture_url: string;
     url: string;
+    banner_title: string;
+    button_text: string;
 }
 
 export interface IRunningText {
@@ -401,7 +403,8 @@ export interface IProducts {
     variants: (IVariants & { pivot: IPivotVariantProd })[];
     product_sku: string;
     product_usd_price: number;
-    is_showcase: boolean;
+    is_showcase_top: boolean;
+    is_showcase_bottom: boolean;
     product_weight: string;
 }
 
@@ -494,6 +497,7 @@ export interface IItemHistoryOrders {
     product_id: string;
     product_name: string;
     product_description: string | null;
+    product_image: string;
     variant_id: string | null;
     variant_name: string | null;
     variant_description: string | null;
@@ -515,9 +519,11 @@ export interface IItemHistoryOrders {
 
 // ORDER TYPE
 export interface IRootCheckoutOrderMidtrans {
-    message: string;
-    order: IDataOrderMidtrans;
-    midtrans_response: MidtransResponse;
+    // message: string;
+    // order: IDataOrderMidtrans;
+    // midtrans_response: MidtransResponse;
+    token: string;
+    redirect_url: string;
 }
 
 export interface IDataOrderMidtrans {
@@ -616,3 +622,21 @@ export interface IActionMidtransResponse {
     method: string;
     url: string;
 }
+
+declare global {
+    interface Window {
+        snap?: {
+            pay: (
+                token: string,
+                options?: {
+                    onSuccess?: (result: unknown) => void;
+                    onPending?: (result: unknown) => void;
+                    onError?: (result: unknown) => void;
+                    onClose?: () => void;
+                },
+            ) => void;
+        };
+    }
+}
+
+export {};

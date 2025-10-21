@@ -110,7 +110,6 @@ function ProductsTable({ products, filters }: { products: IRootProducts; filters
                         >
                             Total Stocks {filters?.sort_by === 'total_stock' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
-                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Showcase</th>
                         <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
                     </tr>
                 </thead>
@@ -124,7 +123,6 @@ function ProductsTable({ products, filters }: { products: IRootProducts; filters
                                 <td className="border border-popover px-4 py-3">{prod.unit.name}</td>
                                 <td className="border border-popover px-4 py-3">Rp. {formatRupiah(prod.product_price.toString())}</td>
                                 <td className="border border-popover px-4 py-3">{prod.total_stock}</td>
-                                <td className="border border-popover px-4 py-3">{prod.is_showcase ? 'Yes' : 'No'}</td>
                                 <td className="border border-popover px-4 py-3 text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100">⋮</DropdownMenuTrigger>

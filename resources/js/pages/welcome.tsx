@@ -21,10 +21,11 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
     return (
         <section className="py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="mb-12 text-left">
+                <div className="mb-12 text-center">
                     <h2 className="mb-4 text-5xl font-bold text-primary">NEWS & ARTICLES</h2>
-                    <p className="max-w-2xl text-xl text-muted-foreground">
-                        Premium UV protected trading card cases at unbeatable prices. Limited time offers available.
+                    <p className="mx-auto max-w-6xl text-xl text-muted-foreground">
+                        Unlock everything. From game-breaking easter eggs and honest product reviews to what's trending in the world of pop culture
+                        and entertainment. Your quick, fun briefing on all things awesome.
                     </p>
                     <Link href={'/articles'}>
                         <Button className="mt-4">Explore More</Button>
@@ -170,46 +171,53 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
                     <div
                         key={banner.id ?? index}
                         className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700 ease-in-out ${
-                            isActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                            isActive ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
                         }`}
                         style={{ backgroundImage: `url('${banner.picture_url ?? '/banner-example.jpg'}')` }}
+                        onClick={() => window.location.replace(banner.url)}
                     >
                         <div className="absolute inset-0 bg-black/30" />
-                        {banner.banner_text && (
-                            <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-4 text-center text-background">
-                                <h1 className="text-6xl font-bold md:text-7xl">Welcome to Legacy Vault</h1>
-                                <h4 className="mt-4 text-lg font-medium">{banner.banner_text}</h4>
+
+                        <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-4 text-center text-background">
+                            {banner.banner_title && <h1 className="text-6xl font-bold md:text-7xl">{banner.banner_title}</h1>}
+                            {banner.banner_text && <h4 className="mt-4 text-lg font-medium">{banner.banner_text}</h4>}
+                            {banner.button_text && (
                                 <div>
-                                    <Button className="mt-6 bg-background text-foreground">Explore More</Button>
+                                    <Button
+                                        onClick={() => window.location.replace(banner.url)}
+                                        className="mt-6 bg-background text-foreground hover:bg-background"
+                                    >
+                                        {banner.button_text}
+                                    </Button>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 );
             })}
 
             {hasMultiple && (
                 <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-                        {banners.map((banner, index) => {
-                            const isActive = index === currentIndex;
+                    {banners.map((banner, index) => {
+                        const isActive = index === currentIndex;
 
-                            return (
-                                <button
-                                    key={banner.id ?? `dot-${index}`}
-                                    type="button"
-                                    onClick={() => goToSlide(index)}
-                                    className={`h-2 w-2 rounded-full transition ${isActive ? 'w-6 bg-white' : 'bg-white/50'}`}
-                                    aria-label={`Go to banner ${index + 1}`}
-                                />
-                            );
-                        })}
+                        return (
+                            <button
+                                key={banner.id ?? `dot-${index}`}
+                                type="button"
+                                onClick={() => goToSlide(index)}
+                                className={`h-2 w-2 rounded-full transition ${isActive ? 'w-6 bg-white' : 'bg-white/50'}`}
+                                aria-label={`Go to banner ${index + 1}`}
+                            />
+                        );
+                    })}
                 </div>
             )}
         </section>
     );
 };
 
-const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
+const ProductCardsSection = ({ products, title }: { products: IProducts[]; title: string }) => {
     const [activeSlide, setActiveSlide] = useState(0);
     const [visibleCount, setVisibleCount] = useState(1);
 
@@ -285,16 +293,9 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
         <section className="py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 {/* Section Header */}
-                <div className="mb-12 text-left">
-                    <h2 className="mb-4 text-5xl font-bold text-primary">GRADEGUARDIANS - LOWER PRICE!</h2>
-                    <p className="max-w-2xl text-xl text-muted-foreground">
-                        Premium UV protected trading card cases at unbeatable prices. Limited time offers available.
-                    </p>
-                    <Link href={'/list-products'}>
-                        <Button className="mt-4">See More Cases</Button>
-                    </Link>
+                <div className="mb-12 text-center">
+                    <h2 className="mb-4 text-5xl font-bold text-primary">{title}</h2>
                 </div>
-
                 {/* Product Carousel */}
                 <div className="relative">
                     <button
@@ -357,7 +358,6 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                         </svg>
                     </button>
                 </div>
-
                 <div className="mt-6 flex items-center justify-center gap-2">
                     {slides.map((_, index) => (
                         <button
@@ -369,6 +369,12 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                             aria-current={activeSlide === index}
                         />
                     ))}
+                </div>
+                {/* Section Footer */}
+                <div className="mt-12 text-center">
+                    <Link href={'/list-products'}>
+                        <Button className="mt-4">Explore More</Button>
+                    </Link>
                 </div>
             </div>
         </section>
@@ -407,7 +413,8 @@ export default function Welcome() {
         });
     }, []);
 
-    const { products: productsPayload, units, banner, articles } = usePage<SharedData & { products: IProducts[] }>().props;
+    const { productsTop, productsBottom, units, banner, articles } = usePage<SharedData & { productsTop: IProducts[]; productsBottom: IProducts[] }>()
+        .props;
 
     const activeBanner = useMemo(() => {
         if (Array.isArray(banner)) {
@@ -495,7 +502,11 @@ export default function Welcome() {
                     </section>
 
                     <div className="my-8">
-                        <ProductCardsSection products={productsPayload} />
+                        <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />
+                    </div>
+
+                    <div className="my-8">
+                        <ProductCardsSection products={productsBottom} title={'SHOP PICKS OF THE MONTH'} />
                     </div>
 
                     <div className="my-8">

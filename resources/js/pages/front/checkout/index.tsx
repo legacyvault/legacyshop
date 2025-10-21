@@ -410,18 +410,66 @@ export default function Checkout() {
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     const [checkoutResult, setCheckoutResult] = useState<IRootCheckoutOrderMidtrans | null>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const midtransClientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY ?? '';
+    const midtransSnapUrl = import.meta.env.VITE_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
+    const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.pay));
     const requiresBankSelection = Boolean(selectedPaymentMethod?.children?.length);
     const canSubmit = Boolean(
         hasCheckoutItems && selectedAddress && selectedRate && selectedPaymentId && (!requiresBankSelection || selectedBankPaymentId),
     );
-    const qrCodeUrl = useMemo(() => {
-        if (!checkoutResult?.midtrans_response?.actions?.length) return null;
-        const qrAction = checkoutResult.midtrans_response.actions.find((action) => action.name === 'generate-qr-code-v2');
-        return qrAction?.url ?? null;
-    }, [checkoutResult]);
-    const paymentExpiry = useMemo(() => formatDateTime(checkoutResult?.midtrans_response?.expiry_time ?? null), [checkoutResult]);
+    // const qrCodeUrl = useMemo(() => {
+    //     if (!checkoutResult?.midtrans_response?.actions?.length) return null;
+    //     const qrAction = checkoutResult.midtrans_response.actions.find((action) => action.name === 'generate-qr-code-v2');
+    //     return qrAction?.url ?? null;
+    // }, [checkoutResult]);
+    // const paymentExpiry = useMemo(() => formatDateTime(checkoutResult?.midtrans_response?.expiry_time ?? null), [checkoutResult]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (!midtransClientKey) return;
+
+        if (window.snap && typeof window.snap.pay === 'function') {
+            setIsSnapReady(true);
+            return;
+        }
+
+        const scriptId = 'midtrans-snap-script';
+        const existingScript = document.getElementById(scriptId) as HTMLScriptElement | null;
+
+        const handleLoad = () => {
+            setIsSnapReady(true);
+        };
+
+        const handleError = () => {
+            setCheckoutError((prev) => prev ?? 'Failed to load payment gateway. Please refresh and try again.');
+        };
+
+        if (existingScript) {
+            existingScript.addEventListener('load', handleLoad);
+            existingScript.addEventListener('error', handleError);
+
+            return () => {
+                existingScript.removeEventListener('load', handleLoad);
+                existingScript.removeEventListener('error', handleError);
+            };
+        }
+
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = midtransSnapUrl;
+        script.async = true;
+        script.dataset.clientKey = midtransClientKey;
+        script.onload = handleLoad;
+        script.onerror = handleError;
+        document.body.appendChild(script);
+
+        return () => {
+            script.removeEventListener('load', handleLoad);
+            script.removeEventListener('error', handleError);
+        };
+    }, [midtransClientKey, midtransSnapUrl, setCheckoutError]);
 
     const handleModalChange = useCallback(
         (nextOpen: boolean) => {
@@ -525,19 +573,50 @@ export default function Checkout() {
             if (isJson) {
                 const data = (await response.json()) as IRootCheckoutOrderMidtrans;
                 setCheckoutResult(data);
-                setIsPaymentModalOpen(true);
+
+                const snapToken = data?.token;
+                const redirectUrl = data?.redirect_url;
+                const clearCheckoutStorage = () => sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
+
+                if (snapToken && typeof window !== 'undefined' && window.snap?.pay) {
+                    window.snap.pay(snapToken, {
+                        onSuccess: () => {
+                            clearCheckoutStorage();
+                        },
+                        onPending: () => {
+                            clearCheckoutStorage();
+                        },
+                        onError: (result) => {
+                            console.error('Midtrans Snap error', result);
+                            setCheckoutError('Payment failed. Please try again or choose another method.');
+                        },
+                        onClose: () => {
+                            setCheckoutError('Payment popup was closed before the transaction was completed.');
+                        },
+                    });
+                } else if (redirectUrl) {
+                    clearCheckoutStorage();
+                    window.location.href = redirectUrl;
+                } else if (!midtransClientKey) {
+                    setCheckoutError('Midtrans client key is missing. Please contact support.');
+                } else if (!isSnapReady) {
+                    setCheckoutError('Payment gateway is still loading. Please wait a moment and try again.');
+                } else {
+                    setCheckoutError('Unable to start the payment process. Please refresh and try again.');
+                }
+
+                return;
             } else {
                 await response.text();
+                sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
             }
-
-            sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
         } catch (error) {
             const fallbackError = error instanceof Error ? error.message : 'Unexpected error';
             setCheckoutError(`Checkout failed. ${fallbackError}`);
         } finally {
             setIsSubmitting(false);
         }
-    }, [checkoutItems, selectedAddress, selectedPaymentId, selectedRate, selectedBankPaymentId, selectedPaymentMethod]);
+    }, [checkoutItems, selectedAddress, selectedPaymentId, selectedRate, selectedBankPaymentId, selectedPaymentMethod, isSnapReady, midtransClientKey]);
 
     return (
         <>
@@ -714,7 +793,7 @@ export default function Checkout() {
                                     {selectedRate.available_for_insurance ? (
                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             <ShieldCheck className="h-4 w-4" />
-                                            Available for Cash on Delivery
+                                            Available for Insurance
                                         </div>
                                     ) : null}
                                     {selectedRate.available_for_cash_on_delivery ? (
@@ -933,12 +1012,12 @@ export default function Checkout() {
                                 {checkoutResult && !checkoutError ? (
                                     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                                         <p className="font-semibold">Checkout successful.</p>
-                                        <p className="mt-1">
+                                        {/* <p className="mt-1">
                                             {paymentExpiry
                                                 ? `Please scan the QR code and complete your payment before ${paymentExpiry}.`
                                                 : 'Follow the payment instructions to complete your order.'}{' '}
                                             You can refresh this page after payment is confirmed.
-                                        </p>
+                                        </p> */}
                                     </div>
                                 ) : null}
                                 {/* <p className="text-center text-xs leading-relaxed text-muted-foreground">
@@ -970,7 +1049,7 @@ export default function Checkout() {
                             Use your favourite payment app to scan this QR code and finish the transaction.
                         </DialogDescription>
                     </DialogHeader>
-                    {qrCodeUrl ? (
+                    {/* {qrCodeUrl ? (
                         <div className="space-y-4">
                             <div className="flex flex-col items-center gap-4">
                                 <div className="rounded-xl border border-dashed border-primary/50 bg-primary/5 p-4">
@@ -985,7 +1064,7 @@ export default function Checkout() {
                         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                             We could not load the QR code from Midtrans. Please review your order status from your account page.
                         </div>
-                    )}
+                    )} */}
                 </DialogContent>
             </Dialog>
         </>

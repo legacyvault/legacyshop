@@ -176,10 +176,16 @@ export default function ViewProduct() {
 
                                 {/* Showcase */}
                                 <div className="space-y-2">
-                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Showcase</h3>
-                                    <p className="text-lg font-semibold text-card-foreground">
-                                        {selectedProduct.is_showcase ? 'Yes' : 'No'}
-                                    </p>
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Showcase 'Top Selling'</h3>
+                                    <p className="text-lg font-semibold text-card-foreground">{selectedProduct.is_showcase_top ? 'Yes' : 'No'}</p>
+                                </div>
+
+                                {/* Showcase */}
+                                <div className="space-y-2">
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+                                        Showcase 'Shop Picks of the Month'
+                                    </h3>
+                                    <p className="text-lg font-semibold text-card-foreground">{selectedProduct.is_showcase_bottom ? 'Yes' : 'No'}</p>
                                 </div>
 
                                 {/* Description */}

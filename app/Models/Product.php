@@ -20,11 +20,13 @@ class Product extends Model
         'product_usd_price',
         'product_weight',
         'product_discount',
-        'is_showcase'
+        'is_showcase_top',
+        'is_showcase_bottom'
     ];
 
     protected $casts = [
-        'is_showcase' => 'boolean',
+        'is_showcase_top' => 'boolean',
+        'is_showcase_bottom' => 'boolean',
     ];
 
     public function stocks()

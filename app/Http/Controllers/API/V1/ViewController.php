@@ -79,13 +79,15 @@ class ViewController extends Controller
 
     public function welcomePage()
     {
-        $products = $this->productController->getAllShowcaseProduct();
+        $productsTop = $this->productController->getAllShowcaseTopProduct();
+        $productsBottom = $this->productController->getAllShowcaseBottomProduct();
         $units = $this->productController->getAllUnit();
         $banner = $this->miscController->getActiveBanner();
         $articles = $this->articleController->getNewestArticle();
 
         return Inertia::render('welcome', [
-            'products' => $products,
+            'productsTop' => $productsTop,
+            'productsBottom' => $productsBottom,
             'units' => $units,
             'banner' => $banner,
             'articles' => $articles,
