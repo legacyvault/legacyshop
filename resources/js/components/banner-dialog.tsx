@@ -12,9 +12,9 @@ interface IBannerDialog {
     banner?: IBanner;
 
     //Inertia’s useForm
-    data: { id?: string; banner_text: string; is_active: boolean; image?: File | null; url: string };
+    data: { id?: string; banner_text: string; is_active: boolean; image?: File | null; url: string; banner_title: string; button_text: string };
     setData: (field: any, value: any) => void;
-    errors: { banner_text?: string; is_active?: string; image?: string; url?: string };
+    errors: { banner_text?: string; is_active?: string; image?: string; url?: string; banner_title?: string; button_text?: string };
 
     onSubmit: (e: React.FormEvent) => void;
 }
@@ -30,12 +30,16 @@ export default function BannerDialog({ open, isOpen, type, banner, onSubmit, dat
                 setData('is_active', banner.is_active);
                 setData('image', null);
                 setData('url', banner.url);
+                setData('banner_title', banner.banner_title);
+                setData('button_text', banner.button_text);
                 setImagePreview(banner.picture_url || null);
             } else if (type === 'add') {
                 setData('banner_text', '');
                 setData('is_active', false);
                 setData('image', null);
                 setData('url', '');
+                setData('banner_title', '');
+                setData('button_text', '');
                 setImagePreview(null);
             }
         }
@@ -72,7 +76,7 @@ export default function BannerDialog({ open, isOpen, type, banner, onSubmit, dat
         <Dialog open={open} onOpenChange={isOpen}>
             <DialogPortal>
                 <DialogOverlay />
-                <DialogContent>
+                <DialogContent className="max-h-7/12 overflow-scroll">
                     <DialogTitle className="capitalize">{type} Banner</DialogTitle>
                     {type !== 'delete' ? (
                         <form method="POST" onSubmit={onSubmit} encType="multipart/form-data">
@@ -100,6 +104,32 @@ export default function BannerDialog({ open, isOpen, type, banner, onSubmit, dat
                                     placeholder="Enter url"
                                 />
                                 {errors.url && <p className="mt-1 text-sm text-red-500">{errors.url}</p>}
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium">Banner Title</label>
+                                <textarea
+                                    value={data.banner_title}
+                                    onChange={(e) => setData('banner_title', e.target.value)}
+                                    className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                        errors.url ? 'border-red-500' : 'border-gray-200'
+                                    }`}
+                                    placeholder="Enter Banner Title"
+                                />
+                                {errors.banner_title && <p className="mt-1 text-sm text-red-500">{errors.banner_title}</p>}
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium">Text Button</label>
+                                <textarea
+                                    value={data.button_text}
+                                    onChange={(e) => setData('button_text', e.target.value)}
+                                    className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                        errors.button_text ? 'border-red-500' : 'border-gray-200'
+                                    }`}
+                                    placeholder="Enter Button Text"
+                                />
+                                {errors.button_text && <p className="mt-1 text-sm text-red-500">{errors.button_text}</p>}
                             </div>
 
                             {/* Image Upload (single) */}

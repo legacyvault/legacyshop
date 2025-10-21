@@ -15,6 +15,9 @@ class Banner extends Model
     protected $fillable = [
         'banner_text',
         'is_active',
-        'picture_url'
+        'picture_url',
+        'banner_title',
+        'button_text',
+        'url'
     ];
 }

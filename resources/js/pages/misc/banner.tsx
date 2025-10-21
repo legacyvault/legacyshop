@@ -18,6 +18,8 @@ interface Form {
     is_active: boolean;
     image: File | null;
     url: string;
+    banner_title: string;
+    button_text: string;
 }
 
 interface PropsTable {
@@ -36,6 +38,8 @@ export default function RunningText() {
         is_active: false,
         image: null,
         url: '',
+        banner_title: '',
+        button_text: '',
     });
 
     const [openAdd, isOpenAdd] = useState(false);
@@ -44,7 +48,10 @@ export default function RunningText() {
         e.preventDefault();
         // Ensure FormData for file upload
         const fd = new FormData();
-        fd.append('banner_text', data.banner_text);
+        if (data.banner_text) fd.append('banner_text', data.banner_text);
+        if (data.banner_title) fd.append('banner_title', data.banner_title);
+        if (data.url) fd.append('url', data.url);
+        if (data.button_text) fd.append('button_text', data.button_text);
         fd.append('is_active', data.is_active ? '1' : '0');
         if (data.image instanceof File) fd.append('image', data.image);
 
@@ -82,6 +89,8 @@ function BannerTable({ banner }: PropsTable) {
         is_active: false,
         image: null,
         url: '',
+        banner_title: '',
+        button_text: '',
     });
 
     const [openEditCat, isOpenEditCat] = useState(false);
@@ -98,8 +107,12 @@ function BannerTable({ banner }: PropsTable) {
     const catSubmitHandler = (e: any) => {
         e.preventDefault();
         const fd = new FormData();
+        console.log(data);
         fd.append('id', data.id);
-        fd.append('banner_text', data.banner_text);
+        if (data.banner_text) fd.append('banner_text', data.banner_text);
+        if (data.banner_title) fd.append('banner_title', data.banner_title);
+        if (data.url) fd.append('url', data.url);
+        if (data.button_text) fd.append('button_text', data.button_text);
         fd.append('is_active', data.is_active ? '1' : '0');
         if ((data as any).image instanceof File) fd.append('image', (data as any).image);
 
@@ -126,7 +139,6 @@ function BannerTable({ banner }: PropsTable) {
                 banner={selectedBanner}
                 onSubmit={catSubmitHandler}
             />
-            {/* <CategoriesDialog open={openDelCat} isOpen={isOpenDelCat} type="delete" category={selectedCat} onSubmit={catSubmitHandler} /> */}
 
             <table className="mt-4 w-full table-fixed border-collapse text-sm">
                 <thead>

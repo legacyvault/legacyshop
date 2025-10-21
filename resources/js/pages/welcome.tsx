@@ -170,39 +170,46 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
                     <div
                         key={banner.id ?? index}
                         className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700 ease-in-out ${
-                            isActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                            isActive ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
                         }`}
                         style={{ backgroundImage: `url('${banner.picture_url ?? '/banner-example.jpg'}')` }}
+                        onClick={() => window.location.replace(banner.url)}
                     >
                         <div className="absolute inset-0 bg-black/30" />
-                        {banner.banner_text && (
-                            <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-4 text-center text-background">
-                                <h1 className="text-6xl font-bold md:text-7xl">Welcome to Legacy Vault</h1>
-                                <h4 className="mt-4 text-lg font-medium">{banner.banner_text}</h4>
+
+                        <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-4 text-center text-background">
+                            {banner.banner_title && <h1 className="text-6xl font-bold md:text-7xl">{banner.banner_title}</h1>}
+                            {banner.banner_text && <h4 className="mt-4 text-lg font-medium">{banner.banner_text}</h4>}
+                            {banner.button_text && (
                                 <div>
-                                    <Button className="mt-6 bg-background text-foreground">Explore More</Button>
+                                    <Button
+                                        onClick={() => window.location.replace(banner.url)}
+                                        className="mt-6 bg-background text-foreground hover:bg-background"
+                                    >
+                                        {banner.button_text}
+                                    </Button>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 );
             })}
 
             {hasMultiple && (
                 <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-                        {banners.map((banner, index) => {
-                            const isActive = index === currentIndex;
+                    {banners.map((banner, index) => {
+                        const isActive = index === currentIndex;
 
-                            return (
-                                <button
-                                    key={banner.id ?? `dot-${index}`}
-                                    type="button"
-                                    onClick={() => goToSlide(index)}
-                                    className={`h-2 w-2 rounded-full transition ${isActive ? 'w-6 bg-white' : 'bg-white/50'}`}
-                                    aria-label={`Go to banner ${index + 1}`}
-                                />
-                            );
-                        })}
+                        return (
+                            <button
+                                key={banner.id ?? `dot-${index}`}
+                                type="button"
+                                onClick={() => goToSlide(index)}
+                                className={`h-2 w-2 rounded-full transition ${isActive ? 'w-6 bg-white' : 'bg-white/50'}`}
+                                aria-label={`Go to banner ${index + 1}`}
+                            />
+                        );
+                    })}
                 </div>
             )}
         </section>

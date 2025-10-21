@@ -158,6 +158,8 @@ export interface IBanner {
     is_active: boolean;
     picture_url: string;
     url: string;
+    banner_title: string;
+    button_text: string;
 }
 
 export interface IRunningText {

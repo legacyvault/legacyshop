@@ -104,10 +104,12 @@ class MiscController extends Controller
     public function createBanner(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'banner_text' => 'nullable|string',
-            'is_active'   => 'nullable|boolean',
-            'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
-            'url'         => 'nullable|string'
+            'banner_text'  => 'nullable|string',
+            'is_active'    => 'nullable|boolean',
+            'image'        => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'url'          => 'nullable|string',
+            'banner_title' => 'nullable|string',
+            'button_text'  => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -123,10 +125,12 @@ class MiscController extends Controller
             }
 
             $create = Banner::create([
-                'banner_text' => $request->banner_text,
-                'is_active'   => $request->boolean('is_active'),
-                'picture_url' => $pictureUrl,
-                'url'         => $request->url
+                'banner_text'  => $request->banner_text,
+                'is_active'    => $request->boolean('is_active'),
+                'picture_url'  => $pictureUrl,
+                'url'          => $request->url,
+                'banner_title' => $request->banner_title,
+                'button_text'  => $request->button_text
             ]);
 
             DB::commit();
@@ -149,10 +153,13 @@ class MiscController extends Controller
     public function updateBanner(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id'          => 'required|exists:banner,id',
-            'banner_text' => 'required|string',
-            'is_active'   => 'nullable|boolean',
-            'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'id'           => 'required|exists:banner,id',
+            'banner_text'  => 'nullable|string',
+            'is_active'    => 'nullable|boolean',
+            'image'        => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'url'          => 'nullable|string',
+            'banner_title' => 'nullable|string',
+            'button_text'  => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -175,12 +182,9 @@ class MiscController extends Controller
             }
 
             $banner->banner_text = $request->banner_text;
-
-            if ($request->boolean('is_active')) {
-                Banner::where('is_active', true)
-                    ->where('id', '!=', $banner->id)
-                    ->update(['is_active' => false]);
-            }
+            $banner->url = $request->url;
+            $banner->banner_title = $request->banner_title;
+            $banner->button_text = $request->button_text;
             $banner->is_active = $request->boolean('is_active');
 
             $banner->save();
