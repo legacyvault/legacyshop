@@ -497,6 +497,7 @@ export interface IItemHistoryOrders {
     product_id: string;
     product_name: string;
     product_description: string | null;
+    product_image: string;
     variant_id: string | null;
     variant_name: string | null;
     variant_description: string | null;

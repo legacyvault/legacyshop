@@ -96,7 +96,7 @@ function FrontSettingsShell({ children, currentPath }: PropsWithChildren<{ curre
 
 function FrontSettingsSidebar({ currentPath }: { currentPath: string }) {
     return (
-        <aside className="sticky top-40 self-start">
+        <aside className="sticky top-40 z-20 self-start">
             <div className="space-y-4 rounded-3xl border border-border bg-card text-card-foreground shadow-sm">
                 <div className="border-b border-border px-6 py-6">
                     <h2 className="text-lg font-semibold text-card-foreground">Account settings</h2>

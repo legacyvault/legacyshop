@@ -7,7 +7,7 @@ import FrontLayout from '@/layouts/front/front-layout';
 import { cn } from '@/lib/utils';
 import { IRootHistoryOrders, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
-import { Search, ShoppingBag, Ticket, Wifi } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState, type ChangeEvent, type ElementType, type FormEvent } from 'react';
 
 type Filters = {
@@ -167,7 +167,7 @@ function TransactionList({ orders, onViewDetail }: { orders: IRootHistoryOrders[
             const merchant = firstItem?.product_name || 'Order';
             const additionalItems = order.items ? order.items.length - 1 : 0;
             const description = additionalItems > 0 ? `${additionalItems} more item${additionalItems > 1 ? 's' : ''}` : null;
-            const iconPalette = getIconPalette(category);
+            const picture = firstItem?.product_image;
             const reference = order.transaction_id || order.order_number;
             const statusLabel = order.transaction_status || order.status;
             const badgeStyle = getStatusBadgeStyle(statusLabel);
@@ -190,9 +190,7 @@ function TransactionList({ orders, onViewDetail }: { orders: IRootHistoryOrders[
                 description,
                 subtext: subtextParts.join(' • '),
                 totalValue: formatCurrency(order.grand_total),
-                icon: iconPalette.icon,
-                iconBg: iconPalette.background,
-                iconColor: iconPalette.color,
+                picture,
             };
         });
     }, [orders]);
@@ -209,22 +207,12 @@ function TransactionList({ orders, onViewDetail }: { orders: IRootHistoryOrders[
     return (
         <div className="space-y-4">
             {transactions.map((transaction) => {
-                const Icon = transaction.icon;
-
                 return (
                     <Card key={transaction.id} className="gap-0 rounded-2xl border border-border bg-white shadow-sm">
                         <div className="flex flex-col gap-4 px-6 py-4 md:flex-row md:justify-between">
                             <div className="space-y-4">
                                 <div className="flex flex-wrap items-center gap-3 text-sm">
-                                    <span
-                                        className={cn(
-                                            'flex size-11 items-center justify-center rounded-full',
-                                            transaction.iconBg,
-                                            transaction.iconColor,
-                                        )}
-                                    >
-                                        <Icon className="size-5" />
-                                    </span>
+                                    <img className="size-11" src={transaction.picture} />
                                     <div className="flex flex-col">
                                         <span className="text-base font-semibold text-foreground">{transaction.category}</span>
                                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -322,20 +310,6 @@ const getStatusBadgeStyle = (status?: string | null): { background: string; colo
     }
 
     return { background: 'bg-muted/40', color: 'text-muted-foreground', label: titleCase(status) || 'Unknown' };
-};
-
-const getIconPalette = (category: string): IconPalette => {
-    const normalized = category.toLowerCase();
-
-    if (normalized.includes('internet') || normalized.includes('tv')) {
-        return { icon: Wifi, background: 'bg-emerald-50', color: 'text-emerald-600' };
-    }
-
-    if (normalized.includes('ticket') || normalized.includes('voucher')) {
-        return { icon: Ticket, background: 'bg-sky-50', color: 'text-sky-600' };
-    }
-
-    return { icon: ShoppingBag, background: 'bg-violet-50', color: 'text-violet-600' };
 };
 
 function TransactionDetailDialog({
