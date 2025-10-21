@@ -21,10 +21,11 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
     return (
         <section className="py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="mb-12 text-left">
+                <div className="mb-12 text-center">
                     <h2 className="mb-4 text-5xl font-bold text-primary">NEWS & ARTICLES</h2>
-                    <p className="max-w-2xl text-xl text-muted-foreground">
-                        Premium UV protected trading card cases at unbeatable prices. Limited time offers available.
+                    <p className="mx-auto max-w-6xl text-xl text-muted-foreground">
+                        Unlock everything. From game-breaking easter eggs and honest product reviews to what's trending in the world of pop culture
+                        and entertainment. Your quick, fun briefing on all things awesome.
                     </p>
                     <Link href={'/articles'}>
                         <Button className="mt-4">Explore More</Button>
