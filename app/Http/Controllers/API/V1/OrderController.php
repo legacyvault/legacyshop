@@ -145,13 +145,12 @@ class OrderController extends Controller
 
             DB::commit();
             // Call payment gateway
-            return $this->createMidtransPayment($order, $request->payment_method, $request->bank_payment);
+            return $this->createMidtransSnapPayment($order);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Checkout failed', 'error' => $e->getMessage()], 500);
         }
     }
-
 
     public function createMidtransPayment($order, $payment_method, $bank)
     {
@@ -276,5 +275,67 @@ class OrderController extends Controller
         ]);
 
         return redirect()->back()->withErrors('Failed to get transaction status.')->withInput();
+    }
+
+    public function createMidtransSnapPayment($order)
+    {
+        try {
+            $user = $order->user;
+            $orderItems = $order->items()->with('product')->get();
+
+            $itemDetails = $orderItems->map(function ($item) {
+                return [
+                    'id' => $item->product_id,
+                    'price' => (int) $item->price,
+                    'quantity' => (int) $item->quantity,
+                    'name' => substr($item->product->name ?? 'Unknown Product', 0, 50),
+                ];
+            })->toArray();
+
+            $itemDetails[] = [
+                'id' => 'shipping_fee',
+                'price' => (int) $order->shipping_fee,
+                'quantity' => 1,
+                'name' => 'Shipping Fee',
+            ];
+
+            $payload = [
+                'transaction_details' => [
+                    'order_id' => $order->order_number,
+                    'gross_amount' => (int) $order->grand_total,
+                ],
+                'item_details' => $itemDetails,
+                'customer_details' => [
+                    'first_name' => $user->name,
+                    'last_name' => '',
+                    'email' => $user->email ?? 'noemail@example.com',
+                    'phone' => $order->shipment->receiver_phone ?? '',
+                ],
+                // 'enabled_payments' => ['bca_va', 'gopay', 'qris', 'bank_transfer'],
+            ];
+
+            $response = Http::withBasicAuth($this->serverKey, '')
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+                ->post('https://app.sandbox.midtrans.com/snap/v1/transactions', $payload);
+
+            $result = $response->json();
+
+            if ($response->successful()) {
+                $order->update([
+                    'payment_status' => 'pending',
+                    'status' => 'awaiting_payment'
+                ]);
+
+                return $result;
+            }
+
+            return redirect()->back()->withErrors('Failed to create payment');
+        } catch (\Exception $e) {
+            Log::error('Error Create Midtrans Snap Payment: ' . $e->getMessage());
+            return redirect()->back()->withErrors('Failed to create payment');
+        }
     }
 }
