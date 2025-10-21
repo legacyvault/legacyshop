@@ -192,7 +192,8 @@ class ProductController extends Controller
             'description'      => 'required|string',
             'product_discount' => 'nullable|numeric',
             'unit_id'          => 'required|exists:unit,id',
-            'is_showcase'          => 'nullable|boolean',
+            'is_showcase_top'          => 'nullable|boolean',
+            'is_showcase_bottom'          => 'nullable|boolean',
 
             'pictures'   => 'nullable|array',
             'pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
@@ -238,7 +239,8 @@ class ProductController extends Controller
                 'product_weight'     => $request->product_weight,
                 'description'      => $request->description,
                 'unit_id'          => $request->unit_id,
-                'is_showcase'          => $request->boolean('is_showcase'),
+                'is_showcase_top'          => $request->boolean('is_showcase_top'),
+                'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'),
             ]);
 
             // Sync tags (no pivot)
@@ -375,7 +377,8 @@ class ProductController extends Controller
             'description'      => 'required|string',
             'product_discount' => 'nullable|numeric',
             'unit_id'          => 'required|exists:unit,id',
-            'is_showcase'          => 'nullable|boolean',
+            'is_showcase_top'          => 'nullable|boolean',
+            'is_showcase_bottom'          => 'nullable|boolean',
 
             'pictures'   => 'nullable|array',
             'pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
@@ -423,7 +426,8 @@ class ProductController extends Controller
                 'product_discount' => $request->product_discount ?? 0,
                 'description'      => $request->description,
                 'unit_id'          => $request->unit_id,
-                'is_showcase'          => $request->boolean('is_showcase'),
+                'is_showcase_top'          => $request->boolean('is_showcase_top'),
+                'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'),
             ]);
 
             // Sync tags
@@ -637,7 +641,7 @@ class ProductController extends Controller
             ->appends($request->query());
     }
 
-    public function getAllShowcaseProduct()
+    public function getAllShowcaseTopProduct()
     {
         $data = Product::with([
             'stocks',
@@ -647,7 +651,22 @@ class ProductController extends Controller
             'divisions',
             'tags',
             'pictures',
-        ])->where('is_showcase', true)->get();
+        ])->where('is_showcase_top', true)->get();
+
+        return $data;
+    }
+
+    public function getAllShowcaseBottomProduct()
+    {
+        $data = Product::with([
+            'stocks',
+            'unit',
+            'categories',
+            'subcategories',
+            'divisions',
+            'tags',
+            'pictures',
+        ])->where('is_showcase_bottom', true)->get();
 
         return $data;
     }

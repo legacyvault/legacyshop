@@ -107,7 +107,6 @@ function BannerTable({ banner }: PropsTable) {
     const catSubmitHandler = (e: any) => {
         e.preventDefault();
         const fd = new FormData();
-        console.log(data);
         fd.append('id', data.id);
         if (data.banner_text) fd.append('banner_text', data.banner_text);
         if (data.banner_title) fd.append('banner_title', data.banner_title);

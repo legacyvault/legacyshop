@@ -403,7 +403,8 @@ export interface IProducts {
     variants: (IVariants & { pivot: IPivotVariantProd })[];
     product_sku: string;
     product_usd_price: number;
-    is_showcase: boolean;
+    is_showcase_top: boolean;
+    is_showcase_bottom: boolean;
     product_weight: string;
 }
 

@@ -216,7 +216,7 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
     );
 };
 
-const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
+const ProductCardsSection = ({ products, title }: { products: IProducts[]; title: string }) => {
     const [activeSlide, setActiveSlide] = useState(0);
     const [visibleCount, setVisibleCount] = useState(1);
 
@@ -292,16 +292,9 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
         <section className="py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 {/* Section Header */}
-                <div className="mb-12 text-left">
-                    <h2 className="mb-4 text-5xl font-bold text-primary">GRADEGUARDIANS - LOWER PRICE!</h2>
-                    <p className="max-w-2xl text-xl text-muted-foreground">
-                        Premium UV protected trading card cases at unbeatable prices. Limited time offers available.
-                    </p>
-                    <Link href={'/list-products'}>
-                        <Button className="mt-4">See More Cases</Button>
-                    </Link>
+                <div className="mb-12 text-center">
+                    <h2 className="mb-4 text-5xl font-bold text-primary">{title}</h2>
                 </div>
-
                 {/* Product Carousel */}
                 <div className="relative">
                     <button
@@ -364,7 +357,6 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                         </svg>
                     </button>
                 </div>
-
                 <div className="mt-6 flex items-center justify-center gap-2">
                     {slides.map((_, index) => (
                         <button
@@ -376,6 +368,12 @@ const ProductCardsSection = ({ products }: { products: IProducts[] }) => {
                             aria-current={activeSlide === index}
                         />
                     ))}
+                </div>
+                {/* Section Footer */}
+                <div className="mt-12 text-center">
+                    <Link href={'/list-products'}>
+                        <Button className="mt-4">Explore More</Button>
+                    </Link>
                 </div>
             </div>
         </section>
@@ -414,7 +412,8 @@ export default function Welcome() {
         });
     }, []);
 
-    const { products: productsPayload, units, banner, articles } = usePage<SharedData & { products: IProducts[] }>().props;
+    const { productsTop, productsBottom, units, banner, articles } = usePage<SharedData & { productsTop: IProducts[]; productsBottom: IProducts[] }>()
+        .props;
 
     const activeBanner = useMemo(() => {
         if (Array.isArray(banner)) {
@@ -502,7 +501,11 @@ export default function Welcome() {
                     </section>
 
                     <div className="my-8">
-                        <ProductCardsSection products={productsPayload} />
+                        <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />
+                    </div>
+
+                    <div className="my-8">
+                        <ProductCardsSection products={productsBottom} title={'SHOP PICKS OF THE MONTH'} />
                     </div>
 
                     <div className="my-8">

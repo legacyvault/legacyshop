@@ -21,7 +21,8 @@ return new class extends Migration
             $table->float('product_usd_price');
             $table->float('product_discount')->nullable();
             $table->string('unit_id');
-            $table->boolean('is_showcase')->default(false);
+            $table->boolean('is_showcase_top')->default(false);
+            $table->boolean('is_showcase_bottom')->default(false);
             $table->float('product_weight');
             $table->timestamps();
         });
