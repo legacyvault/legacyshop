@@ -145,7 +145,7 @@ class OrderController extends Controller
 
             DB::commit();
             // Call payment gateway
-            return $this->createMidtransPayment($order, $request->payment_method, $request->bank_payment);
+            return $this->createMidtransSnapPayment($order);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Checkout failed', 'error' => $e->getMessage()], 500);
