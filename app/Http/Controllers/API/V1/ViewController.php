@@ -397,12 +397,10 @@ class ViewController extends Controller
 
     public function checkoutPage(){
         $deliveryAddresses = $this->userController->getAllDeliveryAddress();
-        $provinces = $this->locationController->getProvinceList();
         $warehouse = $this->warehouseController->getActiveWarehouse();
         $couriers = $this->biteshipController->getCourierList();
 
         return Inertia::render('front/checkout/index',[
-            'provinces' => $provinces,
             'deliveryAddresses' => $deliveryAddresses,
             'warehouse' => $warehouse,
             'couriers' => $couriers,
