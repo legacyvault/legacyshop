@@ -15,6 +15,7 @@ class Order extends Model
     protected $fillable = [
         'id',
         'user_id',
+        'guest_id',
         'order_number',
         'transaction_id',
         'transaction_status',
@@ -56,6 +57,11 @@ class Order extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function guest()
+    {
+        return $this->belongsTo(Guest::class);
+    }
+
     public function items()
     {
         return $this->hasMany(OrderItems::class);
@@ -69,5 +75,10 @@ class Order extends Model
     public function totalQuantity()
     {
         return $this->items->sum('quantity');
+    }
+
+    public function getCustomerAttribute()
+    {
+        return $this->user ?? $this->guest;
     }
 }

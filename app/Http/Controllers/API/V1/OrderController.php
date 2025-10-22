@@ -8,6 +8,7 @@ use App\Models\OrderItems;
 use App\Models\OrderShipments;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Guest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +30,7 @@ class OrderController extends Controller
     public function checkout(Request $request)
     {
         $request->validate([
+            'customer_type' => 'required|in:guest,user',
             'payment_method' => 'required|string',
             'bank_payment' => 'nullable',
             'courier_code' => 'required|string',
@@ -47,28 +49,28 @@ class OrderController extends Controller
             'items.*.product_name' => 'required|string',
             'items.*.product_description' => 'nullable|string',
             'items.*.product_image' => 'nullable|string',
-
             'items.*.category_id' => 'nullable|uuid',
             'items.*.category_name' => 'nullable|string',
             'items.*.category_description' => 'nullable|string',
-
             'items.*.sub_category_id' => 'nullable|uuid',
             'items.*.sub_category_name' => 'nullable|string',
             'items.*.sub_category_description' => 'nullable|string',
-
             'items.*.division_id' => 'nullable|uuid',
             'items.*.division_name' => 'nullable|string',
             'items.*.division_description' => 'nullable|string',
-
             'items.*.variant_id' => 'nullable|uuid',
             'items.*.variant_name' => 'nullable|string',
             'items.*.variant_description' => 'nullable|string',
-
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
-        ]);
 
-        $user = $request->user();
+            // Guest validation
+            'email' => 'required_if:customer_type,guest|email',
+            'contact_name' => 'required_if:customer_type,guest|string',
+            'contact_phone' => 'required_if:customer_type,guest|string',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+        ]);
 
         $items = $request->items;
         $subtotal = collect($items)->sum(fn($item) => $item['quantity'] * $item['price']);
@@ -77,9 +79,36 @@ class OrderController extends Controller
 
         DB::beginTransaction();
         try {
+            $userId = null;
+            $guestId = null;
+
+            // Handle Guest or User
+            if ($request->customer_type === 'guest') {
+                $guest = Guest::create([
+                    'email' => $request->email,
+                    'contact_name' => $request->contact_name,
+                    'contact_phone' => $request->contact_phone,
+                    'biteship_destination_id' => $request->biteship_destination_id ?? null,
+                    'country' => $request->receiver_country ?? 'Indonesia',
+                    'province' => $request->receiver_province,
+                    'city' => $request->receiver_city,
+                    'district' => $request->receiver_district ?? null,
+                    'village' => $request->receiver_village ?? null,
+                    'address' => $request->receiver_address,
+                    'postal_code' => $request->receiver_postal_code,
+                    'latitude' => $request->latitude ?? 0,
+                    'longitude' => $request->longitude ?? 0,
+                ]);
+                $guestId = $guest->id;
+            } else {
+                $userId = $request->user()->id;
+            }
+
+            // Create Order
             $order = Order::create([
                 'id' => Str::uuid(),
-                'user_id' => $user->id,
+                'user_id' => $userId,
+                'guest_id' => $guestId,
                 'subtotal' => $subtotal,
                 'shipping_fee' => $shippingFee,
                 'grand_total' => $grandTotal,
@@ -88,6 +117,7 @@ class OrderController extends Controller
                 'status' => 'pending',
             ]);
 
+            // Create Order Items
             foreach ($items as $item) {
                 OrderItems::create([
                     'id' => Str::uuid(),
@@ -114,6 +144,7 @@ class OrderController extends Controller
                 ]);
             }
 
+            // 🚚 Create Shipment
             OrderShipments::create([
                 'id' => Str::uuid(),
                 'order_id' => $order->id,
@@ -121,8 +152,8 @@ class OrderController extends Controller
                 'courier_name' => $request->courier_name,
                 'courier_service' => $request->courier_service,
                 'courier_service_name' => $request->courier_service_name,
-                'shipping_duration_range' => $request->shipping_duration_range,
-                'shipping_duration_unit' => $request->shipping_duration_unit,
+                'shipping_duration_range' => $request->shipping_duration_range ?? null,
+                'shipping_duration_unit' => $request->shipping_duration_unit ?? null,
                 'shipping_fee' => $shippingFee,
                 'receiver_name' => $request->receiver_name,
                 'receiver_phone' => $request->receiver_phone,
@@ -132,23 +163,26 @@ class OrderController extends Controller
                 'receiver_province' => $request->receiver_province,
             ]);
 
-            $productIds = collect($items)
-                ->pluck('product_id')
-                ->filter()
-                ->toArray();
-
-            if (!empty($productIds)) {
-                Carts::where('user_id', $user->id)
-                    ->whereIn('product_id', $productIds)
-                    ->delete();
+            // Delete cart if user
+            if ($userId) {
+                $productIds = collect($items)->pluck('product_id')->filter()->toArray();
+                if (!empty($productIds)) {
+                    Carts::where('user_id', $userId)
+                        ->whereIn('product_id', $productIds)
+                        ->delete();
+                }
             }
 
             DB::commit();
+
             // Call payment gateway
             return $this->createMidtransSnapPayment($order);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Checkout failed', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Checkout failed',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -280,15 +314,15 @@ class OrderController extends Controller
     public function createMidtransSnapPayment($order)
     {
         try {
-            $user = $order->user;
+            $customer = $order->user ?? $order->guest;
             $orderItems = $order->items()->with('product')->get();
 
             $itemDetails = $orderItems->map(function ($item) {
                 return [
-                    'id' => $item->product_id,
+                    'id' => $item->product_id ?? Str::uuid()->toString(),
                     'price' => (int) $item->price,
                     'quantity' => (int) $item->quantity,
-                    'name' => substr($item->product->name ?? 'Unknown Product', 0, 50),
+                    'name' => substr($item->product->name ?? $item->product_name ?? 'Unknown Product', 0, 50),
                 ];
             })->toArray();
 
@@ -299,19 +333,21 @@ class OrderController extends Controller
                 'name' => 'Shipping Fee',
             ];
 
+            $customerDetails = [
+                'first_name' => $customer->name ?? $customer->contact_name ?? 'Guest',
+                'last_name'  => '',
+                'email'      => $customer->email ?? 'noemail@example.com',
+                'phone'      => $order->shipment->receiver_phone ?? $customer->contact_phone ?? '',
+            ];
+
+            // Payload
             $payload = [
                 'transaction_details' => [
                     'order_id' => $order->order_number,
                     'gross_amount' => (int) $order->grand_total,
                 ],
                 'item_details' => $itemDetails,
-                'customer_details' => [
-                    'first_name' => $user->name,
-                    'last_name' => '',
-                    'email' => $user->email ?? 'noemail@example.com',
-                    'phone' => $order->shipment->receiver_phone ?? '',
-                ],
-                // 'enabled_payments' => ['bca_va', 'gopay', 'qris', 'bank_transfer'],
+                'customer_details' => $customerDetails,
             ];
 
             $response = Http::withBasicAuth($this->serverKey, '')
@@ -326,12 +362,13 @@ class OrderController extends Controller
             if ($response->successful()) {
                 $order->update([
                     'payment_status' => 'pending',
-                    'status' => 'awaiting_payment'
+                    'status' => 'awaiting_payment',
                 ]);
 
                 return $result;
             }
 
+            Log::error('Midtrans Snap Error Response: ' . json_encode($result));
             return redirect()->back()->withErrors('Failed to create payment');
         } catch (\Exception $e) {
             Log::error('Error Create Midtrans Snap Payment: ' . $e->getMessage());
