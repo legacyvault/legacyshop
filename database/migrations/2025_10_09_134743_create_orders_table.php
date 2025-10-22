@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('user_id');
+            $table->uuid('user_id')->nullable();
+            $table->uuid('guest_id')->nullable();
             $table->string('transaction_id')->nullable();
             $table->string('transaction_status')->nullable();
             $table->string('transaction_time')->nullable();
@@ -22,13 +23,14 @@ return new class extends Migration
             $table->decimal('subtotal', 15, 2)->default(0);
             $table->decimal('shipping_fee', 15, 2)->default(0);
             $table->decimal('grand_total', 15, 2)->default(0);
-            $table->string('payment_method')->nullable(); // e.g. qris, credit_card
-            $table->string('payment_status')->default('unpaid'); // unpaid, paid, failed, refunded
-            $table->string('status')->default('pending'); // pending, processing, shipped, completed, cancelled
+            $table->string('payment_method')->nullable();
+            $table->string('payment_status')->default('unpaid');
+            $table->string('status')->default('pending');
             $table->timestamp('paid_at')->nullable();
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('guest_id')->references('id')->on('guest')->onDelete('cascade');
         });
     }
 

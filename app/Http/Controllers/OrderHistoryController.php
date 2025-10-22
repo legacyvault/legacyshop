@@ -10,21 +10,21 @@ class OrderHistoryController extends Controller
     public function getUserOrderHistory(Request $request)
     {
         $user = $request->user();
-
-        $perPage = (int) $request->input('per_page', 15);
-        if ($perPage <= 0) {
-            $perPage = 15;
-        }
+        $perPage = max((int) $request->input('per_page', 15), 1);
 
         $search          = $request->input('q');
         $status          = $request->input('status');
         $paymentStatus   = $request->input('payment_status');
         $transactionStat = $request->input('transaction_status');
-
         $productCategory = $request->input('product_category');
 
-        $ordersQuery = Order::with(['items', 'shipment'])
-            ->where('user_id', $user->id)
+        $ordersQuery = Order::with(['items', 'shipment', 'guest'])
+            ->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhereHas('guest', function ($guestQuery) use ($user) {
+                        $guestQuery->where('email', $user->email);
+                    });
+            })
             ->orderBy('created_at', 'desc');
 
         if ($search) {
@@ -62,18 +62,12 @@ class OrderHistoryController extends Controller
             });
         }
 
-        return $ordersQuery
-            ->paginate($perPage)
-            ->appends($request->query());
+        return $ordersQuery->paginate($perPage)->appends($request->query());
     }
 
     public function getAllOrderHistory(Request $request)
     {
-        $perPage = (int) $request->input('per_page', 15);
-        if ($perPage <= 0) {
-            $perPage = 15;
-        }
-
+        $perPage = max((int) $request->input('per_page', 15), 1);
         $search          = $request->input('q');
         $status          = $request->input('status');
         $paymentStatus   = $request->input('payment_status');
@@ -87,7 +81,7 @@ class OrderHistoryController extends Controller
             $sortBy = 'created_at';
         }
 
-        $ordersQuery = Order::with(['items', 'shipment', 'user']);
+        $ordersQuery = Order::with(['items', 'shipment', 'user.profile', 'guest']);
 
         if ($search) {
             $ordersQuery->where(function ($query) use ($search) {
@@ -99,6 +93,10 @@ class OrderHistoryController extends Controller
                                 $profileQuery->where('name', 'like', "%{$search}%");
                             });
                     })
+                    ->orWhereHas('guest', function ($guestQuery) use ($search) {
+                        $guestQuery->where('email', 'like', "%{$search}%")
+                            ->orWhere('name', 'like', "%{$search}%");
+                    })
                     ->orWhereHas('shipment', function ($shipmentQuery) use ($search) {
                         $shipmentQuery->where('receiver_name', 'like', "%{$search}%")
                             ->orWhere('receiver_phone', 'like', "%{$search}%");
@@ -106,23 +104,21 @@ class OrderHistoryController extends Controller
             });
         }
 
-        if ($status) {
+        if ($status && $status !== 'all') {
             $ordersQuery->where('status', $status);
         }
 
-        if ($paymentStatus) {
+        if ($paymentStatus && $paymentStatus !== 'all') {
             $ordersQuery->where('payment_status', $paymentStatus);
         }
 
-        if ($transactionStat) {
+        if ($transactionStat && $transactionStat !== 'all') {
             $ordersQuery->where('transaction_status', $transactionStat);
         }
 
-        $orders = $ordersQuery
+        return $ordersQuery
             ->orderBy($sortBy, $sortDir)
             ->paginate($perPage)
             ->appends($request->query());
-
-        return $orders;
     }
 }
