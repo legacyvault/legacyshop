@@ -68,8 +68,15 @@ class OrderController extends Controller
             'email' => 'required_if:customer_type,guest|email',
             'contact_name' => 'required_if:customer_type,guest|string',
             'contact_phone' => 'required_if:customer_type,guest|string',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
+            'latitude' => 'required_if:customer_type,guest',
+            'longitude' => 'required_if:customer_type,guest',
+            'country' => 'required_if:customer_type,guest',
+            'province' => 'required_if:customer_type,guest',
+            'address' => 'required_if:customer_type,guest',
+            'city' => 'required_if:customer_type,guest',
+            'district' => 'required_if:customer_type,guest',
+            'village' => 'required_if:customer_type,guest',
+            'postal_code' => 'required_if:customer_type,guest',
         ]);
 
         $items = $request->items;
