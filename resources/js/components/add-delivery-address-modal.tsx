@@ -121,12 +121,10 @@ export default function AddDeliveryAddressModal({
     }, [deliveryAddress?.country, isIndonesia]);
 
     const initialFormData = useMemo<FormData>(() => {
-        const provinceValue = shouldUseIndonesianFields
-            ? deliveryAddress?.province_code ?? ''
-            : deliveryAddress?.province ?? '';
-        const cityValue = shouldUseIndonesianFields ? deliveryAddress?.city_code ?? '' : deliveryAddress?.city ?? '';
-        const districtValue = shouldUseIndonesianFields ? deliveryAddress?.district_code ?? '' : deliveryAddress?.district ?? '';
-        const villageValue = shouldUseIndonesianFields ? deliveryAddress?.village_code ?? '' : deliveryAddress?.village ?? '';
+        const provinceValue = shouldUseIndonesianFields ? (deliveryAddress?.province_code ?? '') : (deliveryAddress?.province ?? '');
+        const cityValue = shouldUseIndonesianFields ? (deliveryAddress?.city_code ?? '') : (deliveryAddress?.city ?? '');
+        const districtValue = shouldUseIndonesianFields ? (deliveryAddress?.district_code ?? '') : (deliveryAddress?.district ?? '');
+        const villageValue = shouldUseIndonesianFields ? (deliveryAddress?.village_code ?? '') : (deliveryAddress?.village ?? '');
 
         return {
             id: deliveryAddress?.id ?? id ?? null,
@@ -456,9 +454,7 @@ export default function AddDeliveryAddressModal({
             return;
         }
 
-        const matchedCity = cities.find((city) => city.name === data.city);
-        const nextId = matchedCity?.id ?? '';
-        setSelectedCityId((prev) => (prev === nextId ? prev : nextId));
+        setSelectedCityId((prev) => (prev === data.city ? prev : data.city));
     }, [cities, data.city, shouldUseIndonesianFields]);
 
     useEffect(() => {
@@ -508,9 +504,7 @@ export default function AddDeliveryAddressModal({
             return;
         }
 
-        const matchedDistrict = districts.find(
-            (district) => district.code === data.district || district.name === data.district,
-        );
+        const matchedDistrict = districts.find((district) => district.code === data.district || district.name === data.district);
         const nextCode = matchedDistrict?.code ?? (data.district || '');
         setSelectedDistrictCode((prev) => (prev === nextCode ? prev : nextCode));
     }, [shouldUseIndonesianFields, districts, data.district]);
@@ -545,9 +539,7 @@ export default function AddDeliveryAddressModal({
             return;
         }
 
-        const matchedVillage = villages.find(
-            (village) => village.code === data.village || village.name === data.village,
-        );
+        const matchedVillage = villages.find((village) => village.code === data.village || village.name === data.village);
         const nextCode = matchedVillage?.code ?? (data.village || '');
         setSelectedVillageCode((prev) => (prev === nextCode ? prev : nextCode));
     }, [shouldUseIndonesianFields, villages, data.village]);
@@ -813,10 +805,7 @@ export default function AddDeliveryAddressModal({
                                             </div>
                                             {filteredProvinces.length > 0 ? (
                                                 filteredProvinces.map((province) => (
-                                                    <SelectItem
-                                                        key={province.id}
-                                                        value={shouldUseIndonesianFields ? province.id : province.name}
-                                                    >
+                                                    <SelectItem key={province.id} value={shouldUseIndonesianFields ? province.id : province.name}>
                                                         <span className="flex flex-col">
                                                             <span>{province.name}</span>
                                                         </span>
@@ -842,7 +831,7 @@ export default function AddDeliveryAddressModal({
                                             } else {
                                                 const cityRecord = cities.find((item) => item.name === value);
                                                 setData('city', cityRecord?.name ?? value);
-                                                nextCityId = cityRecord?.id ?? '';
+                                                nextCityId = cityRecord?.name ?? '';
                                             }
 
                                             setSelectedCityId(nextCityId);
@@ -906,10 +895,7 @@ export default function AddDeliveryAddressModal({
                                                             />
                                                         </div>
                                                         {filteredCities.map((city) => (
-                                                            <SelectItem
-                                                                key={city.id}
-                                                                value={shouldUseIndonesianFields ? city.id : city.name}
-                                                            >
+                                                            <SelectItem key={city.id} value={shouldUseIndonesianFields ? city.id : city.name}>
                                                                 {city.name}
                                                             </SelectItem>
                                                         ))}

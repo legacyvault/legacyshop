@@ -36,6 +36,15 @@ Route::group(['prefix' => 'v1/cognito'], function () {
 Route::group(['prefix' => 'v1'], function () {
     Route::get('active-running-text', [MiscController::class, 'getActiveRunningText'])->name('active.running-text');
     Route::get('active-banner', [MiscController::class, 'getActiveBanner'])->name('active.banner');
+    Route::post('delivery-rates', [BiteshipController::class, 'getDeliveryRates'])->name('delivery.rates');
+});
+
+Route::group(['prefix' => 'v1/public'], function () {
+    Route::get('public-province-list/{country}', [LocationController::class, 'getProvincePublicList'])->name('public.province.list');
+    Route::get('public-city-list/{country}/{province}', [LocationController::class, 'getPublicCityList'])->name('public.cities.list');
+    Route::get('district-list/{city}', [LocationController::class, 'getPublicDistrictList'])->name('public.districts.list');
+    Route::get('village-list/{district}', [LocationController::class, 'getPublicVillageList'])->name('public.villages.list');
+    Route::get('postal-code-list/{location}', [LocationController::class, 'getPublicPostalCodeList'])->name('public.postal_code.list');
 });
 
 
@@ -53,7 +62,6 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('active-warehouse', [WarehouseController::class, 'getActiveWarehouse'])->name('warehouse.active');
     Route::get('biteship/origin/{origin_id}', [BiteshipController::class, 'getBiteshipOriginWarehouse'])->name('origin.location');
     Route::get('courier-list', [BiteshipController::class, 'getCourierList'])->name('courier.list');
-    Route::post('delivery-rates', [BiteshipController::class, 'getDeliveryRates'])->name('delivery.rates');
     Route::post('delivery-rates/location-id', [BiteshipController::class, 'getDeliveryRatesByLocationID'])->name('delivery.rates.location');
 
     //Location API

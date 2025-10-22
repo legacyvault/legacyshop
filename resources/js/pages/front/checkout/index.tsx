@@ -1,15 +1,23 @@
-import AddDeliveryAddressModal from '@/components/add-delivery-address-modal';
 import CourierListModal from '@/components/courier-list-modal';
+import MapLocationPicker from '@/components/map-location-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
 import { Link, router, usePage, useRemember } from '@inertiajs/react';
 import { BadgeCheck, Check, ChevronDown, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 const FALLBACK_IMAGE = '/banner-example.jpg';
+
+interface Country {
+    name: string;
+    code: string;
+    flag: string;
+}
 
 type CheckoutItem = {
     id: string;
@@ -27,6 +35,70 @@ type CheckoutItem = {
     protectionPrice?: number;
     protectionLabel?: string | null;
 };
+
+type GuestContact = {
+    fullName: string;
+    email: string;
+    phone: string;
+};
+
+type GuestAddressForm = {
+    label: string;
+    address: string;
+    city: string;
+    cityCode: string;
+    province: string;
+    provinceCode: string;
+    district: string;
+    districtCode: string;
+    village: string;
+    villageCode: string;
+    postalCode: string;
+    latitude: string;
+    longitude: string;
+    country: string;
+    notes: string;
+};
+
+type GuestDeliveryAddress = {
+    id: 'guest';
+    source: 'guest';
+    name: string;
+    contact_name: string;
+    contact_phone: string;
+    address: string;
+    postal_code: string;
+    city: string;
+    city_code?: string;
+    province: string;
+    province_code?: string;
+    district?: string;
+    district_code?: string;
+    village?: string;
+    village_code?: string;
+    latitude: number;
+    longitude: number;
+    country?: string;
+    is_active: boolean;
+};
+
+type LocationOption = {
+    value: string;
+    label: string;
+};
+
+function buildPublicApiUrl(path: string, query: Record<string, string | undefined> = {}) {
+    const origin = typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost';
+    const url = new URL(`/v1/public/${path.replace(/^\/+/, '')}`, origin);
+    Object.entries(query).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.length) {
+            url.searchParams.set(key, value);
+        }
+    });
+    return url.toString();
+}
+
+type CheckoutAddress = IDeliveryAddress | GuestDeliveryAddress;
 
 const dummyPayments = [
     { id: 'qris', name: 'Qris', accent: 'bg-[#FFE8CC] text-[#E57E25]', selected: true },
@@ -59,6 +131,54 @@ const dummyPayments = [
         ],
     },
 ];
+
+function normalizeLocationOptions(items: unknown): LocationOption[] {
+    if (!Array.isArray(items)) {
+        return [];
+    }
+
+    return items
+        .map((item) => {
+            if (!item || typeof item !== 'object') {
+                return null;
+            }
+
+            const record = item as Record<string, unknown>;
+            const label = typeof record.name === 'string' ? record.name : '';
+            const rawValue =
+                typeof record.code === 'string' && record.code.length
+                    ? record.code
+                    : typeof record.id === 'string' && record.id.length
+                      ? record.id
+                      : typeof record.id === 'number'
+                        ? String(record.id)
+                        : typeof record.geonameId === 'number'
+                          ? String(record.geonameId)
+                          : '';
+
+            if (!label || !rawValue) {
+                return null;
+            }
+
+            return {
+                value: rawValue,
+                label,
+            };
+        })
+        .filter((option): option is LocationOption => Boolean(option))
+        .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+async function parseJsonResponse(response: Response) {
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+        const error = new Error('Unexpected response content type');
+        (error as any).response = response;
+        throw error;
+    }
+
+    return response.json();
+}
 
 function getRateId(rate: IRatePricing) {
     return `${rate.courier_code}-${rate.courier_service_code}`;
@@ -98,20 +218,12 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
     }
 }
 
-function formatDateTime(value: string | null | undefined) {
-    if (!value) return null;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return null;
-    return new Intl.DateTimeFormat('id-ID', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(date);
-}
-
 export default function Checkout() {
     const { deliveryAddresses, provinces, rates, warehouse, couriers, auth } = usePage<SharedData>().props;
+    const isGuest = !auth?.user;
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
-    console.log(checkoutItems);
+    const [countries, setCountries] = useState<Country[]>(() => [{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
+
     const defaultPaymentMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
     const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
         const defaultMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
@@ -127,11 +239,46 @@ export default function Checkout() {
     const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(() => defaultPaymentMethod?.id ?? null);
 
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
-    const [selectedAddress, setSelectedAddress] = useState<IDeliveryAddress | null>(() => {
+    const [selectedAddress, setSelectedAddress] = useState<CheckoutAddress | null>(() => {
         if (!addresses.length) return null;
         return addresses.find((address) => address.is_active) ?? addresses[0];
     });
     const [isChangeAddressOpen, setIsChangeAddressOpen] = useState(false);
+    const [guestContact, setGuestContact] = useState<GuestContact>(() => ({
+        fullName: '',
+        email: '',
+        phone: '',
+    }));
+    const [guestAddressForm, setGuestAddressForm] = useState<GuestAddressForm>(() => ({
+        label: '',
+        address: '',
+        province: '',
+        provinceCode: '',
+        city: '',
+        cityCode: '',
+        district: '',
+        districtCode: '',
+        village: '',
+        villageCode: '',
+        postalCode: '',
+        latitude: '',
+        longitude: '',
+        country: 'ID',
+        notes: '',
+    }));
+    const [hasAttemptedGuestRates, setHasAttemptedGuestRates] = useState(false);
+    const [hasAttemptedGuestCheckout, setHasAttemptedGuestCheckout] = useState(false);
+    const [provinceOptions, setProvinceOptions] = useState<LocationOption[]>(() => normalizeLocationOptions(provinces));
+    const [cityOptions, setCityOptions] = useState<LocationOption[]>([]);
+    const [districtOptions, setDistrictOptions] = useState<LocationOption[]>([]);
+    const [villageOptions, setVillageOptions] = useState<LocationOption[]>([]);
+    const [postalCodeOptions, setPostalCodeOptions] = useState<string[]>([]);
+    const [isLoadingProvinces, setIsLoadingProvinces] = useState(false);
+    const [isLoadingCities, setIsLoadingCities] = useState(false);
+    const [isLoadingDistricts, setIsLoadingDistricts] = useState(false);
+    const [isLoadingVillages, setIsLoadingVillages] = useState(false);
+    const [isLoadingPostalCodes, setIsLoadingPostalCodes] = useState(false);
+    const lastProvinceCountryRef = useRef<string | null>(provinceOptions.length ? guestAddressForm.country : null);
 
     useEffect(() => {
         if (!addresses.length) {
@@ -148,15 +295,628 @@ export default function Checkout() {
         });
     }, [addresses]);
 
+    const usingGuestAddress = isGuest || !addresses.length;
+    const isIndonesiaAddress = useMemo(() => {
+        const rawCountry = guestAddressForm.country?.trim() ?? '';
+        if (!rawCountry.length) {
+            return false;
+        }
+
+        const upper = rawCountry.toUpperCase();
+        if (upper === 'ID' || upper === 'IDN') {
+            return true;
+        }
+
+        return rawCountry.toLowerCase() === 'indonesia';
+    }, [guestAddressForm.country]);
+
+    const guestSelectedAddress = useMemo<GuestDeliveryAddress | null>(() => {
+        if (!usingGuestAddress) {
+            return null;
+        }
+
+        const fullName = guestContact.fullName.trim();
+        const email = guestContact.email.trim();
+        const phone = guestContact.phone.trim();
+        const address = guestAddressForm.address.trim();
+        const city = guestAddressForm.city.trim();
+        const province = guestAddressForm.province.trim();
+        const district = guestAddressForm.district.trim();
+        const village = guestAddressForm.village.trim();
+        const postalCode = guestAddressForm.postalCode.trim();
+        const countryValue = guestAddressForm.country.trim();
+        const latitude = Number(guestAddressForm.latitude);
+        const longitude = Number(guestAddressForm.longitude);
+
+        const hasCoords = Number.isFinite(latitude) && Number.isFinite(longitude);
+        const requiresDistrict = isIndonesiaAddress;
+        const requiresVillage = isIndonesiaAddress && villageOptions.length > 0;
+        const hasRequiredFields = Boolean(
+            fullName &&
+                email &&
+                phone &&
+                address &&
+                city &&
+                province &&
+                postalCode &&
+                (!requiresDistrict || district) &&
+                (!requiresVillage || village),
+        );
+
+        if (!hasCoords || !hasRequiredFields) {
+            return null;
+        }
+
+        return {
+            id: 'guest',
+            source: 'guest',
+            name: guestAddressForm.label.trim() || 'Guest Address',
+            contact_name: fullName,
+            contact_phone: phone,
+            address,
+            postal_code: postalCode,
+            city,
+            city_code: guestAddressForm.cityCode || undefined,
+            province,
+            province_code: guestAddressForm.provinceCode || undefined,
+            district: requiresDistrict ? district || undefined : undefined,
+            district_code: requiresDistrict ? guestAddressForm.districtCode || undefined : undefined,
+            village: requiresVillage ? village || undefined : undefined,
+            village_code: requiresVillage ? guestAddressForm.villageCode || undefined : undefined,
+            latitude,
+            longitude,
+            country: countryValue || undefined,
+            is_active: true,
+        };
+    }, [guestAddressForm, guestContact, isIndonesiaAddress, usingGuestAddress, villageOptions.length]);
+
+    const selectedCheckoutAddress = useMemo<CheckoutAddress | null>(() => {
+        if (usingGuestAddress) {
+            return guestSelectedAddress;
+        }
+
+        return selectedAddress;
+    }, [guestSelectedAddress, selectedAddress, usingGuestAddress]);
+
+    const guestFormIncomplete = useMemo(() => {
+        if (!usingGuestAddress) {
+            return false;
+        }
+
+        if (!guestSelectedAddress) {
+            return true;
+        }
+
+        return false;
+    }, [guestSelectedAddress, usingGuestAddress]);
+
+    const showGuestFormError = usingGuestAddress && guestFormIncomplete && (hasAttemptedGuestRates || hasAttemptedGuestCheckout);
+
+    const guestFieldStatus = useMemo(() => {
+        if (!usingGuestAddress) {
+            return {
+                fullNameMissing: false,
+                emailMissing: false,
+                phoneMissing: false,
+                addressMissing: false,
+                cityMissing: false,
+                provinceMissing: false,
+                districtMissing: false,
+                villageMissing: false,
+                postalCodeMissing: false,
+                latitudeMissing: false,
+                longitudeMissing: false,
+            };
+        }
+
+        const fullName = guestContact.fullName.trim();
+        const email = guestContact.email.trim();
+        const phone = guestContact.phone.trim();
+        const addressLine = guestAddressForm.address.trim();
+        const city = guestAddressForm.city.trim();
+        const province = guestAddressForm.province.trim();
+        const district = guestAddressForm.district.trim();
+        const village = guestAddressForm.village.trim();
+        const postalCode = guestAddressForm.postalCode.trim();
+        const latitude = Number(guestAddressForm.latitude);
+        const longitude = Number(guestAddressForm.longitude);
+
+        return {
+            fullNameMissing: !fullName,
+            emailMissing: !email,
+            phoneMissing: !phone,
+            addressMissing: !addressLine,
+            cityMissing: !city,
+            provinceMissing: !province,
+            districtMissing: isIndonesiaAddress && !district,
+            villageMissing: isIndonesiaAddress && villageOptions.length > 0 && !village,
+            postalCodeMissing: !postalCode,
+            latitudeMissing: !Number.isFinite(latitude),
+            longitudeMissing: !Number.isFinite(longitude),
+        };
+    }, [guestAddressForm, guestContact, isIndonesiaAddress, usingGuestAddress, villageOptions.length]);
+
+    const guestLocationValue = useMemo(() => {
+        if (!usingGuestAddress) {
+            return undefined;
+        }
+
+        const lat = Number(guestAddressForm.latitude);
+        const lng = Number(guestAddressForm.longitude);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return undefined;
+        }
+
+        return {
+            lat,
+            lng,
+            address: guestAddressForm.address || undefined,
+        };
+    }, [guestAddressForm.address, guestAddressForm.latitude, guestAddressForm.longitude, usingGuestAddress]);
+
+    const fetchProvinces = useCallback(async (countryCode: string) => {
+        if (!countryCode) {
+            setProvinceOptions([]);
+            return [];
+        }
+
+        setIsLoadingProvinces(true);
+
+        try {
+            const url = `/v1/public/public-province-list/${countryCode}`;
+            const response = await fetch(url, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch provinces');
+            }
+
+            const payload: any = await parseJsonResponse(response);
+            const rawProvinces = Array.isArray(payload) ? payload : Array.isArray(payload?.provinces) ? payload.provinces : [];
+            const options = normalizeLocationOptions(rawProvinces);
+            setProvinceOptions(options);
+            return options;
+        } catch (error) {
+            console.error('Error fetching provinces:', error);
+            setProvinceOptions([]);
+            return [];
+        } finally {
+            setIsLoadingProvinces(false);
+        }
+    }, []);
+
+    const fetchCities = useCallback(async (provinceCode: string, countryCode: string) => {
+        if (!provinceCode) {
+            setCityOptions([]);
+            return [];
+        }
+
+        setIsLoadingCities(true);
+
+        try {
+            const url = `/v1/public/public-city-list/${countryCode}/${provinceCode}`;
+
+            const response = await fetch(url, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch cities');
+            }
+
+            const payload: any = await parseJsonResponse(response);
+            const rawCities = Array.isArray(payload) ? payload : Array.isArray(payload?.cities) ? payload.cities : [];
+            const options = normalizeLocationOptions(rawCities);
+            setCityOptions(options);
+            return options;
+        } catch (error) {
+            console.error('Error fetching cities:', error);
+            setCityOptions([]);
+            return [];
+        } finally {
+            setIsLoadingCities(false);
+        }
+    }, []);
+
+    const fetchDistricts = useCallback(async (cityCode: string, countryCode: string) => {
+        if (!cityCode) {
+            setDistrictOptions([]);
+            return [];
+        }
+
+        setIsLoadingDistricts(true);
+
+        try {
+            const url = buildPublicApiUrl(`district-list/${encodeURIComponent(cityCode)}`, { country: countryCode });
+            const response = await fetch(url, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch districts');
+            }
+
+            const payload: any = await parseJsonResponse(response);
+            const rawDistricts = Array.isArray(payload) ? payload : Array.isArray(payload?.districts) ? payload.districts : [];
+            const options = normalizeLocationOptions(rawDistricts);
+            setDistrictOptions(options);
+            return options;
+        } catch (error) {
+            console.error('Error fetching districts:', error);
+            setDistrictOptions([]);
+            return [];
+        } finally {
+            setIsLoadingDistricts(false);
+        }
+    }, []);
+
+    const fetchVillages = useCallback(async (districtCode: string, countryCode: string) => {
+        if (!districtCode) {
+            setVillageOptions([]);
+            return [];
+        }
+
+        setIsLoadingVillages(true);
+
+        try {
+            const url = buildPublicApiUrl(`village-list/${encodeURIComponent(districtCode)}`, { country: countryCode });
+            const response = await fetch(url, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch villages');
+            }
+
+            const payload: any = await parseJsonResponse(response);
+            const rawVillages = Array.isArray(payload) ? payload : Array.isArray(payload?.villages) ? payload.villages : [];
+            const options = normalizeLocationOptions(rawVillages);
+            setVillageOptions(options);
+            return options;
+        } catch (error) {
+            console.error('Error fetching villages:', error);
+            setVillageOptions([]);
+            return [];
+        } finally {
+            setIsLoadingVillages(false);
+        }
+    }, []);
+
+    const fetchPostalCodes = useCallback(
+        async ({ id, scope, countryCode }: { id: string; scope: 'city' | 'district' | 'village'; countryCode: string }) => {
+            if (!id) {
+                setPostalCodeOptions([]);
+                return [];
+            }
+
+            setIsLoadingPostalCodes(true);
+
+            try {
+                const url = buildPublicApiUrl(`postal-code-list/${encodeURIComponent(id)}`, { scope, country: countryCode });
+                const response = await fetch(url, {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'include',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch postal codes');
+                }
+
+                const payload: any = await parseJsonResponse(response);
+                const rawSource = Array.isArray(payload)
+                    ? payload
+                    : Array.isArray(payload?.postal_codes)
+                      ? payload.postal_codes
+                      : Array.isArray(payload?.postal_code)
+                        ? payload.postal_code
+                        : [];
+
+                const codes = rawSource
+                    .map((item: any) => {
+                        if (!item) {
+                            return '';
+                        }
+
+                        if (typeof item === 'string') {
+                            return item.trim();
+                        }
+
+                        const value = item.postalCode ?? item.postal_code ?? item.code ?? '';
+                        if (typeof value === 'number') {
+                            return String(value);
+                        }
+
+                        return typeof value === 'string' ? value.trim() : '';
+                    })
+                    .filter((code: string): code is string => Boolean(code));
+
+                const uniqueCodes = Array.from(new Set(codes)) as string[];
+                setPostalCodeOptions(uniqueCodes);
+                return uniqueCodes;
+            } catch (error) {
+                console.error('Error fetching postal codes:', error);
+                setPostalCodeOptions([]);
+                return [];
+            } finally {
+                setIsLoadingPostalCodes(false);
+            }
+        },
+        [],
+    );
+
+    const handleCountryChange = useCallback(
+        (value: string) => {
+            setGuestAddressForm((prev) => ({
+                ...prev,
+                country: value,
+                province: '',
+                provinceCode: '',
+                city: '',
+                cityCode: '',
+                district: '',
+                districtCode: '',
+                village: '',
+                villageCode: '',
+                postalCode: '',
+            }));
+            setProvinceOptions([]);
+            setCityOptions([]);
+            setDistrictOptions([]);
+            setVillageOptions([]);
+            setPostalCodeOptions([]);
+            lastProvinceCountryRef.current = null;
+        },
+        [lastProvinceCountryRef],
+    );
+
+    const handleProvinceChange = useCallback(
+        (provinceCode: string) => {
+            const matchedProvince = provinceOptions.find((option) => option.value === provinceCode) ?? null;
+            setGuestAddressForm((prev) => ({
+                ...prev,
+                provinceCode,
+                province: matchedProvince?.label ?? '',
+                city: '',
+                cityCode: '',
+                district: '',
+                districtCode: '',
+                village: '',
+                villageCode: '',
+                postalCode: '',
+            }));
+            setCityOptions([]);
+            setDistrictOptions([]);
+            setVillageOptions([]);
+            setPostalCodeOptions([]);
+        },
+        [provinceOptions],
+    );
+
+    const handleCityChange = useCallback(
+        (cityCode: string) => {
+            const matchedCity = cityOptions.find((option) => option.value === cityCode) ?? null;
+            setGuestAddressForm((prev) => ({
+                ...prev,
+                cityCode,
+                city: matchedCity?.label ?? '',
+                district: '',
+                districtCode: '',
+                village: '',
+                villageCode: '',
+                postalCode: '',
+            }));
+            setDistrictOptions([]);
+            setVillageOptions([]);
+            setPostalCodeOptions([]);
+        },
+        [cityOptions],
+    );
+
+    const handleDistrictChange = useCallback(
+        (districtCode: string) => {
+            const matchedDistrict = districtOptions.find((option) => option.value === districtCode) ?? null;
+            setGuestAddressForm((prev) => ({
+                ...prev,
+                districtCode,
+                district: matchedDistrict?.label ?? '',
+                village: '',
+                villageCode: '',
+                postalCode: '',
+            }));
+            setVillageOptions([]);
+            setPostalCodeOptions([]);
+        },
+        [districtOptions],
+    );
+
+    const handleVillageChange = useCallback(
+        (villageCode: string) => {
+            const matchedVillage = villageOptions.find((option) => option.value === villageCode) ?? null;
+            setGuestAddressForm((prev) => ({
+                ...prev,
+                villageCode,
+                village: matchedVillage?.label ?? '',
+                postalCode: '',
+            }));
+            setPostalCodeOptions([]);
+        },
+        [villageOptions],
+    );
+
+    const handlePostalCodeChange = useCallback((postalCode: string) => {
+        setGuestAddressForm((prev) => ({
+            ...prev,
+            postalCode,
+        }));
+    }, []);
+
+    useEffect(() => {
+        const countryCode = guestAddressForm.country?.trim();
+        if (!countryCode) {
+            setProvinceOptions([]);
+            lastProvinceCountryRef.current = null;
+            return;
+        }
+
+        if (lastProvinceCountryRef.current === countryCode) {
+            return;
+        }
+
+        lastProvinceCountryRef.current = countryCode;
+        void fetchProvinces(countryCode);
+    }, [fetchProvinces, guestAddressForm.country]);
+
+    useEffect(() => {
+        const provinceCode = guestAddressForm.provinceCode;
+        if (!provinceCode) {
+            setCityOptions([]);
+            setDistrictOptions([]);
+            setVillageOptions([]);
+            setPostalCodeOptions([]);
+            return;
+        }
+
+        void fetchCities(provinceCode, guestAddressForm.country);
+    }, [fetchCities, guestAddressForm.country, guestAddressForm.provinceCode]);
+
+    useEffect(() => {
+        const cityCode = guestAddressForm.cityCode;
+        if (!cityCode) {
+            setDistrictOptions([]);
+            setVillageOptions([]);
+            setPostalCodeOptions([]);
+            return;
+        }
+
+        if (isIndonesiaAddress) {
+            setPostalCodeOptions([]);
+            void fetchDistricts(cityCode, guestAddressForm.country);
+            return;
+        }
+
+        void fetchPostalCodes({ id: cityCode, scope: 'city', countryCode: guestAddressForm.country });
+    }, [fetchDistricts, fetchPostalCodes, guestAddressForm.cityCode, guestAddressForm.country, isIndonesiaAddress]);
+
+    useEffect(() => {
+        if (!isIndonesiaAddress) {
+            return;
+        }
+
+        const districtCode = guestAddressForm.districtCode;
+        if (!districtCode) {
+            setVillageOptions([]);
+            setPostalCodeOptions([]);
+            return;
+        }
+
+        setPostalCodeOptions([]);
+        void (async () => {
+            const villages = await fetchVillages(districtCode, guestAddressForm.country);
+            if (villages.length === 0) {
+                await fetchPostalCodes({ id: districtCode, scope: 'district', countryCode: guestAddressForm.country });
+            }
+        })();
+    }, [fetchPostalCodes, fetchVillages, guestAddressForm.country, guestAddressForm.districtCode, isIndonesiaAddress]);
+
+    useEffect(() => {
+        if (!isIndonesiaAddress) {
+            return;
+        }
+
+        const villageCode = guestAddressForm.villageCode;
+        if (!villageCode) {
+            setPostalCodeOptions([]);
+            return;
+        }
+
+        void fetchPostalCodes({ id: villageCode, scope: 'village', countryCode: guestAddressForm.country });
+    }, [fetchPostalCodes, guestAddressForm.country, guestAddressForm.villageCode, isIndonesiaAddress]);
+
+    useEffect(() => {
+        if (!guestAddressForm.postalCode) {
+            return;
+        }
+
+        if (!postalCodeOptions.includes(guestAddressForm.postalCode)) {
+            setGuestAddressForm((prev) => ({
+                ...prev,
+                postalCode: '',
+            }));
+        }
+    }, [guestAddressForm.postalCode, postalCodeOptions]);
+
+    // Fetch countries on component mount
+    useEffect(() => {
+        fetchCountries();
+    }, []);
+
+    const fetchCountries = async () => {
+        try {
+            const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2,flag');
+            const data = await response.json();
+
+            const formattedCountries: Country[] = data
+                .map((country: any) => ({
+                    name: country.name.common,
+                    code: country.cca2,
+                    flag: country.flag,
+                }))
+                .sort((a: Country, b: Country) => a.name.localeCompare(b.name));
+
+            setCountries(formattedCountries);
+        } catch (error) {
+            console.error('Error fetching countries:', error);
+            // Fallback to basic countries if API fails
+            setCountries([
+                { name: 'Indonesia', code: 'ID', flag: '🇮🇩' },
+                { name: 'United States', code: 'US', flag: '🇺🇸' },
+                { name: 'Singapore', code: 'SG', flag: '🇸🇬' },
+            ]);
+        }
+    };
+
+    useEffect(() => {
+        if (guestSelectedAddress && hasAttemptedGuestRates) {
+            setHasAttemptedGuestRates(false);
+        }
+    }, [guestSelectedAddress, hasAttemptedGuestRates]);
+
+    useEffect(() => {
+        if (guestSelectedAddress && hasAttemptedGuestCheckout) {
+            setHasAttemptedGuestCheckout(false);
+        }
+    }, [guestSelectedAddress, hasAttemptedGuestCheckout]);
+
     const addressInformation = useMemo(
         () =>
-            selectedAddress
+            selectedCheckoutAddress
                 ? {
-                      destination_latitude: selectedAddress.latitude,
-                      destination_longitude: selectedAddress.longitude,
+                      destination_latitude: selectedCheckoutAddress.latitude,
+                      destination_longitude: selectedCheckoutAddress.longitude,
                   }
                 : { destination_latitude: null, destination_longitude: null },
-        [selectedAddress],
+        [selectedCheckoutAddress],
     );
 
     const ratesPricing = useMemo(() => (rates && Array.isArray(rates.pricing) ? rates.pricing : []), [rates]);
@@ -211,12 +971,12 @@ export default function Checkout() {
     }, [warehouse]);
 
     const rateKey = useMemo(() => {
-        if (!warehouseKey || !selectedAddress) {
+        if (!warehouseKey || !selectedCheckoutAddress) {
             return null;
         }
 
-        return `${warehouseKey}-${selectedAddress.id}`;
-    }, [warehouseKey, selectedAddress]);
+        return `${warehouseKey}-${selectedCheckoutAddress.id}`;
+    }, [selectedCheckoutAddress, warehouseKey]);
 
     const hasRates = ratesPricing.length > 0;
     const ratesError = rates && typeof rates.code === 'number' && rates.code >= 400 ? 'Tidak dapat memuat opsi pengiriman.' : null;
@@ -274,16 +1034,20 @@ export default function Checkout() {
     const requestRates = useCallback(
         (options: { openModalOnSuccess?: boolean } = {}) => {
             const { openModalOnSuccess = false } = options;
-            if (!warehouse || !selectedAddress) {
-                if (openModalOnSuccess) {
-                    setIsCourierModalOpen(true);
-                }
+            if (!warehouse) {
                 return;
             }
 
             if (!rateItemsPayload.length) {
                 if (openModalOnSuccess) {
                     setIsCourierModalOpen(true);
+                }
+                return;
+            }
+
+            if (!selectedCheckoutAddress) {
+                if (usingGuestAddress) {
+                    setHasAttemptedGuestRates(true);
                 }
                 return;
             }
@@ -300,8 +1064,8 @@ export default function Checkout() {
             const payload = {
                 origin_latitude: Number(warehouse.latitude),
                 origin_longitude: Number(warehouse.longitude),
-                destination_latitude: Number(selectedAddress.latitude),
-                destination_longitude: Number(selectedAddress.longitude),
+                destination_latitude: Number(selectedCheckoutAddress.latitude),
+                destination_longitude: Number(selectedCheckoutAddress.longitude),
                 couriers: 'gojek,jne,anteraja',
                 items: rateItemsPayload,
             };
@@ -314,7 +1078,15 @@ export default function Checkout() {
                 },
             });
         },
-        [warehouse, selectedAddress, rateItemsPayload, setIsCourierModalOpen, setShouldAutoOpenCourier],
+        [
+            rateItemsPayload,
+            selectedCheckoutAddress,
+            setHasAttemptedGuestRates,
+            setIsCourierModalOpen,
+            setShouldAutoOpenCourier,
+            usingGuestAddress,
+            warehouse,
+        ],
     );
 
     useEffect(() => {
@@ -326,7 +1098,7 @@ export default function Checkout() {
             return;
         }
 
-        if (!warehouse || !selectedAddress || !rateItemsPayload.length) {
+        if (!warehouse || !selectedCheckoutAddress || !rateItemsPayload.length) {
             return;
         }
 
@@ -344,7 +1116,7 @@ export default function Checkout() {
     }, [
         rateKey,
         warehouse,
-        selectedAddress,
+        selectedCheckoutAddress,
         rateItemsPayload,
         hasRates,
         isRequestingRates,
@@ -414,15 +1186,7 @@ export default function Checkout() {
     const midtransSnapUrl = import.meta.env.VITE_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
     const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.pay));
     const requiresBankSelection = Boolean(selectedPaymentMethod?.children?.length);
-    const canSubmit = Boolean(
-        hasCheckoutItems && selectedAddress && selectedRate && selectedPaymentId && (!requiresBankSelection || selectedBankPaymentId),
-    );
-    // const qrCodeUrl = useMemo(() => {
-    //     if (!checkoutResult?.midtrans_response?.actions?.length) return null;
-    //     const qrAction = checkoutResult.midtrans_response.actions.find((action) => action.name === 'generate-qr-code-v2');
-    //     return qrAction?.url ?? null;
-    // }, [checkoutResult]);
-    // const paymentExpiry = useMemo(() => formatDateTime(checkoutResult?.midtrans_response?.expiry_time ?? null), [checkoutResult]);
+    const canSubmit = Boolean(hasCheckoutItems && selectedRate && selectedPaymentId && (!requiresBankSelection || selectedBankPaymentId));
 
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -492,7 +1256,10 @@ export default function Checkout() {
     };
 
     const handlePayNow = useCallback(async () => {
-        if (!selectedAddress || !selectedRate || !selectedPaymentId || !checkoutItems.length) {
+        if (!selectedCheckoutAddress || !selectedRate || !selectedPaymentId || !checkoutItems.length) {
+            if (!selectedCheckoutAddress && usingGuestAddress) {
+                setHasAttemptedGuestCheckout(true);
+            }
             return;
         }
 
@@ -531,13 +1298,23 @@ export default function Checkout() {
             shipping_fee: Number(selectedRate.price ?? 0),
             shipping_duration_range: selectedRate.shipment_duration_range ?? selectedRate.duration ?? null,
             shipping_duration_unit: selectedRate.shipment_duration_unit ?? null,
-            receiver_name: selectedAddress.contact_name,
-            receiver_phone: selectedAddress.contact_phone,
-            receiver_address: selectedAddress.address,
-            receiver_postal_code: selectedAddress.postal_code,
-            receiver_city: selectedAddress.city,
-            receiver_province: selectedAddress.province,
+            receiver_name: selectedCheckoutAddress.contact_name,
+            receiver_phone: selectedCheckoutAddress.contact_phone,
+            receiver_address: selectedCheckoutAddress.address,
+            receiver_postal_code: selectedCheckoutAddress.postal_code,
+            receiver_city: selectedCheckoutAddress.city,
+            receiver_province: selectedCheckoutAddress.province,
             items: itemsPayload,
+            ...(usingGuestAddress
+                ? {
+                      buyer_name: guestContact.fullName.trim(),
+                      buyer_email: guestContact.email.trim(),
+                      buyer_phone: guestContact.phone.trim(),
+                      guest_address_label: guestAddressForm.label.trim() || undefined,
+                      guest_notes: guestAddressForm.notes.trim() || undefined,
+                      guest_checkout: true,
+                  }
+                : {}),
         };
 
         setIsSubmitting(true);
@@ -616,18 +1393,23 @@ export default function Checkout() {
         } finally {
             setIsSubmitting(false);
         }
-    }, [checkoutItems, selectedAddress, selectedPaymentId, selectedRate, selectedBankPaymentId, selectedPaymentMethod, isSnapReady, midtransClientKey]);
+    }, [
+        checkoutItems,
+        selectedCheckoutAddress,
+        selectedPaymentId,
+        selectedRate,
+        selectedBankPaymentId,
+        selectedPaymentMethod,
+        isSnapReady,
+        midtransClientKey,
+        usingGuestAddress,
+        guestContact,
+        guestAddressForm,
+        setHasAttemptedGuestCheckout,
+    ]);
 
     return (
         <>
-            <AddDeliveryAddressModal
-                open={isModalOpen}
-                onOpenChange={handleModalChange}
-                provinces={provinces}
-                deliveryAddress={selectedDeliveryAddress}
-                id={selectedId}
-                closeOnSuccess={true}
-            />
             <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Checkout</h1>
@@ -645,99 +1427,462 @@ export default function Checkout() {
                             data-destination-latitude={addressInformation.destination_latitude ?? ''}
                             data-destination-longitude={addressInformation.destination_longitude ?? ''}
                         >
-                            <CardHeader className="flex-row items-start justify-between gap-4 py-0 pt-6">
-                                <div className="space-y-4">
-                                    <div className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Delivery Address</div>
+                            <CardHeader className="flex flex-col gap-4 py-0 pt-6">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="space-y-2">
+                                        <div className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Delivery Address</div>
+                                        <p className="text-sm text-muted-foreground">
+                                            {usingGuestAddress
+                                                ? 'Enter your contact and delivery details to continue without signing in.'
+                                                : 'Review your saved addresses or switch to a different one before checkout.'}
+                                        </p>
+                                    </div>
+                                    {!usingGuestAddress ? (
+                                        <Dialog open={isChangeAddressOpen} onOpenChange={setIsChangeAddressOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="sm" disabled={!addresses.length}>
+                                                    Change
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-xl">
+                                                <DialogHeader className="space-y-1">
+                                                    <DialogTitle>Pick Delivery Address</DialogTitle>
+                                                    <DialogDescription>Select one of the saved addresses to use for this order.</DialogDescription>
+                                                </DialogHeader>
+                                                <Button onClick={() => setIsModalOpen(true)} className="mb-4">
+                                                    Add Delivery Address
+                                                </Button>
+                                                <div className="max-h-[60vh] space-y-3 overflow-y-auto py-2">
+                                                    {addresses.length ? (
+                                                        addresses.map((address) => {
+                                                            const isSelected = address.id === selectedAddress?.id;
+
+                                                            return (
+                                                                <div
+                                                                    key={address.id}
+                                                                    role="button"
+                                                                    onClick={() => {
+                                                                        setSelectedAddress(address);
+                                                                        setIsChangeAddressOpen(false);
+                                                                    }}
+                                                                    className={`w-full rounded-lg border bg-background p-4 text-left transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
+                                                                        isSelected
+                                                                            ? 'border-primary bg-primary/5'
+                                                                            : 'border-border/60 hover:border-primary/40'
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex items-start justify-between gap-3">
+                                                                        <div className="flex flex-1 items-start gap-3">
+                                                                            <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                                                <MapPin className="h-4 w-4" />
+                                                                            </span>
+                                                                            <div className="space-y-1 text-sm">
+                                                                                <div className="font-semibold text-foreground capitalize">
+                                                                                    {address.name} • {address.contact_name}
+                                                                                </div>
+                                                                                <p className="text-sm leading-relaxed text-muted-foreground">
+                                                                                    {address.address}
+                                                                                </p>
+                                                                                <p className="text-xs text-muted-foreground">
+                                                                                    {address.contact_phone}
+                                                                                </p>
+                                                                                <Button
+                                                                                    onClick={() => editAddressHandler(address)}
+                                                                                    className="mt-4 pl-0"
+                                                                                    variant="link"
+                                                                                >
+                                                                                    Edit Address
+                                                                                </Button>
+                                                                            </div>
+                                                                        </div>
+                                                                        {isSelected && (
+                                                                            <span className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                                                                <Check className="h-4 w-4" />
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground">
+                                                            You don't have any shipping addresses saved yet.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
+                                    ) : null}
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-6 pb-6">
+                                {usingGuestAddress ? (
+                                    <div className="space-y-8">
+                                        <section className="space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                    <MapPin className="h-4 w-4" />
+                                                </span>
+                                                <div>
+                                                    <h3 className="text-base font-semibold text-foreground">Contact Information</h3>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        We will use these details for shipping updates and delivery coordination.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="guest-full-name">Full Name *</Label>
+                                                    <Input
+                                                        id="guest-full-name"
+                                                        value={guestContact.fullName}
+                                                        onChange={(event) => setGuestContact((prev) => ({ ...prev, fullName: event.target.value }))}
+                                                        placeholder="Jane Doe"
+                                                        aria-invalid={showGuestFormError && guestFieldStatus.fullNameMissing ? 'true' : undefined}
+                                                    />
+                                                    {showGuestFormError && guestFieldStatus.fullNameMissing ? (
+                                                        <p className="text-xs text-destructive">Enter the recipient name.</p>
+                                                    ) : null}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="guest-email">Email *</Label>
+                                                    <Input
+                                                        id="guest-email"
+                                                        type="email"
+                                                        value={guestContact.email}
+                                                        onChange={(event) => setGuestContact((prev) => ({ ...prev, email: event.target.value }))}
+                                                        placeholder="jane@example.com"
+                                                        aria-invalid={showGuestFormError && guestFieldStatus.emailMissing ? 'true' : undefined}
+                                                    />
+                                                    {showGuestFormError && guestFieldStatus.emailMissing ? (
+                                                        <p className="text-xs text-destructive">
+                                                            Provide an email so we can send the order confirmation.
+                                                        </p>
+                                                    ) : null}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="guest-phone">Phone Number *</Label>
+                                                    <Input
+                                                        id="guest-phone"
+                                                        value={guestContact.phone}
+                                                        onChange={(event) => setGuestContact((prev) => ({ ...prev, phone: event.target.value }))}
+                                                        placeholder="+62 812 3456 7890"
+                                                        aria-invalid={showGuestFormError && guestFieldStatus.phoneMissing ? 'true' : undefined}
+                                                    />
+                                                    {showGuestFormError && guestFieldStatus.phoneMissing ? (
+                                                        <p className="text-xs text-destructive">Add an active phone number for the courier.</p>
+                                                    ) : null}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="guest-address-label">Address Label</Label>
+                                                    <Input
+                                                        id="guest-address-label"
+                                                        value={guestAddressForm.label}
+                                                        onChange={(event) => setGuestAddressForm((prev) => ({ ...prev, label: event.target.value }))}
+                                                        placeholder="Home, Office, etc."
+                                                    />
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <section className="space-y-4">
+                                            <h3 className="text-base font-semibold text-foreground">Shipping Address</h3>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="guest-address-line">Street Address *</Label>
+                                                <textarea
+                                                    id="guest-address-line"
+                                                    value={guestAddressForm.address}
+                                                    onChange={(event) => setGuestAddressForm((prev) => ({ ...prev, address: event.target.value }))}
+                                                    placeholder="Street name, house number, building, unit, etc."
+                                                    aria-invalid={showGuestFormError && guestFieldStatus.addressMissing ? 'true' : undefined}
+                                                    className="min-h-[96px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                />
+                                                {showGuestFormError && guestFieldStatus.addressMissing ? (
+                                                    <p className="text-xs text-destructive">Enter the full delivery address.</p>
+                                                ) : null}
+                                            </div>
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="guest-country">Country</Label>
+                                                    <select
+                                                        id="guest-country"
+                                                        value={guestAddressForm.country}
+                                                        onChange={(event) => handleCountryChange(event.target.value)}
+                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                    >
+                                                        <option value="">Select Country</option>
+                                                        {countries.map((country) => (
+                                                            <option key={country.code} value={country.code}>
+                                                                {country.flag} {country.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="guest-province">Province / State *</Label>
+                                                    <select
+                                                        id="guest-province"
+                                                        value={guestAddressForm.provinceCode}
+                                                        onChange={(event) => handleProvinceChange(event.target.value)}
+                                                        aria-invalid={showGuestFormError && guestFieldStatus.provinceMissing ? 'true' : undefined}
+                                                        disabled={isLoadingProvinces}
+                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                    >
+                                                        <option value="">Select Province</option>
+                                                        {provinceOptions.map((province) => (
+                                                            <option key={province.value} value={province.value}>
+                                                                {province.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    {isLoadingProvinces ? (
+                                                        <p className="text-xs text-muted-foreground">Loading provinces...</p>
+                                                    ) : guestAddressForm.country && !provinceOptions.length ? (
+                                                        <p className="text-xs text-muted-foreground">No province available for this country.</p>
+                                                    ) : null}
+                                                    {showGuestFormError && guestFieldStatus.provinceMissing ? (
+                                                        <p className="text-xs text-destructive">Select the province or state.</p>
+                                                    ) : null}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="guest-city">City *</Label>
+                                                    <select
+                                                        id="guest-city"
+                                                        value={guestAddressForm.cityCode}
+                                                        onChange={(event) => handleCityChange(event.target.value)}
+                                                        aria-invalid={showGuestFormError && guestFieldStatus.cityMissing ? 'true' : undefined}
+                                                        disabled={isLoadingCities || !guestAddressForm.provinceCode}
+                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                    >
+                                                        <option value="">
+                                                            {guestAddressForm.provinceCode ? 'Select City' : 'Select a province first'}
+                                                        </option>
+                                                        {cityOptions.map((city) => (
+                                                            <option key={city.value} value={city.value}>
+                                                                {city.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    {isLoadingCities ? (
+                                                        <p className="text-xs text-muted-foreground">Loading cities...</p>
+                                                    ) : guestAddressForm.provinceCode && !cityOptions.length ? (
+                                                        <p className="text-xs text-muted-foreground">No city found for this province.</p>
+                                                    ) : null}
+                                                    {showGuestFormError && guestFieldStatus.cityMissing ? (
+                                                        <p className="text-xs text-destructive">Select the destination city.</p>
+                                                    ) : null}
+                                                </div>
+                                                {isIndonesiaAddress ? (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="guest-district">District *</Label>
+                                                        <select
+                                                            id="guest-district"
+                                                            value={guestAddressForm.districtCode}
+                                                            onChange={(event) => handleDistrictChange(event.target.value)}
+                                                            aria-invalid={showGuestFormError && guestFieldStatus.districtMissing ? 'true' : undefined}
+                                                            disabled={isLoadingDistricts || !guestAddressForm.cityCode}
+                                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <option value="">
+                                                                {guestAddressForm.cityCode ? 'Select District' : 'Select a city first'}
+                                                            </option>
+                                                            {districtOptions.map((district) => (
+                                                                <option key={district.value} value={district.value}>
+                                                                    {district.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        {isLoadingDistricts ? (
+                                                            <p className="text-xs text-muted-foreground">Loading districts...</p>
+                                                        ) : guestAddressForm.cityCode && !districtOptions.length ? (
+                                                            <p className="text-xs text-muted-foreground">No district found for this city.</p>
+                                                        ) : null}
+                                                        {showGuestFormError && guestFieldStatus.districtMissing ? (
+                                                            <p className="text-xs text-destructive">Select the district.</p>
+                                                        ) : null}
+                                                    </div>
+                                                ) : null}
+                                                {isIndonesiaAddress ? (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="guest-village">Village *</Label>
+                                                        <select
+                                                            id="guest-village"
+                                                            value={guestAddressForm.villageCode}
+                                                            onChange={(event) => handleVillageChange(event.target.value)}
+                                                            aria-invalid={showGuestFormError && guestFieldStatus.villageMissing ? 'true' : undefined}
+                                                            disabled={isLoadingVillages || !guestAddressForm.districtCode}
+                                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <option value="">
+                                                                {guestAddressForm.districtCode ? 'Select Village' : 'Select a district first'}
+                                                            </option>
+                                                            {villageOptions.map((village) => (
+                                                                <option key={village.value} value={village.value}>
+                                                                    {village.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        {isLoadingVillages ? (
+                                                            <p className="text-xs text-muted-foreground">Loading villages...</p>
+                                                        ) : guestAddressForm.districtCode && !villageOptions.length ? (
+                                                            <p className="text-xs text-muted-foreground">No village found for this district.</p>
+                                                        ) : null}
+                                                        {showGuestFormError && guestFieldStatus.villageMissing ? (
+                                                            <p className="text-xs text-destructive">Select the village.</p>
+                                                        ) : null}
+                                                    </div>
+                                                ) : null}
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="guest-postal-code">Postal Code *</Label>
+                                                    <select
+                                                        id="guest-postal-code"
+                                                        value={guestAddressForm.postalCode}
+                                                        onChange={(event) => handlePostalCodeChange(event.target.value)}
+                                                        aria-invalid={showGuestFormError && guestFieldStatus.postalCodeMissing ? 'true' : undefined}
+                                                        disabled={isLoadingPostalCodes || (!postalCodeOptions.length && !guestAddressForm.postalCode)}
+                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                    >
+                                                        <option value="">
+                                                            {isIndonesiaAddress
+                                                                ? guestAddressForm.villageCode || guestAddressForm.districtCode
+                                                                    ? 'Select Postal Code'
+                                                                    : 'Select a village first'
+                                                                : guestAddressForm.cityCode
+                                                                  ? 'Select Postal Code'
+                                                                  : 'Select a city first'}
+                                                        </option>
+                                                        {postalCodeOptions.map((code) => (
+                                                            <option key={code} value={code}>
+                                                                {code}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    {isLoadingPostalCodes ? (
+                                                        <p className="text-xs text-muted-foreground">Loading postal codes...</p>
+                                                    ) : postalCodeOptions.length === 0 &&
+                                                      (isIndonesiaAddress
+                                                          ? Boolean(guestAddressForm.villageCode || guestAddressForm.districtCode)
+                                                          : Boolean(guestAddressForm.cityCode)) ? (
+                                                        <p className="text-xs text-muted-foreground">No postal code found for the selected area.</p>
+                                                    ) : null}
+                                                    {showGuestFormError && guestFieldStatus.postalCodeMissing ? (
+                                                        <p className="text-xs text-destructive">Select the postal code.</p>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="guest-notes">Delivery Notes (optional)</Label>
+                                                <textarea
+                                                    id="guest-notes"
+                                                    value={guestAddressForm.notes}
+                                                    onChange={(event) => setGuestAddressForm((prev) => ({ ...prev, notes: event.target.value }))}
+                                                    placeholder="Gate code, preferred delivery time, etc."
+                                                    className="min-h-[72px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                />
+                                            </div>
+                                        </section>
+
+                                        <section className="space-y-4">
+                                            <h3 className="text-base font-semibold text-foreground">Pin Delivery Location</h3>
+                                            <p className="text-xs text-muted-foreground">
+                                                Drag the marker or search for an address to set accurate coordinates for your delivery.
+                                            </p>
+                                            <div className="space-y-4">
+                                                <div className="h-[320px] w-full overflow-hidden rounded-lg border border-border/60">
+                                                    <MapLocationPicker
+                                                        value={guestLocationValue}
+                                                        onChange={(value) =>
+                                                            setGuestAddressForm((prev) => {
+                                                                const shouldReplaceAddress = prev.address.trim().length === 0 && value.address;
+                                                                return {
+                                                                    ...prev,
+                                                                    latitude: value.lat.toFixed(6),
+                                                                    longitude: value.lng.toFixed(6),
+                                                                    address: shouldReplaceAddress ? (value.address ?? prev.address) : prev.address,
+                                                                };
+                                                            })
+                                                        }
+                                                    />
+                                                </div>
+                                                <div className="hidden gap-4 md:grid-cols-2">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="guest-latitude">Latitude *</Label>
+                                                        <Input
+                                                            id="guest-latitude"
+                                                            value={guestAddressForm.latitude}
+                                                            onChange={(event) =>
+                                                                setGuestAddressForm((prev) => ({ ...prev, latitude: event.target.value }))
+                                                            }
+                                                            placeholder="-6.200000"
+                                                            aria-invalid={showGuestFormError && guestFieldStatus.latitudeMissing ? 'true' : undefined}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="guest-longitude">Longitude *</Label>
+                                                        <Input
+                                                            id="guest-longitude"
+                                                            value={guestAddressForm.longitude}
+                                                            onChange={(event) =>
+                                                                setGuestAddressForm((prev) => ({ ...prev, longitude: event.target.value }))
+                                                            }
+                                                            placeholder="106.816666"
+                                                            aria-invalid={
+                                                                showGuestFormError && guestFieldStatus.longitudeMissing ? 'true' : undefined
+                                                            }
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {showGuestFormError && (guestFieldStatus.latitudeMissing || guestFieldStatus.longitudeMissing) ? (
+                                                    <p className="text-xs text-destructive">
+                                                        Set the delivery pin on the map so we can calculate shipping rates.
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                        </section>
+
+                                        {showGuestFormError ? (
+                                            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                                                Complete the required fields above before requesting shipping rates or paying for the order.
+                                            </div>
+                                        ) : null}
+
+                                        {!isGuest && addresses.length === 0 ? (
+                                            <div className="rounded-md border border-primary/40 bg-primary/5 px-4 py-3 text-sm text-primary">
+                                                Want to save this address for future orders?{' '}
+                                                <Button
+                                                    type="button"
+                                                    variant="link"
+                                                    className="px-0 font-semibold"
+                                                    onClick={() => setIsModalOpen(true)}
+                                                >
+                                                    Add Delivery Address
+                                                </Button>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : (
                                     <div className="flex gap-3 text-sm">
                                         <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                                             <MapPin className="h-4 w-4" />
                                         </span>
                                         <div>
-                                            {selectedAddress ? (
+                                            {selectedCheckoutAddress ? (
                                                 <>
                                                     <div className="font-semibold text-foreground capitalize">
-                                                        {selectedAddress.name} • {selectedAddress.contact_name}
+                                                        {selectedCheckoutAddress.name} • {selectedCheckoutAddress.contact_name}
                                                     </div>
-                                                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{selectedAddress.address}</p>
-                                                    <p className="mt-1 text-xs text-muted-foreground">{selectedAddress.contact_phone}</p>
+                                                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                                        {selectedCheckoutAddress.address}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-muted-foreground">{selectedCheckoutAddress.contact_phone}</p>
                                                 </>
                                             ) : (
                                                 <p className="text-sm text-muted-foreground">There is no delivery address yet.</p>
                                             )}
                                         </div>
                                     </div>
-                                </div>
-                                <Dialog open={isChangeAddressOpen} onOpenChange={setIsChangeAddressOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button variant="outline" size="sm" disabled={!addresses.length}>
-                                            Change
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-xl">
-                                        <DialogHeader className="space-y-1">
-                                            <DialogTitle>Pick Delivery Address</DialogTitle>
-                                            <DialogDescription>Select one of the saved addresses to use for this order.</DialogDescription>
-                                        </DialogHeader>
-                                        <Button onClick={() => setIsModalOpen(true)} className="mb-4">
-                                            Add Delivery Address
-                                        </Button>
-                                        <div className="max-h-[60vh] space-y-3 overflow-y-auto py-2">
-                                            {addresses.length ? (
-                                                addresses.map((address) => {
-                                                    const isSelected = address.id === selectedAddress?.id;
-
-                                                    return (
-                                                        <div
-                                                            key={address.id}
-                                                            role="button"
-                                                            onClick={() => {
-                                                                setSelectedAddress(address);
-                                                                setIsChangeAddressOpen(false);
-                                                            }}
-                                                            className={`w-full rounded-lg border bg-background p-4 text-left transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
-                                                                isSelected
-                                                                    ? 'border-primary bg-primary/5'
-                                                                    : 'border-border/60 hover:border-primary/40'
-                                                            }`}
-                                                        >
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <div className="flex flex-1 items-start gap-3">
-                                                                    <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                                                        <MapPin className="h-4 w-4" />
-                                                                    </span>
-                                                                    <div className="space-y-1 text-sm">
-                                                                        <div className="font-semibold text-foreground capitalize">
-                                                                            {address.name} • {address.contact_name}
-                                                                        </div>
-                                                                        <p className="text-sm leading-relaxed text-muted-foreground">
-                                                                            {address.address}
-                                                                        </p>
-                                                                        <p className="text-xs text-muted-foreground">{address.contact_phone}</p>
-                                                                        <Button
-                                                                            onClick={() => editAddressHandler(address)}
-                                                                            className="mt-4 pl-0"
-                                                                            variant={'link'}
-                                                                        >
-                                                                            Edit Address
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                                {isSelected && (
-                                                                    <span className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                                                                        <Check className="h-4 w-4" />
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })
-                                            ) : (
-                                                <p className="text-sm text-muted-foreground">You don't have any shipping addresses saved yet.</p>
-                                            )}
-                                        </div>
-                                    </DialogContent>
-                                </Dialog>
-                            </CardHeader>
+                                )}
+                            </CardContent>
                         </Card>
 
                         <Card className="gap-4 border border-border/60 bg-background shadow-sm">
@@ -764,7 +1909,7 @@ export default function Checkout() {
                                     variant="outline"
                                     size="sm"
                                     onClick={handleShippingButtonClick}
-                                    disabled={isRequestingRates || !selectedAddress || !warehouse || !hasCheckoutItems}
+                                    disabled={isRequestingRates || !warehouse || !hasCheckoutItems}
                                 >
                                     {isRequestingRates ? 'Loading...' : hasRates ? 'Change' : 'Load Rates'}
                                 </Button>
