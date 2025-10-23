@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('transaction_status')->nullable();
             $table->string('transaction_time')->nullable();
             $table->string('transaction_expiry_time')->nullable();
+            $table->string('snap_token')->nullable();
             $table->string('order_number')->unique();
             $table->decimal('subtotal', 15, 2)->default(0);
             $table->decimal('shipping_fee', 15, 2)->default(0);
