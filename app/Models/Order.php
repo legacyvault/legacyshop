@@ -21,6 +21,7 @@ class Order extends Model
         'transaction_status',
         'transaction_time',
         'transaction_expiry_time',
+        'snap_token',
         'subtotal',
         'shipping_fee',
         'grand_total',

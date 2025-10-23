@@ -56,7 +56,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Checkout API
     Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
     Route::get('transaction-status/{transaction_id}', [OrderController::class, 'getTransactionStatus'])->name('transaction.status');
-
+    Route::get('reopen-snap/{order_number}', [OrderController::class, 'reopenSnapPayment'])->name('snap.reopen');
     //Biteship API
     Route::get('all-warehouse', [WarehouseController::class, 'getAllWarehouse'])->name('warehouses');
     Route::get('active-warehouse', [WarehouseController::class, 'getActiveWarehouse'])->name('warehouse.active');
@@ -236,7 +236,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
-    Route::prefix('orders')->group(function() {
+    Route::prefix('orders')->group(function () {
         Route::get('/', [ViewController::class, 'OrdersPage']);
     });
 
