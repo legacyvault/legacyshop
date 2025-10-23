@@ -74,8 +74,8 @@ class OrderController extends Controller
             'province' => 'required_if:customer_type,guest',
             'address' => 'required_if:customer_type,guest',
             'city' => 'required_if:customer_type,guest',
-            'district' => 'required_if:customer_type,guest',
-            'village' => 'required_if:customer_type,guest',
+            'district' => 'nullable|string',
+            'village' => 'nullable|string',
             'postal_code' => 'required_if:customer_type,guest',
         ]);
 
@@ -99,8 +99,8 @@ class OrderController extends Controller
                     'country' => $request->receiver_country ?? 'Indonesia',
                     'province' => $request->receiver_province,
                     'city' => $request->receiver_city,
-                    'district' => $request->receiver_district ?? null,
-                    'village' => $request->receiver_village ?? null,
+                    'district' => $request->district ?? null,
+                    'village' => $request->village ?? null,
                     'address' => $request->receiver_address,
                     'postal_code' => $request->receiver_postal_code,
                     'latitude' => $request->latitude ?? 0,

@@ -224,6 +224,8 @@ export default function Checkout() {
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
     const [countries, setCountries] = useState<Country[]>(() => [{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
 
+    console.log(rates);
+
     const defaultPaymentMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
     const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
         const defaultMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
@@ -1078,15 +1080,7 @@ export default function Checkout() {
                 },
             });
         },
-        [
-            rateItemsPayload,
-            selectedCheckoutAddress,
-            setHasAttemptedGuestRates,
-            setIsCourierModalOpen,
-            setShouldAutoOpenCourier,
-            usingGuestAddress,
-            warehouse,
-        ],
+        [rateItemsPayload, selectedCheckoutAddress, setHasAttemptedGuestRates, setIsCourierModalOpen, setShouldAutoOpenCourier, warehouse],
     );
 
     useEffect(() => {
@@ -1305,14 +1299,21 @@ export default function Checkout() {
             receiver_city: selectedCheckoutAddress.city,
             receiver_province: selectedCheckoutAddress.province,
             items: itemsPayload,
+            customer_type: usingGuestAddress ? 'guest' : 'user',
             ...(usingGuestAddress
                 ? {
-                      buyer_name: guestContact.fullName.trim(),
-                      buyer_email: guestContact.email.trim(),
-                      buyer_phone: guestContact.phone.trim(),
-                      guest_address_label: guestAddressForm.label.trim() || undefined,
-                      guest_notes: guestAddressForm.notes.trim() || undefined,
-                      guest_checkout: true,
+                      email: guestContact.email.trim(),
+                      contact_name: guestContact.fullName.trim(),
+                      contact_phone: guestContact.phone.trim(),
+                      latitude: guestAddressForm.latitude,
+                      longitude: guestAddressForm.longitude,
+                      country: guestAddressForm.country,
+                      province: guestAddressForm.province,
+                      address: guestAddressForm.label.trim() || undefined,
+                      city: guestAddressForm.city,
+                      postal_code: guestAddressForm.postalCode,
+                      district: guestAddressForm.district,
+                      village: guestAddressForm.village,
                   }
                 : {}),
         };
@@ -1674,7 +1675,7 @@ export default function Checkout() {
                                                 </div>
                                                 {isIndonesiaAddress ? (
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="guest-district">District *</Label>
+                                                        <Label htmlFor="guest-district">Kecamatan *</Label>
                                                         <select
                                                             id="guest-district"
                                                             value={guestAddressForm.districtCode}
@@ -1704,7 +1705,7 @@ export default function Checkout() {
                                                 ) : null}
                                                 {isIndonesiaAddress ? (
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="guest-village">Village *</Label>
+                                                        <Label htmlFor="guest-village">Kelurahan *</Label>
                                                         <select
                                                             id="guest-village"
                                                             value={guestAddressForm.villageCode}
