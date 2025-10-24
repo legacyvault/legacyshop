@@ -37,6 +37,9 @@ Route::group(['prefix' => 'v1'], function () {
     Route::get('active-running-text', [MiscController::class, 'getActiveRunningText'])->name('active.running-text');
     Route::get('active-banner', [MiscController::class, 'getActiveBanner'])->name('active.banner');
     Route::post('delivery-rates', [BiteshipController::class, 'getDeliveryRates'])->name('delivery.rates');
+
+    //Checkout API
+    Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
 });
 
 Route::group(['prefix' => 'v1/public'], function () {
@@ -54,7 +57,6 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('order-history', [OrderHistoryController::class, 'getUserOrderHistory'])->name('user.order-history');
 
     //Checkout API
-    Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
     Route::get('transaction-status/{transaction_id}', [OrderController::class, 'getTransactionStatus'])->name('transaction.status');
     Route::get('reopen-snap/{order_number}', [OrderController::class, 'reopenSnapPayment'])->name('snap.reopen');
     //Biteship API
@@ -225,7 +227,7 @@ Route::middleware(['ensureToken'])->group(function () {
         Route::get('profile', [ViewController::class, 'profilePage'])->name('profile.view');
         Route::get('delivery-address-profile', [ViewController::class, 'deliveryAddressProfilePage'])->name('profile.deliveryaddress.view');
         Route::get('add-delivery-address-profile/{id?}', [ViewController::class, 'deliveryAddressProfileAddPage'])->name('profile.deliveryaddress.add');
-        Route::get('purchases', [ViewController::class, 'purchasesPage']);
+        Route::get('purchases', [ViewController::class, 'purchasesPage'])->name('profile.purchases');
     });
 });
 

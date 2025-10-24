@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 const FALLBACK_IMAGE = '/banner-example.jpg';
+const SNAP_EMBED_CONTAINER_ID = 'midtrans-snap-container';
 
 interface Country {
     name: string;
@@ -1078,15 +1079,7 @@ export default function Checkout() {
                 },
             });
         },
-        [
-            rateItemsPayload,
-            selectedCheckoutAddress,
-            setHasAttemptedGuestRates,
-            setIsCourierModalOpen,
-            setShouldAutoOpenCourier,
-            usingGuestAddress,
-            warehouse,
-        ],
+        [rateItemsPayload, selectedCheckoutAddress, setHasAttemptedGuestRates, setIsCourierModalOpen, setShouldAutoOpenCourier, warehouse],
     );
 
     useEffect(() => {
@@ -1181,12 +1174,18 @@ export default function Checkout() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     const [checkoutResult, setCheckoutResult] = useState<IRootCheckoutOrderMidtrans | null>(null);
+    const [isThankYou, setIsThankYou] = useState(false);
+    const [pendingSnapToken, setPendingSnapToken] = useState<string | null>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const midtransClientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY ?? '';
     const midtransSnapUrl = import.meta.env.VITE_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
-    const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.pay));
+    const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.embed));
     const requiresBankSelection = Boolean(selectedPaymentMethod?.children?.length);
-    const canSubmit = Boolean(hasCheckoutItems && selectedRate && selectedPaymentId && (!requiresBankSelection || selectedBankPaymentId));
+    const canSubmit = Boolean(
+        hasCheckoutItems && selectedRate && selectedPaymentId && (!requiresBankSelection || selectedBankPaymentId) && !isThankYou,
+    );
+
+    const isInteractionLocked = isThankYou;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -1194,7 +1193,7 @@ export default function Checkout() {
         if (typeof window === 'undefined') return;
         if (!midtransClientKey) return;
 
-        if (window.snap && typeof window.snap.pay === 'function') {
+        if (window.snap) {
             setIsSnapReady(true);
             return;
         }
@@ -1255,7 +1254,30 @@ export default function Checkout() {
         setIsModalOpen(true);
     };
 
+    const handleReturnToProducts = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
+            } catch (error) {
+                console.warn('Failed to clear checkout storage', error);
+            }
+        }
+        router.visit('/');
+    }, []);
+
+    const clearSnapContainer = useCallback(() => {
+        if (typeof window === 'undefined') return;
+        const container = document.getElementById(SNAP_EMBED_CONTAINER_ID);
+        if (container) {
+            container.innerHTML = '';
+        }
+    }, []);
+
     const handlePayNow = useCallback(async () => {
+        if (isThankYou) {
+            return;
+        }
+
         if (!selectedCheckoutAddress || !selectedRate || !selectedPaymentId || !checkoutItems.length) {
             if (!selectedCheckoutAddress && usingGuestAddress) {
                 setHasAttemptedGuestCheckout(true);
@@ -1305,14 +1327,21 @@ export default function Checkout() {
             receiver_city: selectedCheckoutAddress.city,
             receiver_province: selectedCheckoutAddress.province,
             items: itemsPayload,
+            customer_type: usingGuestAddress ? 'guest' : 'user',
             ...(usingGuestAddress
                 ? {
-                      buyer_name: guestContact.fullName.trim(),
-                      buyer_email: guestContact.email.trim(),
-                      buyer_phone: guestContact.phone.trim(),
-                      guest_address_label: guestAddressForm.label.trim() || undefined,
-                      guest_notes: guestAddressForm.notes.trim() || undefined,
-                      guest_checkout: true,
+                      email: guestContact.email.trim(),
+                      contact_name: guestContact.fullName.trim(),
+                      contact_phone: guestContact.phone.trim(),
+                      latitude: guestAddressForm.latitude,
+                      longitude: guestAddressForm.longitude,
+                      country: guestAddressForm.country,
+                      province: guestAddressForm.province,
+                      address: guestAddressForm.label.trim() || undefined,
+                      city: guestAddressForm.city,
+                      postal_code: guestAddressForm.postalCode,
+                      district: guestAddressForm.district,
+                      village: guestAddressForm.village,
                   }
                 : {}),
         };
@@ -1353,24 +1382,17 @@ export default function Checkout() {
 
                 const snapToken = data?.token;
                 const redirectUrl = data?.redirect_url;
-                const clearCheckoutStorage = () => sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
+                const clearCheckoutStorage = () => {
+                    try {
+                        sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
+                    } catch (error) {
+                        console.warn('Failed to clear checkout storage', error);
+                    }
+                };
 
-                if (snapToken && typeof window !== 'undefined' && window.snap?.pay) {
-                    window.snap.pay(snapToken, {
-                        onSuccess: () => {
-                            clearCheckoutStorage();
-                        },
-                        onPending: () => {
-                            clearCheckoutStorage();
-                        },
-                        onError: (result) => {
-                            console.error('Midtrans Snap error', result);
-                            setCheckoutError('Payment failed. Please try again or choose another method.');
-                        },
-                        onClose: () => {
-                            setCheckoutError('Payment popup was closed before the transaction was completed.');
-                        },
-                    });
+                if (snapToken && typeof window !== 'undefined') {
+                    setIsThankYou(true);
+                    setPendingSnapToken(snapToken);
                 } else if (redirectUrl) {
                     clearCheckoutStorage();
                     window.location.href = redirectUrl;
@@ -1406,21 +1428,112 @@ export default function Checkout() {
         guestContact,
         guestAddressForm,
         setHasAttemptedGuestCheckout,
+        isThankYou,
+        setPendingSnapToken,
     ]);
+
+    const embedSnap = useCallback(
+        (token: string) => {
+            if (typeof window === 'undefined' || !window.snap?.embed) {
+                setCheckoutError('Payment widget is unavailable. Please refresh and try again.');
+                setIsThankYou(false);
+                return;
+            }
+
+            const container = document.getElementById(SNAP_EMBED_CONTAINER_ID);
+            if (!container) {
+                return;
+            }
+
+            const clearCheckoutStorage = () => {
+                try {
+                    sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
+                } catch (error) {
+                    console.warn('Failed to clear checkout storage', error);
+                }
+            };
+
+            clearSnapContainer();
+
+            window.snap.embed(token, {
+                embedId: SNAP_EMBED_CONTAINER_ID,
+                onSuccess: () => {
+                    clearCheckoutStorage();
+                },
+                onPending: () => {
+                    clearCheckoutStorage();
+                },
+                onError: (result: unknown) => {
+                    console.error('Midtrans Snap error', result);
+                    setCheckoutError('Payment failed. Please try again or choose another method.');
+                    setIsThankYou(false);
+                    clearSnapContainer();
+                },
+                onClose: () => {
+                    setCheckoutError('Payment popup was closed before the transaction was completed.');
+                    setIsThankYou(true);
+                    clearCheckoutStorage();
+                },
+            });
+        },
+        [clearSnapContainer, setCheckoutError],
+    );
+
+    useEffect(() => {
+        if (!pendingSnapToken || !isThankYou || !isSnapReady) {
+            return;
+        }
+
+        embedSnap(pendingSnapToken);
+        setPendingSnapToken(null);
+    }, [pendingSnapToken, isThankYou, embedSnap, isSnapReady]);
+
+    useEffect(() => {
+        if (!isThankYou) {
+            setPendingSnapToken(null);
+            clearSnapContainer();
+        }
+    }, [isThankYou, clearSnapContainer]);
 
     return (
         <>
             <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Checkout</h1>
+                <div className="mb-8 space-y-3">
+                    <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{isThankYou ? 'Thank You!' : 'Checkout'}</h1>
+                    {isThankYou ? (
+                        <p className="max-w-2xl text-base text-muted-foreground">
+                            We&apos;ve loaded your payment details below. Complete the payment to finalize your order, or head back to keep browsing.
+                        </p>
+                    ) : null}
                 </div>
-                <div className="mb-2">
-                    <Link href={auth.user ? `/view-cart/${auth.user.id}` : `/view-cart`}>
-                        <span className="cursor-pointer underline">Back to Cart</span>
-                    </Link>
+                <div className="mb-4 flex flex-wrap items-center gap-3">
+                    {isThankYou ? (
+                        <Button onClick={handleReturnToProducts} size="sm">
+                            Back to Products
+                        </Button>
+                    ) : (
+                        <Link href={auth.user ? `/view-cart/${auth.user.id}` : `/view-cart`}>
+                            <span className="cursor-pointer underline">Back to Cart</span>
+                        </Link>
+                    )}
                 </div>
 
-                <div className="grid gap-8 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+                {isThankYou ? (
+                    <div className="mb-6">
+                        <div
+                            id={SNAP_EMBED_CONTAINER_ID}
+                            className="mx-auto w-full max-w-2xl rounded-xl border border-border/60 bg-background p-4 shadow-lg"
+                        >
+                            <p className="text-center text-sm text-muted-foreground">Preparing payment widget...</p>
+                        </div>
+                    </div>
+                ) : null}
+                <div
+                    className={`grid gap-8 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] ${
+                        isInteractionLocked ? 'pointer-events-none opacity-60' : ''
+                    }`}
+                    aria-disabled={isInteractionLocked ? 'true' : undefined}
+                >
                     <div className="space-y-6">
                         <Card
                             className="gap-4 border border-border/60 bg-background shadow-sm"
@@ -1674,7 +1787,7 @@ export default function Checkout() {
                                                 </div>
                                                 {isIndonesiaAddress ? (
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="guest-district">District *</Label>
+                                                        <Label htmlFor="guest-district">Kecamatan *</Label>
                                                         <select
                                                             id="guest-district"
                                                             value={guestAddressForm.districtCode}
@@ -1704,7 +1817,7 @@ export default function Checkout() {
                                                 ) : null}
                                                 {isIndonesiaAddress ? (
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="guest-village">Village *</Label>
+                                                        <Label htmlFor="guest-village">Kelurahan *</Label>
                                                         <select
                                                             id="guest-village"
                                                             value={guestAddressForm.villageCode}

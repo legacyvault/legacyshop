@@ -18,7 +18,14 @@ class OrderHistoryController extends Controller
         $transactionStat = $request->input('transaction_status');
         $productCategory = $request->input('product_category');
 
-        $ordersQuery = Order::with(['items', 'shipment', 'guest'])
+        $ordersQuery = Order::with(
+            [
+                'items' => function($query) {
+                    $query->orderBy('product_name', 'asc');
+                }, 
+                'shipment', 
+                'guest'
+            ])
             ->where(function ($query) use ($user) {
                 $query->where('user_id', $user->id)
                     ->orWhereHas('guest', function ($guestQuery) use ($user) {
@@ -81,7 +88,15 @@ class OrderHistoryController extends Controller
             $sortBy = 'created_at';
         }
 
-        $ordersQuery = Order::with(['items', 'shipment', 'user.profile', 'guest']);
+        $ordersQuery = Order::with(
+            [
+                'items' => function($query) {
+                    $query->orderBy('product_name', 'asc');
+                }, 
+                'shipment', 
+                'user.profile', 
+                'guest'
+            ]);
 
         if ($search) {
             $ordersQuery->where(function ($query) use ($search) {

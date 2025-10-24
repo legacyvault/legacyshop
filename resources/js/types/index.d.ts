@@ -465,6 +465,7 @@ export interface IRootHistoryOrders {
     user?: IOrderUser | null;
     user_id: string;
     status: string;
+    snap_token: string;
 }
 
 export interface IShipmentHistoryOrders {
@@ -626,12 +627,23 @@ export interface IActionMidtransResponse {
 declare global {
     interface Window {
         snap?: {
+            embed: (
+                token: string,
+                options?: {
+                    embedId: string;
+                    onSuccess?: (r: any) => void;
+                    onPending?: (r: any) => void;
+                    onError?: (r: any) => void;
+                    onClose?: (r: any) => void;
+                },
+            ) => void;
+            hide?: () => void;
             pay: (
                 token: string,
                 options?: {
                     onSuccess?: (result: unknown) => void;
                     onPending?: (result: unknown) => void;
-                    onError?: (result: unknown) => void;
+                    onError?: (error: unknown) => void;
                     onClose?: () => void;
                 },
             ) => void;
