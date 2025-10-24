@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { IRootHistoryOrders, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { Search } from 'lucide-react';
-import { useEffect, useMemo, useState, type ChangeEvent, type ElementType, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ElementType, type FormEvent } from 'react';
 
 type Filters = {
     q?: string;
@@ -33,6 +33,7 @@ export default function Purchases() {
     const [searchValue, setSearchValue] = useState<string>((filters?.q as string) ?? '');
     const [detailOpen, setDetailOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<IRootHistoryOrders | null>(null);
+    const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.pay));
 
     useEffect(() => {
         setSearchValue((filters?.q as string) ?? '');
@@ -104,6 +105,12 @@ export default function Purchases() {
         }
     };
 
+    const refreshOrders = useCallback(() => {
+        router.reload({
+            only: ['ordersPaginated', 'filters'],
+        });
+    }, []);
+
     return (
         <FrontLayout auth={auth} locale={locale} translations={translations}>
             <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10 lg:px-0">
@@ -151,14 +158,26 @@ export default function Purchases() {
                     </div>
                 </div>
 
-                <TransactionList orders={orders} onViewDetail={handleViewDetail} />
+                <TransactionList orders={orders} onViewDetail={handleViewDetail} onRefreshOrders={refreshOrders} isSnapReady={isSnapReady} />
             </section>
             <TransactionDetailDialog open={detailOpen} onOpenChange={handleDetailOpenChange} order={selectedOrder} />
         </FrontLayout>
     );
 }
 
-function TransactionList({ orders, onViewDetail }: { orders: IRootHistoryOrders[]; onViewDetail: (order: IRootHistoryOrders) => void }) {
+function TransactionList({
+    orders,
+    onViewDetail,
+    onRefreshOrders,
+    isSnapReady,
+}: {
+    orders: IRootHistoryOrders[];
+    onViewDetail: (order: IRootHistoryOrders) => void;
+    onRefreshOrders: () => void;
+    isSnapReady: boolean;
+}) {
+    const [processingOrder, setProcessingOrder] = useState<string | null>(null);
+
     const transactions = useMemo(() => {
         return orders.map((order) => {
             const firstItem = order.items?.[0];
@@ -172,6 +191,7 @@ function TransactionList({ orders, onViewDetail }: { orders: IRootHistoryOrders[
             const statusLabel = order.transaction_status || order.status;
             const badgeStyle = getStatusBadgeStyle(statusLabel);
             const date = formatDate(order.created_at);
+            const order_number = order.order_number;
             const subtextParts: string[] = [];
             if (itemsCount > 0) {
                 subtextParts.push(`${itemsCount} item${itemsCount > 1 ? 's' : ''} in total`);
@@ -191,6 +211,7 @@ function TransactionList({ orders, onViewDetail }: { orders: IRootHistoryOrders[
                 subtext: subtextParts.join(' • '),
                 totalValue: formatCurrency(order.grand_total),
                 picture,
+                order_number,
             };
         });
     }, [orders]);
@@ -202,6 +223,74 @@ function TransactionList({ orders, onViewDetail }: { orders: IRootHistoryOrders[
                 <p className="mt-1 text-sm">Your purchases will show up here as soon as you complete a transaction.</p>
             </Card>
         );
+    }
+
+    const fetchTransaction = async (order_number: string) => {
+        const url = `/v1/reopen-snap/${order_number}`;
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'include',
+            });
+
+            const payload = await parseJsonResponse(response);
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch transaction');
+            }
+
+            console.log('Reopen transaction response:', payload);
+            return payload;
+        } catch (error) {
+            console.error('Error fetching transaction:', error);
+            throw error;
+        }
+    };
+
+    const handleGeneratePayment = async (order_number: string) => {
+        if (processingOrder) return;
+
+        setProcessingOrder(order_number);
+
+        try {
+            const payload = await fetchTransaction(order_number);
+            const status = (payload as { status?: string })?.status;
+            const snapToken = (payload as { snap_token?: string })?.snap_token;
+
+            if (snapToken && ['requires_payment', 'pending'].includes(status ?? '') && window.snap?.pay) {
+                window.snap.pay(snapToken, {
+                    onSuccess: () => onRefreshOrders(),
+                    onPending: () => onRefreshOrders(),
+                    onError: (error) => {
+                        console.error('Snap payment error:', error);
+                        onRefreshOrders();
+                    },
+                    onClose: () => onRefreshOrders(),
+                });
+            } else {
+                onRefreshOrders();
+            }
+        } catch (error) {
+            console.error('Generate payment failed:', error);
+            onRefreshOrders();
+        } finally {
+            setProcessingOrder(null);
+        }
+    };
+
+    async function parseJsonResponse(response: Response) {
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+            const error = new Error('Unexpected response content type');
+            (error as any).response = response;
+            throw error;
+        }
+
+        return response.json();
     }
 
     return (
@@ -249,6 +338,15 @@ function TransactionList({ orders, onViewDetail }: { orders: IRootHistoryOrders[
                                 <Button variant="outline" type="button" onClick={() => onViewDetail(transaction.order)}>
                                     View Transaction Detail
                                 </Button>
+                                <div>
+                                    <Button
+                                        onClick={() => handleGeneratePayment(transaction.order_number)}
+                                        variant={'link'}
+                                        disabled={!isSnapReady || processingOrder === transaction.order_number}
+                                    >
+                                        Generate Payment
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </Card>
@@ -330,7 +428,7 @@ function TransactionDetailDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-h-[80vh] max-w-2xl overflow-auto">
                 <DialogHeader>
                     <DialogTitle>Transaction Details</DialogTitle>
                     <DialogDescription>

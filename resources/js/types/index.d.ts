@@ -465,6 +465,7 @@ export interface IRootHistoryOrders {
     user?: IOrderUser | null;
     user_id: string;
     status: string;
+    snap_token: string;
 }
 
 export interface IShipmentHistoryOrders {
@@ -637,6 +638,15 @@ declare global {
                 },
             ) => void;
             hide?: () => void;
+            pay: (
+                token: string,
+                options?: {
+                    onSuccess?: (result: unknown) => void;
+                    onPending?: (result: unknown) => void;
+                    onError?: (error: unknown) => void;
+                    onClose?: () => void;
+                },
+            ) => void;
         };
     }
 }

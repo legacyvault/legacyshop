@@ -207,8 +207,6 @@ Route::get('/', [ViewController::class, 'welcomePage'])->name('home');
 Route::get('/articles', [ViewController::class, 'frontArticlesPage'])->name('front.articles');
 Route::get('/articles/{slug}', [ViewController::class, 'frontArticleView'])->name('front.articles-view');
 
-Route::get('/thankyou/success', [ViewController::class, 'thankYouPage']);
-
 Route::get('/login', function () {
     return Inertia::render('auth/login');
 })->name('login');

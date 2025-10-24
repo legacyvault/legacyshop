@@ -225,8 +225,6 @@ export default function Checkout() {
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
     const [countries, setCountries] = useState<Country[]>(() => [{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
 
-    console.log(rates);
-
     const defaultPaymentMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
     const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
         const defaultMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];

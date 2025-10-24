@@ -6,7 +6,7 @@ import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IOrdersPaginated, IRootHistoryOrders, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { MoreHorizontal, Search } from 'lucide-react';
-import { ChangeEvent, useMemo, useState } from 'react';
+import { ChangeEvent, useCallback, useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -104,21 +104,31 @@ const transactionStatusVariant = (status?: string | null): 'default' | 'secondar
 
 export default function Orders() {
     const { ordersPaginated, filters } = usePage<SharedData & { filters?: Filters }>().props;
+    const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.pay));
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Orders" />
 
             <div className="p-4">
-                <OrdersTable ordersPaginated={ordersPaginated} filters={filters ?? {}} />
+                <OrdersTable ordersPaginated={ordersPaginated} filters={filters ?? {}} isSnapReady={isSnapReady} />
             </div>
         </AppLayout>
     );
 }
 
-function OrdersTable({ ordersPaginated, filters = {} }: { ordersPaginated?: IOrdersPaginated; filters?: Filters }) {
+function OrdersTable({
+    ordersPaginated,
+    filters = {},
+    isSnapReady,
+}: {
+    ordersPaginated?: IOrdersPaginated;
+    filters?: Filters;
+    isSnapReady: boolean;
+}) {
     const [selectedOrder, setSelectedOrder] = useState<IRootHistoryOrders | null>(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
+    const [processingOrder, setProcessingOrder] = useState<string | null>(null);
 
     const orders = ordersPaginated?.data ?? [];
     const currentPage = ordersPaginated?.current_page ?? Number(filters.page ?? 1);
@@ -210,6 +220,12 @@ function OrdersTable({ ordersPaginated, filters = {} }: { ordersPaginated?: IOrd
         setDetailsOpen(true);
     };
 
+    const refreshOrders = useCallback(() => {
+        router.reload({
+            only: ['ordersPaginated', 'filters'],
+        });
+    }, []);
+
     const handleDialogChange = (open: boolean) => {
         setDetailsOpen(open);
         if (!open) {
@@ -221,6 +237,66 @@ function OrdersTable({ ordersPaginated, filters = {} }: { ordersPaginated?: IOrd
         if (filters.sort_by !== column) return null;
         return filters.sort_dir === 'asc' ? '▲' : '▼';
     };
+
+    async function parseJsonResponse(response: Response) {
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+            const error = new Error('Unexpected response content type');
+            (error as any).response = response;
+            throw error;
+        }
+
+        return response.json();
+    }
+
+    const fetchTransaction = useCallback(
+        async (orderNumber: string) => {
+            if (processingOrder) return;
+
+            setProcessingOrder(orderNumber);
+
+            setDetailsOpen(false);
+
+            try {
+                const response = await fetch(`/v1/reopen-snap/${orderNumber}`, {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'include',
+                });
+
+                const payload = await parseJsonResponse(response);
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch transaction');
+                }
+
+                const status = (payload as { status?: string })?.status;
+                const snapToken = (payload as { snap_token?: string })?.snap_token;
+
+                if (snapToken && ['requires_payment', 'pending'].includes(status ?? '') && window.snap?.pay) {
+                    window.snap.pay(snapToken, {
+                        onSuccess: () => refreshOrders(),
+                        onPending: () => refreshOrders(),
+                        onError: (error) => {
+                            console.error('Snap payment error:', error);
+                            refreshOrders();
+                        },
+                        onClose: () => refreshOrders(),
+                    });
+                } else {
+                    refreshOrders();
+                }
+            } catch (error) {
+                console.error('Generate payment failed:', error);
+                refreshOrders();
+            } finally {
+                setProcessingOrder(null);
+            }
+        },
+        [processingOrder, refreshOrders],
+    );
 
     return (
         <>
@@ -431,7 +507,14 @@ function OrdersTable({ ordersPaginated, filters = {} }: { ordersPaginated?: IOrd
                 </div>
             </div>
 
-            <OrderDetailsDialog open={detailsOpen} onOpenChange={handleDialogChange} order={selectedOrder} />
+            <OrderDetailsDialog
+                open={detailsOpen}
+                onOpenChange={handleDialogChange}
+                order={selectedOrder}
+                onGeneratePayment={fetchTransaction}
+                isSnapReady={isSnapReady}
+                processingOrder={processingOrder}
+            />
         </>
     );
 }
@@ -440,10 +523,16 @@ function OrderDetailsDialog({
     open,
     onOpenChange,
     order,
+    onGeneratePayment,
+    isSnapReady,
+    processingOrder,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     order: IRootHistoryOrders | null;
+    onGeneratePayment: (orderNumber: string) => void;
+    isSnapReady: boolean;
+    processingOrder: string | null;
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -475,6 +564,19 @@ function OrderDetailsDialog({
                                 <Badge variant={orderStatusVariant(order.status)} className="mt-2">
                                     {titleCase(order.status)}
                                 </Badge>
+                                {order.status === 'awaiting_payment' && (
+                                    <>
+                                        <br />
+                                        <Button
+                                            variant={'link'}
+                                            className="m-0 p-0 text-xs"
+                                            onClick={() => onGeneratePayment(order.order_number)}
+                                            disabled={!isSnapReady || processingOrder === order.order_number}
+                                        >
+                                            Generate Payment
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
 
