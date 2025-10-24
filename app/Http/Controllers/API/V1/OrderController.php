@@ -400,26 +400,16 @@ class OrderController extends Controller
 
             $statusData = $statusResponse->json();
             $transactionStatus = $statusData['transaction_status'] ?? null;
-
-            if (in_array($transactionStatus, ['expire', 'expired', 'cancel', 'deny', 'failure'], true)) {
-                $snapResult = $this->createMidtransSnapPayment($order);
-
-                if (is_array($snapResult) && isset($snapResult['token'])) {
-                    $redirectUrl = $snapResult['redirect_url'] ?? ('https://app.sandbox.midtrans.com/snap/v2/vtweb/' . $snapResult['token']);
-
-                    return response()->json([
-                        'status' => 'requires_payment',
-                        'snap_token' => $snapResult['token'],
-                        'order_id' => $order->order_number,
-                        'redirect_url' => $redirectUrl,
-                        'message' => 'Generated new Snap token because the previous transaction was not completed.',
-                    ]);
-                }
+            if (isset($statusData['transaction_status']) && $statusData['transaction_status'] === 'pending') {
+                $redirectUrl = 'https://app.sandbox.midtrans.com/snap/v2/vtweb/' . $order->snap_token;
 
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to create payment session. Please try again later.',
-                ], 500);
+                    'status' => 'pending',
+                    'snap_token' => $order->snap_token,
+                    'order_id' => $order->order_number,
+                    'redirect_url' => $redirectUrl,
+                    'message' => 'Transaction still pending, using existing Snap token.'
+                ]);
             }
 
             return response()->json([
