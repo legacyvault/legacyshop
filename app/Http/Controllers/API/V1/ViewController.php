@@ -486,4 +486,8 @@ class ViewController extends Controller
             ]
         ]);
     }
+
+    public function thankYouPage(){
+        return Inertia::render('thankyou/index');
+    }
 }

@@ -626,15 +626,17 @@ export interface IActionMidtransResponse {
 declare global {
     interface Window {
         snap?: {
-            pay: (
+            embed: (
                 token: string,
                 options?: {
-                    onSuccess?: (result: unknown) => void;
-                    onPending?: (result: unknown) => void;
-                    onError?: (result: unknown) => void;
-                    onClose?: () => void;
+                    embedId: string;
+                    onSuccess?: (r: any) => void;
+                    onPending?: (r: any) => void;
+                    onError?: (r: any) => void;
+                    onClose?: (r: any) => void;
                 },
             ) => void;
+            hide?: () => void;
         };
     }
 }
