@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCart } from '@/contexts/CartContext';
 import FrontLayout from '@/layouts/front/front-layout';
 import {
+    ICart,
     ICategories,
     IDivisions,
     IPivotDivisionProd,
@@ -113,10 +114,12 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     }, [selectedSubcat, selectedDiv, selectedVar]);
     const discountPct = Number(product.product_discount);
     const finalPrice = useMemo(() => {
-        if (!discountPct) return Math.round(basePrice);
-        const afterDiscount = Math.round(basePrice - (basePrice * discountPct) / 100);
-        return afterDiscount + extraPriceSubcat + extraPriceDivision + extraPriceVariant;
-    }, [extraPriceSubcat, extraPriceDivision, extraPriceVariant]);
+        const discountedBase = discountPct
+            ? Math.round(basePrice - (basePrice * discountPct) / 100)
+            : Math.round(basePrice);
+        const total = discountedBase + extraPriceSubcat + extraPriceDivision + extraPriceVariant;
+        return Math.max(0, total);
+    }, [basePrice, discountPct, extraPriceSubcat, extraPriceDivision, extraPriceVariant]);
 
     const totalStock = Number(product.total_stock);
 
@@ -125,12 +128,23 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     const disableButtonCart = useMemo(() => !selectedCat, [selectedCat]);
 
     const handleAddToCart = () => {
-        const meta = {
-            product_id: String(product.id),
-            category_id: selectedCat?.id ? String(selectedCat.id) : undefined,
-            sub_category_id: selectedSubcat?.id ? String(selectedSubcat.id) : undefined,
-            division_id: selectedDiv?.id ? String(selectedDiv.id) : undefined,
-            variant_id: selectedVar?.id ? String(selectedVar.id) : undefined,
+        const meta: ICart = {
+            category: selectedCat ? [selectedCat] : [],
+            category_id: selectedCat?.id ?? null,
+            division: selectedDiv ? [selectedDiv] : [],
+            division_id: selectedDiv?.id ?? null,
+            id: '',
+            price_per_product: finalPrice,
+            product: product,
+            product_id: product.id,
+            quantity: selectedQty,
+            sub_category: selectedSubcat ? [selectedSubcat] : [],
+            sub_category_id: selectedSubcat?.id ?? null,
+            variant: selectedVar ? [selectedVar] : [],
+            variant_id: selectedVar?.id ?? null,
+            updated_at: '',
+            created_at: '',
+            user_id: '',
         };
         const compositeId = [
             meta.product_id ?? '',
@@ -142,6 +156,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         const name = `${product.product_name}`;
         const existing = items.find((i) => i.id === compositeId)?.quantity ?? 0;
         const targetQty = Math.max(1, existing + selectedQty);
+
         void addItem({ id: compositeId, name, price: finalPrice, image: mainImage, meta }, { quantity: targetQty, meta });
         openCart(true);
     };

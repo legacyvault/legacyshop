@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
 import { Link, router, usePage, useRemember } from '@inertiajs/react';
-import { BadgeCheck, Check, ChevronDown, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck } from 'lucide-react';
+import { Check, ChevronDown, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
@@ -36,6 +36,24 @@ type CheckoutItem = {
     productId?: string | null;
     protectionPrice?: number;
     protectionLabel?: string | null;
+    unitId?: string | null;
+    categoryId?: string | null;
+    categoryDescription?: string | null;
+    subCategoryId?: string | null;
+    subCategoryDescription?: string | null;
+    divisionId?: string | null;
+    divisionDescription?: string | null;
+    variantId?: string | null;
+    variantDescription?: string | null;
+    variantColor?: string | null;
+    selectionSummary?: {
+        unit?: string | null;
+        category?: string | null;
+        subCategory?: string | null;
+        division?: string | null;
+        variant?: string | null;
+        variantColor?: string | null;
+    } | null;
 };
 
 type GuestContact = {
@@ -207,12 +225,25 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
             router.visit('/');
             return [];
         }
+
+        console.log(parsed);
         return parsed.map((item) => ({
             ...item,
             quantity: Math.max(1, Number(item.quantity ?? 1)),
             price: Number(item.price ?? 0),
             weight: Number(item.weight ?? 0),
             protectionPrice: Number(item.protectionPrice ?? 0),
+            unitId: item.unitId ?? null,
+            categoryId: item.categoryId ?? null,
+            categoryDescription: item.categoryDescription ?? null,
+            subCategoryId: item.subCategoryId ?? null,
+            subCategoryDescription: item.subCategoryDescription ?? null,
+            divisionId: item.divisionId ?? null,
+            divisionDescription: item.divisionDescription ?? null,
+            variantId: item.variantId ?? null,
+            variantDescription: item.variantDescription ?? null,
+            variantColor: item.variantColor ?? null,
+            selectionSummary: item.selectionSummary ?? null,
         }));
     } catch (error) {
         router.visit('/');
@@ -1173,6 +1204,32 @@ export default function Checkout() {
     const insurance = 0;
     const total = subtotal + protection + shipping + insurance;
     const hasCheckoutItems = checkoutItems.length > 0;
+    const groupedCheckoutItems = useMemo(() => {
+        const groups: { key: string; label: string; items: CheckoutItem[] }[] = [];
+        const indexMap = new Map<string, number>();
+
+        checkoutItems.forEach((item) => {
+            const rawLabel = (item.selectionSummary?.unit ?? item.store ?? 'Legacy Vault')?.toString().trim() ?? '';
+            const label = rawLabel.length ? rawLabel : 'Legacy Vault';
+
+            if (!indexMap.has(label)) {
+                const groupIndex = groups.length;
+                indexMap.set(label, groupIndex);
+                groups.push({
+                    key: `${label.replace(/\s+/g, '-').toLowerCase()}-${groupIndex}`,
+                    label,
+                    items: [item],
+                });
+            } else {
+                const idx = indexMap.get(label);
+                if (typeof idx === 'number') {
+                    groups[idx].items.push(item);
+                }
+            }
+        });
+
+        return groups;
+    }, [checkoutItems]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     const [checkoutResult, setCheckoutResult] = useState<IRootCheckoutOrderMidtrans | null>(null);
@@ -1311,13 +1368,33 @@ export default function Checkout() {
             headers['X-CSRF-TOKEN'] = csrfToken;
         }
 
+        console.log(checkoutItems);
+
         const itemsPayload = checkoutItems.map((item) => ({
+            cart_id: item.cartId ?? null,
             product_id: item.productId ?? null,
+            unit_id: item.unitId ?? null,
+            unit_name: item.selectionSummary?.unit ?? null,
+            category_id: item.categoryId ?? null,
+            category_name: item.selectionSummary?.category ?? null,
+            category_description: item.categoryDescription ?? null,
+            sub_category_id: item.subCategoryId ?? null,
+            sub_category_name: item.selectionSummary?.subCategory ?? null,
+            sub_category_description: item.subCategoryDescription ?? null,
+            division_id: item.divisionId ?? null,
+            division_name: item.selectionSummary?.division ?? null,
+            division_description: item.divisionDescription ?? null,
+            variant_id: item.variantId ?? null,
+            variant_name: item.selectionSummary?.variant ?? null,
+            variant_color: item.selectionSummary?.variantColor ?? item.variantColor ?? null,
+            variant_description: item.variantDescription ?? null,
             product_name: item.name,
             product_description: item.variant ?? null,
             product_image: item.image ?? null,
+            attributes: item.attributes?.join(', ') ?? null,
             quantity: item.quantity,
             price: item.price,
+            source: item.source ?? null,
         }));
 
         const payload = {
@@ -2025,7 +2102,7 @@ export default function Checkout() {
                                     variant="outline"
                                     size="sm"
                                     onClick={handleShippingButtonClick}
-                                    disabled={isRequestingRates || !warehouse || !hasCheckoutItems || deliveryAddresses.length <= 0}
+                                    disabled={isRequestingRates || !warehouse || !hasCheckoutItems || (!isGuest && deliveryAddresses.length <= 0)}
                                 >
                                     {isRequestingRates ? 'Loading...' : hasRates ? 'Change' : 'Load Rates'}
                                 </Button>
@@ -2090,43 +2167,76 @@ export default function Checkout() {
                             </Card>
                         ) : null}
 
-                        {checkoutItems.map((item) => (
-                            <Card key={item.id} className="gap-6 border border-border/60 bg-background shadow-sm">
-                                <CardHeader className="flex-col gap-3 pb-0">
-                                    <div className="flex items-center justify-between gap-4">
-                                        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold tracking-wide text-primary uppercase">
-                                            <BadgeCheck className="h-4 w-4" />
-                                            {item.store}
-                                        </div>
-                                        <div className="text-sm font-semibold text-foreground">
-                                            {item.quantity} x {formatCurrency(item.price)}
-                                        </div>
-                                    </div>
-                                </CardHeader>
+                        {groupedCheckoutItems.map((group) => (
+                            <div key={group.key} className="rounded-2xl border border-border/60 bg-background shadow-sm">
+                                <div className="flex items-center gap-3 border-b px-6 py-4 text-sm font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+                                    <span className="inline-flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                        {group.label.slice(0, 1)}
+                                    </span>
+                                    <span className="text-base font-semibold tracking-normal text-foreground normal-case">{group.label}</span>
+                                </div>
 
-                                <CardContent className="space-y-6">
-                                    <div className="flex flex-col gap-4 sm:flex-row">
-                                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted sm:h-28 sm:w-28">
-                                            <img src={item.image ?? FALLBACK_IMAGE} alt={item.name} className="h-full w-full object-cover" />
-                                        </div>
-                                        <div className="flex-1 space-y-3">
-                                            <div>
-                                                <h2 className="text-base font-semibold text-foreground sm:text-lg">{item.name}</h2>
-                                                {item.variant ? <p className="text-sm text-muted-foreground">{item.variant}</p> : null}
+                                <div className="divide-y">
+                                    {group.items.map((item) => {
+                                        const summary = item.selectionSummary ?? null;
+                                        const attributesLabel = item.attributes?.length ? item.attributes.join(' • ') : (item.variant ?? null);
+
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+                                            >
+                                                <div className="flex items-start gap-4">
+                                                    <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border bg-muted sm:h-24 sm:w-24">
+                                                        <img
+                                                            src={item.image ?? FALLBACK_IMAGE}
+                                                            alt={item.name}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                                    <div className="space-y-3">
+                                                        <div className="space-y-1">
+                                                            <h3 className="text-base font-semibold text-foreground sm:text-lg">{item.name}</h3>
+                                                            {attributesLabel ? (
+                                                                <p className="text-sm text-muted-foreground">{attributesLabel}</p>
+                                                            ) : null}
+                                                        </div>
+                                                        <div className="space-y-1 text-sm text-muted-foreground">
+                                                            {summary?.category ? <p>Category: {summary.category}</p> : null}
+                                                            {summary?.subCategory ? <p>Sub Category: {summary.subCategory}</p> : null}
+                                                            {summary?.division ? <p>Division: {summary.division}</p> : null}
+                                                            {summary?.variant ? <p>Variant: {summary.variant}</p> : null}
+                                                            {summary?.variantColor && summary.variantColor !== summary.variant ? (
+                                                                <p>Variant Color: {summary.variantColor}</p>
+                                                            ) : null}
+                                                        </div>
+                                                        {item.protectionLabel ? (
+                                                            <button className="flex items-center gap-2 text-sm font-semibold text-primary">
+                                                                <ShieldCheck className="h-4 w-4" />
+                                                                {item.protectionLabel}
+                                                                <span className="font-normal text-muted-foreground">
+                                                                    ({formatCurrency(item.protectionPrice ?? 0)})
+                                                                </span>
+                                                            </button>
+                                                        ) : null}
+                                                    </div>
+
+                                                    <div className="flex flex-col items-end gap-2 text-right sm:min-w-[140px]">
+                                                        <span className="text-sm text-muted-foreground">Qty: {item.quantity}</span>
+                                                        <span className="text-lg font-semibold text-foreground">
+                                                            {formatCurrency(item.price * item.quantity)}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground">({formatCurrency(item.price)} each)</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {item.protectionLabel ? (
-                                                <button className="flex items-center gap-2 text-sm font-semibold text-primary">
-                                                    <ShieldCheck className="h-4 w-4" />
-                                                    {item.protectionLabel}
-                                                    <span className="font-normal text-muted-foreground">
-                                                        ({formatCurrency(item.protectionPrice ?? 0)})
-                                                    </span>
-                                                </button>
-                                            ) : null}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         ))}
                     </div>
 
