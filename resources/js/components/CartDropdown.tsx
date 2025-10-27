@@ -158,7 +158,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                                         <Link href={auth.user ? `/view-cart/${auth.user.id}` : `/view-cart`} className="w-full">
                                             <Button className="w-full">View Cart</Button>
                                         </Link>
-                                        <Link
+                                        {/* <Link
                                             href="/checkout"
                                             className="w-full"
                                             onClick={() => {
@@ -169,7 +169,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                                             <Button className="w-full" variant={'outline'}>
                                                 Checkout
                                             </Button>
-                                        </Link>
+                                        </Link> */}
                                     </div>
                                 </div>
                             </>

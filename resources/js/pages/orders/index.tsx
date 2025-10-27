@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IOrdersPaginated, IRootHistoryOrders, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { MoreHorizontal, Search } from 'lucide-react';
+import { Loader2, MoreHorizontal, Search } from 'lucide-react';
 import { ChangeEvent, useCallback, useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -20,12 +20,33 @@ type SortableColumn = 'order_number' | 'grand_total' | 'payment_status' | 'statu
 
 const perPageOptions = [10, 15, 25, 50, 100];
 
+const getCsrfToken = (): string | undefined => {
+    if (typeof window === 'undefined') return undefined;
+    const meta = document.head.querySelector('meta[name="csrf-token"]');
+    if (meta instanceof HTMLMetaElement) {
+        return meta.content;
+    }
+    return undefined;
+};
+
 const formatCurrency = (value?: string | number | null) => {
     const numeric = typeof value === 'string' ? parseFloat(value) : (value ?? 0);
     if (!Number.isFinite(numeric)) {
         return '-';
     }
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(numeric);
+};
+
+const parseAmount = (value?: string | number | null) => {
+    if (typeof value === 'string') {
+        const normalized = value.replace(/,/g, '');
+        const numeric = Number.parseFloat(normalized);
+        return Number.isFinite(numeric) ? numeric : 0;
+    }
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : 0;
+    }
+    return 0;
 };
 
 const formatDate = (value?: string | null) => {
@@ -129,6 +150,8 @@ function OrdersTable({
     const [selectedOrder, setSelectedOrder] = useState<IRootHistoryOrders | null>(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [processingOrder, setProcessingOrder] = useState<string | null>(null);
+    const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
+    const [invoiceFeedback, setInvoiceFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
     const orders = ordersPaginated?.data ?? [];
     const currentPage = ordersPaginated?.current_page ?? Number(filters.page ?? 1);
@@ -220,6 +243,220 @@ function OrdersTable({
         setDetailsOpen(true);
     };
 
+    const handleGenerateInvoice = useCallback(
+        async (order: IRootHistoryOrders) => {
+            if (generatingInvoice) {
+                return;
+            }
+
+            if (!order?.items?.length) {
+                setInvoiceFeedback({
+                    type: 'error',
+                    message: 'Cannot generate an invoice for an order without items.',
+                });
+                return;
+            }
+
+            const roundToTwo = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+            const normalizeId = (value?: string | null) => {
+                if (!value) return null;
+                const trimmed = value.toString().trim();
+                return trimmed.length ? trimmed : null;
+            };
+
+            const itemPayload = order.items
+                .map((item) => {
+                    if (!item.product_id) {
+                        return null;
+                    }
+
+                    const price = parseAmount(item.price);
+                    const quantity = item.quantity ?? 0;
+
+                    return {
+                        product_id: item.product_id,
+                        quantity,
+                        price,
+                        category_id: normalizeId(item.category_id),
+                        sub_category_id: normalizeId(item.sub_category_id),
+                        division_id: normalizeId(item.division_id),
+                        variant_id: normalizeId(item.variant_id),
+                    };
+                })
+                .filter(
+                    (
+                        item,
+                    ): item is {
+                        product_id: string;
+                        quantity: number;
+                        price: number;
+                        category_id: string | null;
+                        sub_category_id: string | null;
+                        division_id: string | null;
+                        variant_id: string | null;
+                    } => Boolean(item && item.quantity > 0),
+                );
+
+            if (!itemPayload.length) {
+                setInvoiceFeedback({
+                    type: 'error',
+                    message: 'Cannot generate an invoice because product details are incomplete.',
+                });
+                return;
+            }
+
+            const subtotal = order.items.reduce((acc, item) => acc + parseAmount(item.total), 0);
+            const shippingFee = parseAmount(order.shipping_fee);
+            const grandTotal = parseAmount(order.grand_total);
+            const computedDiscount = Math.max(0, subtotal + shippingFee - grandTotal);
+
+            const paymentStatus = (order.payment_status ?? '').toLowerCase();
+            const transactionStatus = (order.transaction_status ?? '').toLowerCase();
+            const invoiceStatus: 'draft' | 'issued' = paymentStatus === 'paid' || transactionStatus === 'settlement' ? 'issued' : 'draft';
+
+            const invoiceNumber = order.order_number ? order.order_number.replace(/^ORD/i, 'INV') : undefined;
+            const nowIso = new Date().toISOString();
+
+            const payload = {
+                invoice_number: invoiceNumber,
+                status: invoiceStatus,
+                issued_at: nowIso,
+                due_at: null,
+                bill_to_name: order.shipment?.receiver_name ?? order.user?.name ?? 'Customer',
+                bill_to_email: order.user?.email ?? null,
+                bill_to_phone: order.shipment?.receiver_phone ?? null,
+                bill_to_address: order.shipment?.receiver_address ?? null,
+                bill_to_city: order.shipment?.receiver_city ?? null,
+                bill_to_province: order.shipment?.receiver_province ?? null,
+                bill_to_postal_code: order.shipment?.receiver_postal_code ?? null,
+                bill_to_country: order.shipment ? 'Indonesia' : null,
+                discount_total: roundToTwo(computedDiscount),
+                tax_total: 0,
+                shipping_total: roundToTwo(shippingFee),
+                items: itemPayload.map((item) => ({
+                    ...item,
+                    price: roundToTwo(item.price),
+                })),
+            };
+
+            setGeneratingInvoice(order.id);
+            setInvoiceFeedback(null);
+
+            try {
+                const csrfToken = getCsrfToken();
+                const response = await fetch('/v1/invoices', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json, application/pdf',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        ...payload,
+                        preview_only: true,
+                    }),
+                });
+
+                const contentType = response.headers.get('content-type') ?? '';
+
+                if (!response.ok) {
+                    let errorMessage = 'Failed to generate invoice.';
+
+                    if (contentType.includes('application/json')) {
+                        let errorPayload: { message?: string; errors?: Record<string, string[]> } | null = null;
+
+                        try {
+                            errorPayload = (await response.json()) as {
+                                message?: string;
+                                errors?: Record<string, string[]>;
+                            } | null;
+                        } catch {
+                            errorPayload = null;
+                        }
+
+                        errorMessage =
+                            errorPayload?.message ??
+                            (errorPayload?.errors
+                                ? Object.values(errorPayload.errors)
+                                      .flat()
+                                      .find(Boolean)
+                                : null) ??
+                            errorMessage;
+                    } else {
+                        const rawText = await response.text();
+                        errorMessage = rawText || errorMessage;
+                    }
+
+                    throw new Error(errorMessage);
+                }
+
+                if (contentType.includes('application/pdf')) {
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const popup = window.open(blobUrl, '_blank');
+
+                    if (!popup) {
+                        const link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.target = '_blank';
+                        link.rel = 'noopener';
+                        link.click();
+                    }
+
+                    setInvoiceFeedback({
+                        type: 'success',
+                        message: `Invoice preview generated for ${order.order_number}.`,
+                    });
+
+                    setTimeout(() => {
+                        URL.revokeObjectURL(blobUrl);
+                    }, 60_000);
+
+                    return;
+                }
+
+                const raw = await response.text();
+                let payloadResponse: any = null;
+
+                if (raw) {
+                    try {
+                        payloadResponse = JSON.parse(raw);
+                    } catch (jsonError) {
+                        console.warn('Unable to parse invoice response JSON.', jsonError);
+                    }
+                }
+
+                const invoiceData = payloadResponse?.data ?? payloadResponse ?? {};
+
+                setInvoiceFeedback({
+                    type: 'success',
+                    message: `Invoice ${invoiceData.invoice_number ?? ''} generated for ${order.order_number}.`,
+                });
+
+                if (invoiceData?.id) {
+                    window.open(`/v1/invoices/${invoiceData.id}/download`, '_blank');
+                }
+            } catch (error) {
+                console.error('Invoice generation failed:', error);
+                const message = error instanceof Error ? error.message : 'Failed to generate invoice.';
+                const normalizedMessage =
+                    typeof message === 'string' && message.toLowerCase().includes('invoice number')
+                        ? 'An invoice already exists for this order.'
+                        : message;
+                setInvoiceFeedback({
+                    type: 'error',
+                    message: normalizedMessage,
+                });
+            } finally {
+                setGeneratingInvoice(null);
+            }
+        },
+        [generatingInvoice],
+    );
+
     const refreshOrders = useCallback(() => {
         router.reload({
             only: ['ordersPaginated', 'filters'],
@@ -301,6 +538,17 @@ function OrdersTable({
     return (
         <>
             <div className="flex flex-col gap-4">
+                {invoiceFeedback && (
+                    <div
+                        className={`rounded-md border px-4 py-3 text-sm ${
+                            invoiceFeedback.type === 'success'
+                                ? 'border-green-200 bg-green-50 text-green-700'
+                                : 'border-red-200 bg-red-50 text-red-700'
+                        }`}
+                    >
+                        {invoiceFeedback.message}
+                    </div>
+                )}
                 <div className="flex flex-wrap items-center justify-between">
                     <div className="flex flex-wrap items-center gap-2">
                         <select
@@ -472,6 +720,16 @@ function OrdersTable({
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-40">
+                                                        <DropdownMenuItem
+                                                            className="cursor-pointer gap-2"
+                                                            disabled={generatingInvoice === order.id}
+                                                            onClick={() => handleGenerateInvoice(order)}
+                                                        >
+                                                            {generatingInvoice === order.id && (
+                                                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                            )}
+                                                            Generate Invoice
+                                                        </DropdownMenuItem>
                                                         <DropdownMenuItem className="cursor-pointer" onClick={() => handleViewDetails(order)}>
                                                             View
                                                         </DropdownMenuItem>

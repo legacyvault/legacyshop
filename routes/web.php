@@ -15,6 +15,7 @@ use App\Http\Controllers\API\V1\VariantController;
 use App\Http\Controllers\API\V1\WarehouseController;
 use App\Http\Controllers\API\V1\OrderController;
 use App\Http\Controllers\OrderHistoryController;
+use App\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
@@ -135,6 +136,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::post('update-warehouse', [WarehouseController::class, 'updateWarehouse'])->name('update.warehouse');
 
     //Product API
+    Route::get('products/options', [ProductController::class, 'getProductOptions'])->name('products.options');
     Route::post('add-product', [ProductController::class, 'addProduct'])->name('product.add-product');
     Route::post('update-product/{id}', [ProductController::class, 'editProduct'])->name('product.edit-product');
 
@@ -187,6 +189,14 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::post('update-variant', [VariantController::class, 'updateVariant'])->name('variant.update');
     Route::post('add-variant-stock', [VariantController::class, 'addStock'])->name('variant.add-stock');
     Route::post('update-variant-stock', [VariantController::class, 'updateLatestStock'])->name('variant.update-stock');
+
+    //Invoice API
+    Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+    Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
+    Route::put('invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
+    Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
+    Route::get('invoices/{invoice}/download', [InvoiceController::class, 'download'])->name('invoices.download');
 });
 
 //CHANGE LANGUAGE
@@ -239,7 +249,9 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
     })->name('dashboard');
 
     Route::prefix('orders')->group(function () {
-        Route::get('/', [ViewController::class, 'OrdersPage']);
+        Route::redirect('/', '/orders/order');
+        Route::get('order', [ViewController::class, 'OrdersPage']);
+        Route::get('invoice', [ViewController::class, 'invoicePage'])->name('orders.invoice');
     });
 
     Route::prefix('products')->group(function () {

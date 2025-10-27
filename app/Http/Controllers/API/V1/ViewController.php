@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OrderHistoryController;
+use App\Http\Controllers\InvoiceController as AppInvoiceController;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
@@ -25,6 +26,7 @@ class ViewController extends Controller
     protected $locationController;
     protected $biteshipController;
     protected $orderhistoryController;
+    protected $invoiceController;
 
     public function __construct(Request $request)
     {
@@ -40,6 +42,7 @@ class ViewController extends Controller
         $this->locationController = new LocationController();
         $this->biteshipController = new BiteshipController();
         $this->orderhistoryController= new OrderHistoryController();
+        $this->invoiceController = new AppInvoiceController();
     }
 
     public function unitPage(Request $request)
@@ -396,12 +399,12 @@ class ViewController extends Controller
     }
 
     public function checkoutPage(){
-        $deliveryAddresses = $this->userController->getAllDeliveryAddress();
         $warehouse = $this->warehouseController->getActiveWarehouse();
         $couriers = $this->biteshipController->getCourierList();
+        $profile = $this->userController->getProfile();
 
         return Inertia::render('front/checkout/index',[
-            'deliveryAddresses' => $deliveryAddresses,
+            'profile' => $profile,
             'warehouse' => $warehouse,
             'couriers' => $couriers,
             'rates'             => fn () => session('rates', []),
@@ -431,11 +434,11 @@ class ViewController extends Controller
 
     public function deliveryAddressProfilePage(){
         $provinces = $this->locationController->getProvinceList();
-        $deliveryAddress = $this->userController->getAllDeliveryAddress();
+        $profile = $this->userController->getProfile();
 
         return Inertia::render('settings/delivery-address/index', [
             'provinces' => $provinces,
-            'deliveryAddresses' => $deliveryAddress,
+            'profile' => $profile,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -487,7 +490,13 @@ class ViewController extends Controller
         ]);
     }
 
-    public function thankYouPage(){
-        return Inertia::render('thankyou/index');
+    public function invoicePage(Request $request){
+        $filters = $request->only('q', 'status', 'per_page', 'page', 'sort_by', 'sort_dir', 'issued_from', 'issued_to');
+        $invoicesPaginated = $this->invoiceController->index($request);
+
+        return Inertia::render('orders/invoice/index', [
+            'invoicesPaginated' => $invoicesPaginated,
+            'filters' => $filters,
+        ]);
     }
 }
