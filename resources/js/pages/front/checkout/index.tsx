@@ -1,3 +1,4 @@
+import AddDeliveryAddressModal from '@/components/add-delivery-address-modal';
 import CourierListModal from '@/components/courier-list-modal';
 import MapLocationPicker from '@/components/map-location-picker';
 import { Button } from '@/components/ui/button';
@@ -220,8 +221,9 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
 }
 
 export default function Checkout() {
-    const { deliveryAddresses, provinces, rates, warehouse, couriers, auth } = usePage<SharedData>().props;
+    const { profile, rates, warehouse, auth } = usePage<SharedData>().props;
     const isGuest = !auth?.user;
+    const deliveryAddresses = profile?.delivery_address ?? [];
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
     const [countries, setCountries] = useState<Country[]>(() => [{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
 
@@ -269,7 +271,7 @@ export default function Checkout() {
     }));
     const [hasAttemptedGuestRates, setHasAttemptedGuestRates] = useState(false);
     const [hasAttemptedGuestCheckout, setHasAttemptedGuestCheckout] = useState(false);
-    const [provinceOptions, setProvinceOptions] = useState<LocationOption[]>(() => normalizeLocationOptions(provinces));
+    const [provinceOptions, setProvinceOptions] = useState<LocationOption[]>([]);
     const [cityOptions, setCityOptions] = useState<LocationOption[]>([]);
     const [districtOptions, setDistrictOptions] = useState<LocationOption[]>([]);
     const [villageOptions, setVillageOptions] = useState<LocationOption[]>([]);
@@ -296,7 +298,7 @@ export default function Checkout() {
         });
     }, [addresses]);
 
-    const usingGuestAddress = isGuest || !addresses.length;
+    const usingGuestAddress = isGuest;
     const isIndonesiaAddress = useMemo(() => {
         const rawCountry = guestAddressForm.country?.trim() ?? '';
         if (!rawCountry.length) {
@@ -1187,8 +1189,9 @@ export default function Checkout() {
 
     const isInteractionLocked = isThankYou;
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
+    const [isModalAddAddressOpen, setIsModalAddAddressOpen] = useState(false);
+    const [selectedId, setSelectedId] = useState('');
+    const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<IDeliveryAddress | null>(null);
     useEffect(() => {
         if (typeof window === 'undefined') return;
         if (!midtransClientKey) return;
@@ -1236,23 +1239,30 @@ export default function Checkout() {
 
     const handleModalChange = useCallback(
         (nextOpen: boolean) => {
-            setIsModalOpen(nextOpen);
+            setIsModalAddAddressOpen(nextOpen);
             setIsChangeAddressOpen(false);
             if (!nextOpen) {
+                setSelectedId('');
+                setSelectedDeliveryAddress(null);
                 route('checkout.page');
             }
         },
-        [setIsModalOpen],
+        [setIsChangeAddressOpen, setIsModalAddAddressOpen, setSelectedDeliveryAddress, setSelectedId],
     );
+    const handleAddAddressClick = useCallback(() => {
+        setSelectedId('');
+        setSelectedDeliveryAddress(null);
+        setIsModalAddAddressOpen(true);
+    }, [setIsModalAddAddressOpen, setSelectedDeliveryAddress, setSelectedId]);
 
-    const [selectedId, setSelectedId] = useState('');
-    const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<IDeliveryAddress | null>(null);
-
-    const editAddressHandler = (addr: IDeliveryAddress) => {
-        setSelectedId(addr.id);
-        setSelectedDeliveryAddress(addr);
-        setIsModalOpen(true);
-    };
+    const editAddressHandler = useCallback(
+        (addr: IDeliveryAddress) => {
+            setSelectedId(addr.id);
+            setSelectedDeliveryAddress(addr);
+            setIsModalAddAddressOpen(true);
+        },
+        [setIsModalAddAddressOpen, setSelectedDeliveryAddress, setSelectedId],
+    );
 
     const handleReturnToProducts = useCallback(() => {
         if (typeof window !== 'undefined') {
@@ -1497,6 +1507,13 @@ export default function Checkout() {
 
     return (
         <>
+            <AddDeliveryAddressModal
+                open={isModalAddAddressOpen}
+                onOpenChange={handleModalChange}
+                deliveryAddress={selectedDeliveryAddress}
+                id={selectedId}
+                closeOnSuccess={false}
+            />
             <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
                 <div className="mb-8 space-y-3">
                     <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{isThankYou ? 'Thank You!' : 'Checkout'}</h1>
@@ -1553,7 +1570,7 @@ export default function Checkout() {
                                     {!usingGuestAddress ? (
                                         <Dialog open={isChangeAddressOpen} onOpenChange={setIsChangeAddressOpen}>
                                             <DialogTrigger asChild>
-                                                <Button variant="outline" size="sm" disabled={!addresses.length}>
+                                                <Button variant="outline" size="sm">
                                                     Change
                                                 </Button>
                                             </DialogTrigger>
@@ -1562,7 +1579,7 @@ export default function Checkout() {
                                                     <DialogTitle>Pick Delivery Address</DialogTitle>
                                                     <DialogDescription>Select one of the saved addresses to use for this order.</DialogDescription>
                                                 </DialogHeader>
-                                                <Button onClick={() => setIsModalOpen(true)} className="mb-4">
+                                                <Button onClick={handleAddAddressClick} className="mb-4">
                                                     Add Delivery Address
                                                 </Button>
                                                 <div className="max-h-[60vh] space-y-3 overflow-y-auto py-2">
@@ -1958,23 +1975,9 @@ export default function Checkout() {
                                                 Complete the required fields above before requesting shipping rates or paying for the order.
                                             </div>
                                         ) : null}
-
-                                        {!isGuest && addresses.length === 0 ? (
-                                            <div className="rounded-md border border-primary/40 bg-primary/5 px-4 py-3 text-sm text-primary">
-                                                Want to save this address for future orders?{' '}
-                                                <Button
-                                                    type="button"
-                                                    variant="link"
-                                                    className="px-0 font-semibold"
-                                                    onClick={() => setIsModalOpen(true)}
-                                                >
-                                                    Add Delivery Address
-                                                </Button>
-                                            </div>
-                                        ) : null}
                                     </div>
                                 ) : (
-                                    <div className="flex gap-3 text-sm">
+                                    <div className="flex items-center gap-3 text-sm">
                                         <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                                             <MapPin className="h-4 w-4" />
                                         </span>
@@ -2022,7 +2025,7 @@ export default function Checkout() {
                                     variant="outline"
                                     size="sm"
                                     onClick={handleShippingButtonClick}
-                                    disabled={isRequestingRates || !warehouse || !hasCheckoutItems}
+                                    disabled={isRequestingRates || !warehouse || !hasCheckoutItems || deliveryAddresses.length <= 0}
                                 >
                                     {isRequestingRates ? 'Loading...' : hasRates ? 'Change' : 'Load Rates'}
                                 </Button>
