@@ -6,9 +6,11 @@ import { usePage } from '@inertiajs/react';
 import { useCallback, useState } from 'react';
 
 export default function DeliveryAddress() {
-    const { auth, locale, translations, deliveryAddresses, provinces } = usePage<SharedData>().props;
+    const { auth, locale, translations, profile } = usePage<SharedData>().props;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const deliveryAddresses = profile.delivery_address;
 
     const handleModalChange = useCallback(
         (nextOpen: boolean) => {
@@ -62,13 +64,15 @@ export default function DeliveryAddress() {
                     ))}
                 </>
             ) : (
-                <>No Delivery Address</>
+                <>
+                    <br />
+                    No Delivery Address
+                </>
             )}
 
             <AddDeliveryAddressModal
                 open={isModalOpen}
                 onOpenChange={handleModalChange}
-                provinces={provinces}
                 deliveryAddress={selectedAddress}
                 id={selectedId}
                 closeOnSuccess={false}

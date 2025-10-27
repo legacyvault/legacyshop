@@ -1,4 +1,4 @@
-import type { Auth } from '@/types';
+import type { Auth, ICart } from '@/types';
 import { router } from '@inertiajs/react';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -12,13 +12,7 @@ export interface CartItem {
     // Server-side row id when using authenticated cart
     serverId?: string;
     // Optional selection metadata to support server sync
-    meta?: {
-        product_id?: string;
-        category_id?: string;
-        sub_category_id?: string | null;
-        division_id?: string | null;
-        variant_id?: string | null;
-    };
+    meta?: ICart;
 }
 
 interface CartContextType {

@@ -42,6 +42,10 @@ const mainNavItems: NavItem[] = [
                 title: 'Tags',
                 href: '/products/tags',
             },
+            {
+                title: 'Product',
+                href: '/products/product',
+            },
         ],
     },
     {
@@ -72,8 +76,18 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Orders',
         href: '/orders',
-        icon: ListOrdered
-    }
+        icon: ListOrdered,
+        child: [
+            {
+                title: 'Invoice',
+                href: '/orders/invoice',
+            },
+            {
+                title: 'Order',
+                href: '/orders/order',
+            },
+        ],
+    },
 ];
 
 const footerNavItems: NavItem[] = [

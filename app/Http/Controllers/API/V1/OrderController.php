@@ -33,6 +33,8 @@ class OrderController extends Controller
     {
         $request->validate([
             'customer_type' => 'required|in:guest,user',
+            'is_manual_invoice' => 'sometimes|boolean',
+            'source' => 'nullable|string',
             'payment_method' => 'required|string',
             'bank_payment' => 'nullable',
             'courier_code' => 'required|string',
@@ -46,6 +48,10 @@ class OrderController extends Controller
             'receiver_postal_code' => 'required|string',
             'receiver_city' => 'required|string',
             'receiver_province' => 'required|string',
+            'receiver_country' => 'nullable|string',
+            'shipping_duration_range' => 'nullable|string',
+            'shipping_duration_unit' => 'nullable|string',
+            'biteship_destination_id' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|uuid',
             'items.*.product_name' => 'required|string',
@@ -70,8 +76,8 @@ class OrderController extends Controller
             'email' => 'required_if:customer_type,guest|email',
             'contact_name' => 'required_if:customer_type,guest|string',
             'contact_phone' => 'required_if:customer_type,guest|string',
-            'latitude' => 'required_if:customer_type,guest',
-            'longitude' => 'required_if:customer_type,guest',
+            'latitude' => 'required_if:customer_type,guest|numeric',
+            'longitude' => 'required_if:customer_type,guest|numeric',
             'country' => 'required_if:customer_type,guest',
             'province' => 'required_if:customer_type,guest',
             'address' => 'required_if:customer_type,guest',
@@ -81,6 +87,7 @@ class OrderController extends Controller
             'postal_code' => 'required_if:customer_type,guest',
         ]);
 
+        $isManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
         $items = $request->items;
         $subtotal = collect($items)->sum(fn($item) => $item['quantity'] * $item['price']);
         $shippingFee = $request->shipping_fee;
@@ -98,15 +105,15 @@ class OrderController extends Controller
                     'contact_name' => $request->contact_name,
                     'contact_phone' => $request->contact_phone,
                     'biteship_destination_id' => $request->biteship_destination_id ?? null,
-                    'country' => $request->receiver_country ?? 'Indonesia',
-                    'province' => $request->receiver_province,
-                    'city' => $request->receiver_city,
+                    'country' => $request->receiver_country ?? $request->country ?? 'Indonesia',
+                    'province' => $request->receiver_province ?? $request->province,
+                    'city' => $request->receiver_city ?? $request->city,
                     'district' => $request->district ?? null,
                     'village' => $request->village ?? null,
-                    'address' => $request->receiver_address,
-                    'postal_code' => $request->receiver_postal_code,
-                    'latitude' => $request->latitude ?? 0,
-                    'longitude' => $request->longitude ?? 0,
+                    'address' => $request->receiver_address ?? $request->address,
+                    'postal_code' => $request->receiver_postal_code ?? $request->postal_code,
+                    'latitude' => $request->latitude !== null ? (float) $request->latitude : 0,
+                    'longitude' => $request->longitude !== null ? (float) $request->longitude : 0,
                 ]);
                 $guestId = $guest->id;
             } else {
@@ -122,9 +129,19 @@ class OrderController extends Controller
                 'shipping_fee' => $shippingFee,
                 'grand_total' => $grandTotal,
                 'payment_method' => $request->payment_method,
-                'payment_status' => 'unpaid',
-                'status' => 'pending',
+                'payment_status' => $isManualInvoice ? 'paid' : 'unpaid',
+                'status' => $isManualInvoice ? 'finished' : 'pending',
+                'paid_at' => $isManualInvoice ? now() : null,
             ]);
+
+            if ($isManualInvoice) {
+                $order->forceFill([
+                    'transaction_status' => 'settlement',
+                    'transaction_time' => now(),
+                    'transaction_expiry_time' => null,
+                    'snap_token' => null,
+                ])->save();
+            }
 
             // Create Order Items
             foreach ($items as $item) {
@@ -183,6 +200,15 @@ class OrderController extends Controller
             }
 
             DB::commit();
+
+            if ($isManualInvoice) {
+                $order->load(['items', 'shipment', 'guest', 'user']);
+
+                return response()->json([
+                    'message' => 'Order created successfully without payment processing.',
+                    'order' => $order,
+                ], 201);
+            }
 
             // Call payment gateway
             return $this->createMidtransSnapPayment($order);

@@ -694,6 +694,43 @@ class ProductController extends Controller
         return $product;
     }
 
+    public function getProductOptions(Request $request)
+    {
+        $limit  = (int) $request->input('limit', 50);
+        $search = $request->input('q');
+
+        if ($limit <= 0) {
+            $limit = 50;
+        }
+
+        $limit = min($limit, 200);
+
+        $query = Product::query()
+            ->select(['id', 'product_name', 'product_sku', 'product_price'])
+            ->orderBy('product_name', 'asc');
+
+        if ($search) {
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery
+                    ->where('product_name', 'like', "%{$search}%")
+                    ->orWhere('product_sku', 'like', "%{$search}%");
+            });
+        }
+
+        $products = $query->limit($limit)->get();
+
+        return response()->json([
+            'data' => $products->map(function (Product $product) {
+                return [
+                    'id'    => $product->id,
+                    'name'  => $product->product_name,
+                    'sku'   => $product->product_sku,
+                    'price' => (float) $product->product_price,
+                ];
+            }),
+        ]);
+    }
+
     public function createTag(Request $request)
     {
         $validator = Validator::make($request->all(), [

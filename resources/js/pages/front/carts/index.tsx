@@ -6,16 +6,25 @@ import { CartItem, useCart } from '@/contexts/CartContext';
 import FrontLayout from '@/layouts/front/front-layout';
 import { ICart, SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Heart, Minus, Plus, Trash2 } from 'lucide-react';
+import { Minus, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface PageProps extends SharedData {
     carts: ICart[];
 }
 
+interface SelectionSummary {
+    unit?: string;
+    category?: string;
+    subCategory?: string;
+    division?: string;
+    variant?: string;
+    variantColor?: string | null;
+}
+
 interface DetailedCartItem {
     id: string;
-    vendorId: string;
+    vendorId: string | null;
     vendorName: string;
     productName: string;
     attributes: string[];
@@ -26,6 +35,7 @@ interface DetailedCartItem {
     imageUrl: string;
     cart?: ICart;
     source: 'server' | 'local';
+    summary: SelectionSummary;
 }
 
 const FALLBACK_IMAGE = '/banner-example.jpg';
@@ -40,13 +50,7 @@ const formatCurrency = (value: number) =>
     }).format(Math.max(0, Math.round(value)));
 
 const buildCompositeId = (cart: ICart) =>
-    [
-        cart.product_id ?? '',
-        cart.category_id ?? '-',
-        cart.sub_category_id ?? '-',
-        cart.division_id ?? '-',
-        cart.variant_id ?? '-',
-    ].join('|');
+    [cart.product_id ?? '', cart.category_id ?? '-', cart.sub_category_id ?? '-', cart.division_id ?? '-', cart.variant_id ?? '-'].join('|');
 
 const firstEntity = <T,>(value: T | T[] | null | undefined): T | undefined => {
     if (Array.isArray(value)) {
@@ -55,56 +59,205 @@ const firstEntity = <T,>(value: T | T[] | null | undefined): T | undefined => {
     return value ?? undefined;
 };
 
-const computeOriginalPrice = (cart: ICart) => {
-    const productBase = Number(cart.product?.product_price ?? 0);
-    const subBase = Number(firstEntity(cart.sub_category)?.price ?? 0);
-    const divisionBase = Number(firstEntity(cart.division)?.price ?? 0);
-    const variantBase = Number(firstEntity(cart.variant)?.price ?? 0);
-    return Math.max(productBase + subBase + divisionBase + variantBase, 0);
+const normalizeId = (value: unknown) => {
+    if (typeof value === 'string' && value.length) return value;
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    return undefined;
 };
 
-const computeFinalPrice = (cart: ICart, contextItem?: CartItem) => {
-    const serverPrice = Number(cart.price_per_product ?? 0);
-    if (serverPrice > 0) {
-        return serverPrice;
-    }
-    if (contextItem?.price) {
-        return contextItem.price;
-    }
-    return computeOriginalPrice(cart);
+const toNumber = (value: unknown, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const extractAttributes = (cart: ICart) => {
-    const list: string[] = [];
-    const category = firstEntity(cart.category);
-    const subCategory = firstEntity(cart.sub_category);
-    const division = firstEntity(cart.division);
-    const variant = firstEntity(cart.variant);
+const computeDiscountedPrice = (price: number, discountPercent: number) => {
+    if (price <= 0) return 0;
+    const clampedDiscount = Math.max(0, Math.min(100, discountPercent));
+    const discounted = price - (price * clampedDiscount) / 100;
+    return Math.max(0, Math.round(discounted));
+};
 
-    if (variant?.name) {
-        list.push(variant.name);
+const resolveDiscountPercent = (
+    entity: any,
+    pivotFlagKey: 'use_subcategory_discount' | 'use_division_discount' | 'use_variant_discount',
+    fallbackDiscountKey: 'discount',
+) => {
+    if (!entity) return 0;
+    const pivot = entity?.pivot;
+    const manualDiscount = toNumber(pivot?.manual_discount);
+    const fallbackDiscount = toNumber(entity?.[fallbackDiscountKey]);
+    if (typeof pivot?.[pivotFlagKey] !== 'undefined') {
+        const shouldUseEntityDiscount = Number(pivot[pivotFlagKey]) === 1;
+        return shouldUseEntityDiscount ? fallbackDiscount : manualDiscount;
+    }
+    return manualDiscount || fallbackDiscount;
+};
+
+const resolveCategory = (cart: ICart | CartItem['meta'] | undefined) => {
+    if (!cart) return undefined;
+    const direct = firstEntity(cart.category);
+    if (direct) return direct;
+    const targetId = normalizeId(cart.category_id);
+    if (!targetId) return undefined;
+
+    const productCategories = cart.product?.categories ?? [];
+    const fromProduct = productCategories.find((item) => normalizeId(item.id) === targetId);
+    if (fromProduct) return fromProduct;
+
+    const unitCategories = cart.product?.unit?.categories ?? [];
+    return unitCategories.find((item) => normalizeId(item.id) === targetId);
+};
+
+const resolveSubCategory = (cart: ICart | CartItem['meta'] | undefined) => {
+    if (!cart) return undefined;
+    const direct = firstEntity(cart.sub_category);
+    if (direct) return direct;
+
+    const targetId = normalizeId(cart.sub_category_id);
+    if (!targetId) return undefined;
+
+    const productSubcategories = cart.product?.subcategories ?? [];
+    const fromProduct = productSubcategories.find((item) => normalizeId(item.id) === targetId);
+    if (fromProduct) return fromProduct;
+
+    const categories = cart.product?.categories ?? [];
+    for (const category of categories) {
+        const nested = category?.sub_categories ?? [];
+        const found = nested.find((item: any) => normalizeId(item?.id) === targetId);
+        if (found) return found;
     }
 
-    if (variant?.color) {
-        const colorLabel = variant.type === 'color' ? variant.color : variant.color;
-        if (colorLabel) {
-            list.push(colorLabel);
-        }
+    return undefined;
+};
+
+const resolveDivision = (cart: ICart | CartItem['meta'] | undefined) => {
+    if (!cart) return undefined;
+    const direct = firstEntity(cart.division);
+    if (direct) return direct;
+
+    const targetId = normalizeId(cart.division_id);
+    if (!targetId) return undefined;
+
+    const productDivisions = cart.product?.divisions ?? [];
+    const fromProduct = productDivisions.find((item) => normalizeId(item.id) === targetId);
+    if (fromProduct) return fromProduct;
+
+    const subcategory = resolveSubCategory(cart);
+    const nested = subcategory?.divisions ?? [];
+    return nested.find((item: any) => normalizeId(item?.id) === targetId);
+};
+
+const resolveVariant = (cart: ICart | CartItem['meta'] | undefined) => {
+    if (!cart) return undefined;
+    const direct = firstEntity(cart.variant);
+    if (direct) return direct;
+
+    const targetId = normalizeId(cart.variant_id);
+    if (!targetId) return undefined;
+
+    const productVariants = cart.product?.variants ?? [];
+    const fromProduct = productVariants.find((item) => normalizeId(item.id) === targetId);
+    if (fromProduct) return fromProduct;
+
+    const division = resolveDivision(cart);
+    const nested = division?.variants ?? [];
+    return nested.find((item: any) => normalizeId(item?.id) === targetId);
+};
+
+const extractSelectionSummary = (cart: ICart | CartItem['meta'] | undefined): SelectionSummary => {
+    if (!cart) {
+        return {};
     }
 
-    if (division?.name) {
-        list.push(division.name);
+    const category = resolveCategory(cart);
+    const subCategory = resolveSubCategory(cart);
+    const division = resolveDivision(cart);
+    const variant = resolveVariant(cart);
+
+    const unitName = cart.product?.unit?.name;
+    const variantColor = typeof variant?.color === 'string' && variant.color.trim().length ? variant.color : null;
+
+    return {
+        unit: unitName ?? undefined,
+        category: typeof category?.name === 'string' ? category.name : undefined,
+        subCategory: typeof subCategory?.name === 'string' ? subCategory.name : undefined,
+        division: typeof division?.name === 'string' ? division.name : undefined,
+        variant: typeof variant?.name === 'string' ? variant.name : undefined,
+        variantColor,
+    };
+};
+
+const buildAttributeList = (summary: SelectionSummary) => {
+    const attributes: string[] = [];
+
+    if (summary.variant) {
+        attributes.push(summary.variant);
     }
 
-    if (subCategory?.name) {
-        list.push(subCategory.name);
+    if (summary.variantColor && summary.variantColor !== summary.variant) {
+        attributes.push(summary.variantColor);
     }
 
-    if (category?.name) {
-        list.push(category.name);
+    if (summary.division) {
+        attributes.push(summary.division);
     }
 
-    return Array.from(new Set(list));
+    if (summary.subCategory) {
+        attributes.push(summary.subCategory);
+    }
+
+    if (summary.category) {
+        attributes.push(summary.category);
+    }
+
+    return Array.from(new Set(attributes));
+};
+
+const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, contextItem?: CartItem) => {
+    const fallbackPrice = toNumber(contextItem?.price);
+    if (!cart) {
+        return {
+            finalPrice: fallbackPrice,
+            originalPrice: fallbackPrice,
+            discountPercent: 0,
+        };
+    }
+
+    const productBase = toNumber(cart.product?.product_price);
+    const productDiscount = toNumber(cart.product?.product_discount);
+
+    const subCategory = resolveSubCategory(cart);
+    const subBase = toNumber(subCategory?.price);
+    const subDiscount = resolveDiscountPercent(subCategory, 'use_subcategory_discount', 'discount');
+
+    const division = resolveDivision(cart);
+    const divisionBase = toNumber(division?.price);
+    const divisionDiscount = resolveDiscountPercent(division, 'use_division_discount', 'discount');
+
+    const variant = resolveVariant(cart);
+    const variantBase = toNumber(variant?.price);
+    const variantDiscount = resolveDiscountPercent(variant, 'use_variant_discount', 'discount');
+
+    const originalPrice = Math.max(0, Math.round(productBase + subBase + divisionBase + variantBase));
+
+    const discountedBase = computeDiscountedPrice(productBase, productDiscount);
+    const discountedSub = computeDiscountedPrice(subBase, subDiscount);
+    const discountedDivision = computeDiscountedPrice(divisionBase, divisionDiscount);
+    const discountedVariant = computeDiscountedPrice(variantBase, variantDiscount);
+
+    const computedFinal = discountedBase + discountedSub + discountedDivision + discountedVariant;
+    const serverPrice = toNumber((cart as ICart)?.price_per_product);
+
+    const finalPrice = [serverPrice, computedFinal, fallbackPrice].find((price) => price > 0) ?? 0;
+
+    const discountPercent =
+        originalPrice > 0 && finalPrice > 0 ? Math.max(0, Math.round(((originalPrice - finalPrice) / originalPrice) * 100)) : 0;
+
+    return {
+        finalPrice,
+        originalPrice: originalPrice || finalPrice,
+        discountPercent,
+    };
 };
 
 export default function Carts() {
@@ -123,7 +276,6 @@ export default function Carts() {
 
 function CartContent({ carts }: { carts: ICart[] | null }) {
     const { items: contextItems, updateQuantity, removeItem } = useCart();
-
     const contextMap = useMemo(() => {
         const map = new Map<string, CartItem>();
         contextItems.forEach((item) => {
@@ -138,26 +290,26 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
             const compositeId = buildCompositeId(cart);
             const contextItem = contextMap.get(compositeId);
             const quantity = contextItem?.quantity ?? Number(cart.quantity ?? 0) ?? 0;
-            const finalPrice = computeFinalPrice(cart, contextItem);
-            const originalPrice = computeOriginalPrice(cart) || finalPrice;
-            const discountPercent = originalPrice > 0 ? Math.max(0, Math.round(((originalPrice - finalPrice) / originalPrice) * 100)) : 0;
+            const summary = extractSelectionSummary(cart);
+            const pricing = computePricingDetails(cart, contextItem);
             const imageUrl = cart.product?.pictures?.[0]?.url ?? FALLBACK_IMAGE;
-            const vendorName = cart.product?.unit?.name ?? 'Legacy Vault';
-            const vendorId = cart.product?.unit?.id ?? cart.product_id;
+            const vendorName = summary.unit ?? cart.product?.unit?.name ?? 'Legacy Vault';
+            const vendorId = cart.product?.unit?.id ?? cart.product_id ?? compositeId;
 
             return {
                 id: compositeId,
                 vendorId: vendorId ?? compositeId,
                 vendorName,
                 productName: cart.product?.product_name ?? 'Product',
-                attributes: extractAttributes(cart),
+                attributes: buildAttributeList(summary),
                 quantity: Math.max(quantity, 1),
-                finalPrice,
-                originalPrice: Math.max(originalPrice, finalPrice),
-                discountPercent,
+                finalPrice: pricing.finalPrice,
+                originalPrice: Math.max(pricing.originalPrice, pricing.finalPrice),
+                discountPercent: pricing.discountPercent,
                 imageUrl,
                 cart,
                 source: 'server',
+                summary,
             } as DetailedCartItem;
         });
 
@@ -165,20 +317,28 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
             return mappedServer;
         }
 
-        return contextItems.map((item) => ({
-            id: item.id,
-            vendorId: 'guest-cart',
-            vendorName: 'Legacy Vault',
-            productName: item.name,
-            attributes: [],
-            quantity: Math.max(item.quantity, 1),
-            finalPrice: item.price,
-            originalPrice: item.price,
-            discountPercent: 0,
-            imageUrl: item.image ?? FALLBACK_IMAGE,
-            cart: undefined,
-            source: 'local',
-        }));
+        return contextItems.map((item) => {
+            const meta = item.meta;
+            const summary = extractSelectionSummary(meta);
+            const pricing = computePricingDetails(meta, item);
+            const vendorName = summary.unit ?? 'Legacy Vault';
+
+            return {
+                id: item.id,
+                vendorId: meta?.product?.unit?.id ?? null,
+                vendorName,
+                productName: item.name,
+                attributes: buildAttributeList(summary),
+                quantity: Math.max(item.quantity, 1),
+                finalPrice: pricing.finalPrice || item.price,
+                originalPrice: Math.max(pricing.originalPrice, pricing.finalPrice || item.price),
+                discountPercent: pricing.discountPercent,
+                imageUrl: item.image ?? FALLBACK_IMAGE,
+                cart: meta as ICart | undefined,
+                source: 'local',
+                summary,
+            } as DetailedCartItem;
+        });
     }, [carts, contextMap, contextItems]);
 
     const hasInitializedSelectionRef = useRef(false);
@@ -203,31 +363,21 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
         });
     }, [detailedItems]);
 
-    const groupedItems = useMemo(() => {
-        const groups: { key: string; vendorName: string; items: DetailedCartItem[] }[] = [];
-        const indexMap = new Map<string, number>();
-
-        detailedItems.forEach((item: any) => {
-            if (!indexMap.has(item.vendorId)) {
-                indexMap.set(item.vendorId, groups.length);
-                groups.push({ key: item.vendorId, vendorName: item.vendorName, items: [item] });
-            } else {
-                const idx = indexMap.get(item.vendorId);
-                if (typeof idx === 'number') {
-                    groups[idx].items.push(item);
-                }
-            }
-        });
-
-        return groups;
-    }, [detailedItems]);
-
     const selectedItems = useMemo(() => detailedItems.filter((item) => selectedIds.includes(item.id)), [detailedItems, selectedIds]);
 
     useEffect(() => {
         const payload = selectedItems.map((item) => {
             const weightSource = item.cart?.product?.product_weight;
             const parsedWeight = typeof weightSource === 'string' ? Number(weightSource) : Number(weightSource ?? 0);
+            const categoryEntity = resolveCategory(item.cart);
+            const subCategoryEntity = resolveSubCategory(item.cart);
+            const divisionEntity = resolveDivision(item.cart);
+            const variantEntity = resolveVariant(item.cart);
+            const unitId = normalizeId(item.cart?.product?.unit?.id ?? item.cart?.product?.unit_id);
+            const categoryId = normalizeId(item.cart?.category_id ?? item.cart?.category?.[0]?.id);
+            const subCategoryId = normalizeId(item.cart?.sub_category_id ?? item.cart?.sub_category?.[0]?.id);
+            const divisionId = normalizeId(item.cart?.division_id ?? item.cart?.division?.[0]?.id);
+            const variantId = normalizeId(item.cart?.variant_id ?? item.cart?.variant?.[0]?.id);
             return {
                 id: item.id,
                 store: item.vendorName,
@@ -243,6 +393,24 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                 productId: item.cart?.product_id ?? item.cart?.product?.id ?? null,
                 protectionPrice: 0,
                 protectionLabel: null,
+                unitId: unitId ?? null,
+                categoryId: categoryId ?? null,
+                categoryDescription: categoryEntity?.description ?? null,
+                subCategoryId: subCategoryId ?? null,
+                subCategoryDescription: subCategoryEntity?.description ?? null,
+                divisionId: divisionId ?? null,
+                divisionDescription: divisionEntity?.description ?? null,
+                variantId: variantId ?? null,
+                variantColor: item.summary.variantColor ?? null,
+                variantDescription: variantEntity?.description ?? null,
+                selectionSummary: {
+                    unit: item.summary.unit ?? item.vendorName ?? null,
+                    category: item.summary.category ?? null,
+                    subCategory: item.summary.subCategory ?? null,
+                    division: item.summary.division ?? null,
+                    variant: item.summary.variant ?? null,
+                    variantColor: item.summary.variantColor ?? null,
+                },
             };
         });
 
@@ -286,14 +454,10 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
         <section className="bg-muted/30 py-10">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 lg:flex-row">
                 <div className="flex-1 space-y-4">
-                    <div className='mb-0 flex justify-end'>
-                        <Button
-                            onClick={handleRemoveSelected}
-                            disabled={!selectedIds.length}
-                            variant={'link'}
-                            className='text-destructive'
-                        >
-                            <Trash2/>Clear All
+                    <div className="mb-0 flex justify-end">
+                        <Button onClick={handleRemoveSelected} disabled={!selectedIds.length} variant={'link'} className="text-destructive">
+                            <Trash2 />
+                            Clear All
                         </Button>
                     </div>
 
@@ -310,122 +474,119 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                         </div>
                     </div>
 
-                    {groupedItems.length === 0 ? (
+                    {detailedItems.length === 0 ? (
                         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-background p-12 text-center text-muted-foreground">
                             <p className="text-lg font-semibold text-foreground">Your cart still empty</p>
-                            <p className="mt-2 max-w-sm text-sm">
-                                Come discover our latest collection and add your favorite products to your cart.
-                            </p>
+                            <p className="mt-2 max-w-sm text-sm">Come discover our latest collection and add your favorite products to your cart.</p>
                             <Button asChild className="mt-6">
                                 <Link href={route('products')}>Start Explore</Link>
                             </Button>
                         </div>
                     ) : (
-                        groupedItems.map((group) => (
-                            <div key={group.key} className="rounded-2xl border bg-background shadow-sm">
-                                <div className="flex items-center gap-3 border-b px-6 py-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                                    <span className="inline-flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                        {group.vendorName.slice(0, 1)}
-                                    </span>
-                                    <span className="text-base font-semibold normal-case text-foreground">{group.vendorName}</span>
-                                </div>
-
-                                <div className="divide-y">
-                                    {group.items.map((item) => {
-                                        const isChecked = selectedIds.includes(item.id);
-                                        const attributesLabel = item.attributes.join(', ');
-
-                                        return (
-                                            <div key={item.id} className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:gap-6">
-                                                <div className="flex items-start gap-4">
-                                                    <Checkbox
-                                                        checked={isChecked}
-                                                        onCheckedChange={(checked) =>
-                                                            setSelectedIds((prev) => {
-                                                                if (checked === true) {
-                                                                    if (prev.includes(item.id)) return prev;
-                                                                    return [...prev, item.id];
-                                                                }
-                                                                return prev.filter((id) => id !== item.id);
-                                                            })
+                        detailedItems.map((item) => {
+                            const isChecked = selectedIds.includes(item.id);
+                            return (
+                                <div key={item.id} className="rounded-2xl border bg-background px-6 py-5 shadow-sm">
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+                                        <div className="flex items-start gap-4">
+                                            <Checkbox
+                                                checked={isChecked}
+                                                onCheckedChange={(checked) =>
+                                                    setSelectedIds((prev) => {
+                                                        if (checked === true) {
+                                                            if (prev.includes(item.id)) return prev;
+                                                            return [...prev, item.id];
                                                         }
-                                                        aria-label={`Pilih ${item.productName}`}
-                                                    />
-                                                    <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border">
-                                                        <img src={item.imageUrl} alt={item.productName} className="h-full w-full object-cover" />
-                                                        {item.discountPercent > 0 && (
-                                                            <Badge variant="destructive" className="absolute left-1 top-1">
-                                                                -{item.discountPercent}%
-                                                            </Badge>
-                                                        )}
-                                                    </div>
+                                                        return prev.filter((id) => id !== item.id);
+                                                    })
+                                                }
+                                                aria-label={`Pilih ${item.productName}`}
+                                            />
+                                            <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border">
+                                                <img src={item.imageUrl} alt={item.productName} className="h-full w-full object-cover" />
+                                                {item.discountPercent > 0 && (
+                                                    <Badge variant="destructive" className="absolute top-1 left-1">
+                                                        -{item.discountPercent}%
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="space-y-3">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <Badge variant="outline" className="border-primary/40 text-primary">
+                                                        {item.vendorName}
+                                                    </Badge>
+                                                    {item.attributes.length ? (
+                                                        <span className="text-xs text-muted-foreground">{item.attributes.join(' • ')}</span>
+                                                    ) : null}
+                                                </div>
+                                                <h3 className="text-base font-semibold text-foreground">{item.productName}</h3>
+                                                <div className="space-y-1 text-sm text-muted-foreground">
+                                                    {item.summary.category ? <p>Category: {item.summary.category}</p> : null}
+                                                    {item.summary.subCategory ? <p>Sub Category: {item.summary.subCategory}</p> : null}
+                                                    {item.summary.division ? <p>Division: {item.summary.division}</p> : null}
+                                                    {item.summary.variant ? <p>Variant: {item.summary.variant}</p> : null}
+                                                    {item.summary.variantColor && item.summary.variantColor !== item.summary.variant ? (
+                                                        <p>Variant Color: {item.summary.variantColor}</p>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col items-stretch gap-4 text-right sm:flex-row sm:items-center sm:gap-6">
+                                                <div className="min-w-[120px]">
+                                                    <div className="text-lg font-semibold text-foreground">{formatCurrency(item.finalPrice)}</div>
+                                                    {item.discountPercent > 0 && (
+                                                        <div className="text-sm text-muted-foreground line-through">
+                                                            {formatCurrency(item.originalPrice)}
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                                    <div className="space-y-2">
-                                                        <h3 className="text-base font-semibold text-foreground">{item.productName}</h3>
-                                                        {attributesLabel ? (
-                                                            <p className="text-sm text-muted-foreground">{attributesLabel}</p>
-                                                        ) : null}
+                                                <div className="flex items-center justify-between gap-3 sm:justify-center">
+                                                    <div className="flex items-center rounded-full border bg-muted/40">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleQuantityChange(item, -1)}
+                                                            className="flex h-9 w-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
+                                                            aria-label={`Kurangi jumlah ${item.productName}`}
+                                                        >
+                                                            <Minus className="h-4 w-4" />
+                                                        </button>
+                                                        <span className="min-w-[2ch] text-center text-sm font-semibold">{item.quantity}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleQuantityChange(item, 1)}
+                                                            className="flex h-9 w-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
+                                                            aria-label={`Tambah jumlah ${item.productName}`}
+                                                        >
+                                                            <Plus className="h-4 w-4" />
+                                                        </button>
                                                     </div>
-
-                                                    <div className="flex flex-col items-stretch gap-4 text-right sm:flex-row sm:items-center sm:gap-6">
-                                                        <div className="min-w-[120px]">
-                                                            <div className="text-lg font-semibold text-foreground">
-                                                                {formatCurrency(item.finalPrice)}
-                                                            </div>
-                                                            {item.discountPercent > 0 && (
-                                                                <div className="text-sm text-muted-foreground line-through">
-                                                                    {formatCurrency(item.originalPrice)}
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        <div className="flex items-center justify-between gap-3 sm:justify-center">
-                                                            <div className="flex items-center rounded-full border bg-muted/40">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleQuantityChange(item, -1)}
-                                                                    className="flex h-9 w-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
-                                                                    aria-label={`Kurangi jumlah ${item.productName}`}
-                                                                >
-                                                                    <Minus className="h-4 w-4" />
-                                                                </button>
-                                                                <span className="min-w-[2ch] text-center text-sm font-semibold">{item.quantity}</span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleQuantityChange(item, 1)}
-                                                                    className="flex h-9 w-9 items-center justify-center text-muted-foreground transition hover:text-foreground"
-                                                                    aria-label={`Tambah jumlah ${item.productName}`}
-                                                                >
-                                                                    <Plus className="h-4 w-4" />
-                                                                </button>
-                                                            </div>
-                                                            <div className="flex items-center gap-3 text-muted-foreground">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        removeItem(item.id);
-                                                                        setSelectedIds((prev) => prev.filter((id) => id !== item.id));
-                                                                    }}
-                                                                    className="transition hover:text-destructive"
-                                                                    aria-label={`Hapus ${item.productName}`}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </button>
-                                                            </div>
-                                                        </div>
+                                                    <div className="flex items-center gap-3 text-muted-foreground">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                removeItem(item.id);
+                                                                setSelectedIds((prev) => prev.filter((id) => id !== item.id));
+                                                            }}
+                                                            className="transition hover:text-destructive"
+                                                            aria-label={`Hapus ${item.productName}`}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
-                
+
                 {/* SUMMARY SECTION */}
                 <aside className="w-full max-w-sm space-y-4">
                     <div className="rounded-2xl border bg-background p-6 shadow-sm">
@@ -449,11 +610,9 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                         <Link href={'/checkout'}>
                             <Button className="mt-6 w-full" size="lg" disabled={!selectedItems.length}>
                                 Checkout{totals.count ? ` (${totals.count})` : ''}
-                            </Button>             
+                            </Button>
                         </Link>
-
                     </div>
-
                 </aside>
             </div>
         </section>

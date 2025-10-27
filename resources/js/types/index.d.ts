@@ -52,6 +52,7 @@ export interface SharedData {
     articles: IArticle[];
     carts: ICart[];
     ordersPaginated?: IOrdersPaginated;
+    invoicesPaginated?: IInvoicesPaginated;
     warehouses: IWarehouse[];
     warehouse?: IWarehouse | null;
     provinces: IProvince[];
@@ -190,7 +191,7 @@ export interface IProfile {
     updated_at: string | Date;
     user_id: string;
     date_of_birth: string;
-    delivery_address: string;
+    delivery_address: IDeliveryAddress[];
 }
 
 export interface IUnit {
@@ -325,6 +326,75 @@ export interface IOrdersPaginated {
     total?: number;
     to?: number;
     data: IRootHistoryOrders[];
+}
+
+export interface IInvoiceItem {
+    id: string;
+    invoice_id?: string;
+    product_id?: string | null;
+    product_name: string;
+    product_description?: string | null;
+    product_image?: string | null;
+    category_id?: string | null;
+    category_name?: string | null;
+    category_description?: string | null;
+    sub_category_id?: string | null;
+    sub_category_name?: string | null;
+    sub_category_description?: string | null;
+    division_id?: string | null;
+    division_name?: string | null;
+    division_description?: string | null;
+    variant_id?: string | null;
+    variant_name?: string | null;
+    variant_description?: string | null;
+    quantity: number;
+    price: number | string;
+    total: number | string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface IInvoice {
+    id: string;
+    invoice_number: string;
+    status: 'draft' | 'issued' | 'void';
+    issued_at: string | null;
+    due_at: string | null;
+    subtotal: number | string;
+    discount_total: number | string;
+    tax_total: number | string;
+    shipping_total: number | string;
+    grand_total: number | string;
+    bill_to_name?: string | null;
+    bill_to_email?: string | null;
+    bill_to_phone?: string | null;
+    bill_to_address?: string | null;
+    bill_to_city?: string | null;
+    bill_to_province?: string | null;
+    bill_to_postal_code?: string | null;
+    bill_to_country?: string | null;
+    pdf_path?: string | null;
+    created_at: string;
+    updated_at: string;
+    items?: IInvoiceItem[];
+    items_count?: number;
+}
+
+export interface IInvoicesPaginated {
+    current_page: number;
+    from: number | null;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: IInvoice[];
+}
+
+export interface IProductOption {
+    id: string;
+    name: string;
+    sku?: string | null;
+    price: number;
 }
 
 export interface IRootCategories {
