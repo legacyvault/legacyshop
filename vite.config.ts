@@ -8,7 +8,7 @@ export default defineConfig({
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
-            ssr: 'resources/js/ssr.tsx',
+            ssr: 'resources/js/pages/ssr.tsx',
             refresh: true,
         }),
         react(),
@@ -20,6 +20,15 @@ export default defineConfig({
     resolve: {
         alias: {
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
+            '@inertiajs/core/server': resolve(__dirname, 'resources/noop.ts'),
+            '@inertiajs/react/server': resolve(__dirname, 'resources/noop.ts'),
         },
     },
+    optimizeDeps: {
+        exclude: ['@inertiajs/react/server', '@inertiajs/core/server'],
+    },
+    ssr: {
+        noExternal: ['@inertiajs/react', '@inertiajs/core'],
+    },
 });
+
