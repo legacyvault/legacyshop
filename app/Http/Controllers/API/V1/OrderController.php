@@ -450,4 +450,28 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
+    public function handleNotification(Request $request)
+    {
+        $notification = $request->all();
+
+        Log::info('Midtrans Notification:', $notification);
+
+        // Ambil order_id dari notifikasi
+        $orderId = $notification['order_id'] ?? null;
+        $transactionStatus = $notification['transaction_status'] ?? null;
+
+        if (!$orderId) {
+            return response()->json(['error' => 'Missing order_id'], 400);
+        }
+
+        // Cari order dari database kamu
+        $order = Order::where('order_number', $orderId)->first();
+
+        if (!$order) {
+            return response()->json(['error' => 'Order not found'], 404);
+        }
+
+        return response()->json(['message' => 'OK'], 200);
+    }
 }
