@@ -24,6 +24,6 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-Route::group(['prefix' => 'v1'], function () {
-    Route::post('create-warehouse', [WarehouseController::class, 'createWarehouse'])->name('create.warehouse');
-});
+// Route::group(['prefix' => 'v1'], function () {
+//     Route::post('create-warehouse', [WarehouseController::class, 'createWarehouse'])->name('create.warehouse');
+// });
