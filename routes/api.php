@@ -1,16 +1,6 @@
 <?php
 
-use App\Http\Controllers\API\V1\ArticleController;
-use App\Http\Controllers\API\V1\AwsCognitoAuthController;
-use App\Http\Controllers\API\V1\InventoryController;
-use App\Http\Controllers\API\V1\ProductController;
-use App\Http\Controllers\API\V1\ProfileController;
-use App\Http\Controllers\API\V1\ProjectController;
-use App\Http\Controllers\API\V1\QuotationController;
-use App\Http\Controllers\API\V1\RoleController;
-use App\Http\Controllers\API\V1\UserController;
-use App\Http\Controllers\API\V1\UsersController;
-use App\Http\Controllers\API\V1\WarehouseController;
+use App\Http\Controllers\API\V1\OrderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -25,5 +15,5 @@ use Illuminate\Support\Facades\Route;
 |
 */
 Route::group(['prefix' => 'v1'], function () {
-    Route::post('create-warehouse', [WarehouseController::class, 'createWarehouse'])->name('create.warehouse');
+    Route::get('notification', [OrderController::class, 'handleNotification']);
 });
