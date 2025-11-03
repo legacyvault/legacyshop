@@ -226,7 +226,6 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
             return [];
         }
 
-        console.log(parsed);
         return parsed.map((item) => ({
             ...item,
             quantity: Math.max(1, Number(item.quantity ?? 1)),
@@ -1367,8 +1366,6 @@ export default function Checkout() {
         if (csrfToken) {
             headers['X-CSRF-TOKEN'] = csrfToken;
         }
-
-        console.log(checkoutItems);
 
         const itemsPayload = checkoutItems.map((item) => ({
             cart_id: item.cartId ?? null,
