@@ -2,8 +2,9 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "build:ssr": "vite build --ssr resources/js/pages/ssr.tsx",
+        "build": "vite build --config vite.client.config.ts",
+        "build:ssr": "vite build --config vite.ssr.config.ts",
+        "start:ssr": "node build-ssr/ssr.js",
         "dev": "vite",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
