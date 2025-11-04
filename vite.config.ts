@@ -8,7 +8,7 @@ export default defineConfig({
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
-            ssr: 'resources/js/pages/ssr.tsx',
+            ssr: 'resources/js/pages/ssr.tsx', //it already correct
             refresh: true,
         }),
         react(),
