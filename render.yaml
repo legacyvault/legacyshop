@@ -1,0 +1,62 @@
+services:
+    - type: web
+      name: legacy-vault
+      env: docker
+      plan: starter # adjust as needed
+      autoDeploy: true
+      repo: https://github.com/<you>/<your-repo> # or connect in dashboard
+      # Build is handled by Dockerfile
+      healthCheckPath: /
+      envVars:
+          - key: APP_ENV
+            value: production
+          - key: APP_DEBUG
+            value: false
+          - key: APP_URL
+            value: https://<your-domain-or-render-url>
+          - key: INERTIA_SSR_ENABLED
+            value: true
+          # Generate APP_KEY in dashboard once (or set here)
+          - key: APP_KEY
+            generateValue: true
+          # Example: using Render PostgreSQL
+          - key: DB_CONNECTION
+            value: pgsql
+          - key: DB_HOST
+            fromDatabase:
+                name: legacy-vault-db
+                property: host
+          - key: DB_PORT
+            fromDatabase:
+                name: legacy-vault-db
+                property: port
+          - key: DB_DATABASE
+            fromDatabase:
+                name: legacy-vault-db
+                property: database
+          - key: DB_USERNAME
+            fromDatabase:
+                name: legacy-vault-db
+                property: user
+          - key: DB_PASSWORD
+            fromDatabase:
+                name: legacy-vault-db
+                property: password
+
+      disk:
+          name: storage
+          mountPath: /app/storage
+          sizeGB: 1
+
+      startCommand: >
+          php artisan migrate --force &&
+          php artisan config:cache &&
+          php artisan route:cache &&
+          php artisan view:cache &&
+          /usr/bin/supervisord -c /opt/docker/etc/supervisor.d/supervisord.conf
+
+databases:
+    - name: legacy-vault-db
+      databaseName: legacy_vault
+      plan: free
+      ipAllowList: []
