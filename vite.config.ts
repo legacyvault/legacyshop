@@ -20,8 +20,6 @@ export default defineConfig({
     resolve: {
         alias: {
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
-            '@inertiajs/core/server': resolve(__dirname, 'resources/noop.ts'),
-            '@inertiajs/react/server': resolve(__dirname, 'resources/noop.ts'),
         },
     },
     optimizeDeps: {
@@ -31,4 +29,3 @@ export default defineConfig({
         noExternal: ['@inertiajs/react', '@inertiajs/core'],
     },
 });
-
