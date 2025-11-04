@@ -23,7 +23,7 @@ export default defineConfig({
         },
     },
     optimizeDeps: {
-        exclude: ['@inertiajs/react/server', '@inertiajs/core/server'],
+        exclude: [],
     },
     ssr: {
         noExternal: ['@inertiajs/react', '@inertiajs/core'],
