@@ -14,18 +14,21 @@ export default defineConfig({
         react(),
         tailwindcss(),
     ],
-    esbuild: {
-        jsx: 'automatic',
-    },
+    esbuild: { jsx: 'automatic' },
     resolve: {
         alias: {
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
         },
+        // helps vite prefer browser condition for packages that export it
+        conditions: ['browser', 'module', 'import'],
+    },
+    // IMPORTANT: only mark server libs noExternal for the SSR build
+    ssr: {
+        noExternal: ['@inertiajs/react', '@inertiajs/server'],
+        // (remove '@inertiajs/core' here)
     },
     optimizeDeps: {
-        exclude: [],
-    },
-    ssr: {
-        noExternal: ['@inertiajs/react', '@inertiajs/core'],
+        // keep the server build out of dev optimizer
+        exclude: ['@inertiajs/server'],
     },
 });
