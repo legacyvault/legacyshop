@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class OrderHistoryController extends Controller
 {
     public function getUserOrderHistory(Request $request)
     {
-        $user = $request->user();
+        $user = Auth::user();
         $perPage = max((int) $request->input('per_page', 15), 1);
 
         $search          = $request->input('q');
