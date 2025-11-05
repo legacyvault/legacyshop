@@ -24,14 +24,10 @@ class OrderHistoryController extends Controller
                 'items' => function($query) {
                     $query->orderBy('product_name', 'asc');
                 }, 
-                'shipment', 
-                'guest'
+                'shipment'
             ])
             ->where(function ($query) use ($user) {
-                $query->where('user_id', $user->id)
-                    ->orWhereHas('guest', function ($guestQuery) use ($user) {
-                        $guestQuery->where('email', $user->email);
-                    });
+                $query->where('user_id', $user->id);
             })
             ->orderBy('created_at', 'desc');
 
