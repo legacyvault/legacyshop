@@ -49,7 +49,7 @@ class Order extends Model
 
             $newNumber = str_pad($lastNumber + 1, 10, '0', STR_PAD_LEFT);
 
-            $order->order_number = 'ORDERTEST-' . $newNumber;
+            $order->order_number = 'ORDERTESTNEW-' . $newNumber;
         });
     }
 
