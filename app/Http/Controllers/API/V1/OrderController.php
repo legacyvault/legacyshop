@@ -8,7 +8,11 @@ use App\Models\OrderItems;
 use App\Models\OrderShipments;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Division;
 use App\Models\Guest;
+use App\Models\SubCategory;
+use App\Models\Variant;
+use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -129,7 +133,7 @@ class OrderController extends Controller
                 'shipping_fee' => $shippingFee,
                 'grand_total' => $grandTotal,
                 'payment_method' => $request->payment_method,
-                'payment_status' => $isManualInvoice ? 'paid' : 'unpaid',
+                'payment_status' => $isManualInvoice ? 'payment_received' : 'awaiting_payment',
                 'status' => $isManualInvoice ? 'finished' : 'pending',
                 'paid_at' => $isManualInvoice ? now() : null,
             ]);
@@ -170,7 +174,38 @@ class OrderController extends Controller
                 ]);
             }
 
-            // 🚚 Create Shipment
+            // Minus stock
+            try {
+                foreach ($items as $item) {
+                    if (!empty($item['variant_id'])) {
+                        $variant = Variant::find($item['variant_id']);
+                        if ($variant) {
+                            $newStock = max(0, $variant->total_stock - $item['quantity']);
+                            $variant->update(['total_stock' => $newStock]);
+                        }
+                    }
+                    if (!empty($item['division_id'])) {
+                        $division = Division::find($item['division_id']);
+                        if ($division) {
+                            $newStock = max(0, $division->total_stock - $item['quantity']);
+                            $division->update(['total_stock' => $newStock]);
+                        }
+                    }
+
+                    if (!empty($item['sub_category_id'])) {
+                        $subCategory = SubCategory::find($item['sub_category_id']);
+                        if ($subCategory) {
+                            $newStock = max(0, $subCategory->total_stock - $item['quantity']);
+                            $subCategory->update(['total_stock' => $newStock]);
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                Log::error('Error Calculating Stock Checkout: ' . $e);
+                throw $e;
+            }
+
+            //Create Shipment
             OrderShipments::create([
                 'id' => Str::uuid(),
                 'order_id' => $order->id,
@@ -346,6 +381,7 @@ class OrderController extends Controller
         return redirect()->back()->withErrors('Failed to get transaction status.')->withInput();
     }
 
+    //Currently use SNAP
     public function createMidtransSnapPayment($order)
     {
         try {
@@ -396,8 +432,8 @@ class OrderController extends Controller
 
             if ($response->successful()) {
                 $order->update([
-                    'payment_status' => 'pending',
-                    'status' => 'awaiting_payment',
+                    'payment_status' => 'awaiting_payment',
+                    'status' => 'pending',
                     'snap_token' => $result['token'],
                 ]);
 
@@ -453,25 +489,91 @@ class OrderController extends Controller
 
     public function handleNotification(Request $request)
     {
-        $notification = $request->all();
+        try {
+            $notification = $request->all();
 
-        Log::info('Midtrans Notification:', $notification);
+            Log::info('Midtrans Notification:', $notification);
 
-        // Ambil order_id dari notifikasi
-        $orderId = $notification['order_id'] ?? null;
-        $transactionStatus = $notification['transaction_status'] ?? null;
+            $orderId = $notification['order_id'] ?? null;
+            $transaction_id = $notification['ransaction_id'] ?? null;
+            $transaction_status = $notification['transaction_status'] ?? null;
+            $expiry_time = $notification['expiry_time'] ?? null;
 
-        if (!$orderId) {
-            return response()->json(['error' => 'Missing order_id'], 400);
+            if (!$orderId) {
+                return response()->json(['error' => 'Missing order_id'], 400);
+            }
+
+            // Cari order dari database kamu
+            $order = Order::where('order_number', $orderId)->first();
+
+            if (!$order) {
+                return response()->json(['error' => 'Order not found'], 404);
+            }
+
+            if ($transaction_status == 'expire') {
+
+                //Return stocks
+                $orderItems = $order->items()->get();
+
+                foreach ($orderItems as $item) {
+                    try {
+                        if (!empty($item->variant_id)) {
+                            $variant = Variant::find($item->variant_id);
+                            if ($variant) {
+                                $variant->update([
+                                    'total_stock' => $variant->total_stock + $item->quantity
+                                ]);
+                            }
+                        }
+
+                        if (!empty($item->division_id)) {
+                            $division = Division::find($item->division_id);
+                            if ($division) {
+                                $division->update([
+                                    'total_stock' => $division->total_stock + $item->quantity
+                                ]);
+                            }
+                        }
+
+                        if (!empty($item->sub_category_id)) {
+                            $subCategory = SubCategory::find($item->sub_category_id);
+                            if ($subCategory) {
+                                $subCategory->update([
+                                    'total_stock' => $subCategory->total_stock + $item->quantity
+                                ]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Failed to restore stock for item {$item->id}: " . $e->getMessage());
+                    }
+                }
+
+                // Update order status
+                $order->update([
+                    'transaction_status' => $transaction_status,
+                    'transaction_expiry_time' => $expiry_time,
+                    'payment_status' => 'payment_failed',
+                    'status' => 'order_failed',
+                ]);
+
+                Log::info("Order {$orderId} expired — stock restored and order updated.");
+            } else if ($transaction_status == 'settlement') {
+                $order->update([
+                    'transaction_status' => $transaction_status,
+                    'transaction_expiry_time' => $expiry_time,
+                    'payment_status' => 'payment_received',
+                    'status' => 'preparing_order',
+                ]);
+            } else if ($transaction_status == 'pending') {
+                $order->update([
+                    'transaction_status' => $transaction_status,
+                    'transaction_expiry_time' => $expiry_time,
+                ]);
+            }
+            return response()->json(['message' => 'OK'], 200);
+        } catch (Exception $e) {
+            Log::error('[SECURITY AUDIT] Error handle notification: ' . $e);
+            return response()->json(['error' => 'Handle notification failed'], 500);
         }
-
-        // Cari order dari database kamu
-        $order = Order::where('order_number', $orderId)->first();
-
-        if (!$order) {
-            return response()->json(['error' => 'Order not found'], 404);
-        }
-
-        return response()->json(['message' => 'OK'], 200);
     }
 }
