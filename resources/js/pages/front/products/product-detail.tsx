@@ -123,70 +123,43 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
     const mainImage = pictures?.[activeIndex]?.url || 'https://via.placeholder.com/600x800?text=No+Image';
 
-    const requiresSubcat = Boolean(selectedCat && subcategories.length > 0);
-    const requiresDiv = Boolean(requiresSubcat && selectedSubcat && divisions.length > 0);
-    const requiresVariant = Boolean(requiresDiv && selectedDiv && (textVariants.length > 0 || colorVariants.length > 0));
-
-    const disableSubcat = useMemo(() => {
-        if (!selectedSubcat) {
-            return true;
-        }
-        return Number(selectedSubcat.total_stock ?? 0) < selectedQty;
-    }, [selectedSubcat, selectedQty]);
-
-    const disableDiv = useMemo(() => {
-        if (!selectedDiv) {
-            return true;
-        }
-        return Number(selectedDiv.total_stock ?? 0) < selectedQty;
-    }, [selectedDiv, selectedQty]);
-
-    const disableVar = useMemo(() => {
-        if (!selectedVar) {
-            return true;
-        }
-        return Number(selectedVar.total_stock ?? 0) < selectedQty;
-    }, [selectedVar, selectedQty]);
+    const productStockInsufficient = Number(totalStock ?? 0) < selectedQty;
+    const subcatStockInsufficient = selectedSubcat ? Number(selectedSubcat.total_stock ?? 0) < selectedQty : false;
+    const divisionStockInsufficient = selectedDiv ? Number(selectedDiv.total_stock ?? 0) < selectedQty : false;
+    const variantStockInsufficient = selectedVar ? Number(selectedVar.total_stock ?? 0) < selectedQty : false;
 
     const insufficientStock = useMemo(() => {
-        const stocks = [totalStock, selectedSubcat?.total_stock, selectedDiv?.total_stock, selectedVar?.total_stock].reduce<number[]>((acc, stock) => {
-            if (stock === null || stock === undefined) {
-                return acc;
-            }
-            const parsed = Number(stock);
-            if (!Number.isNaN(parsed)) {
-                acc.push(parsed);
-            }
-            return acc;
-        }, []);
-
-        if (stocks.length === 0) {
-            return false;
+        if (productStockInsufficient) {
+            return true;
+        }
+        if (selectedSubcat && subcatStockInsufficient) {
+            return true;
+        }
+        if (selectedDiv && divisionStockInsufficient) {
+            return true;
+        }
+        if (selectedVar && variantStockInsufficient) {
+            return true;
         }
 
-        return stocks.some((stock) => stock < selectedQty);
-    }, [totalStock, selectedSubcat?.total_stock, selectedDiv?.total_stock, selectedVar?.total_stock, selectedQty]);
+        return false;
+    }, [
+        productStockInsufficient,
+        selectedSubcat,
+        subcatStockInsufficient,
+        selectedDiv,
+        divisionStockInsufficient,
+        selectedVar,
+        variantStockInsufficient,
+    ]);
 
     const disableButtonCart = useMemo(() => {
         if (!selectedCat) {
             return true;
         }
 
-        if ((requiresSubcat && disableSubcat) || (requiresDiv && disableDiv) || (requiresVariant && disableVar)) {
-            return true;
-        }
-
         return insufficientStock;
-    }, [
-        selectedCat,
-        requiresSubcat,
-        disableSubcat,
-        requiresDiv,
-        disableDiv,
-        requiresVariant,
-        disableVar,
-        insufficientStock,
-    ]);
+    }, [selectedCat, insufficientStock]);
 
     const handleAddToCart = () => {
         const meta: ICart = {
@@ -383,16 +356,19 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const active = selectedDiv?.id === v.id;
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
-                                        <button
-                                            key={v.id}
-                                            onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
-                                            className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
-                                                active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                            } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
-                                            disabled={optionOutOfStock}
-                                        >
-                                            {v.name}
-                                        </button>
+                                        <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
+                                            <span>stock: {v.total_stock ?? 0}</span>
+                                            <button
+                                                key={v.id}
+                                                onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
+                                                className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
+                                                    active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
+                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                disabled={optionOutOfStock}
+                                            >
+                                                {v.name}
+                                            </button>
+                                        </div>
                                     );
                                 })}
                             </div>
@@ -408,16 +384,18 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const active = selectedVar?.id === v.id;
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
-                                        <button
-                                            key={v.id}
-                                            onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
-                                            className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
-                                                active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                            } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
-                                            disabled={optionOutOfStock}
-                                        >
-                                            {v.name}
-                                        </button>
+                                        <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
+                                            <span>stock: {v.total_stock ?? 0}</span>
+                                            <button
+                                                onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
+                                                className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
+                                                    active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
+                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                disabled={optionOutOfStock}
+                                            >
+                                                {v.name}
+                                            </button>
+                                        </div>
                                     );
                                 })}
                             </div>
