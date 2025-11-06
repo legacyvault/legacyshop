@@ -25,7 +25,7 @@ return new class extends Migration
             $table->decimal('shipping_fee', 15, 2)->default(0);
             $table->decimal('grand_total', 15, 2)->default(0);
             $table->string('payment_method')->nullable();
-            $table->string('payment_status')->default('unpaid');
+            $table->string('payment_status')->default('awaiting_payment');
             $table->string('status')->default('pending');
             $table->timestamp('paid_at')->nullable();
             $table->timestamps();
