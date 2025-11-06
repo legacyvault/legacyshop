@@ -114,9 +114,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     }, [selectedSubcat, selectedDiv, selectedVar]);
     const discountPct = Number(product.product_discount);
     const finalPrice = useMemo(() => {
-        const discountedBase = discountPct
-            ? Math.round(basePrice - (basePrice * discountPct) / 100)
-            : Math.round(basePrice);
+        const discountedBase = discountPct ? Math.round(basePrice - (basePrice * discountPct) / 100) : Math.round(basePrice);
         const total = discountedBase + extraPriceSubcat + extraPriceDivision + extraPriceVariant;
         return Math.max(0, total);
     }, [basePrice, discountPct, extraPriceSubcat, extraPriceDivision, extraPriceVariant]);
@@ -125,7 +123,70 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
     const mainImage = pictures?.[activeIndex]?.url || 'https://via.placeholder.com/600x800?text=No+Image';
 
-    const disableButtonCart = useMemo(() => !selectedCat, [selectedCat]);
+    const requiresSubcat = Boolean(selectedCat && subcategories.length > 0);
+    const requiresDiv = Boolean(requiresSubcat && selectedSubcat && divisions.length > 0);
+    const requiresVariant = Boolean(requiresDiv && selectedDiv && (textVariants.length > 0 || colorVariants.length > 0));
+
+    const disableSubcat = useMemo(() => {
+        if (!selectedSubcat) {
+            return true;
+        }
+        return Number(selectedSubcat.total_stock ?? 0) < selectedQty;
+    }, [selectedSubcat, selectedQty]);
+
+    const disableDiv = useMemo(() => {
+        if (!selectedDiv) {
+            return true;
+        }
+        return Number(selectedDiv.total_stock ?? 0) < selectedQty;
+    }, [selectedDiv, selectedQty]);
+
+    const disableVar = useMemo(() => {
+        if (!selectedVar) {
+            return true;
+        }
+        return Number(selectedVar.total_stock ?? 0) < selectedQty;
+    }, [selectedVar, selectedQty]);
+
+    const insufficientStock = useMemo(() => {
+        const stocks = [totalStock, selectedSubcat?.total_stock, selectedDiv?.total_stock, selectedVar?.total_stock].reduce<number[]>((acc, stock) => {
+            if (stock === null || stock === undefined) {
+                return acc;
+            }
+            const parsed = Number(stock);
+            if (!Number.isNaN(parsed)) {
+                acc.push(parsed);
+            }
+            return acc;
+        }, []);
+
+        if (stocks.length === 0) {
+            return false;
+        }
+
+        return stocks.some((stock) => stock < selectedQty);
+    }, [totalStock, selectedSubcat?.total_stock, selectedDiv?.total_stock, selectedVar?.total_stock, selectedQty]);
+
+    const disableButtonCart = useMemo(() => {
+        if (!selectedCat) {
+            return true;
+        }
+
+        if ((requiresSubcat && disableSubcat) || (requiresDiv && disableDiv) || (requiresVariant && disableVar)) {
+            return true;
+        }
+
+        return insufficientStock;
+    }, [
+        selectedCat,
+        requiresSubcat,
+        disableSubcat,
+        requiresDiv,
+        disableDiv,
+        requiresVariant,
+        disableVar,
+        insufficientStock,
+    ]);
 
     const handleAddToCart = () => {
         const meta: ICart = {
@@ -293,20 +354,20 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                             <div className="flex flex-wrap gap-2">
                                 {subcategories.map((v) => {
                                     const active = selectedSubcat?.id === v.id;
-                                    // LAST IMPLEMENTATION
-                                    // const disabled = (selectedSubcat?.total_stock ?? 0) < 1;
-                                    const disabled = false;
+                                    const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
-                                        <button
-                                            key={v.id}
-                                            onClick={() => setSelectedSubcat((prev) => (prev?.id === v.id ? undefined : v))}
-                                            className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
-                                                active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                            } ${disabled ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
-                                            disabled={disabled}
-                                        >
-                                            {v.name}
-                                        </button>
+                                        <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
+                                            <span>stock: {v.total_stock ?? 0}</span>
+                                            <button
+                                                onClick={() => setSelectedSubcat((prev) => (prev?.id === v.id ? undefined : v))}
+                                                className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
+                                                    active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
+                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                disabled={optionOutOfStock}
+                                            >
+                                                {v.name}
+                                            </button>
+                                        </div>
                                     );
                                 })}
                             </div>
@@ -320,13 +381,15 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                             <div className="flex flex-wrap gap-2">
                                 {divisions.map((v) => {
                                     const active = selectedDiv?.id === v.id;
+                                    const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <button
                                             key={v.id}
                                             onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
                                             className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                 active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                            }`}
+                                            } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                            disabled={optionOutOfStock}
                                         >
                                             {v.name}
                                         </button>
@@ -343,13 +406,15 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                             <div className="flex flex-wrap gap-2">
                                 {textVariants.map((v) => {
                                     const active = selectedVar?.id === v.id;
+                                    const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <button
                                             key={v.id}
                                             onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
                                             className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                 active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                            }`}
+                                            } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                            disabled={optionOutOfStock}
                                         >
                                             {v.name}
                                         </button>
@@ -367,14 +432,16 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                 {colorVariants.map((v) => {
                                     const active = selectedVar?.id === v.id;
                                     const color = v.color || '#cccccc';
+                                    const disabled = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <button
                                             aria-label={v.name}
                                             key={v.id}
                                             onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
-                                            className={`relative size-8 rounded-full border transition ${
-                                                active ? 'ring-2 ring-primary' : 'hover:border-foreground/60'
-                                            }`}
+                                            className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
+                                                active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
+                                            } ${disabled ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                            disabled={disabled}
                                             style={{ backgroundColor: color ?? '#e5e7eb' }}
                                         />
                                     );
@@ -445,9 +512,6 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                             <Button className="w-full" onClick={handleAddToCart} disabled={disableButtonCart}>
                                 + Add to Cart
                             </Button>
-                            {/* <Button variant="outline" className="w-full">
-                                Buy Now
-                            </Button> */}
                         </div>
                     </div>
                 </section>
