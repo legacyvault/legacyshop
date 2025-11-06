@@ -564,8 +564,12 @@ class OrderController extends Controller
                     'payment_status' => 'payment_received',
                     'status' => 'preparing_order',
                 ]);
+            } else if ($transaction_status == 'pending') {
+                $order->update([
+                    'transaction_status' => $transaction_status,
+                    'transaction_expiry_time' => $expiry_time,
+                ]);
             }
-
             return response()->json(['message' => 'OK'], 200);
         } catch (Exception $e) {
             Log::error('[SECURITY AUDIT] Error handle notification: ' . $e);
