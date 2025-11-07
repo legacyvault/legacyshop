@@ -11,6 +11,7 @@ use App\Http\Controllers\API\V1\ViewController;
 use App\Http\Controllers\API\V1\DivisionController;
 use App\Http\Controllers\API\V1\MiscController;
 use App\Http\Controllers\API\V1\SubCategoryController;
+use App\Http\Controllers\API\V1\SummaryController;
 use App\Http\Controllers\API\V1\VariantController;
 use App\Http\Controllers\API\V1\WarehouseController;
 use App\Http\Controllers\API\V1\OrderController;
@@ -21,10 +22,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
 
 Route::middleware(['ensureToken', 'role:admin'])->group(function () {
-
-    Route::get('/dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [SummaryController::class, 'dashboard'])->name('dashboard');
 });
 
 #API 
@@ -244,9 +242,7 @@ Route::middleware(['ensureToken'])->group(function () {
 
 Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
-    Route::get('/dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [SummaryController::class, 'dashboard'])->name('dashboard');
 
     Route::prefix('orders')->group(function () {
         Route::redirect('/', '/orders/order');
