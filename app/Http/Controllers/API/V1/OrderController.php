@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Division;
 use App\Models\Guest;
+use App\Models\Product;
 use App\Models\SubCategory;
 use App\Models\Variant;
 use Exception;
@@ -197,6 +198,14 @@ class OrderController extends Controller
                         if ($subCategory) {
                             $newStock = max(0, $subCategory->total_stock - $item['quantity']);
                             $subCategory->update(['total_stock' => $newStock]);
+                        }
+                    }
+
+                    if (!empty($item['product_id'])) {
+                        $product = Product::find($item['product_id']);
+                        if ($product) {
+                            $newStock = max(0, $product->total_stock - $item['quantity']);
+                            $product->update(['total_stock' => $newStock]);
                         }
                     }
                 }
@@ -540,6 +549,14 @@ class OrderController extends Controller
                             if ($subCategory) {
                                 $subCategory->update([
                                     'total_stock' => $subCategory->total_stock + $item->quantity
+                                ]);
+                            }
+                        }
+                        if (!empty($item->product_id)) {
+                            $product = Product::find($item->product_id);
+                            if ($product) {
+                                $product->update([
+                                    'total_stock' => $product->total_stock + $item->quantity
                                 ]);
                             }
                         }
