@@ -58,6 +58,7 @@ export interface SharedData {
     provinces: IProvince[];
     deliveryAddresses: IDeliveryAddress[];
     rates?: IRates | null;
+    summary?: IDashboardSummary;
 }
 
 export interface IRates {
@@ -388,6 +389,38 @@ export interface IInvoicesPaginated {
     total?: number;
     to?: number;
     data: IInvoice[];
+}
+
+export interface IDashboardSummary {
+    kpis: {
+        totalRevenue: number;
+        totalOrders: number;
+        averageOrderValue: number;
+        todayRevenue: number;
+        todayOrders: number;
+        revenueGrowthPercentage: number | null;
+    };
+    trend: {
+        labels: string[];
+        totals: number[];
+    };
+    productHierarchy: IProductHierarchySummary[];
+}
+
+export interface IProductHierarchySummary {
+    product_id?: string | null;
+    product_name: string;
+    unit_name?: string | null;
+    category_id?: string | null;
+    category_name?: string | null;
+    sub_category_id?: string | null;
+    sub_category_name?: string | null;
+    division_id?: string | null;
+    division_name?: string | null;
+    variant_id?: string | null;
+    variant_name?: string | null;
+    total_quantity: number;
+    total_revenue: number;
 }
 
 export interface IProductOption {
