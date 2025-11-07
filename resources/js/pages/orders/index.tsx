@@ -70,17 +70,11 @@ const titleCase = (value?: string | null) => {
 
 const paymentStatusVariant = (status?: string | null): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch ((status ?? '').toLowerCase()) {
-        case 'paid':
-        case 'settlement':
+        case 'payment_received':
             return 'default';
-        case 'pending':
-        case 'challenge':
+        case 'awaiting_payment':
             return 'secondary';
-        case 'failed':
-        case 'expire':
-        case 'expired':
-        case 'cancelled':
-        case 'canceled':
+        case 'payment_failed':
             return 'destructive';
         default:
             return 'outline';
@@ -92,13 +86,10 @@ const orderStatusVariant = (status?: string | null): 'default' | 'secondary' | '
         case 'completed':
         case 'delivered':
             return 'default';
-        case 'processing':
-        case 'shipped':
-        case 'on delivery':
+        case 'pending':
+        case 'preparing_order':
             return 'secondary';
-        case 'cancelled':
-        case 'canceled':
-        case 'failed':
+        case 'order_failed':
             return 'destructive';
         default:
             return 'outline';
@@ -108,15 +99,10 @@ const orderStatusVariant = (status?: string | null): 'default' | 'secondary' | '
 const transactionStatusVariant = (status?: string | null): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch ((status ?? '').toLowerCase()) {
         case 'settlement':
-        case 'success':
             return 'default';
         case 'pending':
             return 'secondary';
-        case 'deny':
         case 'expire':
-        case 'failure':
-        case 'cancel':
-        case 'cancelled':
             return 'destructive';
         default:
             return 'outline';
@@ -379,11 +365,7 @@ function OrdersTable({
 
                         errorMessage =
                             errorPayload?.message ??
-                            (errorPayload?.errors
-                                ? Object.values(errorPayload.errors)
-                                      .flat()
-                                      .find(Boolean)
-                                : null) ??
+                            (errorPayload?.errors ? Object.values(errorPayload.errors).flat().find(Boolean) : null) ??
                             errorMessage;
                     } else {
                         const rawText = await response.text();
