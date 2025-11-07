@@ -61,6 +61,16 @@ export interface SharedData {
     summary?: IDashboardSummary;
 }
 
+export type InventoryEntityType = 'product' | 'subcategory' | 'division' | 'variant';
+
+export interface IInventoryNotification {
+    id: string;
+    type: InventoryEntityType;
+    name: string;
+    remaining: number;
+    threshold: number;
+}
+
 export interface IRates {
     code: number;
     pricing: IRatePricing[];

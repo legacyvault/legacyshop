@@ -15,6 +15,7 @@ use App\Http\Controllers\API\V1\SummaryController;
 use App\Http\Controllers\API\V1\VariantController;
 use App\Http\Controllers\API\V1\WarehouseController;
 use App\Http\Controllers\API\V1\OrderController;
+use App\Http\Controllers\API\V1\NotificationController;
 use App\Http\Controllers\OrderHistoryController;
 use App\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Route;
@@ -125,6 +126,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 });
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], function () {
+
+    //Notification API
+    Route::get('notifications/low-stock', [NotificationController::class, 'lowStock'])->name('notifications.low-stock');
 
     //History
     Route::get('all-order-history', [OrderHistoryController::class, 'getAllOrderHistory'])->name('all.order-history');
