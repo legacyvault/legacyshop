@@ -952,7 +952,20 @@ export default function Checkout() {
         [selectedCheckoutAddress],
     );
 
-    const ratesPricing = useMemo(() => (rates && Array.isArray(rates.pricing) ? rates.pricing : []), [rates]);
+    const ratesPricing = useMemo(() => {
+        if (!rates || !Array.isArray(rates.pricing)) {
+            return [];
+        }
+
+        return rates.pricing.filter((rate) => {
+            if (!Array.isArray(rate.available_collection_method)) {
+                return false;
+            }
+
+            // Biteship returns snake_case method names; keep only drop-off options
+            return rate.available_collection_method.some((method) => typeof method === 'string' && method.toLowerCase() === 'drop_off');
+        });
+    }, [rates]);
 
     const [isCourierModalOpen, setIsCourierModalOpen] = useRemember(false, 'checkout:isCourierModalOpen');
     const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
