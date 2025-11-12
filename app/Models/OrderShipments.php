@@ -15,6 +15,7 @@ class OrderShipments extends Model
     protected $fillable = [
         'id',
         'order_id',
+        'biteship_draft_order_id',
         'courier_code',
         'courier_name',
         'courier_service',

@@ -8,14 +8,18 @@ use App\Models\OrderItems;
 use App\Models\OrderShipments;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\DeliveryAddress;
 use App\Models\Division;
 use App\Models\Guest;
 use App\Models\Product;
+use App\Models\Profile;
 use App\Models\SubCategory;
 use App\Models\Variant;
+use App\Models\Warehouse;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -26,12 +30,15 @@ class OrderController extends Controller
     protected $serverKey;
     protected $clientKey;
     protected $apiUrl;
+    private $baseUrlBiteship = "https://api.biteship.com/v1";
+    private $biteshipApiKey;
 
     public function __construct()
     {
         $this->serverKey = env('MIDTRANS_SERVER_KEY');
         $this->clientKey = env('MIDTRANS_CLIENT_KEY');
         $this->apiUrl = 'https://api.sandbox.midtrans.com';
+        $this->biteshipApiKey = env('BITESHIP_API_KEY');
     }
 
     public function checkout(Request $request)
@@ -253,6 +260,7 @@ class OrderController extends Controller
                     'order' => $order,
                 ], 201);
             }
+            $this->createBiteshipDraftOrder($order, $items, $request);
 
             // Call payment gateway
             return $this->createMidtransSnapPayment($order);
@@ -264,6 +272,99 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
+    private function createBiteshipDraftOrder($order, $items, $request)
+    {
+        try {
+            $warehouse = Warehouse::where('is_active', 1)->first();
+
+            if ($request->customer_type === 'guest') {
+                $destinationName = $request->contact_name;
+                $destinationPhone = $request->contact_phone;
+                $destinationEmail = $request->email ?? null;
+                $destinationAddress = $request->address;
+                $destinationPostalCode = $request->postal_code;
+                $destinationLatitude = (float) $request->latitude;
+                $destinationLongitude = (float) $request->longitude;
+            } else {
+                $user = Auth::user();
+                $profile = Profile::where('user_id', $user->id)->first();
+                $delivery_address = DeliveryAddress::where([
+                    'profile_id' => $profile->id,
+                    'is_active' => 1,
+                ])->first();
+
+                $destinationName = $request->receiver_name;
+                $destinationPhone = $request->receiver_phone;
+                $destinationEmail = $request->user()->email ?? null;
+                $destinationAddress = $request->receiver_address;
+                $destinationPostalCode = $request->receiver_postal_code;
+                $destinationLatitude = (float) optional($delivery_address)->latitude;
+                $destinationLongitude = (float) optional($delivery_address)->longitude;
+            }
+
+            $payload = [
+                'origin_contact_name' => $warehouse->contact_name,
+                'origin_contact_phone' => $warehouse->contact_phone,
+                'origin_address' => $warehouse->address,
+                'origin_postal_code' => $warehouse->postal_code,
+                'origin_collection_method' => 'drop_off',
+
+                'destination_contact_name' => $destinationName,
+                'destination_contact_phone' => $destinationPhone,
+                'destination_contact_email' => $destinationEmail,
+                'destination_address' => $destinationAddress,
+                'destination_postal_code' => $destinationPostalCode,
+                'destination_coordinate' => [
+                    'latitude' => $destinationLatitude,
+                    'longitude' => $destinationLongitude,
+                ],
+
+                'delivery_type' => 'now',
+                'courier_company' => $request->courier_code,
+                'courier_type' => $request->courier_service,
+                'order_note' => $order->order_number,
+
+                'items' => collect($items)->map(function ($item) {
+                    $product = Product::find($item['product_id']);
+                    $productWeight = $product ? (float) $product->product_weight : 0;
+                    $quantity = (int) ($item['quantity'] ?? 1);
+                    $price = (float) ($item['price'] ?? 0);
+                    $total = $price * $quantity;
+
+                    return [
+                        'name' => $item['product_name'] ?? '-',
+                        'description' => $item['product_description'] ?? '-',
+                        'value' => $total,
+                        'quantity' => $quantity,
+                        'weight' => $productWeight * $quantity,
+                    ];
+                })->toArray(),
+            ];
+
+            $response = Http::withToken($this->biteshipApiKey)
+                ->post($this->baseUrlBiteship . '/draft_orders', $payload);
+
+            if (!$response->successful()) {
+                Log::error('Biteship Draft Order Failed: ' . $response->body());
+                return null;
+            }
+
+            $data = $response->json();
+
+            $orderShipment = OrderShipments::where('order_id', $order->id)->first();
+            if ($orderShipment) {
+                $orderShipment->biteship_draft_order_id = $data['id'];
+                $orderShipment->save();
+            }
+
+            return $data;
+        } catch (\Exception $e) {
+            Log::error('Error Creating Biteship Draft Order: ' . $e->getMessage());
+            return null;
+        }
+    }
+
 
     public function createMidtransPayment($order, $payment_method, $bank)
     {
@@ -575,12 +676,18 @@ class OrderController extends Controller
 
                 Log::info("Order {$orderId} expired — stock restored and order updated.");
             } else if ($transaction_status == 'settlement') {
+                $orderShipment = OrderShipments::where('order_id', $order->id)->first();
                 $order->update([
                     'transaction_status' => $transaction_status,
                     'transaction_expiry_time' => $expiry_time,
                     'payment_status' => 'payment_received',
                     'status' => 'preparing_order',
                 ]);
+
+                $response = Http::withToken($this->biteshipApiKey)
+                    ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id . '/confirm');
+                
+                Log::info($response);
             } else if ($transaction_status == 'pending') {
                 $order->update([
                     'transaction_status' => $transaction_status,
