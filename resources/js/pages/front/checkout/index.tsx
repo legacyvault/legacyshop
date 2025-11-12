@@ -956,14 +956,14 @@ export default function Checkout() {
         if (!rates || !Array.isArray(rates.pricing)) {
             return [];
         }
-
+        console.log(rates);
         return rates.pricing.filter((rate) => {
             if (!Array.isArray(rate.available_collection_method)) {
                 return false;
             }
 
             // Biteship returns snake_case method names; keep only drop-off options
-            return rate.available_collection_method.some((method) => typeof method === 'string' && method.toLowerCase() === 'drop_off');
+            return rate.available_collection_method.some((method) =>  method.toLowerCase() === 'drop_off' || method.toLowerCase() === 'dropoff');
         });
     }, [rates]);
 
@@ -1112,7 +1112,7 @@ export default function Checkout() {
                 origin_longitude: Number(warehouse.longitude),
                 destination_latitude: Number(selectedCheckoutAddress.latitude),
                 destination_longitude: Number(selectedCheckoutAddress.longitude),
-                couriers: 'gojek,jne,anteraja',
+                couriers: 'deno,lion,pos',
                 items: rateItemsPayload,
             };
 
