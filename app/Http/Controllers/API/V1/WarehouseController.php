@@ -27,6 +27,7 @@ class WarehouseController extends Controller
             'name'          => 'required|string|unique:warehouses,name',
             'contact_name'  => 'required|string',
             'contact_phone' => 'required|string',
+            'pickup_schedule' => 'nullable',
             'address'       => 'required|string',
             'country'       => 'nullable|string',
             'postal_code'   => 'nullable|string',
@@ -48,6 +49,7 @@ class WarehouseController extends Controller
                     'name'          => $request->name,
                     'contact_name'  => $request->contact_name,
                     'contact_phone' => $request->contact_phone,
+                    'pickup_schedule' => $request->pickup_schedule,
                     'address'       => $request->address,
                     'note'          => '',
                     'postal_code'   => $request->postal_code,
@@ -78,6 +80,7 @@ class WarehouseController extends Controller
             $warehouse->name                   = $request->name;
             $warehouse->contact_name           = $request->contact_name;
             $warehouse->contact_phone          = $request->contact_phone;
+            $warehouse->pickup_schedule        = $request->pickup_schedule;
             $warehouse->address                = $request->address;
             $warehouse->country                = $request->country ?? 'ID';
             $warehouse->postal_code            = $request->postal_code;
@@ -110,6 +113,7 @@ class WarehouseController extends Controller
             'name'          => 'required|string',
             'contact_name'  => 'required|string',
             'contact_phone' => 'required|string',
+            'pickup_schedule' => 'nullable',
             'address'       => 'required|string',
             'country'       => 'nullable|string',
             'postal_code'   => 'nullable|string',
@@ -133,6 +137,7 @@ class WarehouseController extends Controller
                     'name'          => $request->name,
                     'contact_name'  => $request->contact_name,
                     'contact_phone' => $request->contact_phone,
+                    'pickup_schedule' => $request->pickup_schedule,
                     'address'       => $request->address,
                     'note'          => null,
                     'postal_code'   => $request->postal_code,
@@ -158,6 +163,7 @@ class WarehouseController extends Controller
             $warehouse->name          = $request->name;
             $warehouse->contact_name  = $request->contact_name;
             $warehouse->contact_phone = $request->contact_phone;
+            $warehouse->pickup_schedule = $request->pickup_schedule;
             $warehouse->address       = $request->address;
             $warehouse->country       = $request->country ?? 'ID';
             $warehouse->postal_code   = $request->postal_code;

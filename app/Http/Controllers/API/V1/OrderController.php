@@ -308,7 +308,7 @@ class OrderController extends Controller
                 'origin_contact_phone' => $warehouse->contact_phone,
                 'origin_address' => $warehouse->address,
                 'origin_postal_code' => $warehouse->postal_code,
-                'origin_collection_method' => 'drop_off',
+                'origin_collection_method' => 'pickup',
 
                 'destination_contact_name' => $destinationName,
                 'destination_contact_phone' => $destinationPhone,
@@ -320,7 +320,7 @@ class OrderController extends Controller
                     'longitude' => $destinationLongitude,
                 ],
 
-                'delivery_type' => 'now',
+                'delivery_type' => 'scheduled',
                 'courier_company' => $request->courier_code,
                 'courier_type' => $request->courier_service,
                 'order_note' => $order->order_number,
@@ -677,6 +677,8 @@ class OrderController extends Controller
                 Log::info("Order {$orderId} expired — stock restored and order updated.");
             } else if ($transaction_status == 'settlement') {
                 $orderShipment = OrderShipments::where('order_id', $order->id)->first();
+                $warehouse = Warehouse::where('is_active', 1)->first();
+                $pickup_schedule = (int) $warehouse->pickup_schedule;
                 $order->update([
                     'transaction_status' => $transaction_status,
                     'transaction_expiry_time' => $expiry_time,
@@ -684,9 +686,25 @@ class OrderController extends Controller
                     'status' => 'preparing_order',
                 ]);
 
+                $deliveryDate = now()->addDays($pickup_schedule)->format('Y-m-d');
+                $deliveryTime = "13:00";
+
+                $updatePayload = [
+                    'delivery_date' => $deliveryDate,
+                    'delivery_time' => $deliveryTime,
+                ];
+
+                $updateResponse = Http::withToken($this->biteshipApiKey)
+                    ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id, $updatePayload);
+
+                if (!$updateResponse->successful()) {
+                    Log::error("Failed update draft order: " . $updateResponse->body());
+                    return; // stop untuk hindari confirm gagal
+                }
+
                 $response = Http::withToken($this->biteshipApiKey)
                     ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id . '/confirm');
-                
+
                 Log::info($response);
             } else if ($transaction_status == 'pending') {
                 $order->update([
