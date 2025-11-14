@@ -16,6 +16,7 @@ class Warehouse extends Model
         'name',
         'contact_name',
         'contact_phone',
+        'pickup_schedule',
         'address',
         'postal_code',
         'country',
