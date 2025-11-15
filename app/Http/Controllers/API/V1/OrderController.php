@@ -328,8 +328,10 @@ class OrderController extends Controller
                 'delivery_type' => 'scheduled',
                 'delivery_date' => $deliveryDate,
                 'delivery_time' => $deliveryTime,
-                'courier_company' => $request->courier_code,
-                'courier_type' => $request->courier_service,
+                'courier' => [
+                    'courier_company' => $request->courier_code,
+                    'courier_type' => $request->courier_service,
+                ],
                 'order_note' => $order->order_number,
 
                 'items' => collect($items)->map(function ($item) {
