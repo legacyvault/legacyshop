@@ -303,6 +303,11 @@ class OrderController extends Controller
                 $destinationLongitude = (float) optional($delivery_address)->longitude;
             }
 
+            $warehouse = Warehouse::where('is_active', 1)->first();
+            $pickup_schedule = (int) $warehouse->pickup_schedule;
+            $deliveryDate = now()->addDays($pickup_schedule)->format('Y-m-d');
+            $deliveryTime = "13:00";
+
             $payload = [
                 'origin_contact_name' => $warehouse->contact_name,
                 'origin_contact_phone' => $warehouse->contact_phone,
@@ -321,6 +326,8 @@ class OrderController extends Controller
                 ],
 
                 'delivery_type' => 'scheduled',
+                'delivery_date' => $deliveryDate,
+                'delivery_time' => $deliveryTime,
                 'courier_company' => $request->courier_code,
                 'courier_type' => $request->courier_service,
                 'order_note' => $order->order_number,
