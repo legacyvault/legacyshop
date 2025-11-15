@@ -329,9 +329,9 @@ class OrderController extends Controller
                     'longitude' => $destinationLongitude,
                 ],
 
-                'delivery_type' => 'scheduled',
-                'delivery_date' => $deliveryDate,
-                'delivery_time' => $deliveryTime,
+                'delivery_type' => 'now',
+                // 'delivery_date' => $deliveryDate,
+                // 'delivery_time' => $deliveryTime,
                 'courier_company' => $request->courier_code,
                 'courier_type' => $request->courier_service,
                 'order_note' => $order->order_number,
@@ -362,7 +362,7 @@ class OrderController extends Controller
             }
 
             $data = $response->json();
-            Log::info($data);
+            // Log::info($data);
             $orderShipment = OrderShipments::where('order_id', $order->id)->first();
             if ($orderShipment) {
                 $orderShipment->biteship_draft_order_id = $data['id'];
@@ -705,13 +705,13 @@ class OrderController extends Controller
                     'delivery_time' => $deliveryTime,
                 ];
 
-                $updateResponse = Http::withToken($this->biteshipApiKey)
-                    ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id, $updatePayload);
+                // $updateResponse = Http::withToken($this->biteshipApiKey)
+                //     ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id, $updatePayload);
 
-                if (!$updateResponse->successful()) {
-                    Log::error("Failed update draft order: " . $updateResponse->body());
-                    return; // stop untuk hindari confirm gagal
-                }
+                // if (!$updateResponse->successful()) {
+                //     Log::error("Failed update draft order: " . $updateResponse->body());
+                //     return;
+                // }
 
                 $response = Http::withToken($this->biteshipApiKey)
                     ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id . '/confirm');
