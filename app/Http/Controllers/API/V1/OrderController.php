@@ -329,7 +329,7 @@ class OrderController extends Controller
                     'longitude' => $destinationLongitude,
                 ],
 
-                'delivery_type' => 'now',
+                'delivery_type' => 'scheduled',
                 'delivery_date' => $deliveryDate,
                 'delivery_time' => $deliveryTime,
                 'courier_company' => $request->courier_code,
