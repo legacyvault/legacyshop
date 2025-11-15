@@ -43,14 +43,14 @@ class Order extends Model
             // Ambil order terakhir berdasarkan urutan angka di order_number
             $latestOrder = self::orderBy('created_at', 'desc')->first();
 
-            if ($latestOrder && preg_match('/ORDERTESTNEWASD-(\d+)/', $latestOrder->order_number, $matches)) {
+            if ($latestOrder && preg_match('/ORDERTESTNEW-(\d+)/', $latestOrder->order_number, $matches)) {
                 $lastNumber = intval($matches[1]);
             } else {
                 $lastNumber = 0;
             }
 
             $newNumber = str_pad($lastNumber + 1, 10, '0', STR_PAD_LEFT);
-            $order->order_number = 'ORDERTESTNEWA-' . $newNumber;
+            $order->order_number = 'ORDERTESTNEW-' . $newNumber;
         });
     }
 
