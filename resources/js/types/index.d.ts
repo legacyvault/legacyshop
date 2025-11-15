@@ -304,6 +304,7 @@ export interface IWarehouse {
     latitude: number | string;
     longitude: number | string;
     biteship_location_id: string;
+    pickup_schedule: string;
     is_active: boolean;
     created_at: string;
     updated_at: string;

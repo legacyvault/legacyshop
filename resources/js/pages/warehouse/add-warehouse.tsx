@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem, IWarehouse, SharedData } from '@/types';
 import { Head, useForm, usePage } from '@inertiajs/react';
@@ -24,6 +25,7 @@ interface FormData {
     latitude: string;
     longitude: string;
     is_active: boolean;
+    pickup_schedule: string;
 }
 
 export default function AddWarehouse() {
@@ -53,6 +55,7 @@ export default function AddWarehouse() {
         latitude: activeWarehouse?.latitude?.toString() ?? '',
         longitude: activeWarehouse?.longitude?.toString() ?? '',
         is_active: activeWarehouse?.is_active ?? true,
+        pickup_schedule: activeWarehouse?.pickup_schedule ?? ''
     });
 
     const selectedLocation = useMemo(() => {
@@ -193,6 +196,26 @@ export default function AddWarehouse() {
                             }`}
                         />
                         {errors.country && <p className="text-sm text-red-500">{errors.country}</p>}
+                    </div>
+
+                    <div className="mb-6">
+                        <label className="mb-2 block text-sm font-medium" htmlFor="pickup_schedule">
+                            Pickup Schedule
+                        </label>
+                        <select
+                            id="pickup_schedule"
+                            value={data.pickup_schedule}
+                            onChange={(event) => setData('pickup_schedule', event.target.value)}
+                            aria-invalid={errors.pickup_schedule ? 'true' : undefined}
+                            className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                errors.pickup_schedule ? 'border-red-500' : 'border-gray-200'
+                            }`}
+                        >
+                            <option value={"1"}>Day 1</option>
+                            <option value={"2"}>Day 2</option>
+                            <option value={"3"}>Day 3</option>
+                        </select>
+                        {errors.pickup_schedule && <p className="text-sm text-red-500">{errors.pickup_schedule}</p>}
                     </div>
 
                     <div className="mb-6 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-4">
