@@ -956,15 +956,8 @@ export default function Checkout() {
         if (!rates || !Array.isArray(rates.pricing)) {
             return [];
         }
-        console.log(rates);
-        return rates.pricing.filter((rate) => {
-            if (!Array.isArray(rate.available_collection_method)) {
-                return false;
-            }
-
-            // Biteship returns snake_case method names; keep only drop-off options
-            return rate.available_collection_method.some((method) =>  method.toLowerCase() === 'drop_off' || method.toLowerCase() === 'dropoff');
-        });
+        
+        return rates.pricing
     }, [rates]);
 
     const [isCourierModalOpen, setIsCourierModalOpen] = useRemember(false, 'checkout:isCourierModalOpen');
