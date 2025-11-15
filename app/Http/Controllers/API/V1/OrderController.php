@@ -348,7 +348,7 @@ class OrderController extends Controller
                     ];
                 })->toArray(),
             ];
-
+            Log::info($payload);
             $response = Http::withToken($this->biteshipApiKey)
                 ->post($this->baseUrlBiteship . '/draft_orders', $payload);
 
