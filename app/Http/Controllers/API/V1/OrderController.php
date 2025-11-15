@@ -348,7 +348,7 @@ class OrderController extends Controller
                     ];
                 })->toArray(),
             ];
-            Log::info($payload);
+            // Log::info($payload);
             $response = Http::withToken($this->biteshipApiKey)
                 ->post($this->baseUrlBiteship . '/draft_orders', $payload);
 
@@ -358,7 +358,7 @@ class OrderController extends Controller
             }
 
             $data = $response->json();
-
+            Log::info($data);
             $orderShipment = OrderShipments::where('order_id', $order->id)->first();
             if ($orderShipment) {
                 $orderShipment->biteship_draft_order_id = $data['id'];
