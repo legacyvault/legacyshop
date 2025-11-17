@@ -329,9 +329,9 @@ class OrderController extends Controller
                     'longitude' => $destinationLongitude,
                 ],
 
-                'delivery_type' => 'scheduled',
-                'delivery_date' => $deliveryDate,
-                'delivery_time' => $deliveryTime,
+                'delivery_type' => 'now',
+                // 'delivery_date' => $deliveryDate,
+                // 'delivery_time' => $deliveryTime,
                 'courier_company' => $request->courier_code,
                 'courier_type' => $request->courier_service,
                 'order_note' => $order->order_number,
@@ -689,38 +689,12 @@ class OrderController extends Controller
 
                 Log::info("Order {$orderId} expired — stock restored and order updated.");
             } else if ($transaction_status == 'settlement') {
-                $orderShipment = OrderShipments::where('order_id', $order->id)->first();
-                $warehouse = Warehouse::where('is_active', 1)->first();
-                $pickup_schedule = (int) $warehouse->pickup_schedule;
                 $order->update([
                     'transaction_status' => $transaction_status,
                     'transaction_expiry_time' => $expiry_time,
                     'payment_status' => 'payment_received',
                     'status' => 'preparing_order',
                 ]);
-
-                $deliveryDate = now()->addDays($pickup_schedule)->format('Y-m-d');
-                $deliveryTime = "13:00";
-
-                $updatePayload = [
-                    'delivery_date' => $deliveryDate,
-                    'delivery_time' => $deliveryTime,
-                ];
-
-                $updateResponse = Http::retry(3, 500)
-                    ->withToken($this->biteshipApiKey)
-                    ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id, $updatePayload)
-                    ->throw();
-
-                sleep(1);
-
-                $confirmResponse = Http::retry(3, 500)
-                    ->withToken($this->biteshipApiKey)
-                    ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id . '/confirm')
-                    ->throw();
-
-
-                Log::info($confirmResponse);
             } else if ($transaction_status == 'pending') {
                 $order->update([
                     'transaction_status' => $transaction_status,
@@ -731,6 +705,27 @@ class OrderController extends Controller
         } catch (Exception $e) {
             Log::error('[SECURITY AUDIT] Error handle notification: ' . $e);
             return response()->json(['error' => 'Handle notification failed'], 500);
+        }
+    }
+
+    public function confirmOrder($id)
+    {
+        try {
+            $orderShipment = OrderShipments::where('order_id', $id)->first();
+
+            $confirmResponse = Http::retry(3, 500)
+                ->withToken($this->biteshipApiKey)
+                ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id . '/confirm')
+                ->throw();
+
+
+            Log::info($confirmResponse);
+
+            return response()->json(['message' => 'OK'], 200);
+
+        } catch (Exception $e) {
+            Log::error('[SECURITY AUDIT] Error Handle Confirm Order: ' . $e);
+            return response()->json(['error' => 'Handle Confirm Order Failed'], 500);
         }
     }
 }
