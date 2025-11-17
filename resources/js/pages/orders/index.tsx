@@ -137,9 +137,13 @@ function OrdersTable({
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [processingOrder, setProcessingOrder] = useState<string | null>(null);
     const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
+    const [confirmingOrder, setConfirmingOrder] = useState<string | null>(null);
     const [invoiceFeedback, setInvoiceFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
     const orders = ordersPaginated?.data ?? [];
+
+    console.log(orders);
+
     const currentPage = ordersPaginated?.current_page ?? Number(filters.page ?? 1);
     const perPage = ordersPaginated?.per_page ?? Number(filters.per_page ?? 15);
     const lastPage = ordersPaginated?.last_page ?? 1;
@@ -517,6 +521,46 @@ function OrdersTable({
         [processingOrder, refreshOrders],
     );
 
+    const handleConfirmOrder = useCallback(
+        async (orderId: string) => {
+            if (confirmingOrder) return;
+
+            setConfirmingOrder(orderId);
+
+            try {
+                const csrfToken = getCsrfToken();
+                const response = await fetch(`/v1/confirm-order/${orderId}`, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                    },
+                    credentials: 'include',
+                });
+
+                const payload = await parseJsonResponse(response);
+                console.log('Confirm order response:', payload);
+
+                if (!response.ok) {
+                    const message =
+                        (payload as { message?: string; error?: string })?.message ??
+                        (payload as { error?: string })?.error ??
+                        'Failed to confirm order.';
+                    throw new Error(message);
+                }
+
+                refreshOrders();
+            } catch (error) {
+                console.error('Confirm order failed:', error);
+            } finally {
+                setConfirmingOrder(null);
+            }
+        },
+        [confirmingOrder, refreshOrders],
+    );
+
     return (
         <>
             <div className="flex flex-col gap-4">
@@ -658,6 +702,7 @@ function OrdersTable({
                                     const totalQuantity = order.items?.reduce((acc, item) => acc + (item.quantity ?? 0), 0) ?? 0;
                                     const customerName = order.shipment?.receiver_name ?? order.user?.name ?? '—';
                                     const customerMeta = order.shipment?.receiver_city ?? order.user?.email ?? '';
+                                    const isPreparingOrder = (order.status ?? '').toLowerCase() === 'preparing_order';
 
                                     return (
                                         <tr key={order.id} className="hover:bg-muted/40">
@@ -702,6 +747,18 @@ function OrdersTable({
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-40">
+                                                        {isPreparingOrder && (
+                                                            <DropdownMenuItem
+                                                                className="cursor-pointer gap-2"
+                                                                disabled={confirmingOrder === order.id}
+                                                                onClick={() => handleConfirmOrder(order.id)}
+                                                            >
+                                                                {confirmingOrder === order.id && (
+                                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                                )}
+                                                                Confirm Order
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <DropdownMenuItem
                                                             className="cursor-pointer gap-2"
                                                             disabled={generatingInvoice === order.id}
