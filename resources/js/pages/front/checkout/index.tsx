@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
 import { Link, router, usePage, useRemember } from '@inertiajs/react';
-import { Check, ChevronDown, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck } from 'lucide-react';
+import { Check, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
+const CART_ITEMS_STORAGE_KEY = 'cart_session';
 const FALLBACK_IMAGE = '/banner-example.jpg';
 const SNAP_EMBED_CONTAINER_ID = 'midtrans-snap-container';
 
@@ -120,38 +121,6 @@ function buildPublicApiUrl(path: string, query: Record<string, string | undefine
 
 type CheckoutAddress = IDeliveryAddress | GuestDeliveryAddress;
 
-const dummyPayments = [
-    { id: 'qris', name: 'Qris', accent: 'bg-[#FFE8CC] text-[#E57E25]', selected: true },
-    {
-        id: 'bank_transfer',
-        name: 'Bank Transfer',
-        accent: 'bg-[#DAE8FF] text-[#1A56DB]',
-        selected: false,
-        children: [
-            {
-                id: 'permata',
-                name: 'Permata Bank',
-                selected: false,
-            },
-            {
-                id: 'bca',
-                name: 'BCA',
-                selected: false,
-            },
-            {
-                id: 'bni',
-                name: 'BRI',
-                selected: false,
-            },
-            {
-                id: 'cimb',
-                name: 'CIMB',
-                selected: false,
-            },
-        ],
-    },
-];
-
 function normalizeLocationOptions(items: unknown): LocationOption[] {
     if (!Array.isArray(items)) {
         return [];
@@ -256,20 +225,6 @@ export default function Checkout() {
     const deliveryAddresses = profile?.delivery_address ?? [];
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
     const [countries, setCountries] = useState<Country[]>(() => [{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
-
-    const defaultPaymentMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
-    const [selectedPaymentId, setSelectedPaymentId] = useState<string>(() => {
-        const defaultMethod = dummyPayments.find((method) => method.selected) ?? dummyPayments[0];
-        return defaultMethod?.id ?? '';
-    });
-    const [selectedBankPaymentId, setSelectedBankPaymentId] = useState<string | null>(() => {
-        if (defaultPaymentMethod?.children?.length) {
-            const defaultChild = defaultPaymentMethod.children.find((child) => child.selected) ?? defaultPaymentMethod.children[0];
-            return defaultChild?.id ?? null;
-        }
-        return null;
-    });
-    const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(() => defaultPaymentMethod?.id ?? null);
 
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
     const [selectedAddress, setSelectedAddress] = useState<CheckoutAddress | null>(() => {
@@ -956,8 +911,8 @@ export default function Checkout() {
         if (!rates || !Array.isArray(rates.pricing)) {
             return [];
         }
-        
-        return rates.pricing
+
+        return rates.pricing;
     }, [rates]);
 
     const [isCourierModalOpen, setIsCourierModalOpen] = useRemember(false, 'checkout:isCourierModalOpen');
@@ -987,7 +942,6 @@ export default function Checkout() {
         if (!selectedRateId) return ratesPricing[0];
         return ratesPricing.find((rate) => getRateId(rate) === selectedRateId) ?? ratesPricing[0];
     }, [ratesPricing, selectedRateId]);
-    const selectedPaymentMethod = useMemo(() => dummyPayments.find((method) => method.id === selectedPaymentId) ?? null, [selectedPaymentId]);
 
     const rateItemsPayload = useMemo(
         () =>
@@ -1179,29 +1133,6 @@ export default function Checkout() {
         },
         [setIsCourierModalOpen, setShouldAutoOpenCourier],
     );
-    const handleSelectPaymentMethod = useCallback(
-        (methodId: string) => {
-            setSelectedPaymentId(methodId);
-            setExpandedPaymentId(methodId);
-
-            const method = dummyPayments.find((item) => item.id === methodId);
-            if (method?.children?.length) {
-                setSelectedBankPaymentId((prev) => {
-                    if (prev && method.children?.some((child) => child.id === prev)) {
-                        return prev;
-                    }
-                    const fallbackChild = method.children.find((child) => child.selected) ?? method.children[0];
-                    return fallbackChild?.id ?? null;
-                });
-            } else {
-                setSelectedBankPaymentId(null);
-            }
-        },
-        [setSelectedPaymentId, setSelectedBankPaymentId, setExpandedPaymentId],
-    );
-    const handleSelectBankPayment = useCallback((bankId: string) => {
-        setSelectedBankPaymentId(bankId);
-    }, []);
 
     const subtotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
     const protection = checkoutItems.reduce((total, item) => total + (item.protectionPrice ?? 0), 0);
@@ -1244,10 +1175,8 @@ export default function Checkout() {
     const midtransClientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY ?? '';
     const midtransSnapUrl = import.meta.env.VITE_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
     const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.embed));
-    const requiresBankSelection = Boolean(selectedPaymentMethod?.children?.length);
-    const canSubmit = Boolean(
-        hasCheckoutItems && selectedRate && selectedPaymentId && (!requiresBankSelection || selectedBankPaymentId) && !isThankYou,
-    );
+
+    const canSubmit = Boolean(hasCheckoutItems && selectedRate && !isThankYou);
 
     const isInteractionLocked = isThankYou;
 
@@ -1326,17 +1255,6 @@ export default function Checkout() {
         [setIsModalAddAddressOpen, setSelectedDeliveryAddress, setSelectedId],
     );
 
-    const handleReturnToProducts = useCallback(() => {
-        if (typeof window !== 'undefined') {
-            try {
-                sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
-            } catch (error) {
-                console.warn('Failed to clear checkout storage', error);
-            }
-        }
-        router.visit('/');
-    }, []);
-
     const clearSnapContainer = useCallback(() => {
         if (typeof window === 'undefined') return;
         const container = document.getElementById(SNAP_EMBED_CONTAINER_ID);
@@ -1345,21 +1263,115 @@ export default function Checkout() {
         }
     }, []);
 
+    const clearCheckoutStorage = useCallback(() => {
+        if (typeof window === 'undefined') return;
+
+        try {
+            sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
+        } catch (error) {
+            console.warn('Failed to clear checkout storage', error);
+        }
+
+        if (!checkoutItems.length) {
+            return;
+        }
+
+        try {
+            const rawCart = sessionStorage.getItem(CART_ITEMS_STORAGE_KEY);
+            if (!rawCart) {
+                return;
+            }
+
+            const parsedCart = JSON.parse(rawCart);
+            if (!Array.isArray(parsedCart)) {
+                return;
+            }
+
+            const selectedIds = new Set(
+                checkoutItems
+                    .map((item) => {
+                        if (typeof item.id === 'string' && item.id.length) {
+                            return item.id;
+                        }
+                        if (typeof item.id === 'number' && Number.isFinite(item.id)) {
+                            return String(item.id);
+                        }
+                        return null;
+                    })
+                    .filter((id): id is string => Boolean(id)),
+            );
+
+            const selectedCartIds = new Set(
+                checkoutItems
+                    .map((item) => {
+                        const rawId = item.cartId ?? null;
+                        if (typeof rawId === 'string' && rawId.length) {
+                            return rawId;
+                        }
+                        if (typeof rawId === 'number' && Number.isFinite(rawId)) {
+                            return String(rawId);
+                        }
+                        return null;
+                    })
+                    .filter((id): id is string => Boolean(id)),
+            );
+
+            if (!selectedIds.size && !selectedCartIds.size) {
+                return;
+            }
+
+            const filteredCart = parsedCart.filter((cartItem: any) => {
+                if (!cartItem || typeof cartItem !== 'object') {
+                    return true;
+                }
+
+                const compositeId =
+                    typeof cartItem.id === 'string'
+                        ? cartItem.id
+                        : typeof cartItem.id === 'number'
+                          ? String(cartItem.id)
+                          : null;
+
+                if (compositeId && selectedIds.has(compositeId)) {
+                    return false;
+                }
+
+                const serverId =
+                    typeof cartItem.serverId === 'string'
+                        ? cartItem.serverId
+                        : typeof cartItem.serverId === 'number'
+                          ? String(cartItem.serverId)
+                          : null;
+
+                if (serverId && selectedCartIds.has(serverId)) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            if (filteredCart.length !== parsedCart.length) {
+                sessionStorage.setItem(CART_ITEMS_STORAGE_KEY, JSON.stringify(filteredCart));
+            }
+        } catch (error) {
+            console.warn('Failed to update cart storage', error);
+        }
+    }, [checkoutItems]);
+
+    const handleReturnToProducts = useCallback(() => {
+        clearCheckoutStorage();
+        router.visit('/');
+    }, [clearCheckoutStorage]);
+
     const handlePayNow = useCallback(async () => {
         if (isThankYou) {
             return;
         }
 
-        if (!selectedCheckoutAddress || !selectedRate || !selectedPaymentId || !checkoutItems.length) {
+        if (!selectedCheckoutAddress || !selectedRate || !checkoutItems.length) {
             if (!selectedCheckoutAddress && usingGuestAddress) {
                 setHasAttemptedGuestCheckout(true);
             }
-            return;
-        }
-
-        const bankPaymentValue = selectedPaymentMethod?.children?.length && selectedBankPaymentId ? selectedBankPaymentId : null;
-
-        if (selectedPaymentMethod?.children?.length && !bankPaymentValue) {
             return;
         }
 
@@ -1401,8 +1413,8 @@ export default function Checkout() {
         }));
 
         const payload = {
-            payment_method: selectedPaymentId,
-            bank_payment: bankPaymentValue,
+            payment_method: 'snap',
+            bank_payment: '',
             courier_code: selectedRate.courier_code,
             courier_name: selectedRate.courier_name,
             courier_service: selectedRate.courier_service_code,
@@ -1472,14 +1484,6 @@ export default function Checkout() {
 
                 const snapToken = data?.token;
                 const redirectUrl = data?.redirect_url;
-                const clearCheckoutStorage = () => {
-                    try {
-                        sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
-                    } catch (error) {
-                        console.warn('Failed to clear checkout storage', error);
-                    }
-                };
-
                 if (snapToken && typeof window !== 'undefined') {
                     setIsThankYou(true);
                     setPendingSnapToken(snapToken);
@@ -1497,7 +1501,7 @@ export default function Checkout() {
                 return;
             } else {
                 await response.text();
-                sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
+                clearCheckoutStorage();
             }
         } catch (error) {
             const fallbackError = error instanceof Error ? error.message : 'Unexpected error';
@@ -1508,10 +1512,7 @@ export default function Checkout() {
     }, [
         checkoutItems,
         selectedCheckoutAddress,
-        selectedPaymentId,
         selectedRate,
-        selectedBankPaymentId,
-        selectedPaymentMethod,
         isSnapReady,
         midtransClientKey,
         usingGuestAddress,
@@ -1520,6 +1521,7 @@ export default function Checkout() {
         setHasAttemptedGuestCheckout,
         isThankYou,
         setPendingSnapToken,
+        clearCheckoutStorage,
     ]);
 
     const embedSnap = useCallback(
@@ -1534,14 +1536,6 @@ export default function Checkout() {
             if (!container) {
                 return;
             }
-
-            const clearCheckoutStorage = () => {
-                try {
-                    sessionStorage.removeItem(CHECKOUT_ITEMS_STORAGE_KEY);
-                } catch (error) {
-                    console.warn('Failed to clear checkout storage', error);
-                }
-            };
 
             clearSnapContainer();
 
@@ -1566,7 +1560,7 @@ export default function Checkout() {
                 },
             });
         },
-        [clearSnapContainer, setCheckoutError],
+        [clearSnapContainer, setCheckoutError, clearCheckoutStorage],
     );
 
     useEffect(() => {
@@ -2244,117 +2238,6 @@ export default function Checkout() {
                     </div>
 
                     <div className="space-y-6 lg:sticky lg:top-28">
-                        <Card className="gap-0 border border-border/60 bg-background shadow-sm">
-                            <CardHeader className="flex-row items-center justify-between gap-3 py-6">
-                                <CardTitle className="text-lg font-semibold">Payment Method</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-5">
-                                <div className="space-y-3">
-                                    {dummyPayments.map((method) => {
-                                        const hasChildren = Array.isArray(method.children) && method.children.length > 0;
-                                        const isSelected = method.id === selectedPaymentId;
-                                        const isExpanded = hasChildren && expandedPaymentId === method.id;
-
-                                        return (
-                                            <div
-                                                key={method.id}
-                                                className={`rounded-xl border border-border/70 bg-muted/20 transition hover:border-primary/50 hover:bg-background ${
-                                                    isSelected ? 'border-primary bg-background shadow-sm' : ''
-                                                } ${isExpanded ? 'ring-1 ring-primary/40' : ''}`}
-                                            >
-                                                <label
-                                                    htmlFor={`payment-${method.id}`}
-                                                    className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3"
-                                                >
-                                                    <input
-                                                        type="radio"
-                                                        id={`payment-${method.id}`}
-                                                        name="payment-method"
-                                                        className="hidden"
-                                                        value={method.id}
-                                                        checked={isSelected}
-                                                        onChange={() => handleSelectPaymentMethod(method.id)}
-                                                    />
-                                                    <span className="flex items-center gap-3">
-                                                        <span
-                                                            className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${method.accent}`}
-                                                        >
-                                                            {method.name.slice(0, 2).toUpperCase()}
-                                                        </span>
-                                                        <span className="text-sm font-medium text-foreground">{method.name}</span>
-                                                    </span>
-                                                    <span className="flex items-center gap-2">
-                                                        {hasChildren ? (
-                                                            <ChevronDown
-                                                                aria-hidden="true"
-                                                                className={`h-4 w-4 text-muted-foreground transition-transform ${
-                                                                    isExpanded ? 'rotate-180' : ''
-                                                                }`}
-                                                            />
-                                                        ) : null}
-                                                        <span
-                                                            className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                                                                isSelected ? 'border-primary' : 'border-border'
-                                                            }`}
-                                                        >
-                                                            {isSelected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
-                                                        </span>
-                                                    </span>
-                                                </label>
-                                                {hasChildren ? (
-                                                    <div
-                                                        className={`${isExpanded ? 'block' : 'hidden'} border-t border-border/60 bg-muted/10 px-4 py-3`}
-                                                    >
-                                                        <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase">Select Bank</p>
-                                                        <div className="space-y-2">
-                                                            {method.children?.map((child) => {
-                                                                const isChildSelected = isSelected && selectedBankPaymentId === child.id;
-
-                                                                return (
-                                                                    <label
-                                                                        key={child.id}
-                                                                        htmlFor={`payment-${method.id}-${child.id}`}
-                                                                        className={`flex cursor-pointer items-center justify-between rounded-lg border border-transparent px-3 py-2 text-sm transition hover:bg-background ${
-                                                                            isChildSelected
-                                                                                ? 'border-primary bg-background text-foreground'
-                                                                                : 'text-muted-foreground'
-                                                                        }`}
-                                                                    >
-                                                                        <input
-                                                                            type="radio"
-                                                                            id={`payment-${method.id}-${child.id}`}
-                                                                            name={`payment-${method.id}-bank`}
-                                                                            className="hidden"
-                                                                            value={child.id}
-                                                                            checked={isChildSelected}
-                                                                            onChange={() => {
-                                                                                handleSelectPaymentMethod(method.id);
-                                                                                handleSelectBankPayment(child.id);
-                                                                            }}
-                                                                        />
-                                                                        <span>{child.name}</span>
-                                                                        <span
-                                                                            className={`flex h-4 w-4 items-center justify-center rounded-full border ${
-                                                                                isChildSelected ? 'border-primary bg-primary/10' : 'border-border'
-                                                                            }`}
-                                                                        >
-                                                                            {isChildSelected && (
-                                                                                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                                                                            )}
-                                                                        </span>
-                                                                    </label>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                ) : null}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </CardContent>
-                        </Card>
-
                         <Card className="gap-4 border border-primary/40 bg-background shadow-md">
                             <CardHeader className="pb-0">
                                 <CardTitle className="text-lg font-semibold text-foreground">Transaction Summary</CardTitle>
