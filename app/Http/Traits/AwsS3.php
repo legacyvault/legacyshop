@@ -100,6 +100,25 @@ trait AwsS3
         return rtrim(env('AWS_S3_ENDPOINT'), '/') . '/' . env('AWS_S3_BUCKET') . '/' . $filename;
     }
 
+    public function uploadPdfToS3(string $pdfBinary, string $filename): string
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'pdf_');
+
+        file_put_contents($tmp, $pdfBinary);
+
+        $this->getS3Client()->putObject([
+            'Bucket' => env('AWS_S3_BUCKET'),
+            'Key' => $filename,
+            'Body' => fopen($tmp, 'r'),
+            'ContentType' => 'application/pdf',
+        ]);
+
+        unlink($tmp);
+
+        return rtrim(env('AWS_S3_ENDPOINT'), '/') . '/' . env('AWS_S3_BUCKET') . '/' . $filename;
+    }
+
+
     public function deleteFromS3(string $fileUrl): void
     {
         try {

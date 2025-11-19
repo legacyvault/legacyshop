@@ -8,6 +8,7 @@ use App\Models\OrderItems;
 use App\Models\OrderShipments;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Http\Traits\AwsS3;
 use App\Models\DeliveryAddress;
 use App\Models\Division;
 use App\Models\Guest;
@@ -30,6 +31,8 @@ use Milon\Barcode\DNS1D;
 
 class OrderController extends Controller
 {
+    use AwsS3;
+
     protected $serverKey;
     protected $clientKey;
     protected $apiUrl;
@@ -355,8 +358,7 @@ class OrderController extends Controller
                     ];
                 })->toArray(),
             ];
-            Log::info('--------Payload------');
-            Log::info($payload);
+
             $response = Http::withToken($this->biteshipApiKey)
                 ->post($this->baseUrlBiteship . '/draft_orders', $payload);
 
@@ -366,8 +368,7 @@ class OrderController extends Controller
             }
 
             $data = $response->json();
-            Log::info('RESPONSE BITESHIP');
-            Log::info($data);
+
             $orderShipment = OrderShipments::where('order_id', $order->id)->first();
             if ($orderShipment) {
                 $orderShipment->biteship_draft_order_id = $data['id'];
@@ -618,8 +619,6 @@ class OrderController extends Controller
         try {
             $notification = $request->all();
 
-            Log::info('Midtrans Notification:', $notification);
-
             $orderId = $notification['order_id'] ?? null;
             $transaction_id = $notification['ransaction_id'] ?? null;
             $transaction_status = $notification['transaction_status'] ?? null;
@@ -629,7 +628,6 @@ class OrderController extends Controller
                 return response()->json(['error' => 'Missing order_id'], 400);
             }
 
-            // Cari order dari database kamu
             $order = Order::where('order_number', $orderId)->first();
 
             if (!$order) {
@@ -638,7 +636,6 @@ class OrderController extends Controller
 
             if ($transaction_status == 'expire') {
 
-                //Return stocks
                 $orderItems = $order->items()->get();
 
                 foreach ($orderItems as $item) {
@@ -682,7 +679,6 @@ class OrderController extends Controller
                     }
                 }
 
-                // Update order status
                 $order->update([
                     'transaction_status' => $transaction_status,
                     'transaction_expiry_time' => $expiry_time,
@@ -730,12 +726,13 @@ class OrderController extends Controller
                 ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id . '/confirm')
                 ->throw();
 
-            Log::info('Order confirmed and draft order finalized.', [
-                'order_id' => $order->id,
-                'order_number' => $order->order_number,
-                'biteship_response' => $confirmResponse->json(),
-            ]);
+            // Log::info('Order confirmed and draft order finalized.', [
+            //     'order_id' => $order->id,
+            //     'order_number' => $order->order_number,
+            //     'biteship_response' => $confirmResponse->json(),
+            // ]);
 
+            $biteshipData = $confirmResponse->json();
             $logoPath = public_path('logo.png');
             $logoBase64 = null;
 
@@ -744,7 +741,7 @@ class OrderController extends Controller
             }
 
             $items = collect($order->items ?? []);
-            $awbNumber = trim($orderShipment->waybill_number ?? '') ?: $order->order_number;
+            $awbNumber = trim($biteshipData['courier']['waybill_id'] ?? '') ?: $order->order_number;
             $awbBarcode = null;
             $shippingFeeValue = $order->shipping_fee ?? $orderShipment->shipping_fee ?? 0;
             $totalWeight = (int) round($items->sum(function ($item) {
@@ -766,7 +763,7 @@ class OrderController extends Controller
                 $awbBarcode = $barcodeGenerator->getBarcodePNG($awbNumber, 'C128', 2, 70);
             }
 
-            
+
             $pdf = Pdf::loadView('pdf.shipping-label', [
                 'order' => $order,
                 'shipment' => $orderShipment,
@@ -781,9 +778,22 @@ class OrderController extends Controller
             ])->setPaper('a5', 'portrait');
 
             $fileName = 'shipping-label-' . $order->order_number . '.pdf';
+            $pdfContent = $pdf->output();
+            $pathPrefix = "shipping-labels/" . date('Y/m/d');
+            $fullPath = "{$pathPrefix}/{$fileName}";
+
+            // Upload ke S3
+            $s3Url = $this->uploadPdfToS3($pdfContent, $fullPath);
+
+            $orderShipment->shipping_label_url = $s3Url;
+            $orderShipment->tracking_url = $biteshipData['courier']['link'];
+            $orderShipment->waybill_number = $biteshipData['courier']['waybill_id'];
+            $orderShipment->save();
+
+            $order->status = 'order_confirmed';
+            $order->save();
 
             return $pdf->stream($fileName);
-
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Order not found.'], 404);
         } catch (Exception $e) {
