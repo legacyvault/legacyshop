@@ -307,3 +307,118 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('add-warehouse/{id?}', [ViewController::class, 'addWarehousePage']);
     });
 });
+
+use Barryvdh\DomPDF\Facade\Pdf;
+
+/*
+|--------------------------------------------------------------------------
+| DEV ROUTES – SHIPPING LABEL PREVIEW
+|--------------------------------------------------------------------------
+| Route ini HANYA untuk development / debug tampilan shipping label.
+| Tidak perlu lewat flow checkout, Midtrans, Biteship, dll.
+*/
+
+Route::get('/dev/shipping-label-preview', function () {
+    // STATIC DATA (dummy)
+    $order = (object) [
+        'order_number' => 'ORD-TEST-12345',
+        'shipping_fee' => 15000,
+    ];
+
+    $customer = (object) [
+        'name' => 'John Doe',
+        'contact_name' => 'John Doe',
+        'contact_phone' => '081234567890',
+        'profile' => (object)[ 'phone' => '081234567890' ],
+    ];
+
+    $shipment = (object)[
+        'courier_name' => 'jne',
+        'courier_service' => 'REG',
+        'receiver_name' => 'Jane Customer',
+        'receiver_phone' => '081298765432',
+        'receiver_address' => 'Jl. Mawar No. 12',
+        'receiver_city' => 'Jakarta Selatan',
+        'receiver_province' => 'DKI Jakarta',
+        'receiver_postal_code' => '12345',
+    ];
+
+    $items = [
+        (object)[
+            'product_name' => 'Kemeja Linen Premium',
+            'category_name' => 'Fashion',
+            'sub_category_name' => 'Pria',
+            'division_name' => 'Atasan',
+            'variant_name' => 'Beige XL',
+            'product' => (object)[ 'product_sku' => 'KMJ-LINEN-XL-BEIGE' ],
+            'quantity' => 1,
+        ],
+        (object)[
+            'product_name' => 'Celana Chino Slim Fit',
+            'category_name' => 'Fashion',
+            'sub_category_name' => 'Pria',
+            'division_name' => 'Bawahan',
+            'variant_name' => 'Hitam 32',
+            'product' => (object)[ 'product_sku' => 'CHINO-SF-BLK32' ],
+            'quantity' => 2,
+        ],
+    ];
+
+    // BARCODE (besar dan kecil – pakai DNS1D instance)
+    $dns = new \Milon\Barcode\DNS1D();
+    $bigBarcode   = base64_encode($dns->getBarcodePNG('12123123', 'C128', 2, 80));
+    $smallBarcode = base64_encode($dns->getBarcodePNG('askdlakmsd123', 'C128', 1.6, 60));
+
+    return view('pdf.shipping-label', [
+        'order' => $order,
+        'customer' => $customer,
+        'shipment' => $shipment,
+        'items' => $items,
+
+        'awbNumber' => 'AWB1234567890',
+        'awbBarcode' => $bigBarcode,
+        'logoBase64' => '',
+
+        'shippingFeeValue' => 15000,
+        'totalWeight' => 800,
+    ]);
+});
+
+Route::get('/dev/shipping-label-pdf', function () {
+    // sama seperti route preview, tapi render jadi PDF
+    $awbNumber        = '11002678311332';
+    $receiverName     = 'Niken Nurdian Putri';
+    $senderName       = 'raccharin';
+    $receiverAddress  = 'Jalan H Jamhur No. 55, RT.20/RW.1, Kelurahan Gandul, Cinere (Disamping perumahan), CINERE, KOTA DEPOK, JAWA BARAT';
+    $receiverCity     = 'KOTA DEPOK';
+    $receiverDistrict = 'CINERE';
+    $senderCity       = 'KOTA TANGERANG';
+    $senderPhone      = '6285717548873';
+    $weight           = 1000;
+    $deadline         = '03-10-2025';
+    $orderCode        = '2510034TPJWJ28';
+
+    $dns = new \Milon\Barcode\DNS1D();
+    $bigBarcode   = base64_encode($dns->getBarcodePNG($awbNumber, 'C128', 2, 80));
+    $smallBarcode = base64_encode($dns->getBarcodePNG($orderCode, 'C128', 1.6, 60));
+
+    $data = compact(
+        'awbNumber',
+        'receiverName',
+        'senderName',
+        'receiverAddress',
+        'receiverCity',
+        'receiverDistrict',
+        'senderCity',
+        'senderPhone',
+        'weight',
+        'deadline',
+        'orderCode',
+        'bigBarcode',
+        'smallBarcode'
+    );
+
+    $pdf = Pdf::loadView('pdf.shipping-label', $data);
+
+    return $pdf->stream('test.pdf');
+});
