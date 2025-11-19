@@ -6,17 +6,20 @@ import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IOrdersPaginated, IRootHistoryOrders, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Loader2, MoreHorizontal, Search } from 'lucide-react';
-import { ChangeEvent, useCallback, useMemo, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
+
+const ORDERS_ROUTE = '/orders/order';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Orders',
-        href: '/orders',
+        href: ORDERS_ROUTE,
     },
 ];
 
 type Filters = Record<string, any>;
 type SortableColumn = 'order_number' | 'grand_total' | 'payment_status' | 'status' | 'transaction_status' | 'created_at';
+type PaginationItem = number | 'ellipsis-start' | 'ellipsis-end';
 
 const perPageOptions = [10, 15, 25, 50, 100];
 
@@ -84,6 +87,7 @@ const paymentStatusVariant = (status?: string | null): 'default' | 'secondary' |
 const orderStatusVariant = (status?: string | null): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch ((status ?? '').toLowerCase()) {
         case 'completed':
+        case 'order_confirmed':
         case 'delivered':
             return 'default';
         case 'pending':
@@ -139,10 +143,9 @@ function OrdersTable({
     const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
     const [confirmingOrder, setConfirmingOrder] = useState<string | null>(null);
     const [invoiceFeedback, setInvoiceFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [loading, setLoading] = useState(false);
 
     const orders = ordersPaginated?.data ?? [];
-
-    console.log(orders);
 
     const currentPage = ordersPaginated?.current_page ?? Number(filters.page ?? 1);
     const perPage = ordersPaginated?.per_page ?? Number(filters.per_page ?? 15);
@@ -176,21 +179,32 @@ function OrdersTable({
     }, [orders]);
 
     const hasActiveFilters = Boolean(filters.q || filters.status || filters.payment_status || filters.transaction_status);
+    const normalizedSearchFilter = typeof filters.q === 'string' ? filters.q : '';
+    const [searchValue, setSearchValue] = useState<string>(normalizedSearchFilter);
 
-    const updateFilters = (patch: Filters) => {
-        const next: Filters = { ...filters, ...patch };
-        Object.keys(next).forEach((key) => {
-            const value = next[key];
-            if (value === '' || value === null || typeof value === 'undefined') {
-                delete next[key];
-            }
-        });
+    useEffect(() => {
+        setSearchValue((prev) => (prev === normalizedSearchFilter ? prev : normalizedSearchFilter));
+    }, [normalizedSearchFilter]);
 
-        router.get('/orders', next, { preserveState: true, replace: true });
-    };
+    const updateFilters = useCallback(
+        (patch: Filters) => {
+            const next: Filters = { ...filters, ...patch };
+            Object.keys(next).forEach((key) => {
+                const value = next[key];
+                if (value === '' || value === null || typeof value === 'undefined') {
+                    delete next[key];
+                }
+            });
+
+            router.get(ORDERS_ROUTE, next, { preserveState: true, replace: true });
+        },
+        [filters],
+    );
 
     const handleSearch = (event: ChangeEvent<HTMLInputElement>) => {
-        updateFilters({ q: event.target.value, page: 1 });
+        const value = event.target.value;
+        setSearchValue(value);
+        updateFilters({ q: value, page: 1 });
     };
 
     const handleSort = (column: SortableColumn) => {
@@ -461,6 +475,35 @@ function OrdersTable({
         return filters.sort_dir === 'asc' ? '▲' : '▼';
     };
 
+    const paginationItems = useMemo<PaginationItem[]>(() => {
+        if (lastPage <= 7) {
+            return Array.from({ length: lastPage }, (_, index) => index + 1);
+        }
+
+        const delta = 2;
+        const start = Math.max(2, currentPage - delta);
+        const end = Math.min(lastPage - 1, currentPage + delta);
+        const pages: PaginationItem[] = [1];
+
+        if (start > 2) {
+            pages.push('ellipsis-start');
+        }
+
+        for (let page = start; page <= end; page++) {
+            pages.push(page);
+        }
+
+        if (end < lastPage - 1) {
+            pages.push('ellipsis-end');
+        }
+
+        pages.push(lastPage);
+
+        return pages;
+    }, [currentPage, lastPage]);
+
+    const showPagination = lastPage > 1;
+
     async function parseJsonResponse(response: Response) {
         const contentType = response.headers.get('content-type') ?? '';
         if (!contentType.includes('application/json')) {
@@ -526,7 +569,7 @@ function OrdersTable({
             if (confirmingOrder) return;
 
             setConfirmingOrder(orderId);
-
+            setLoading(true);
             try {
                 const csrfToken = getCsrfToken();
                 const response = await fetch(`/v1/confirm-order/${orderId}`, {
@@ -584,12 +627,12 @@ function OrdersTable({
                     throw new Error(message);
                 }
 
-                console.log('Confirm order response:', payload);
                 refreshOrders();
             } catch (error) {
                 console.error('Confirm order failed:', error);
             } finally {
                 setConfirmingOrder(null);
+                setLoading(false);
             }
         },
         [confirmingOrder, refreshOrders],
@@ -597,6 +640,11 @@ function OrdersTable({
 
     return (
         <>
+            {loading && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-white"></div>
+                </div>
+            )}
             <div className="flex flex-col gap-4">
                 {invoiceFeedback && (
                     <div
@@ -658,7 +706,7 @@ function OrdersTable({
                             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <input
                                 type="text"
-                                defaultValue={filters.q ?? ''}
+                                value={searchValue}
                                 onChange={handleSearch}
                                 placeholder="Search order number, customer..."
                                 className="w-full rounded border border-popover bg-background px-9 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
@@ -795,16 +843,6 @@ function OrdersTable({
                                                         )}
                                                         <DropdownMenuItem
                                                             className="cursor-pointer gap-2"
-                                                            disabled={confirmingOrder === order.id}
-                                                            onClick={() => handleConfirmOrder(order.id)}
-                                                        >
-                                                            {confirmingOrder === order.id && (
-                                                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                                            )}
-                                                            Confirm Order
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            className="cursor-pointer gap-2"
                                                             disabled={generatingInvoice === order.id}
                                                             onClick={() => handleGenerateInvoice(order)}
                                                         >
@@ -833,18 +871,59 @@ function OrdersTable({
                     </table>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="text-xs text-muted-foreground">
-                        Page {currentPage} of {lastPage}
+                        {total ? (
+                            <>
+                                Showing {from} - {to} of {total}
+                            </>
+                        ) : (
+                            'No records to display'
+                        )}
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" disabled={currentPage === 1} onClick={() => goToPage(currentPage - 1)}>
-                            Previous
-                        </Button>
-                        <Button variant="outline" disabled={currentPage === lastPage} onClick={() => goToPage(currentPage + 1)}>
-                            Next
-                        </Button>
-                    </div>
+                    {showPagination && (
+                        <div className="flex flex-wrap items-center gap-1">
+                            <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => goToPage(1)}>
+                                First
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={currentPage === 1}
+                                onClick={() => goToPage(currentPage - 1)}
+                            >
+                                Previous
+                            </Button>
+                            {paginationItems.map((item, index) =>
+                                typeof item === 'number' ? (
+                                    <Button
+                                        key={item}
+                                        size="sm"
+                                        variant={item === currentPage ? 'default' : 'outline'}
+                                        onClick={() => goToPage(item)}
+                                        aria-current={item === currentPage ? 'page' : undefined}
+                                    >
+                                        {item}
+                                    </Button>
+                                ) : (
+                                    <span key={`${item}-${index}`} className="px-2 text-xs text-muted-foreground">
+                                        ...
+                                    </span>
+                                ),
+                            )}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={currentPage === lastPage}
+                                onClick={() => goToPage(currentPage + 1)}
+                            >
+                                Next
+                            </Button>
+                            <Button size="sm" variant="outline" disabled={currentPage === lastPage} onClick={() => goToPage(lastPage)}>
+                                Last
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -916,6 +995,25 @@ function OrderDetailsDialog({
                                         >
                                             Generate Payment
                                         </Button>
+                                    </>
+                                )}
+                                {order.shipment?.shipping_label_url && (
+                                    <>
+                                        <br />
+                                        <div className="mt-0.5">
+                                            <a href={order.shipment?.shipping_label_url} target="_blank">
+                                                Open Shipping Label
+                                            </a>
+                                        </div>
+                                    </>
+                                )}
+                                {order.shipment?.tracking_url && (
+                                    <>
+                                        <div className="mt-0.5">
+                                            <a href={order.shipment?.tracking_url} target="_blank">
+                                                Open Tracking
+                                            </a>
+                                        </div>
                                     </>
                                 )}
                             </div>
