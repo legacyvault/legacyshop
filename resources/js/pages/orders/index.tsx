@@ -532,7 +532,7 @@ function OrdersTable({
                 const response = await fetch(`/v1/confirm-order/${orderId}`, {
                     method: 'POST',
                     headers: {
-                        Accept: 'application/json',
+                        Accept: 'application/pdf, application/json',
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                         ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
@@ -540,17 +540,51 @@ function OrdersTable({
                     credentials: 'include',
                 });
 
-                const payload = await parseJsonResponse(response);
-                console.log('Confirm order response:', payload);
+                const contentType = response.headers.get('content-type') ?? '';
+                const normalizedContentType = contentType.toLowerCase();
+
+                if (response.ok && normalizedContentType.includes('application/pdf')) {
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const pdfWindow = window.open(blobUrl, '_blank');
+
+                    if (!pdfWindow) {
+                        const tempLink = document.createElement('a');
+                        tempLink.href = blobUrl;
+                        tempLink.target = '_blank';
+                        tempLink.rel = 'noopener';
+                        tempLink.click();
+                    }
+
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+                    refreshOrders();
+                    return;
+                }
+
+                let payload: unknown = null;
+
+                if (normalizedContentType.includes('application/json')) {
+                    try {
+                        payload = await response.json();
+                    } catch {
+                        payload = null;
+                    }
+                } else {
+                    const rawText = await response.text();
+                    payload = rawText;
+                }
 
                 if (!response.ok) {
                     const message =
-                        (payload as { message?: string; error?: string })?.message ??
-                        (payload as { error?: string })?.error ??
-                        'Failed to confirm order.';
+                        typeof payload === 'string'
+                            ? payload || 'Failed to confirm order.'
+                            : ((payload as { message?: string; error?: string })?.message ??
+                              (payload as { error?: string })?.error ??
+                              'Failed to confirm order.');
                     throw new Error(message);
                 }
 
+                console.log('Confirm order response:', payload);
                 refreshOrders();
             } catch (error) {
                 console.error('Confirm order failed:', error);
@@ -759,6 +793,16 @@ function OrdersTable({
                                                                 Confirm Order
                                                             </DropdownMenuItem>
                                                         )}
+                                                        <DropdownMenuItem
+                                                            className="cursor-pointer gap-2"
+                                                            disabled={confirmingOrder === order.id}
+                                                            onClick={() => handleConfirmOrder(order.id)}
+                                                        >
+                                                            {confirmingOrder === order.id && (
+                                                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                            )}
+                                                            Confirm Order
+                                                        </DropdownMenuItem>
                                                         <DropdownMenuItem
                                                             className="cursor-pointer gap-2"
                                                             disabled={generatingInvoice === order.id}

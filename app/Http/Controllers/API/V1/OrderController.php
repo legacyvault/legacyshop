@@ -24,6 +24,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\File;
+use Milon\Barcode\DNS1D;
 
 class OrderController extends Controller
 {
@@ -711,18 +714,78 @@ class OrderController extends Controller
     public function confirmOrder($id)
     {
         try {
-            $orderShipment = OrderShipments::where('order_id', $id)->first();
+            $order = Order::with(['user.profile', 'guest', 'items.product', 'shipment'])->findOrFail($id);
+            $orderShipment = $order->shipment;
+
+            if (!$orderShipment) {
+                return response()->json(['error' => 'Shipment data is missing for this order.'], 422);
+            }
+
+            if (empty($orderShipment->biteship_draft_order_id)) {
+                return response()->json(['error' => 'Biteship draft order is not available for this shipment.'], 422);
+            }
 
             $confirmResponse = Http::retry(3, 500)
                 ->withToken($this->biteshipApiKey)
                 ->post($this->baseUrlBiteship . '/draft_orders/' . $orderShipment->biteship_draft_order_id . '/confirm')
                 ->throw();
 
+            Log::info('Order confirmed and draft order finalized.', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'biteship_response' => $confirmResponse->json(),
+            ]);
 
-            Log::info($confirmResponse);
+            $logoPath = public_path('logo.png');
+            $logoBase64 = null;
 
-            return response()->json(['message' => 'OK'], 200);
+            if (is_readable($logoPath)) {
+                $logoBase64 = 'data:image/' . pathinfo($logoPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($logoPath));
+            }
 
+            $items = collect($order->items ?? []);
+            $awbNumber = trim($orderShipment->waybill_number ?? '') ?: $order->order_number;
+            $awbBarcode = null;
+            $shippingFeeValue = $order->shipping_fee ?? $orderShipment->shipping_fee ?? 0;
+            $totalWeight = (int) round($items->sum(function ($item) {
+                $weight = $item->product->product_weight ?? 0;
+                $quantity = (int) ($item->quantity ?? 0);
+
+                return (float) $weight * $quantity;
+            }));
+
+            if (!empty($awbNumber)) {
+                $barcodeStoragePath = storage_path('app/barcodes/');
+
+                if (!File::isDirectory($barcodeStoragePath)) {
+                    File::makeDirectory($barcodeStoragePath, 0755, true);
+                }
+
+                $barcodeGenerator = new DNS1D();
+                $barcodeGenerator->setStorPath($barcodeStoragePath);
+                $awbBarcode = $barcodeGenerator->getBarcodePNG($awbNumber, 'C128', 2, 70);
+            }
+
+            
+            $pdf = Pdf::loadView('pdf.shipping-label', [
+                'order' => $order,
+                'shipment' => $orderShipment,
+                'items' => $items,
+                'customer' => $order->user ?? $order->guest,
+                'logoBase64' => $logoBase64,
+                'awbNumber' => $awbNumber,
+                'awbBarcode' => $awbBarcode,
+                'shippingFeeValue' => $shippingFeeValue,
+                'totalWeight' => $totalWeight,
+                'confirmedAt' => now(),
+            ])->setPaper('a5', 'portrait');
+
+            $fileName = 'shipping-label-' . $order->order_number . '.pdf';
+
+            return $pdf->stream($fileName);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Order not found.'], 404);
         } catch (Exception $e) {
             Log::error('[SECURITY AUDIT] Error Handle Confirm Order: ' . $e);
             return response()->json(['error' => 'Handle Confirm Order Failed'], 500);
