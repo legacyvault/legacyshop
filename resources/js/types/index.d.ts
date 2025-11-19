@@ -604,6 +604,8 @@ export interface IShipmentHistoryOrders {
     delivered_at: string | null;
     created_at: string;
     updated_at: string;
+    shipping_label_url: string;
+    tracking_url: string;
 }
 
 export interface IItemHistoryOrders {

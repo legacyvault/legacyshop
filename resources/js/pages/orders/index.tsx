@@ -84,6 +84,7 @@ const paymentStatusVariant = (status?: string | null): 'default' | 'secondary' |
 const orderStatusVariant = (status?: string | null): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch ((status ?? '').toLowerCase()) {
         case 'completed':
+        case 'order_confirmed':
         case 'delivered':
             return 'default';
         case 'pending':
@@ -139,10 +140,9 @@ function OrdersTable({
     const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
     const [confirmingOrder, setConfirmingOrder] = useState<string | null>(null);
     const [invoiceFeedback, setInvoiceFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [loading, setLoading] = useState(false);
 
     const orders = ordersPaginated?.data ?? [];
-
-    console.log(orders);
 
     const currentPage = ordersPaginated?.current_page ?? Number(filters.page ?? 1);
     const perPage = ordersPaginated?.per_page ?? Number(filters.per_page ?? 15);
@@ -526,7 +526,7 @@ function OrdersTable({
             if (confirmingOrder) return;
 
             setConfirmingOrder(orderId);
-
+            setLoading(true);
             try {
                 const csrfToken = getCsrfToken();
                 const response = await fetch(`/v1/confirm-order/${orderId}`, {
@@ -584,12 +584,12 @@ function OrdersTable({
                     throw new Error(message);
                 }
 
-                console.log('Confirm order response:', payload);
                 refreshOrders();
             } catch (error) {
                 console.error('Confirm order failed:', error);
             } finally {
                 setConfirmingOrder(null);
+                setLoading(false);
             }
         },
         [confirmingOrder, refreshOrders],
@@ -597,6 +597,11 @@ function OrdersTable({
 
     return (
         <>
+            {loading && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-white"></div>
+                </div>
+            )}
             <div className="flex flex-col gap-4">
                 {invoiceFeedback && (
                     <div
@@ -795,16 +800,6 @@ function OrdersTable({
                                                         )}
                                                         <DropdownMenuItem
                                                             className="cursor-pointer gap-2"
-                                                            disabled={confirmingOrder === order.id}
-                                                            onClick={() => handleConfirmOrder(order.id)}
-                                                        >
-                                                            {confirmingOrder === order.id && (
-                                                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                                            )}
-                                                            Confirm Order
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            className="cursor-pointer gap-2"
                                                             disabled={generatingInvoice === order.id}
                                                             onClick={() => handleGenerateInvoice(order)}
                                                         >
@@ -916,6 +911,25 @@ function OrderDetailsDialog({
                                         >
                                             Generate Payment
                                         </Button>
+                                    </>
+                                )}
+                                {order.shipment?.shipping_label_url && (
+                                    <>
+                                        <br />
+                                        <div className="mt-0.5">
+                                            <a href={order.shipment?.shipping_label_url} target="_blank">
+                                                Open Shipping Label
+                                            </a>
+                                        </div>
+                                    </>
+                                )}
+                                {order.shipment?.tracking_url && (
+                                    <>
+                                        <div className="mt-0.5">
+                                            <a href={order.shipment?.tracking_url} target="_blank">
+                                                Open Tracking
+                                            </a>
+                                        </div>
                                     </>
                                 )}
                             </div>

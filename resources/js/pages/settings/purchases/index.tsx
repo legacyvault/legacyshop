@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { IRootHistoryOrders, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { Search } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ElementType, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 
 type Filters = {
     q?: string;
@@ -18,12 +18,6 @@ type Filters = {
     transaction_status?: string;
     page?: number;
     per_page?: number;
-};
-
-type IconPalette = {
-    icon: ElementType;
-    background: string;
-    color: string;
 };
 
 export default function Purchases() {
@@ -437,6 +431,11 @@ function TransactionDetailDialog({
                                 <span>Order #{order.order_number}</span>
                                 <span>{formatDate(order.created_at)}</span>
                                 <span>Status: {titleCase(order.status)}</span>
+                                {order.shipment?.tracking_url && (
+                                    <a href={order.shipment?.tracking_url} target="_blank" rel="noopener noreferrer" className="underline">
+                                        Track your Order
+                                    </a>
+                                )}
                             </span>
                         ) : (
                             'Review the items included in this transaction.'
