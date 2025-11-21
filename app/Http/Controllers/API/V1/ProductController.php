@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductPictures;
 use App\Models\ProductStock;
+use App\Models\SubUnit;
 use App\Models\Tags;
 use App\Models\Type;
 use App\Models\Unit;
@@ -29,7 +30,7 @@ class ProductController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|unique:category,name',
             'description' => 'string|nullable',
-            'unit_id' => 'required|exists:unit,id'
+            'sub_unit_id' => 'required|exists:sub_unit,id'
         ]);
 
         if ($validator->fails()) {
@@ -38,7 +39,7 @@ class ProductController extends Controller
 
         $create = Category::create([
             'name' => $request->name,
-            'unit_id' => $request->unit_id,
+            'sub_unit_id' => $request->sub_unit_id,
             'description' => $request->description
         ]);
 
@@ -46,6 +47,31 @@ class ProductController extends Controller
             return redirect()->back()->with('success', 'Successfully create category.');
         } else {
             return redirect()->back()->with('error', 'Failed to create category.');
+        }
+    }
+
+    public function createSubUnit(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|unique:sub_unit,name',
+            'description' => 'string|nullable',
+            'unit_id' => 'required|exists:unit,id'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $create = SubUnit::create([
+            'name' => $request->name,
+            'unit_id' => $request->unit_id,
+            'description' => $request->description
+        ]);
+
+        if ($create) {
+            return redirect()->back()->with('success', 'Successfully create sub unit.');
+        } else {
+            return redirect()->back()->with('error', 'Failed to create sub unit.');
         }
     }
 
@@ -81,7 +107,7 @@ class ProductController extends Controller
                 'string',
                 Rule::unique('category', 'name')->ignore($request->id),
             ],
-            'unit_id' => 'required|exists:unit,id',
+            'sub_unit_id' => 'required|exists:sub_unit,id',
             'description' => 'string|nullable'
         ]);
 
@@ -96,11 +122,42 @@ class ProductController extends Controller
         }
 
         $data->name = $request->name;
-        $data->unit_id = $request->unit_id;
+        $data->sub_unit_id = $request->sub_unit_id;
         $data->description = $request->description;
         $data->save();
 
         return redirect()->back()->with('success', 'Successfully update category.');
+    }
+
+    public function updateSubUnit(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id' => 'required|exists:sub_unit,id',
+            'name' => [
+                'required',
+                'string',
+                Rule::unique('sub_unit', 'name')->ignore($request->id),
+            ],
+            'unit_id' => 'required|exists:unit_id,id',
+            'description' => 'string|nullable'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $data = SubUnit::find($request->id);
+
+        if (!$data) {
+            return redirect()->back()->with('error', 'Sub unit not found.');
+        }
+
+        $data->name = $request->name;
+        $data->unit_id = $request->unit_id;
+        $data->description = $request->description;
+        $data->save();
+
+        return redirect()->back()->with('success', 'Successfully update sub unit.');
     }
 
     public function updateType(Request $request)
@@ -139,6 +196,13 @@ class ProductController extends Controller
         return $data;
     }
 
+    public function getAllSubUnit()
+    {
+        $data = SubUnit::orderBy('name', 'asc')->with(['unit', 'categories'])->get();
+
+        return $data;
+    }
+
     public function getCategoryPaginated(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);
@@ -148,7 +212,7 @@ class ProductController extends Controller
         $search   = $request->input('q');
         $sortBy   = $request->input('sort_by', 'name');
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSorts = ['id', 'name', 'description', 'unit_id'];
+        $allowedSorts = ['id', 'name', 'description', 'sub_unit_id'];
         if (!in_array($sortBy, $allowedSorts, true)) {
             $sortBy = 'name';
         }
@@ -164,9 +228,42 @@ class ProductController extends Controller
         return $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
     }
 
+
+    public function getSubUnitPaginated(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage <= 0) {
+            $perPage = 15;
+        }
+        $search   = $request->input('q');
+        $sortBy   = $request->input('sort_by', 'name');
+        $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $allowedSorts = ['id', 'name', 'description', 'unit_id'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'name';
+        }
+
+        $query = SubUnit::query()->with(['unit', 'categories']);
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
+    }
+
     public function getCategoryById($id)
     {
         $data = Category::with('unit')->find($id);
+
+        return $data;
+    }
+
+    public function getSubUnitById($id)
+    {
+        $data = SubUnit::with('unit')->find($id);
 
         return $data;
     }
@@ -185,7 +282,6 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'product_name'     => 'required|string|max:255',
-            'product_sku'     => 'required|string|max:255|unique:products,product_sku',
             'product_price'    => 'required|numeric|min:1000',
             'product_usd_price'    => 'required|numeric|min:1',
             'product_weight'    => 'required|numeric|min:1',
@@ -233,7 +329,6 @@ class ProductController extends Controller
             $product = Product::create([
                 'product_name'     => $request->product_name,
                 'product_price'    => $request->product_price,
-                'product_sku'     => $request->product_sku,
                 'product_usd_price'    => $request->product_usd_price,
                 'product_discount' => $request->product_discount ?? 0,
                 'product_weight'     => $request->product_weight,
@@ -368,11 +463,6 @@ class ProductController extends Controller
         $validator = Validator::make($request->all(), [
             'product_name'     => 'required|string|max:255',
             'product_price'    => 'required|numeric|min:1000',
-            'product_sku'     => [
-                'required',
-                'string',
-                Rule::unique('products', 'product_sku')->ignore($request->id),
-            ],
             'product_usd_price'    => 'required|numeric|min:1',
             'description'      => 'required|string',
             'product_discount' => 'nullable|numeric',
@@ -593,7 +683,7 @@ class ProductController extends Controller
         $query = Product::with([
             'stocks',
             'unit',
-            'categories',
+            'categories.unit',
             'subcategories',
             'divisions',
             'tags',
@@ -646,7 +736,7 @@ class ProductController extends Controller
         $data = Product::with([
             'stocks',
             'unit',
-            'categories',
+            'categories.unit',
             'subcategories',
             'divisions',
             'tags',
@@ -661,7 +751,7 @@ class ProductController extends Controller
         $data = Product::with([
             'stocks',
             'unit',
-            'categories',
+            'categories.unit',
             'subcategories',
             'divisions',
             'tags',
@@ -676,7 +766,7 @@ class ProductController extends Controller
         $product = Product::with([
             'stocks',
             'unit',
-            'categories',
+            'categories.unit',
             'subcategories',
             'divisions',
             'variants',
@@ -824,6 +914,7 @@ class ProductController extends Controller
             'name'        => 'required|string|unique:unit,name',
             'description' => 'string|nullable',
             'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
+            'is_active' => 'nullable'
         ]);
 
         if ($validator->fails()) {
@@ -841,6 +932,7 @@ class ProductController extends Controller
                 'name'        => $request->name,
                 'description' => $request->description,
                 'picture_url' => $pictureUrl,
+                'is_active'   => $request->is_active
             ]);
 
             if ($create) {
@@ -852,6 +944,7 @@ class ProductController extends Controller
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to create unit: ' . $e);
+            return redirect()->back()->with('error', 'Failed to create unit: ' . $e);
         }
     }
 
@@ -866,6 +959,7 @@ class ProductController extends Controller
             ],
             'description' => 'string|nullable',
             'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
+            'is_active' => 'nullable'
         ]);
 
         if ($validator->fails()) {
@@ -889,6 +983,7 @@ class ProductController extends Controller
 
             $unit->name        = $request->name;
             $unit->description = $request->description;
+            $unit->is_active   = $request->is_active;
             $unit->save();
 
             DB::commit();
@@ -896,13 +991,19 @@ class ProductController extends Controller
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to update unit: ' . $e);
-            return redirect()->back()->with('error', 'Failed update unit.');
+            return redirect()->back()->with('error', 'Failed update unit: ' . $e);
         }
     }
 
     public function getAllUnit()
     {
-        $data = Unit::orderBy('name', 'asc')->with('categories')->get();
+        $data = Unit::orderBy('name', 'asc')->with('sub_unit.categories')->get();
+        return $data;
+    }
+
+    public function getAllActiveUnit()
+    {
+        $data = Unit::orderBy('name', 'asc')->with('sub_unit.categories')->where('is_active', 1)->get();
         return $data;
     }
 
@@ -923,7 +1024,7 @@ class ProductController extends Controller
             $sortBy = 'name';
         }
 
-        $query = Unit::query()->with('categories');
+        $query = Unit::query()->with('sub_unit.categories');
 
         if ($search) {
             $query->where(function ($q) use ($search) {

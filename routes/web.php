@@ -104,6 +104,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('category', [ProductController::class, 'getAllCategory'])->name('category');
     Route::get('category/{id}', [ProductController::class, 'getCategoryById'])->name('category.id');
 
+    Route::get('sub-unit', [ProductController::class, 'getAllSubUnit'])->name('sub-unit');
+    Route::get('sub-unit/{id}', [ProductController::class, 'getSubUnitById'])->name('subunit.id');
+
+
     Route::get('type', [ProductController::class, 'getAllType'])->name('type');
 
     Route::get('tag', [ProductController::class, 'getAllTags'])->name('tag');
@@ -111,6 +115,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Unit API
     Route::prefix('products')->group(function () {
         Route::get('unit', [ProductController::class, 'getAllUnit'])->name('unit');
+        Route::get('active-unit', [ProductController::class, 'getAllActiveUnit'])->name('active-unit');
     });
 
     Route::get('sub-category', [SubCategoryController::class, 'getAllSubCategory'])->name('subcat');
@@ -163,6 +168,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Category API
     Route::post('create-category', [ProductController::class, 'createCategory'])->name('category.create');
     Route::post('update-category', [ProductController::class, 'updateCategory'])->name('category.update');
+
+    //SubUnit API
+    Route::post('create-subUnit', [ProductController::class, 'createSubUnit'])->name('subunit.create');
+    Route::post('update-subUnit', [ProductController::class, 'updateSubUnit'])->name('subunit.update');
 
     //Type API
     Route::post('create-type', [ProductController::class, 'createType'])->name('type.create');
@@ -329,7 +338,7 @@ Route::get('/dev/shipping-label-preview', function () {
         'name' => 'John Doe',
         'contact_name' => 'John Doe',
         'contact_phone' => '081234567890',
-        'profile' => (object)[ 'phone' => '081234567890' ],
+        'profile' => (object)['phone' => '081234567890'],
     ];
 
     $shipment = (object)[
@@ -350,7 +359,7 @@ Route::get('/dev/shipping-label-preview', function () {
             'sub_category_name' => 'Pria',
             'division_name' => 'Atasan',
             'variant_name' => 'Beige XL',
-            'product' => (object)[ 'product_sku' => 'KMJ-LINEN-XL-BEIGE' ],
+            'product' => (object)['product_sku' => 'KMJ-LINEN-XL-BEIGE'],
             'quantity' => 1,
         ],
         (object)[
@@ -359,7 +368,7 @@ Route::get('/dev/shipping-label-preview', function () {
             'sub_category_name' => 'Pria',
             'division_name' => 'Bawahan',
             'variant_name' => 'Hitam 32',
-            'product' => (object)[ 'product_sku' => 'CHINO-SF-BLK32' ],
+            'product' => (object)['product_sku' => 'CHINO-SF-BLK32'],
             'quantity' => 2,
         ],
     ];

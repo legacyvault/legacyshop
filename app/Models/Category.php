@@ -15,13 +15,13 @@ class Category extends Model
 
     protected $fillable = [
         'name',
-        'unit_id',
+        'sub_unit_id',
         'description',
     ];
 
     public function unit()
     {
-        return $this->belongsTo(Unit::class, 'unit_id', 'id');
+        return $this->belongsTo(SubUnit::class, 'sub_unit_id', 'id');
     }
 
     public function products()
