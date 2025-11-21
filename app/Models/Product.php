@@ -30,6 +30,47 @@ class Product extends Model
         'is_showcase_bottom' => 'boolean',
     ];
 
+    protected static function booted()
+    {
+        static::creating(function ($product) {
+            // Only generate SKU if it's empty
+            if (empty($product->product_sku)) {
+                $product->product_sku = self::generateSku($product);
+            }
+        });
+    }
+
+    public static function generateSku($product)
+    {
+        $category = $product->categories()->first();
+
+        if (!$category || !$category->unit) {
+            throw new \Exception("Product category or unit not set properly.");
+        }
+
+        $unitInitial = strtoupper(substr($category->unit->name, 0, 1));
+        $productInitial = strtoupper(substr($product->product_name, 0, 1));
+        $prefix = $unitInitial . $productInitial;
+
+        // Find the last SKU starting with this prefix
+        $lastProduct = self::where('product_sku', 'like', $prefix . '%')
+            ->orderBy('product_sku', 'desc')
+            ->first();
+
+        if ($lastProduct) {
+            // Extract numeric part and increment
+            preg_match('/\d+$/', $lastProduct->product_sku, $matches);
+            $number = isset($matches[0]) ? intval($matches[0]) + 1 : 1;
+        } else {
+            $number = 1;
+        }
+
+        // Format with leading zeros (e.g., 001)
+        $sku = $prefix . str_pad($number, 3, '0', STR_PAD_LEFT);
+
+        return $sku;
+    }
+
     public function stocks()
     {
         return $this->hasMany(ProductStock::class);
