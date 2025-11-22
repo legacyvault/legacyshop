@@ -1,48 +1,48 @@
-import CategoriesDialog from '@/components/categories-dialog';
+import SubunitDialog from '@/components/subunit-dialog';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, ICategories, IRootCategories, ISubUnits, SharedData } from '@/types';
+import { BreadcrumbItem, IRootSubUnits, ISubUnits, IUnit, SharedData } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Products - Variant',
+        title: 'Products - Category',
         href: '/products/category',
     },
 ];
 
-interface CatForm {
+interface SubUnitForm {
     name: string;
     description: string;
-    sub_unit_id: string;
+    unit_id: string;
 }
 
-interface PropsCatTable {
-    categoriesPaginated: IRootCategories;
-    subunits: ISubUnits[];
+interface PropsSubUnitTable {
+    subunitsPaginated: IRootSubUnits;
+    units: IUnit[];
     filters: any;
 }
 
-type EditCatForm = CatForm & {
+type EditSubUnitForm = SubUnitForm & {
     id: string;
 };
 
-export default function Category() {
-    const { categoriesPaginated, subunits, filters } = usePage<SharedData>().props;
+export default function SubUnit() {
+    const { subunitsPaginated, units, filters } = usePage<SharedData>().props as any;
 
-    const { data, setData, post, errors } = useForm<Required<CatForm>>({
+    const { data, setData, post, errors } = useForm<Required<SubUnitForm>>({
         name: '',
         description: '',
-        sub_unit_id: '',
+        unit_id: '',
     });
 
     const [openAddCat, isOpenAddCat] = useState(false);
 
     const catSubmitHandler = (e: any) => {
         e.preventDefault();
-        post(route('category.create'), {
+        post(route('subunit.create'), {
             onSuccess: () => isOpenAddCat(false),
             onError: () => isOpenAddCat(true),
         });
@@ -50,31 +50,31 @@ export default function Category() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Products - Variant" />
+            <Head title="Products - Category" />
             <div className="p-4">
-                <Button onClick={() => isOpenAddCat(true)}>Add Variant</Button>
-                <CategoriesDialog
+                <Button onClick={() => isOpenAddCat(true)}>Add Categories</Button>
+                <SubunitDialog
                     data={data}
                     setData={setData}
-                    subunits={subunits}
+                    units={units}
                     open={openAddCat}
                     isOpen={isOpenAddCat}
                     type={'add'}
                     onSubmit={catSubmitHandler}
                     errors={errors}
                 />
-                <CategoriesTable categoriesPaginated={categoriesPaginated} subunits={subunits} filters={filters} />
+                <SubUnitsTable subunitsPaginated={subunitsPaginated} units={units} filters={filters} />
             </div>
         </AppLayout>
     );
 }
 
-function CategoriesTable({ categoriesPaginated, subunits, filters }: PropsCatTable) {
-    const { data, setData, post, errors } = useForm<Required<EditCatForm>>({
+function SubUnitsTable({ subunitsPaginated, units, filters }: PropsSubUnitTable) {
+    const { data, setData, post, errors } = useForm<Required<EditSubUnitForm>>({
         id: '',
         name: '',
         description: '',
-        sub_unit_id: '',
+        unit_id: '',
     });
 
     const [openEditCat, isOpenEditCat] = useState(false);
@@ -90,7 +90,7 @@ function CategoriesTable({ categoriesPaginated, subunits, filters }: PropsCatTab
 
     const catSubmitHandler = (e: any) => {
         e.preventDefault();
-        post(route('category.update'), {
+        post(route('subunit.update'), {
             onSuccess: () => {
                 isOpenEditCat(false);
             },
@@ -100,44 +100,44 @@ function CategoriesTable({ categoriesPaginated, subunits, filters }: PropsCatTab
         });
     };
 
-    const currentPage = categoriesPaginated?.current_page ?? 1;
-    const perPage = categoriesPaginated?.per_page ?? 15;
+    const currentPage = subunitsPaginated?.current_page ?? 1;
+    const perPage = subunitsPaginated?.per_page ?? 15;
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const q = e.target.value;
-        router.get('/products/category', { ...filters, q, page: 1 }, { preserveState: true, replace: true });
+        router.get('/products/sub_unit', { ...filters, q, page: 1 }, { preserveState: true, replace: true });
     };
 
     const toggleSort = (column: 'id' | 'name' | 'description' | 'unit_id') => {
         const sort_by = column;
         const sort_dir = filters?.sort_by === column && filters?.sort_dir === 'asc' ? 'desc' : 'asc';
-        router.get('/products/category', { ...filters, sort_by, sort_dir }, { preserveState: true, replace: true });
+        router.get('/products/sub_unit', { ...filters, sort_by, sort_dir }, { preserveState: true, replace: true });
     };
 
     const goToPage = (page: number) => {
-        router.get('/products/category', { ...filters, page }, { preserveState: true, replace: true });
+        router.get('/products/sub_unit', { ...filters, page }, { preserveState: true, replace: true });
     };
 
     return (
         <>
-            <CategoriesDialog
+            <SubunitDialog
                 data={data}
                 setData={setData}
                 open={openEditCat}
                 isOpen={isOpenEditCat}
                 errors={errors}
                 type="edit"
-                category={selectedCat}
+                subunit={selectedCat}
                 onSubmit={catSubmitHandler}
-                subunits={subunits}
+                units={units}
             />
             {/* <CategoriesDialog open={openDelCat} isOpen={isOpenDelCat} type="delete" category={selectedCat} onSubmit={catSubmitHandler} /> */}
 
             <div className="mt-4 flex items-center justify-between gap-2">
                 <div className="text-sm text-muted-foreground">
-                    {categoriesPaginated?.total ? (
+                    {subunitsPaginated?.total ? (
                         <>
-                            Showing {categoriesPaginated.from ?? 0}-{categoriesPaginated.to ?? 0} of {categoriesPaginated.total}
+                            Showing {subunitsPaginated.from ?? 0}-{subunitsPaginated.to ?? 0} of {subunitsPaginated.total}
                         </>
                     ) : (
                         <>No results</>
@@ -173,18 +173,18 @@ function CategoriesTable({ categoriesPaginated, subunits, filters }: PropsCatTab
                         >
                             Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
-                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Category</th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Collection</th>
                         <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {categoriesPaginated?.data?.length > 0 ? (
-                        categoriesPaginated.data.map((cat: ICategories, i: number) => (
+                    {subunitsPaginated?.data?.length > 0 ? (
+                        subunitsPaginated.data.map((cat: ISubUnits, i: number) => (
                             <tr key={cat.id} className="hover:bg-gray-50">
                                 <td className="border border-popover px-4 py-3">{(currentPage - 1) * perPage + i + 1}</td>
                                 <td className="border border-popover px-4 py-3">{cat.name}</td>
                                 <td className="border border-popover px-4 py-3">{cat.description}</td>
-                                <td className="border border-popover px-4 py-3">{cat.sub_unit.name}</td>
+                                <td className="border border-popover px-4 py-3">{cat.unit.name}</td>
                                 <td className="border border-popover px-4 py-3 text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100">⋮</DropdownMenuTrigger>
@@ -209,7 +209,7 @@ function CategoriesTable({ categoriesPaginated, subunits, filters }: PropsCatTab
                     ) : (
                         <tr>
                             <td colSpan={5} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
-                                No variants found. Try adjusting your search.
+                                No categories found. Try adjusting your search.
                             </td>
                         </tr>
                     )}
@@ -221,9 +221,9 @@ function CategoriesTable({ categoriesPaginated, subunits, filters }: PropsCatTab
                     Previous
                 </Button>
                 <span className="text-sm">
-                    Page {currentPage} of {categoriesPaginated?.last_page ?? 1}
+                    Page {currentPage} of {subunitsPaginated?.last_page ?? 1}
                 </span>
-                <Button variant="outline" disabled={currentPage >= (categoriesPaginated?.last_page ?? 1)} onClick={() => goToPage(currentPage + 1)}>
+                <Button variant="outline" disabled={currentPage >= (subunitsPaginated?.last_page ?? 1)} onClick={() => goToPage(currentPage + 1)}>
                     Next
                 </Button>
             </div>

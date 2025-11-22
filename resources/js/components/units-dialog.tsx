@@ -1,18 +1,37 @@
 import { Upload } from 'lucide-react';
 import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from './ui/dialog';
 
 interface IUnitsDialogProps {
     open: boolean;
     isOpen: Dispatch<SetStateAction<boolean>>;
     type: 'add' | 'delete' | 'edit';
-    unit?: { id: string; name: string; description: string; picture_url?: string | null };
+    unit?: {
+        id: string;
+        name: string;
+        description: string;
+        picture_url?: string | null;
+        is_active: boolean;
+        price: number;
+        usd_price: number;
+        discount: number;
+    };
 
     //Inertia’s useForm
-    data: { id?: string; name: string; description: string; image?: File | null };
+    data: {
+        id?: string;
+        name: string;
+        description: string;
+        image?: File | null;
+        is_active: boolean;
+        price: number;
+        usd_price: number;
+        discount: number;
+    };
     setData: (field: any, value: any) => void;
-    errors: { name?: string; description?: string; image?: string };
+    errors: { name?: string; description?: string; image?: string; is_active?: string; price?: string; usd_price?: string; discount?: string };
 
     onSubmit: (e: React.FormEvent) => void;
 }
@@ -27,11 +46,19 @@ export default function UnitsDialog({ open, isOpen, type, unit, data, setData, e
                 setData('name', unit.name);
                 setData('description', unit.description);
                 setData('image', null);
+                setData('is_active', unit.is_active);
+                setData('usd_price', unit.usd_price);
+                setData('price', unit.price);
+                setData('discount', unit.discount);
                 setImagePreview(unit.picture_url || null);
             } else if (type === 'add') {
                 setData('name', '');
                 setData('description', '');
                 setData('image', null);
+                setData('is_active', false);
+                setData('usd_price', 0);
+                setData('price', 0);
+                setData('discount', 0);
                 setImagePreview(null);
             }
         }
@@ -63,12 +90,37 @@ export default function UnitsDialog({ open, isOpen, type, unit, data, setData, e
         e.target.value = '';
     };
 
+    const formatRupiah = (value: string) => {
+        const number = value.replace(/\D/g, '');
+        return new Intl.NumberFormat('id-ID').format(Number(number));
+    };
+
+    const formatUsd = (value: string) => {
+        const number = value.replace(/\D/g, '');
+        return new Intl.NumberFormat('en-US').format(Number(number));
+    };
+
+    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        setData('price', Number(value));
+    };
+
+    const handleUsdPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        setData('usd_price', Number(value));
+    };
+
+    const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        setData('discount', Number(value));
+    };
+
     return (
         <Dialog open={open} onOpenChange={isOpen}>
             <DialogPortal>
                 <DialogOverlay />
                 <DialogContent>
-                    <DialogTitle className="capitalize">{type} Unit</DialogTitle>
+                    <DialogTitle className="capitalize">{type} Collection</DialogTitle>
 
                     {type !== 'delete' ? (
                         <form method="POST" onSubmit={onSubmit} encType="multipart/form-data">
@@ -81,7 +133,7 @@ export default function UnitsDialog({ open, isOpen, type, unit, data, setData, e
                                     className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
                                         errors.name ? 'border-red-500' : 'border-gray-200'
                                     }`}
-                                    placeholder="Enter unit name"
+                                    placeholder="Enter name"
                                 />
                                 {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
                             </div>
@@ -98,6 +150,65 @@ export default function UnitsDialog({ open, isOpen, type, unit, data, setData, e
                                     placeholder="Enter description"
                                 />
                                 {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
+                            </div>
+
+                            {/* Price Field */}
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium">Price (Rupiah) *</label>
+                                <div className="relative">
+                                    <span className="absolute top-2 left-3 text-gray-500">Rp</span>
+                                    <input
+                                        type="text"
+                                        value={formatRupiah(data.price.toString())}
+                                        onChange={handlePriceChange}
+                                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
+                                            errors.price ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                        placeholder="0"
+                                    />
+                                </div>
+                                {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
+                            </div>
+
+                            {/* USD Price Field */}
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium">Price (USD) *</label>
+                                <div className="relative">
+                                    <span className="absolute top-2 left-3 text-gray-500">$</span>
+                                    <input
+                                        type="text"
+                                        value={formatUsd(data.usd_price.toString())}
+                                        onChange={handleUsdPriceChange}
+                                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
+                                            errors.usd_price ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                        placeholder="0"
+                                    />
+                                </div>
+                                {errors.usd_price && <p className="mt-1 text-sm text-red-500">{errors.usd_price}</p>}
+                            </div>
+
+                            {/* Discount Field */}
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium">Discount (%)</label>
+                                <input
+                                    type="text"
+                                    value={data.discount}
+                                    onChange={handleDiscountChange}
+                                    className="focus:border-border-primary focus:ring-border-primary w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:outline-none"
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <div className="mb-6 flex flex-col">
+                                <label htmlFor="is_active" className="text-sm font-medium">
+                                    Active
+                                </label>
+                                <Checkbox
+                                    id="is_active"
+                                    checked={data.is_active}
+                                    onCheckedChange={(checked) => setData('is_active', Boolean(checked))}
+                                ></Checkbox>
                             </div>
 
                             {/* Image Upload (single) */}

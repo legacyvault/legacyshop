@@ -35,8 +35,10 @@ export interface SharedData {
     locale: string;
     units: IUnit[];
     unitsPaginated: IRootUnits;
+    subunits: ISubUnits[];
+    subunitsPaginated?: IRootSubUnits;
     categories: ICategories[];
-    categoriesPaginated?: IRootCategories;
+    categoriesPaginated: IRootCategories;
     tags: ITags[];
     tagsPaginated?: IRootTags;
     subcats: ISubcats[];
@@ -211,15 +213,25 @@ export interface IUnit {
     description: string;
     picture_url?: string;
     categories: ICategories[];
+    is_active: boolean;
 }
 
 export interface ICategories {
     id: string;
     name: string;
     description: string;
+    sub_unit_id: string;
+    sub_unit: ISubUnits;
+    sub_categories: ISubcats[];
+}
+
+export interface ISubUnits {
+    id: string;
+    name: string;
+    description: string;
     unit_id: string;
     unit: IUnit;
-    sub_categories: ISubcats[];
+    categories: ICategories[];
 }
 
 export interface ITags {
@@ -449,6 +461,16 @@ export interface IRootCategories {
     total?: number;
     to?: number;
     data: ICategories[];
+}
+
+export interface IRootSubUnits {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: ISubUnits[];
 }
 
 export interface IRootTags {

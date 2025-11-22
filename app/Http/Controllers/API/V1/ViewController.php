@@ -55,13 +55,24 @@ class ViewController extends Controller
         ]);
     }
 
+    public function subUnitPage(Request $request){
+        $units = $this->productController->getAllUnit();
+        $sub_unitsPaginated = $this->productController->getSubUnitPaginated($request);
+
+        return Inertia::render('products/subunits/index', [
+            'units' => $units,
+            'subunitsPaginated' => $sub_unitsPaginated,
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page')
+        ]);
+    }
+
     public function categoryPage(Request $request)
     {
-        $units = $this->productController->getAllUnit();
+        $sub_units = $this->productController->getAllSubUnit();
         $categoriesPaginated = $this->productController->getCategoryPaginated($request);
 
         return Inertia::render('products/category/index', [
-            'units' => $units,
+            'subunits' => $sub_units,
             'categoriesPaginated' => $categoriesPaginated,
             'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page')
         ]);
@@ -226,6 +237,7 @@ class ViewController extends Controller
     public function addProdPage($id = null)
     {
         $units = $this->productController->getAllUnit();
+        $subunits = $this->productController->getAllSubUnit();
         $categories = $this->productController->getAllCategory();
         $subcats = $this->subcategoryController->getAllSubCategory();
         $divisions = $this->divisionController->getAllDivision();
@@ -240,6 +252,7 @@ class ViewController extends Controller
 
         return Inertia::render('products/product/add-product', [
             'units' => $units,
+            'subunits' => $subunits,
             'categories' => $categories,
             'subcats' => $subcats,
             'divisions' => $divisions,

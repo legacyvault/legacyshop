@@ -3,12 +3,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import UnitsDialog from '@/components/units-dialog';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IRootUnits, IUnit, SharedData } from '@/types';
-import { Head, useForm, usePage, router } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Products - Unit',
+        title: 'Products - Collection',
         href: '/products/unit',
     },
 ];
@@ -17,6 +17,10 @@ interface UnitForm {
     name: string;
     description: string;
     image: File | null;
+    is_active: boolean;
+    price: number;
+    usd_price: number;
+    discount: number;
 }
 
 type EditUnitForm = UnitForm & {
@@ -35,6 +39,10 @@ export default function Unit() {
         name: '',
         description: '',
         image: null,
+        is_active: false,
+        price: 0,
+        usd_price: 0,
+        discount: 0,
     });
 
     const [openAdd, isOpenAdd] = useState(false);
@@ -44,6 +52,8 @@ export default function Unit() {
         const fd = new FormData();
         fd.append('name', data.name);
         fd.append('description', data.description);
+        fd.append('is_active', data.is_active ? '1' : '0');
+
         if (data.image instanceof File) fd.append('image', data.image);
 
         router.post(route('unit.create'), fd, {
@@ -59,10 +69,10 @@ export default function Unit() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Products - Unit" />
+            <Head title="Products - Collection" />
             <div className="p-4">
                 {' '}
-                <Button onClick={() => isOpenAdd(true)}>Add Unit</Button>
+                <Button onClick={() => isOpenAdd(true)}>Add Collection</Button>
                 <UnitsDialog open={openAdd} isOpen={isOpenAdd} type={'add'} onSubmit={submitHandler} data={data} setData={setData} errors={errors} />
                 <div>
                     <UnitsTable unitsPaginated={unitsPaginated} filters={filters} />
@@ -77,7 +87,11 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
         id: '',
         name: '',
         description: '',
+        is_active: false,
         image: null,
+        price: 0,
+        usd_price: 0,
+        discount: 0,
     });
 
     const [openEdit, isOpenEdit] = useState(false);
@@ -97,6 +111,7 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
         fd.append('id', (data as any).id);
         fd.append('name', data.name);
         fd.append('description', data.description);
+        fd.append('is_active', data.is_active ? '1' : '0');
         if ((data as any).image instanceof File) fd.append('image', (data as any).image);
         router.post(route('unit.update'), fd, {
             forceFormData: true,
@@ -117,7 +132,7 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
         router.get('/products/unit', { ...filters, q, page: 1 }, { preserveState: true, replace: true });
     };
 
-    const toggleSort = (column: 'id' | 'name' | 'description') => {
+    const toggleSort = (column: 'id' | 'name' | 'description' | 'is_active') => {
         const sort_by = column;
         const sort_dir = filters?.sort_by === column && filters?.sort_dir === 'asc' ? 'desc' : 'asc';
         router.get('/products/unit', { ...filters, sort_by, sort_dir }, { preserveState: true, replace: true });
@@ -144,7 +159,9 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
             <div className="mt-4 flex items-center justify-between gap-2">
                 <div className="text-sm text-muted-foreground">
                     {unitsPaginated?.total ? (
-                        <>Showing {unitsPaginated.from ?? 0}-{unitsPaginated.to ?? 0} of {unitsPaginated.total}</>
+                        <>
+                            Showing {unitsPaginated.from ?? 0}-{unitsPaginated.to ?? 0} of {unitsPaginated.total}
+                        </>
                     ) : (
                         <>No results</>
                     )}
@@ -162,23 +179,29 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
                 <thead>
                     <tr className="bg-sidebar-accent">
                         <th
-                            className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer select-none"
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground select-none"
                             onClick={() => toggleSort('id')}
                             title="Sort by ID"
                         >
                             # {filters?.sort_by === 'id' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
                         <th
-                            className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer select-none"
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground select-none"
                             onClick={() => toggleSort('name')}
                         >
                             Name {filters?.sort_by === 'name' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
                         <th
-                            className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer select-none"
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground select-none"
                             onClick={() => toggleSort('description')}
                         >
                             Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground select-none"
+                            onClick={() => toggleSort('is_active')}
+                        >
+                            Active {filters?.sort_by === 'is_active' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
                         <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
                     </tr>
@@ -190,6 +213,7 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
                                 <td className="border border-popover px-4 py-3">{(currentPage - 1) * perPage + i + 1}</td>
                                 <td className="border border-popover px-4 py-3">{unit.name}</td>
                                 <td className="border border-popover px-4 py-3">{unit.description}</td>
+                                <td className="border border-popover px-4 py-3">{unit.is_active ? 'Yes' : 'No'}</td>
                                 <td className="border border-popover px-4 py-3 text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger className="rounded px-2 py-1 text-gray-600 hover:bg-gray-100">⋮</DropdownMenuTrigger>
@@ -214,7 +238,7 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
                     ) : (
                         <tr>
                             <td colSpan={4} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
-                                No units found. Try adjusting your search.
+                                No Collection found. Try adjusting your search.
                             </td>
                         </tr>
                     )}
@@ -225,7 +249,9 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
                 <Button variant="outline" disabled={currentPage <= 1} onClick={() => goToPage(currentPage - 1)}>
                     Previous
                 </Button>
-                <span className="text-sm">Page {currentPage} of {unitsPaginated?.last_page ?? 1}</span>
+                <span className="text-sm">
+                    Page {currentPage} of {unitsPaginated?.last_page ?? 1}
+                </span>
                 <Button variant="outline" disabled={currentPage >= (unitsPaginated?.last_page ?? 1)} onClick={() => goToPage(currentPage + 1)}>
                     Next
                 </Button>

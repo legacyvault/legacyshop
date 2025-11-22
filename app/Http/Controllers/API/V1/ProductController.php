@@ -138,7 +138,7 @@ class ProductController extends Controller
                 'string',
                 Rule::unique('sub_unit', 'name')->ignore($request->id),
             ],
-            'unit_id' => 'required|exists:unit_id,id',
+            'unit_id' => 'required|exists:unit,id',
             'description' => 'string|nullable'
         ]);
 
@@ -191,7 +191,7 @@ class ProductController extends Controller
 
     public function getAllCategory()
     {
-        $data = Category::orderBy('name', 'asc')->with(['unit', 'sub_categories'])->get();
+        $data = Category::orderBy('name', 'asc')->with(['sub_unit', 'sub_categories'])->get();
 
         return $data;
     }
@@ -217,7 +217,7 @@ class ProductController extends Controller
             $sortBy = 'name';
         }
 
-        $query = Category::query()->with(['unit', 'sub_categories']);
+        $query = Category::query()->with(['sub_unit', 'sub_categories']);
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -923,6 +923,20 @@ class ProductController extends Controller
 
         try {
             DB::beginTransaction();
+
+            // ----LIMIT 6 ACTIVE----
+            if ($request->is_active) {
+                $activeCount = Unit::where('is_active', 1)->count();
+
+                if ($activeCount >= 6) {
+                    Unit::where('is_active', 1)
+                        ->orderBy('created_at', 'asc')
+                        ->limit(1)
+                        ->update(['is_active' => 0]);
+                }
+            }
+
+
             $pictureUrl = null;
             if ($request->hasFile('image')) {
                 $pictureUrl = $this->uploadUnitImageToS3($request->file('image'));
@@ -974,6 +988,17 @@ class ProductController extends Controller
                 return redirect()->back()->with('error', 'Unit not found.');
             }
 
+            if ($request->is_active) {
+                $activeCount = Unit::where('is_active', 1)->count();
+
+                if ($activeCount >= 6) {
+                    Unit::where('is_active', 1)
+                        ->orderBy('created_at', 'asc')
+                        ->limit(1)
+                        ->update(['is_active' => 0]);
+                }
+            }
+
             if ($request->hasFile('image')) {
                 if ($unit->picture_url) {
                     $this->deleteFromS3($unit->picture_url);
@@ -1019,17 +1044,18 @@ class ProductController extends Controller
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
 
         // Whitelist sortable columns to prevent SQL injection
-        $allowedSorts = ['id', 'name', 'description'];
+        $allowedSorts = ['id', 'name', 'description', 'is_active'];
         if (!in_array($sortBy, $allowedSorts, true)) {
             $sortBy = 'name';
         }
 
-        $query = Unit::query()->with('sub_unit.categories');
+        $query = Unit::query('sub_unit.categories');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('is_active', 'like', "%{$search}%");
             });
         }
 

@@ -40,7 +40,7 @@ export default function ViewDivision() {
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: 'Product - Division - View',
+            title: 'Product - Option - View',
             href: '/products/subcategory/viewsub',
         },
     ];
@@ -120,7 +120,7 @@ export default function ViewDivision() {
                 stock={selectedStock}
             />
             <AppLayout breadcrumbs={breadcrumbs}>
-                <Head title="Product - Sub Category - View" />
+                <Head title="Product - Type - View" />
                 <div className="min-h-screen bg-background p-6">
                     <div className="space-y-6">
                         <div className="flex space-x-4 pt-4">
@@ -134,7 +134,7 @@ export default function ViewDivision() {
                         </div>
                         {/* Header */}
                         <div className="mb-8">
-                            <h1 className="mb-2 text-3xl font-bold text-foreground">Division Details</h1>
+                            <h1 className="mb-2 text-3xl font-bold text-foreground">Option Details</h1>
                         </div>
 
                         {/* Total Stocks Card */}
@@ -147,7 +147,7 @@ export default function ViewDivision() {
 
                         {/* Stock Information Card */}
                         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                            <h2 className="mb-6 border-b border-border pb-2 text-xl font-semibold text-card-foreground">Division Information</h2>
+                            <h2 className="mb-6 border-b border-border pb-2 text-xl font-semibold text-card-foreground">Option Information</h2>
 
                             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                                 {/* Name */}
@@ -164,7 +164,7 @@ export default function ViewDivision() {
 
                                 {/* Sub Category */}
                                 <div className="space-y-2">
-                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Sub Category</h3>
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Type</h3>
                                     <p className="text-lg font-semibold text-card-foreground">{selectedDivision.sub_category.name}</p>
                                 </div>
 

@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, ICategories, IDivisions, IProducts, ISubcats, ITags, IVariants, SharedData } from '@/types';
+import { BreadcrumbItem, ICategories, IDivisions, IProducts, ISubcats, ISubUnits, ITags, IVariants, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Bold, ChevronDown, Italic, Search, Underline, Upload, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -14,6 +14,7 @@ interface FormData {
     unit: string;
     product_sku: string;
     product_usd_price: string;
+    subunit: string;
     category: string[];
     subcategory: string[];
     division: string[];
@@ -35,6 +36,7 @@ interface FormErrors {
     price?: string;
     product_discount?: string;
     unit?: string;
+    subunit?: string;
     category?: string;
     subcategory?: string;
     division?: string;
@@ -262,7 +264,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
 const toOptions = (items: { id: string; name: string }[] | undefined) => (items || []).map((i) => ({ value: i.id, label: i.name }));
 
 export default function AddProduct() {
-    const { units, categories, subcats, divisions, variants, tags, product, id } = usePage<SharedData>().props;
+    const { units, categories, subcats, divisions, variants, tags, product, id, subunits } = usePage<SharedData>().props;
 
     const isEdit = !!id;
 
@@ -282,6 +284,7 @@ export default function AddProduct() {
         price: '',
         product_discount: '',
         unit: '',
+        subunit: '',
         category: [],
         subcategory: [],
         division: [],
@@ -349,12 +352,19 @@ export default function AddProduct() {
     }, [variants]);
 
     // Filtered options based on hierarchy selections
-    const categoryOptions = useMemo(() => {
+    const subunitOptions = useMemo(() => {
         const unitId = formData.unit;
         if (!unitId) return [] as { value: string; label: string }[];
+        const subunit = (subunits as ISubUnits[] | undefined) || [];
+        return toOptions(subunit.filter((c) => c.unit_id === unitId));
+    }, [subunits, formData.unit]);
+
+    const categoryOptions = useMemo(() => {
+        const subunitId = formData.subunit;
+        if (!subunitId) return [] as { value: string; label: string }[];
         const cats = (categories as ICategories[] | undefined) || [];
-        return toOptions(cats.filter((c) => c.unit_id === unitId));
-    }, [categories, formData.unit]);
+        return toOptions(cats.filter((c) => c.sub_unit_id === subunitId));
+    }, [categories, formData.subunit]);
 
     const subcategoryOptions = useMemo(() => {
         if (formData.category.length === 0) return [] as { value: string; label: string }[];
@@ -1037,59 +1047,163 @@ export default function AddProduct() {
                     {errors.product_weight && <p className="mt-1 text-sm text-red-500">{errors.product_weight}</p>}
                 </div>
 
-                {/* Price Field */}
+                {/* Unit Field */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Price (Rupiah) *</label>
-                    <div className="relative">
-                        <span className="absolute top-2 left-3 text-gray-500">Rp</span>
-                        <input
-                            type="text"
-                            value={formatRupiah(formData.price)}
-                            onChange={handlePriceChange}
-                            className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
-                                errors.price ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                            placeholder="0"
-                        />
-                    </div>
-                    {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
+                    <label className="mb-2 block text-sm font-medium">Collection *</label>
+                    <select
+                        value={formData.unit}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData((prev) => ({
+                                ...prev,
+                                unit: val,
+                                subunit: '',
+                                category: [],
+                                subcategory: [],
+                                division: [],
+                                variant: [],
+                                subcategoryDiscounts: {},
+                                divisionDiscounts: {},
+                                variantDiscounts: {},
+                            }));
+                        }}
+                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
+                            errors.unit ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                    >
+                        <option value={''}>Select Collection</option>
+                        {units.length > 0 &&
+                            units.map((unit) => (
+                                <option key={unit.id} value={unit.id}>
+                                    {unit.name}
+                                </option>
+                            ))}
+                    </select>
+                    {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit}</p>}
                 </div>
 
-                {/* USD Price Field */}
-                <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Price (USD) *</label>
-                    <div className="relative">
-                        <span className="absolute top-2 left-3 text-gray-500">$ </span>
-                        <input
-                            type="text"
-                            value={formatRupiah(formData.product_usd_price)}
-                            onChange={handlePriceUsdChange}
-                            className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
-                                errors.price ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                            placeholder="0"
-                        />
-                    </div>
-                    {errors.product_usd_price && <p className="mt-1 text-sm text-red-500">{errors.product_usd_price}</p>}
-                </div>
+                {/*  */}
+                {formData.unit && (
+                    <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                        <div className="mb-3">
+                            <label className="text-sm font-medium">Product Pricing</label>
+                        </div>
 
-                {/*  Product Discount Field */}
-                <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Product Discount</label>
-                    <div className="relative">
-                        <input
-                            type="text"
-                            value={formData.product_discount}
-                            onChange={(e) => handleInputChange('product_discount', e.target.value)}
-                            className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                                errors.product_discount ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                            placeholder="Enter discount percentage"
-                            maxLength={3}
-                        />
-                        <span className="absolute top-2 right-3 text-gray-500">%</span>
+                        <div className="mb-6 space-y-4">
+                            <div className="rounded-md border border-yellow-300 bg-white p-3">
+                                <div className="mb-2 text-sm font-medium">Price (Rupiah)</div>
+
+                                <div className="space-y-2">
+                                    <div className="text-sm text-yellow-600">
+                                        <div className="mb-2">Choose price:</div>
+                                        <div className="space-y-2">
+                                            <label className="flex items-center space-x-2">
+                                                <input type="radio" value="abc" className="text-yellow-600" />
+                                                <span>Use Default Price (Rp. 30,000)</span>
+                                            </label>
+                                            <label className="flex items-center space-x-2">
+                                                <input type="radio" value="manual" className="text-yellow-600" />
+                                                <span>Enter manually</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="relative">
+                                        <div className="relative">
+                                            <span className="absolute top-2 left-3 text-gray-500">Rp</span>
+                                            <input
+                                                type="text"
+                                                value={formatRupiah(formData.price)}
+                                                onChange={handlePriceChange}
+                                                className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
+                                                    errors.price ? 'border-red-500' : 'border-gray-300'
+                                                } ${!formData.unit ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'}`}
+                                                placeholder="0"
+                                                disabled={!formData.unit}
+                                            />
+                                        </div>
+                                        {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mb-6 space-y-4">
+                            <div className="rounded-md border border-yellow-300 bg-white p-3">
+                                <div className="mb-2 text-sm font-medium">Price (USD)</div>
+
+                                <div className="space-y-2">
+                                    <div className="text-sm text-yellow-600">
+                                        <div className="mb-2">Choose price:</div>
+                                        <div className="space-y-2">
+                                            <label className="flex items-center space-x-2">
+                                                <input type="radio" value="asd" className="text-yellow-600" />
+                                                <span>Use Default Price ($100)</span>
+                                            </label>
+                                            <label className="flex items-center space-x-2">
+                                                <input type="radio" value="manual" className="text-yellow-600" />
+                                                <span>Enter manually</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="relative">
+                                        <span className="absolute top-2 left-3 text-gray-500">$ </span>
+                                        <input
+                                            type="text"
+                                            value={formatRupiah(formData.product_usd_price)}
+                                            onChange={handlePriceUsdChange}
+                                            className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
+                                                errors.price ? 'border-red-500' : 'border-gray-300'
+                                            }`}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    {errors.product_usd_price && <p className="mt-1 text-sm text-red-500">{errors.product_usd_price}</p>}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mb-6 space-y-4">
+                            <div className="rounded-md border border-yellow-300 bg-white p-3">
+                                <div className="mb-2 text-sm font-medium">Product Discount</div>
+
+                                <div className="space-y-2">
+                                    <div className="text-sm text-yellow-600">
+                                        <div className="mb-2">Choose discount:</div>
+                                        <div className="space-y-2">
+                                            <label className="flex items-center space-x-2">
+                                                <input type="radio" value="abc" className="text-yellow-600" />
+                                                <span>Use Default discount (10%)</span>
+                                            </label>
+                                            <label className="flex items-center space-x-2">
+                                                <input type="radio" value="manual" className="text-yellow-600" />
+                                                <span>Enter manually</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="relative">
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.product_discount}
+                                                onChange={(e) => handleInputChange('product_discount', e.target.value)}
+                                                className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
+                                                    errors.product_discount ? 'border-red-500' : 'border-gray-300'
+                                                }`}
+                                                placeholder="Enter discount percentage"
+                                                maxLength={3}
+                                            />
+                                            <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                        </div>
+                                        {errors.product_discount && <p className="mt-1 text-sm text-red-500">{errors.product_discount}</p>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Showcase Toggle */}
                 <div className="mb-6">
@@ -1127,16 +1241,16 @@ export default function AddProduct() {
                     {errors.is_showcase_bottom && <p className="mt-1 text-sm text-red-500">{errors.is_showcase_bottom}</p>}
                 </div>
 
-                {/* Unit Field */}
+                {/* Sub Unit Multi-Select */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Unit *</label>
+                    <label className="mb-2 block text-sm font-medium">Category *</label>
                     <select
-                        value={formData.unit}
+                        value={formData.subunit}
                         onChange={(e) => {
                             const val = e.target.value;
                             setFormData((prev) => ({
                                 ...prev,
-                                unit: val,
+                                subunit: val,
                                 category: [],
                                 subcategory: [],
                                 division: [],
@@ -1146,38 +1260,39 @@ export default function AddProduct() {
                                 variantDiscounts: {},
                             }));
                         }}
+                        disabled={!formData.unit}
                         className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.unit ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                            errors.subunit ? 'border-red-500' : 'border-gray-300'
+                        } ${!formData.unit ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'} `}
                     >
-                        <option value={''}>Select Unit</option>
-                        {units.length > 0 &&
-                            units.map((unit) => (
-                                <option key={unit.id} value={unit.id}>
-                                    {unit.name}
+                        <option value={''}>{!formData.unit ? 'Select collection first' : 'Select category'}</option>
+                        {subunitOptions.length > 0 &&
+                            subunitOptions.map((subu) => (
+                                <option key={subu.value} value={subu.value}>
+                                    {subu.label}
                                 </option>
                             ))}
                     </select>
-                    {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit}</p>}
+                    {errors.subunit && <p className="mt-1 text-sm text-red-500">{errors.subunit}</p>}
                 </div>
 
                 {/* Category Multi-Select */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Category *</label>
+                    <label className="mb-2 block text-sm font-medium">Variant *</label>
                     <MultiSelect
                         options={categoryOptions}
                         values={formData.category}
                         onChange={(values) => setFormData((prev) => ({ ...prev, category: values }))}
-                        placeholder={formData.unit ? 'Select categories' : 'Select unit first'}
+                        placeholder={formData.subunit ? 'Select variants' : 'Select category first'}
                         error={errors.category}
-                        disabled={!formData.unit}
+                        disabled={!formData.subunit}
                     />
                     {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
                 </div>
 
                 {/* Sub Category Multi-Select */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Sub Category *</label>
+                    <label className="mb-2 block text-sm font-medium">Type *</label>
                     <MultiSelect
                         options={subcategoryOptions}
                         values={formData.subcategory}
@@ -1185,7 +1300,7 @@ export default function AddProduct() {
                             setFormData((prev) => ({ ...prev, subcategory: values }));
                             initializeDiscounts('subcategory', values);
                         }}
-                        placeholder={formData.category.length ? 'Select subcategories' : 'Select category first'}
+                        placeholder={formData.category.length ? 'Select types' : 'Select variant first'}
                         error={errors.subcategory}
                         disabled={formData.category.length === 0}
                     />
@@ -1196,7 +1311,7 @@ export default function AddProduct() {
                 {formData.subcategory.length > 0 && (
                     <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
                         <div className="mb-3">
-                            <label className="text-sm font-medium">Subcategory Discounts</label>
+                            <label className="text-sm font-medium">Type Discounts</label>
                         </div>
 
                         <div className="space-y-4">
@@ -1259,7 +1374,7 @@ export default function AddProduct() {
 
                 {/* Division Multi-Select */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Division *</label>
+                    <label className="mb-2 block text-sm font-medium">Option *</label>
                     <MultiSelect
                         options={divisionOptions}
                         values={formData.division}
@@ -1267,7 +1382,7 @@ export default function AddProduct() {
                             setFormData((prev) => ({ ...prev, division: values }));
                             initializeDiscounts('division', values);
                         }}
-                        placeholder={formData.subcategory.length ? 'Select divisions' : 'Select subcategory first'}
+                        placeholder={formData.subcategory.length ? 'Select options' : 'Select type first'}
                         error={errors.division}
                         disabled={formData.subcategory.length === 0}
                     />
@@ -1278,7 +1393,7 @@ export default function AddProduct() {
                 {formData.division.length > 0 && (
                     <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
                         <div className="mb-3">
-                            <label className="text-sm font-medium">Division Discounts</label>
+                            <label className="text-sm font-medium">Option Discounts</label>
                         </div>
 
                         <div className="space-y-4">
@@ -1341,7 +1456,7 @@ export default function AddProduct() {
 
                 {/* Variant Multi-Select */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Variant *</label>
+                    <label className="mb-2 block text-sm font-medium">Selection *</label>
                     <MultiSelect
                         options={variantOptions}
                         values={formData.variant}
@@ -1349,7 +1464,7 @@ export default function AddProduct() {
                             setFormData((prev) => ({ ...prev, variant: values }));
                             initializeDiscounts('variant', values);
                         }}
-                        placeholder={formData.division.length ? 'Select variants' : 'Select division first'}
+                        placeholder={formData.division.length ? 'Select selections' : 'Select option first'}
                         error={errors.variant}
                         disabled={formData.division.length === 0}
                     />
@@ -1359,7 +1474,7 @@ export default function AddProduct() {
                 {formData.variant.length > 0 && (
                     <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
                         <div className="mb-3">
-                            <label className="text-sm font-medium">Variant Discounts</label>
+                            <label className="text-sm font-medium">Selection Discounts</label>
                         </div>
 
                         <div className="space-y-4">

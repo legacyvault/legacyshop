@@ -266,6 +266,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
     });
 
     Route::prefix('products')->group(function () {
+        Route::get('sub_unit', [ViewController::class, 'subUnitPage']);
         Route::get('category', [ViewController::class, 'categoryPage']);
         Route::get('unit', [ViewController::class, 'unitPage']);
         Route::get('tags', [ViewController::class, 'tagsPage']);
