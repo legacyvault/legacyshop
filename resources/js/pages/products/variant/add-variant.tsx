@@ -23,7 +23,7 @@ export default function AddVariant() {
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: `${isEdit ? 'Edit' : 'Add'} Variant`,
+            title: `${isEdit ? 'Edit' : 'Add'} Selection`,
             href: '/products/variant/addvar',
         },
     ];
@@ -82,7 +82,7 @@ export default function AddVariant() {
             <div className="p-6">
                 {/* Type Field */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Type *</label>
+                    <label className="mb-2 block text-sm font-medium">Selection *</label>
                     <select
                         value={data.type}
                         onChange={(e) => setData('type', e.target.value as 'text' | 'color' | '')}
@@ -204,7 +204,7 @@ export default function AddVariant() {
 
                 {/* Division Field */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Division *</label>
+                    <label className="mb-2 block text-sm font-medium">Option *</label>
                     <select
                         value={data.division_id}
                         onChange={(e) => setData('division_id', e.target.value)}
@@ -212,7 +212,7 @@ export default function AddVariant() {
                             errors.division_id ? 'border-red-500' : 'border-gray-300'
                         }`}
                     >
-                        <option value="">Select Division</option>
+                        <option value="">Select Option</option>
                         {divisions.length > 0 &&
                             divisions.map((div) => (
                                 <option key={div.id} value={div.id}>

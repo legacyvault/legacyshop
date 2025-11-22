@@ -22,7 +22,7 @@ export default function AddSubCategory() {
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: `${isEdit ? 'Edit' : 'Add'} Sub Category`,
+            title: `${isEdit ? 'Edit' : 'Add'} Variant`,
             href: '/products/subcategory/addsub',
         },
     ];
@@ -150,7 +150,7 @@ export default function AddSubCategory() {
 
                 {/* Category Field */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Category *</label>
+                    <label className="mb-2 block text-sm font-medium">Variant *</label>
                     <select
                         value={data.category_id}
                         onChange={(e) => setData('category_id', e.target.value)}
@@ -158,7 +158,7 @@ export default function AddSubCategory() {
                             errors.category_id ? 'border-red-500' : 'border-gray-300'
                         }`}
                     >
-                        <option value="">Select category</option>
+                        <option value="">Select Variant</option>
                         {categories.length > 0 &&
                             categories.map((cat) => (
                                 <option key={cat.id} value={cat.id}>

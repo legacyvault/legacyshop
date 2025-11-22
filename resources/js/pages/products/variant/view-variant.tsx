@@ -40,7 +40,7 @@ export default function ViewVariant() {
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: 'Product - Variant - View',
+            title: 'Product - Selection - View',
             href: '/products/variant/viewvar',
         },
     ];
@@ -121,7 +121,7 @@ export default function ViewVariant() {
             />
 
             <AppLayout breadcrumbs={breadcrumbs}>
-                <Head title="Product - Sub Category - View" />
+                <Head title="Product - Selection - View" />
                 <div className="min-h-screen bg-background p-6">
                     <div className="space-y-6">
                         <div className="flex space-x-4 pt-4">
@@ -135,7 +135,7 @@ export default function ViewVariant() {
                         </div>
                         {/* Header */}
                         <div className="mb-8">
-                            <h1 className="mb-2 text-3xl font-bold text-foreground">Variant Details</h1>
+                            <h1 className="mb-2 text-3xl font-bold text-foreground">Selection Details</h1>
                         </div>
 
                         {/* Total Stocks Card */}
@@ -148,12 +148,12 @@ export default function ViewVariant() {
 
                         {/* Stock Information Card */}
                         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                            <h2 className="mb-6 border-b border-border pb-2 text-xl font-semibold text-card-foreground">Variant Information</h2>
+                            <h2 className="mb-6 border-b border-border pb-2 text-xl font-semibold text-card-foreground">Selection Information</h2>
 
                             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 {/* Type */}
                                 <div className="col-span-2 space-y-2">
-                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Type</h3>
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Select</h3>
                                     <p className="text-lg font-semibold text-card-foreground capitalize">{selectedVariant.type}</p>
                                     {/* Color */}
                                     {selectedVariant.type === 'color' && (
@@ -178,7 +178,7 @@ export default function ViewVariant() {
 
                                 {/* Division */}
                                 <div className="space-y-2">
-                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Division</h3>
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Option</h3>
                                     <p className="text-lg font-semibold text-card-foreground">{selectedVariant.division.name}</p>
                                 </div>
 

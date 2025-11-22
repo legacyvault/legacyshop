@@ -37,7 +37,7 @@ interface IDialog {
 export default function ViewSubcategory() {
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: 'Product - Sub Category - View',
+            title: 'Product - Variant - View',
             href: '/products/subcategory/viewsub',
         },
     ];
@@ -148,7 +148,7 @@ export default function ViewSubcategory() {
 
                         {/* Stock Information Card */}
                         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                            <h2 className="mb-6 border-b border-border pb-2 text-xl font-semibold text-card-foreground">Sub Category Information</h2>
+                            <h2 className="mb-6 border-b border-border pb-2 text-xl font-semibold text-card-foreground">Type Information</h2>
 
                             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 {/* Name */}
@@ -165,7 +165,7 @@ export default function ViewSubcategory() {
 
                                 {/* Category */}
                                 <div className="space-y-2 md:col-span-2">
-                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Category</h3>
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Variant</h3>
                                     <p className="text-lg font-semibold text-card-foreground">{selectedSubcat.category.name}</p>
                                 </div>
 

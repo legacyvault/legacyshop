@@ -1,19 +1,19 @@
-import { ISubUnits } from '@/types';
+import { IUnit } from '@/types';
 import { Dispatch, SetStateAction, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from './ui/dialog';
 
-interface ICategoriesDialog {
+interface ISubunitDialog {
     open: boolean;
     isOpen: Dispatch<SetStateAction<boolean>>;
     type: 'add' | 'delete' | 'edit';
-    category?: IFormData;
-    subunits: ISubUnits[];
+    subunit?: IFormData;
+    units: IUnit[];
 
     //Inertia’s useForm
-    data: { id?: string; name: string; description: string; sub_unit_id: string };
-    setData: (field: 'name' | 'description' | 'id' | 'sub_unit_id', value: string) => void;
-    errors: { name?: string; description?: string; sub_unit_id?: string };
+    data: { id?: string; name: string; description: string; unit_id: string };
+    setData: (field: 'name' | 'description' | 'id' | 'unit_id', value: string) => void;
+    errors: { name?: string; description?: string; unit_id?: string };
 
     onSubmit: (e: React.FormEvent) => void;
 }
@@ -22,31 +22,31 @@ interface IFormData {
     id: string;
     name: string;
     description: string;
-    sub_unit_id: string;
+    unit_id: string;
 }
 
-export default function CategoriesDialog({ open, isOpen, type, category, onSubmit, subunits, data, setData, errors }: ICategoriesDialog) {
+export default function SubunitDialog({ open, isOpen, type, subunit, onSubmit, units, data, setData, errors }: ISubunitDialog) {
     useEffect(() => {
         if (open) {
-            if (type === 'edit' && category) {
-                setData('id', category.id);
-                setData('name', category.name);
-                setData('description', category.description);
-                setData('sub_unit_id', category.sub_unit_id);
+            if (type === 'edit' && subunit) {
+                setData('id', subunit.id);
+                setData('name', subunit.name);
+                setData('description', subunit.description);
+                setData('unit_id', subunit.unit_id);
             } else if (type === 'add') {
                 setData('name', '');
                 setData('description', '');
-                setData('sub_unit_id', '');
+                setData('unit_id', '');
             }
         }
-    }, [open, category, type]);
+    }, [open, subunit, type]);
 
     return (
         <Dialog open={open} onOpenChange={isOpen}>
             <DialogPortal>
                 <DialogOverlay />
                 <DialogContent>
-                    <DialogTitle className="capitalize">{type} Variant</DialogTitle>
+                    <DialogTitle className="capitalize">{type} Categories</DialogTitle>
                     {type !== 'delete' ? (
                         <form method="POST" onSubmit={onSubmit}>
                             <div className="mb-6">
@@ -77,22 +77,22 @@ export default function CategoriesDialog({ open, isOpen, type, category, onSubmi
                                 {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
                             </div>
                             <div className="mb-6">
-                                <label className="mb-2 block text-sm font-medium">Category *</label>
+                                <label className="mb-2 block text-sm font-medium">Collection *</label>
                                 <select
-                                    value={data.sub_unit_id}
-                                    onChange={(e) => setData('sub_unit_id', e.target.value)}
+                                    value={data.unit_id}
+                                    onChange={(e) => setData('unit_id', e.target.value)}
                                     className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                                        errors.sub_unit_id ? 'border-red-500' : 'border-gray-300'
+                                        errors.unit_id ? 'border-red-500' : 'border-gray-300'
                                     }`}
                                 >
-                                    <option value="">--Select Category--</option>
-                                    {subunits.map((unit, i) => (
+                                    <option value="">--Select Unit--</option>
+                                    {units.map((unit, i) => (
                                         <option key={unit.id} value={unit.id}>
                                             {unit.name}
                                         </option>
                                     ))}
                                 </select>
-                                {errors.sub_unit_id && <p className="mt-1 text-sm text-red-500">{errors.sub_unit_id}</p>}
+                                {errors.unit_id && <p className="mt-1 text-sm text-red-500">{errors.unit_id}</p>}
                             </div>
                             <DialogClose asChild>
                                 <Button type="submit" className="capitalize">

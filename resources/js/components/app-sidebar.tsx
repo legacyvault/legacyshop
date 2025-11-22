@@ -19,23 +19,27 @@ const mainNavItems: NavItem[] = [
         icon: PackageOpen,
         child: [
             {
-                title: 'Unit',
+                title: 'Collection',
                 href: '/products/unit',
             },
             {
                 title: 'Category',
-                href: '/products/category',
-            },
-            {
-                title: 'Sub Category',
-                href: '/products/subcategory',
-            },
-            {
-                title: 'Division',
-                href: '/products/division',
+                href: '/products/sub_unit',
             },
             {
                 title: 'Variant',
+                href: '/products/category',
+            },
+            {
+                title: 'Type',
+                href: '/products/subcategory',
+            },
+            {
+                title: 'Option',
+                href: '/products/division',
+            },
+            {
+                title: 'Selection',
                 href: '/products/variant',
             },
             {

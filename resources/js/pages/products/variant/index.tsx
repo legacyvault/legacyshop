@@ -1,4 +1,3 @@
-import Empty from '@/components/empty';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
@@ -7,7 +6,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Products - Variant',
+        title: 'Products - Selection',
         href: '/products/variant',
     },
 ];
@@ -22,10 +21,10 @@ export default function Variant() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Products - Variant" />
+            <Head title="Products - Selection" />
             <div className="p-4">
                 <Button>
-                    <Link href={'/products/variant/addvar'}>Add Variant</Link>
+                    <Link href={'/products/variant/addvar'}>Add Selection</Link>
                 </Button>
                 <VariantsTable variantsPaginated={variantsPaginated} filters={filters} />
             </div>
@@ -67,7 +66,9 @@ function VariantsTable({ variantsPaginated, filters }: PropsVariantTable) {
             <div className="mt-4 flex items-center justify-between gap-2">
                 <div className="text-sm text-muted-foreground">
                     {variantsPaginated?.total ? (
-                        <>Showing {variantsPaginated.from ?? 0}-{variantsPaginated.to ?? 0} of {variantsPaginated.total}</>
+                        <>
+                            Showing {variantsPaginated.from ?? 0}-{variantsPaginated.to ?? 0} of {variantsPaginated.total}
+                        </>
                     ) : (
                         <>No results</>
                     )}
@@ -84,31 +85,52 @@ function VariantsTable({ variantsPaginated, filters }: PropsVariantTable) {
             <table className="mt-4 min-w-full border-collapse text-sm">
                 <thead>
                     <tr className="bg-sidebar-accent">
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('id')}>
-                                    # {filters?.sort_by === 'id' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('name')}>
-                                    Name {filters?.sort_by === 'name' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('description')}>
-                                    Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Divison</th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('price')}>
-                                    Price (IDR) {filters?.sort_by === 'price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('usd_price')}>
-                                    Price (USD) {filters?.sort_by === 'usd_price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('discount')}>
-                                    Discount {filters?.sort_by === 'discount' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('total_stock')}>
-                                    Total Stocks {filters?.sort_by === 'total_stock' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
-                            </tr>
-                        </thead>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('id')}
+                        >
+                            # {filters?.sort_by === 'id' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('name')}
+                        >
+                            Name {filters?.sort_by === 'name' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('description')}
+                        >
+                            Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Option</th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('price')}
+                        >
+                            Price (IDR) {filters?.sort_by === 'price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('usd_price')}
+                        >
+                            Price (USD) {filters?.sort_by === 'usd_price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('discount')}
+                        >
+                            Discount {filters?.sort_by === 'discount' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('total_stock')}
+                        >
+                            Total Stocks {filters?.sort_by === 'total_stock' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {variantsPaginated?.data?.length > 0 ? (
                         variantsPaginated.data.map((variant: IVariants, i: number) => (
@@ -150,7 +172,9 @@ function VariantsTable({ variantsPaginated, filters }: PropsVariantTable) {
                 <Button variant="outline" disabled={currentPage <= 1} onClick={() => goToPage(currentPage - 1)}>
                     Previous
                 </Button>
-                <span className="text-sm">Page {currentPage} of {variantsPaginated?.last_page ?? 1}</span>
+                <span className="text-sm">
+                    Page {currentPage} of {variantsPaginated?.last_page ?? 1}
+                </span>
                 <Button variant="outline" disabled={currentPage >= (variantsPaginated?.last_page ?? 1)} onClick={() => goToPage(currentPage + 1)}>
                     Next
                 </Button>

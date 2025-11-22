@@ -1,4 +1,3 @@
-import Empty from '@/components/empty';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
@@ -7,7 +6,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Products - Division',
+        title: 'Products - Option',
         href: '/products/division',
     },
 ];
@@ -22,10 +21,10 @@ export default function Division() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Products - Division" />
+            <Head title="Products - Option" />
             <div className="p-4">
                 <Button>
-                    <Link href={'/products/division/adddiv'}>Add Division</Link>
+                    <Link href={'/products/division/adddiv'}>Add Option</Link>
                 </Button>
                 <DivisionsTable divisionsPaginated={divisionsPaginated} filters={filters} />
             </div>
@@ -68,7 +67,9 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
             <div className="mt-4 flex items-center justify-between gap-2">
                 <div className="text-sm text-muted-foreground">
                     {divisionsPaginated?.total ? (
-                        <>Showing {divisionsPaginated.from ?? 0}-{divisionsPaginated.to ?? 0} of {divisionsPaginated.total}</>
+                        <>
+                            Showing {divisionsPaginated.from ?? 0}-{divisionsPaginated.to ?? 0} of {divisionsPaginated.total}
+                        </>
                     ) : (
                         <>No results</>
                     )}
@@ -81,35 +82,55 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
                     onChange={handleSearch}
                 />
             </div>
-
             <table className="mt-4 min-w-full border-collapse text-sm">
                 <thead>
                     <tr className="bg-sidebar-accent">
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('id')}>
-                                    # {filters?.sort_by === 'id' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('name')}>
-                                    Name {filters?.sort_by === 'name' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('description')}>
-                                    Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Sub Category</th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('price')}>
-                                    Price (IDR) {filters?.sort_by === 'price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('usd_price')}>
-                                    Price (USD) {filters?.sort_by === 'usd_price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('discount')}>
-                                    Discount {filters?.sort_by === 'discount' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('total_stock')}>
-                                    Total Stocks {filters?.sort_by === 'total_stock' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
-                            </tr>
-                        </thead>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('id')}
+                        >
+                            # {filters?.sort_by === 'id' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('name')}
+                        >
+                            Name {filters?.sort_by === 'name' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('description')}
+                        >
+                            Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Type</th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('price')}
+                        >
+                            Price (IDR) {filters?.sort_by === 'price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('usd_price')}
+                        >
+                            Price (USD) {filters?.sort_by === 'usd_price' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('discount')}
+                        >
+                            Discount {filters?.sort_by === 'discount' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('total_stock')}
+                        >
+                            Total Stocks {filters?.sort_by === 'total_stock' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {divisionsPaginated?.data?.length > 0 ? (
                         divisionsPaginated.data.map((div: IDivisions, i: number) => (
@@ -146,12 +167,13 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
                     )}
                 </tbody>
             </table>
-
             <div className="mt-4 flex items-center justify-end gap-2">
                 <Button variant="outline" disabled={currentPage <= 1} onClick={() => goToPage(currentPage - 1)}>
                     Previous
                 </Button>
-                <span className="text-sm">Page {currentPage} of {divisionsPaginated?.last_page ?? 1}</span>
+                <span className="text-sm">
+                    Page {currentPage} of {divisionsPaginated?.last_page ?? 1}
+                </span>
                 <Button variant="outline" disabled={currentPage >= (divisionsPaginated?.last_page ?? 1)} onClick={() => goToPage(currentPage + 1)}>
                     Next
                 </Button>

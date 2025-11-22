@@ -23,7 +23,7 @@ export default function AddDivision() {
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: `${isEdit ? 'Edit' : 'Add'} Division`,
+            title: `${isEdit ? 'Edit' : 'Add'} Option`,
             href: '/products/division/adddiv',
         },
     ];
@@ -155,7 +155,7 @@ export default function AddDivision() {
 
                 {/* Sub Category Field */}
                 <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Sub Category *</label>
+                    <label className="mb-2 block text-sm font-medium">Type *</label>
                     <select
                         value={data.sub_category_id}
                         onChange={(e) => setData('sub_category_id', e.target.value)}
@@ -163,7 +163,7 @@ export default function AddDivision() {
                             errors.sub_category_id ? 'border-red-500' : 'border-gray-300'
                         }`}
                     >
-                        <option value="">Select Sub Category</option>
+                        <option value="">Select type</option>
                         {subcats.length > 0 &&
                             subcats.map((subcat) => (
                                 <option key={subcat.id} value={subcat.id}>
