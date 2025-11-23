@@ -9,6 +9,7 @@ use App\Http\Controllers\API\V1\ProductController;
 use App\Http\Controllers\API\V1\UserController;
 use App\Http\Controllers\API\V1\ViewController;
 use App\Http\Controllers\API\V1\DivisionController;
+use App\Http\Controllers\API\V1\InternationalShipment;
 use App\Http\Controllers\API\V1\MiscController;
 use App\Http\Controllers\API\V1\SubCategoryController;
 use App\Http\Controllers\API\V1\SummaryController;
@@ -52,6 +53,9 @@ Route::group(['prefix' => 'v1/public'], function () {
 
 
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+    //International Shipment
+    Route::get('all/international-shipment', [InternationalShipment::class, 'getAllInternationalShipment'])->name('all.international-shipment');
+    Route::get('international-shipment/{id}', [InternationalShipment::class, 'getInternationalShipmentById'])->name('international-shipment.byid');
 
     //History
     Route::get('order-history', [OrderHistoryController::class, 'getUserOrderHistory'])->name('user.order-history');
@@ -143,6 +147,11 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Warehouse API
     Route::post('create-warehouse', [WarehouseController::class, 'createWarehouse'])->name('create.warehouse');
     Route::post('update-warehouse', [WarehouseController::class, 'updateWarehouse'])->name('update.warehouse');
+
+    //International Shipment API
+    Route::post('create/international-shipment', [InternationalShipment::class, 'createInternationalShipment'])->name('create.international-shipment');
+    Route::post('update/international-shipment', [InternationalShipment::class, 'updateInternationalShipment'])->name('update.international-shipment');
+
 
     //Product API
     Route::get('products/options', [ProductController::class, 'getProductOptions'])->name('products.options');
