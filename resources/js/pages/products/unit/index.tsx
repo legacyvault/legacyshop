@@ -18,9 +18,9 @@ interface UnitForm {
     description: string;
     image: File | null;
     is_active: boolean;
-    price: number;
-    usd_price: number;
-    discount: number;
+    price: string;
+    usd_price: string;
+    discount: string;
 }
 
 type EditUnitForm = UnitForm & {
@@ -40,9 +40,9 @@ export default function Unit() {
         description: '',
         image: null,
         is_active: false,
-        price: 0,
-        usd_price: 0,
-        discount: 0,
+        price: '',
+        usd_price: '',
+        discount: '',
     });
 
     const [openAdd, isOpenAdd] = useState(false);
@@ -53,6 +53,9 @@ export default function Unit() {
         fd.append('name', data.name);
         fd.append('description', data.description);
         fd.append('is_active', data.is_active ? '1' : '0');
+        fd.append('price', data.price);
+        fd.append('usd_price', data.usd_price);
+        fd.append('discount', data.discount);
 
         if (data.image instanceof File) fd.append('image', data.image);
 
@@ -89,9 +92,9 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
         description: '',
         is_active: false,
         image: null,
-        price: 0,
-        usd_price: 0,
-        discount: 0,
+        price: '',
+        usd_price: '',
+        discount: '',
     });
 
     const [openEdit, isOpenEdit] = useState(false);
@@ -112,6 +115,9 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
         fd.append('name', data.name);
         fd.append('description', data.description);
         fd.append('is_active', data.is_active ? '1' : '0');
+        fd.append('price', data.price);
+        fd.append('usd_price', data.usd_price);
+        fd.append('discount', data.discount);
         if ((data as any).image instanceof File) fd.append('image', (data as any).image);
         router.post(route('unit.update'), fd, {
             forceFormData: true,
