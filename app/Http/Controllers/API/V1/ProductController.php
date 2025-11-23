@@ -282,12 +282,18 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'product_name'     => 'required|string|max:255',
-            'product_price'    => 'required|numeric|min:1000',
-            'product_usd_price'    => 'required|numeric|min:1',
             'product_weight'    => 'required|numeric|min:1',
             'description'      => 'required|string',
-            'product_discount' => 'nullable|numeric',
+
             'unit_id'          => 'required|exists:unit,id',
+            'use_unit_price'       => 'boolean',
+            'use_unit_usd_price'   => 'boolean',
+            'use_unit_discount'    => 'boolean',
+
+            'product_price'    => 'required_if:use_unit_price,false|numeric|min:1000',
+            'product_usd_price' => 'required_if:use_unit_usd_price,false|numeric|min:1',
+            'product_discount' => 'nullable|numeric|required_if:use_unit_discount,false',
+
             'is_showcase_top'          => 'nullable|boolean',
             'is_showcase_bottom'          => 'nullable|boolean',
 
@@ -326,11 +332,25 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
+            $unit = Unit::findOrFail($request->unit_id);
+
+            $product_price = $request->boolean('use_unit_price')
+                ? $unit->price
+                : $request->product_price;
+
+            $product_usd_price = $request->boolean('use_unit_usd_price')
+                ? $unit->usd_price
+                : $request->product_usd_price;
+
+            $product_discount = $request->boolean('use_unit_discount')
+                ? $unit->discount
+                : ($request->product_discount ?? 0);
+
             $product = Product::create([
                 'product_name'     => $request->product_name,
-                'product_price'    => $request->product_price,
-                'product_usd_price'    => $request->product_usd_price,
-                'product_discount' => $request->product_discount ?? 0,
+                'product_price'    => $product_price,
+                'product_usd_price' => $product_usd_price,
+                'product_discount' => $product_discount,
                 'product_weight'     => $request->product_weight,
                 'description'      => $request->description,
                 'unit_id'          => $request->unit_id,
@@ -462,11 +482,17 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'product_name'     => 'required|string|max:255',
-            'product_price'    => 'required|numeric|min:1000',
-            'product_usd_price'    => 'required|numeric|min:1',
             'description'      => 'required|string',
-            'product_discount' => 'nullable|numeric',
+
             'unit_id'          => 'required|exists:unit,id',
+            'use_unit_price'       => 'boolean',
+            'use_unit_usd_price'   => 'boolean',
+            'use_unit_discount'    => 'boolean',
+
+            'product_price'    => 'required_if:use_unit_price,false|numeric|min:1000',
+            'product_usd_price' => 'required_if:use_unit_usd_price,false|numeric|min:1',
+            'product_discount' => 'nullable|numeric|required_if:use_unit_discount,false',
+
             'is_showcase_top'          => 'nullable|boolean',
             'is_showcase_bottom'          => 'nullable|boolean',
 
@@ -509,11 +535,25 @@ class ProductController extends Controller
             DB::beginTransaction();
 
             $product = Product::findOrFail($id);
+            $unit = Unit::findOrFail($request->unit_id);
+
+            $product_price = $request->boolean('use_unit_price')
+                ? $unit->price
+                : $request->product_price;
+
+            $product_usd_price = $request->boolean('use_unit_usd_price')
+                ? $unit->usd_price
+                : $request->product_usd_price;
+
+            $product_discount = $request->boolean('use_unit_discount')
+                ? $unit->discount
+                : ($request->product_discount ?? 0);
 
             $product->update([
                 'product_name'     => $request->product_name,
-                'product_price'    => $request->product_price,
-                'product_discount' => $request->product_discount ?? 0,
+                'product_price'    => $product_price,
+                'product_usd_price' => $product_usd_price,
+                'product_discount' => $product_discount,
                 'description'      => $request->description,
                 'unit_id'          => $request->unit_id,
                 'is_showcase_top'          => $request->boolean('is_showcase_top'),
@@ -597,7 +637,6 @@ class ProductController extends Controller
             ]);
         }
     }
-
 
     public function updateLatestStock(Request $request)
     {
@@ -913,6 +952,9 @@ class ProductController extends Controller
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string|unique:unit,name',
             'description' => 'string|nullable',
+            'price' => 'required|numeric|min:1',
+            'usd_price' => 'required|numeric',
+            'discount' => 'required|numeric',
             'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
             'is_active' => 'nullable'
         ]);
@@ -929,10 +971,7 @@ class ProductController extends Controller
                 $activeCount = Unit::where('is_active', 1)->count();
 
                 if ($activeCount >= 6) {
-                    Unit::where('is_active', 1)
-                        ->orderBy('created_at', 'asc')
-                        ->limit(1)
-                        ->update(['is_active' => 0]);
+                    return redirect()->back()->with('error', 'Failed to create unit: maximum 6 active unit');
                 }
             }
 
@@ -945,8 +984,11 @@ class ProductController extends Controller
             $create = Unit::create([
                 'name'        => $request->name,
                 'description' => $request->description,
+                'price' => $request->price,
+                'usd_price' => $request->usd_price,
+                'discount' => $request->discount,
                 'picture_url' => $pictureUrl,
-                'is_active'   => $request->is_active
+                'is_active' => $request->is_active ?? true,
             ]);
 
             if ($create) {
@@ -972,6 +1014,9 @@ class ProductController extends Controller
                 Rule::unique('unit', 'name')->ignore($request->id),
             ],
             'description' => 'string|nullable',
+            'price' => 'required|numeric|min:1',
+            'usd_price' => 'required|numeric',
+            'discount'  => 'required|numeric',
             'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
             'is_active' => 'nullable'
         ]);
@@ -988,14 +1033,11 @@ class ProductController extends Controller
                 return redirect()->back()->with('error', 'Unit not found.');
             }
 
-            if ($request->is_active) {
+            if ($request->is_active && $unit->is_active != 1) {
                 $activeCount = Unit::where('is_active', 1)->count();
 
                 if ($activeCount >= 6) {
-                    Unit::where('is_active', 1)
-                        ->orderBy('created_at', 'asc')
-                        ->limit(1)
-                        ->update(['is_active' => 0]);
+                    return redirect()->back()->with('error', 'Failed update unit: Maximum 6 active unit');
                 }
             }
 
@@ -1009,7 +1051,16 @@ class ProductController extends Controller
             $unit->name        = $request->name;
             $unit->description = $request->description;
             $unit->is_active   = $request->is_active;
+            $unit->price       = $request->price;
+            $unit->usd_price   = $request->usd_price;
+            $unit->discount    = $request->discount;
             $unit->save();
+
+            Product::where('unit_id', $unit->id)->update([
+                'product_price'      => $request->price,
+                'product_usd_price'  => $request->usd_price,
+                'product_discount'   => $request->discount,
+            ]);
 
             DB::commit();
             return redirect()->back()->with('success', 'Successfully update unit.');

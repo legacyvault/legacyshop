@@ -16,6 +16,9 @@ class Unit extends Model
         'name',
         'description',
         'picture_url',
+        'price',
+        'usd_price',
+        'discount',
         'is_active'
     ];
 

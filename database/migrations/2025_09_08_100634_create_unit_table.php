@@ -15,6 +15,9 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('description')->nullable();
             $table->string('picture_url')->nullable();
+            $table->float('price');
+            $table->float('usd_price');
+            $table->float('discount')->default(0);
             $table->string('name');
             $table->boolean('is_active')->default(false);
             $table->timestamps();
