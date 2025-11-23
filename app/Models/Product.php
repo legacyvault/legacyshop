@@ -81,6 +81,10 @@ class Product extends Model
         return $this->belongsTo(Unit::class, 'unit_id', 'id');
     }
 
+    public function sub_unit(){
+        return $this->belongsTo(SubUnit::class, 'sub_unit_id', 'id');
+    }
+
     public function tags()
     {
         return $this->belongsToMany(Tags::class, 'product_tag', 'product_id', 'tag_id');

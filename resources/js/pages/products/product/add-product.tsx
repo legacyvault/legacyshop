@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, ICategories, IDivisions, IProducts, ISubcats, ISubUnits, ITags, IVariants, SharedData } from '@/types';
+import { BreadcrumbItem, ICategories, IDivisions, IProducts, ISubcats, ISubUnits, ITags, IUnit, IVariants, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Bold, ChevronDown, Italic, Search, Underline, Upload, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -12,7 +12,6 @@ interface FormData {
     price: string;
     product_discount: string;
     unit: string;
-    product_sku: string;
     product_usd_price: string;
     subunit: string;
     category: string[];
@@ -23,6 +22,9 @@ interface FormData {
     is_showcase_top: boolean;
     is_showcase_bottom: boolean;
     product_weight: string;
+    use_unit_price: boolean;
+    use_unit_usd_price: boolean;
+    use_unit_discount: boolean;
     // New discount structure - each value has its own discount settings
     subcategoryDiscounts: Record<string, { source: string; value: string; base_price: number }>; // e.g., { "subcategory 1": { source: "subcategory 1", value: "10" } }
     divisionDiscounts: Record<string, { source: string; value: string; base_price: number }>;
@@ -42,7 +44,6 @@ interface FormErrors {
     division?: string;
     variant?: string;
     tags?: string;
-    product_sku?: string;
     product_usd_price?: string;
     is_showcase_top?: string;
     is_showcase_bottom?: string;
@@ -293,11 +294,13 @@ export default function AddProduct() {
         divisionDiscounts: {},
         variantDiscounts: {},
         tags: [],
-        product_sku: '',
         product_usd_price: '',
         is_showcase_top: false,
         is_showcase_bottom: false,
         product_weight: '',
+        use_unit_price: true,
+        use_unit_usd_price: true,
+        use_unit_discount: true,
     });
     // Prevent cascading reset effects during initial prefill
     const [isInitializing, setIsInitializing] = useState(false);
@@ -351,6 +354,15 @@ export default function AddProduct() {
         return m;
     }, [variants]);
 
+    const selectedUnit = useMemo(() => {
+        const unitList = (units as IUnit[] | undefined) || [];
+        return unitList.find((u) => u.id === formData.unit);
+    }, [units, formData.unit]);
+
+    const selectedUnitPrice = useMemo(() => Number(selectedUnit?.price ?? 0), [selectedUnit]);
+    const selectedUnitUsdPrice = useMemo(() => Number(selectedUnit?.usd_price ?? 0), [selectedUnit]);
+    const selectedUnitDiscount = useMemo(() => Number(selectedUnit?.discount ?? 0), [selectedUnit]);
+
     // Filtered options based on hierarchy selections
     const subunitOptions = useMemo(() => {
         const unitId = formData.unit;
@@ -403,6 +415,34 @@ export default function AddProduct() {
         }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.unit]);
+
+    useEffect(() => {
+        if (isInitializing) return;
+
+        if (!formData.unit) {
+            setFormData((prev) => ({
+                ...prev,
+                price: '',
+                product_usd_price: '',
+                product_discount: '',
+                use_unit_price: true,
+                use_unit_usd_price: true,
+                use_unit_discount: true,
+            }));
+            return;
+        }
+
+        setFormData((prev) => ({
+            ...prev,
+            use_unit_price: true,
+            use_unit_usd_price: true,
+            use_unit_discount: true,
+            price: String(selectedUnitPrice ?? ''),
+            product_usd_price: String(selectedUnitUsdPrice ?? ''),
+            product_discount: String(selectedUnitDiscount ?? ''),
+        }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.unit, selectedUnitPrice, selectedUnitUsdPrice, selectedUnitDiscount]);
 
     useEffect(() => {
         // When categories change, clear subcategory and below
@@ -681,25 +721,73 @@ export default function AddProduct() {
         return new Intl.NumberFormat('id-ID').format(Number(number));
     };
 
+    const formatUsd = (value: string) => {
+        const number = value.replace(/\D/g, '');
+        return new Intl.NumberFormat('en-US').format(Number(number));
+    };
+
     // Handle price input
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '');
-        handleInputChange('price', value);
+        setFormData((prev) => ({ ...prev, price: value, use_unit_price: false }));
+        if (errors.price) {
+            setErrors((prev) => ({ ...prev, price: undefined }));
+        }
     };
 
     // Handle price usd input
     const handlePriceUsdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '');
-        handleInputChange('product_usd_price', value);
+        setFormData((prev) => ({ ...prev, product_usd_price: value, use_unit_usd_price: false }));
+        if (errors.product_usd_price) {
+            setErrors((prev) => ({ ...prev, product_usd_price: undefined }));
+        }
+    };
+
+    const effectiveProductPrice = formData.use_unit_price ? selectedUnitPrice : Number(formData.price) || 0;
+    const effectiveProductUsdPrice = formData.use_unit_usd_price ? selectedUnitUsdPrice : Number(formData.product_usd_price) || 0;
+    const effectiveProductDiscount = formData.use_unit_discount ? selectedUnitDiscount : Number(formData.product_discount) || 0;
+
+    const toggleUnitPrice = (useUnit: boolean) => {
+        setFormData((prev) => ({
+            ...prev,
+            use_unit_price: useUnit,
+            price: useUnit ? String(selectedUnitPrice ?? '') : prev.price || String(selectedUnitPrice ?? ''),
+        }));
+        if (errors.price) {
+            setErrors((prev) => ({ ...prev, price: undefined }));
+        }
+    };
+
+    const toggleUnitUsdPrice = (useUnit: boolean) => {
+        setFormData((prev) => ({
+            ...prev,
+            use_unit_usd_price: useUnit,
+            product_usd_price: useUnit ? String(selectedUnitUsdPrice ?? '') : prev.product_usd_price || String(selectedUnitUsdPrice ?? ''),
+        }));
+        if (errors.product_usd_price) {
+            setErrors((prev) => ({ ...prev, product_usd_price: undefined }));
+        }
+    };
+
+    const toggleUnitDiscount = (useUnit: boolean) => {
+        setFormData((prev) => ({
+            ...prev,
+            use_unit_discount: useUnit,
+            product_discount: useUnit ? String(selectedUnitDiscount ?? '') : prev.product_discount || String(selectedUnitDiscount ?? ''),
+        }));
+        if (errors.product_discount) {
+            setErrors((prev) => ({ ...prev, product_discount: undefined }));
+        }
     };
 
     // Calculate final price with discounts
     const calculateFinalPrice = () => {
-        const basePrice = Number(formData.price) || 0;
+        const basePrice = effectiveProductPrice || 0;
         let finalPrice = basePrice;
 
         // Apply product discounts
-        finalPrice = finalPrice - (basePrice * Number(formData.product_discount)) / 100;
+        finalPrice = finalPrice - (basePrice * effectiveProductDiscount) / 100;
 
         // Apply subcategory discounts based on selected source
         formData.subcategory.forEach((id) => {
@@ -746,8 +834,10 @@ export default function AddProduct() {
         const newErrors: FormErrors = {};
 
         if (!formData.name.trim()) newErrors.name = 'Product name is required';
-        if (!formData.price) newErrors.price = 'Price is required';
         if (!formData.unit) newErrors.unit = 'Unit is required';
+        if (!formData.use_unit_price && !formData.price) newErrors.price = 'Price is required';
+        if (!formData.use_unit_usd_price && !formData.product_usd_price) newErrors.product_usd_price = 'USD price is required';
+        if (!formData.use_unit_discount && formData.product_discount === '') newErrors.product_discount = 'Discount is required';
         // Only require new images for create; allow empty on edit
         if (!isEdit && formData.images.length === 0) newErrors.images = 'At least one image is required';
 
@@ -758,12 +848,15 @@ export default function AddProduct() {
 
         const fd = new FormData();
         fd.append('product_name', formData.name);
-        fd.append('product_price', String(Number(formData.price)));
-        fd.append('product_discount', formData.product_discount);
+        fd.append('product_price', String(effectiveProductPrice));
+        fd.append('product_discount', String(effectiveProductDiscount));
         fd.append('description', formData.description);
         fd.append('unit_id', formData.unit);
-        fd.append('product_sku', formData.product_sku);
-        fd.append('product_usd_price', formData.product_usd_price);
+        fd.append('sub_unit_id', formData.subunit);
+        fd.append('use_unit_price', formData.use_unit_price ? '1' : '0');
+        fd.append('use_unit_usd_price', formData.use_unit_usd_price ? '1' : '0');
+        fd.append('use_unit_discount', formData.use_unit_discount ? '1' : '0');
+        fd.append('product_usd_price', String(effectiveProductUsdPrice));
         fd.append('product_weight', formData.product_weight);
         fd.append('is_showcase_top', formData.is_showcase_top ? '1' : '0');
         fd.append('is_showcase_bottom', formData.is_showcase_bottom ? '1' : '0');
@@ -822,10 +915,13 @@ export default function AddProduct() {
                 const mapped: FormErrors = {};
                 if ((err as any).product_name) mapped.name = (err as any).product_name as string;
                 if ((err as any).product_price) mapped.price = (err as any).product_price as string;
+                if ((err as any).product_usd_price) mapped.product_usd_price = (err as any).product_usd_price as string;
+                if ((err as any).product_discount) mapped.product_discount = (err as any).product_discount as string;
                 if ((err as any).description) mapped.description = (err as any).description as string;
                 if ((err as any).unit_id) mapped.unit = (err as any).unit_id as string;
                 if ((err as any).categories) mapped.category = (err as any).categories as string;
                 if ((err as any).tag_id) mapped.tags = (err as any).tag_id as string;
+                if ((err as any).product_weight) mapped.product_weight = (err as any).product_weight as string;
                 if ((err as any).is_showcase_top) mapped.is_showcase_top = (err as any).is_showcase_top as string;
                 if ((err as any).is_showcase_bottom) mapped.is_showcase_bottom = (err as any).is_showcase_bottom as string;
                 if (Object.keys(err as any).some((k) => k.startsWith('pictures'))) mapped.images = 'Invalid pictures uploaded';
@@ -838,6 +934,7 @@ export default function AddProduct() {
     };
 
     const finalPrice = calculateFinalPrice();
+    const productDiscountAmount = (effectiveProductPrice * effectiveProductDiscount) / 100;
 
     // Compute remaining slots and counts for UI
     const existingKeptCount = existingPictures.filter((p) => !removePictureIds.includes(p.id)).length;
@@ -898,21 +995,6 @@ export default function AddProduct() {
                         placeholder="Enter product name"
                     />
                     {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
-                </div>
-
-                {/* SKU Field */}
-                <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">SKU *</label>
-                    <input
-                        type="text"
-                        value={formData.product_sku}
-                        onChange={(e) => handleInputChange('product_sku', e.target.value)}
-                        className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
-                            errors.product_sku ? 'border-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter product SKU"
-                    />
-                    {errors.product_sku && <p className="mt-1 text-sm text-red-500">{errors.product_sku}</p>}
                 </div>
 
                 {/* Multiple Image Upload */}
@@ -1039,7 +1121,7 @@ export default function AddProduct() {
                             value={formData.product_weight}
                             onChange={(e) => handleInputChange('product_weight', e.target.value)}
                             className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
-                                errors.price ? 'border-red-500' : 'border-gray-300'
+                                errors.product_weight ? 'border-red-500' : 'border-gray-300'
                             }`}
                             placeholder="0"
                         />
@@ -1098,11 +1180,21 @@ export default function AddProduct() {
                                         <div className="mb-2">Choose price:</div>
                                         <div className="space-y-2">
                                             <label className="flex items-center space-x-2">
-                                                <input type="radio" value="abc" className="text-yellow-600" />
-                                                <span>Use Default Price (Rp. 30,000)</span>
+                                                <input
+                                                    type="radio"
+                                                    checked={formData.use_unit_price}
+                                                    onChange={() => toggleUnitPrice(true)}
+                                                    className="text-yellow-600"
+                                                />
+                                                <span>Use Default Price (Rp. {formatRupiah(String(selectedUnitPrice || 0))})</span>
                                             </label>
                                             <label className="flex items-center space-x-2">
-                                                <input type="radio" value="manual" className="text-yellow-600" />
+                                                <input
+                                                    type="radio"
+                                                    checked={!formData.use_unit_price}
+                                                    onChange={() => toggleUnitPrice(false)}
+                                                    className="text-yellow-600"
+                                                />
                                                 <span>Enter manually</span>
                                             </label>
                                         </div>
@@ -1117,9 +1209,9 @@ export default function AddProduct() {
                                                 onChange={handlePriceChange}
                                                 className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
                                                     errors.price ? 'border-red-500' : 'border-gray-300'
-                                                } ${!formData.unit ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'}`}
+                                                } ${formData.use_unit_price ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'}`}
                                                 placeholder="0"
-                                                disabled={!formData.unit}
+                                                disabled={formData.use_unit_price}
                                             />
                                         </div>
                                         {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
@@ -1137,11 +1229,21 @@ export default function AddProduct() {
                                         <div className="mb-2">Choose price:</div>
                                         <div className="space-y-2">
                                             <label className="flex items-center space-x-2">
-                                                <input type="radio" value="asd" className="text-yellow-600" />
-                                                <span>Use Default Price ($100)</span>
+                                                <input
+                                                    type="radio"
+                                                    checked={formData.use_unit_usd_price}
+                                                    onChange={() => toggleUnitUsdPrice(true)}
+                                                    className="text-yellow-600"
+                                                />
+                                                <span>Use Default Price ($ {formatUsd(String(selectedUnitUsdPrice || 0))})</span>
                                             </label>
                                             <label className="flex items-center space-x-2">
-                                                <input type="radio" value="manual" className="text-yellow-600" />
+                                                <input
+                                                    type="radio"
+                                                    checked={!formData.use_unit_usd_price}
+                                                    onChange={() => toggleUnitUsdPrice(false)}
+                                                    className="text-yellow-600"
+                                                />
                                                 <span>Enter manually</span>
                                             </label>
                                         </div>
@@ -1151,12 +1253,13 @@ export default function AddProduct() {
                                         <span className="absolute top-2 left-3 text-gray-500">$ </span>
                                         <input
                                             type="text"
-                                            value={formatRupiah(formData.product_usd_price)}
+                                            value={formatUsd(formData.product_usd_price)}
                                             onChange={handlePriceUsdChange}
                                             className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
-                                                errors.price ? 'border-red-500' : 'border-gray-300'
-                                            }`}
+                                                errors.product_usd_price ? 'border-red-500' : 'border-gray-300'
+                                            } ${formData.use_unit_usd_price ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'}`}
                                             placeholder="0"
+                                            disabled={formData.use_unit_usd_price}
                                         />
                                     </div>
                                     {errors.product_usd_price && <p className="mt-1 text-sm text-red-500">{errors.product_usd_price}</p>}
@@ -1173,11 +1276,21 @@ export default function AddProduct() {
                                         <div className="mb-2">Choose discount:</div>
                                         <div className="space-y-2">
                                             <label className="flex items-center space-x-2">
-                                                <input type="radio" value="abc" className="text-yellow-600" />
-                                                <span>Use Default discount (10%)</span>
+                                                <input
+                                                    type="radio"
+                                                    checked={formData.use_unit_discount}
+                                                    onChange={() => toggleUnitDiscount(true)}
+                                                    className="text-yellow-600"
+                                                />
+                                                <span>Use Default discount ({selectedUnitDiscount || 0}%)</span>
                                             </label>
                                             <label className="flex items-center space-x-2">
-                                                <input type="radio" value="manual" className="text-yellow-600" />
+                                                <input
+                                                    type="radio"
+                                                    checked={!formData.use_unit_discount}
+                                                    onChange={() => toggleUnitDiscount(false)}
+                                                    className="text-yellow-600"
+                                                />
                                                 <span>Enter manually</span>
                                             </label>
                                         </div>
@@ -1188,12 +1301,19 @@ export default function AddProduct() {
                                             <input
                                                 type="text"
                                                 value={formData.product_discount}
-                                                onChange={(e) => handleInputChange('product_discount', e.target.value)}
+                                                onChange={(e) => {
+                                                    const value = e.target.value.replace(/\D/g, '');
+                                                    setFormData((prev) => ({ ...prev, product_discount: value, use_unit_discount: false }));
+                                                    if (errors.product_discount) {
+                                                        setErrors((prev) => ({ ...prev, product_discount: undefined }));
+                                                    }
+                                                }}
                                                 className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
                                                     errors.product_discount ? 'border-red-500' : 'border-gray-300'
-                                                }`}
+                                                } ${formData.use_unit_discount ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'}`}
                                                 placeholder="Enter discount percentage"
                                                 maxLength={3}
+                                                disabled={formData.use_unit_discount}
                                             />
                                             <span className="absolute top-2 right-3 text-gray-500">%</span>
                                         </div>
@@ -1558,15 +1678,14 @@ export default function AddProduct() {
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span>Base Price:</span>
-                                <span>Rp {formatRupiah(formData.price)}</span>
+                                <span>Rp {formatRupiah(String(effectiveProductPrice))}</span>
                             </div>
 
                             {/* Product Discounts */}
-                            {formData.product_discount && (
+                            {effectiveProductDiscount > 0 && (
                                 <div className="flex justify-between text-orange-600">
                                     <span>
-                                        Product Discount {formData.product_discount}% (-Rp{' '}
-                                        {formatRupiah(String((Number(formData.price) * Number(formData.product_discount)) / 100))})
+                                        Product Discount {effectiveProductDiscount}% (-Rp {formatRupiah(String(productDiscountAmount))})
                                     </span>
                                 </div>
                             )}
@@ -1574,7 +1693,6 @@ export default function AddProduct() {
                             {/* Subcategory discounts */}
                             {formData.subcategory.map((id) => {
                                 const d = formData.subcategoryDiscounts[id];
-                                console.log(d);
                                 const applied = d?.source === 'manual' ? Number(d.value || 0) : d?.source === id ? subcatDiscountById[id] || 0 : 0;
                                 return applied ? (
                                     <div key={id} className="flex justify-between text-blue-600">
@@ -1632,7 +1750,7 @@ export default function AddProduct() {
                                 <span>Rp {formatRupiah(String(Math.round(finalPrice)))}</span>
                             </div>
                             <div className="text-xs text-gray-500">
-                                Total discount: Rp {formatRupiah(String(Math.round(finalPrice) - Number(formData.price)))}
+                                Total discount: Rp {formatRupiah(String(Math.round(finalPrice) - Math.round(effectiveProductPrice)))}
                             </div>
                         </div>
                     </div>
@@ -1692,12 +1810,18 @@ export function usePrefillProduct(
                 base_price: v.price,
             };
         });
-        console.log(selectedProd);
+
+        const unitPrice = Number(selectedProd.unit?.price ?? NaN);
+        const unitUsdPrice = Number(selectedProd.unit?.usd_price ?? NaN);
+        const unitDiscount = Number(selectedProd.unit?.discount ?? NaN);
+
+        const useUnitPrice = !Number.isNaN(unitPrice) && Number(selectedProd.product_price ?? 0) === unitPrice;
+        const useUnitUsdPrice = !Number.isNaN(unitUsdPrice) && Number(selectedProd.product_usd_price ?? 0) === unitUsdPrice;
+        const useUnitDiscount = !Number.isNaN(unitDiscount) && Number(selectedProd.product_discount ?? 0) === unitDiscount;
         setFormData((prev) => ({
             ...prev,
             product_weight: selectedProd.product_weight || '',
-            product_sku: selectedProd.product_sku || '',
-            product_usd_price: String(selectedProd.product_usd_price) || '',
+            product_usd_price: selectedProd.product_usd_price != null ? String(selectedProd.product_usd_price) : '',
             name: selectedProd.product_name || '',
             description: selectedProd.description || '',
             price: String(selectedProd.product_price ?? ''),
@@ -1713,6 +1837,9 @@ export function usePrefillProduct(
             variantDiscounts: varDiscounts,
             is_showcase_top: Boolean(selectedProd.is_showcase_top),
             is_showcase_bottom: Boolean(selectedProd.is_showcase_bottom),
+            use_unit_price: useUnitPrice,
+            use_unit_usd_price: useUnitUsdPrice,
+            use_unit_discount: useUnitDiscount,
             // images left empty; existing pictures handled server-side
         }));
 

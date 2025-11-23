@@ -211,6 +211,9 @@ export interface IUnit {
     id: string;
     name: string;
     description: string;
+    price?: number;
+    usd_price?: number;
+    discount?: number;
     picture_url?: string;
     categories: ICategories[];
     is_active: boolean;
@@ -537,7 +540,6 @@ export interface IProducts {
     unit_id: string;
     updated_at: string;
     variants: (IVariants & { pivot: IPivotVariantProd })[];
-    product_sku: string;
     product_usd_price: number;
     is_showcase_top: boolean;
     is_showcase_bottom: boolean;

@@ -14,9 +14,9 @@ interface IUnitsDialogProps {
         description: string;
         picture_url?: string | null;
         is_active: boolean;
-        price: number;
-        usd_price: number;
-        discount: number;
+        price: string;
+        usd_price: string;
+        discount: string;
     };
 
     //Inertia’s useForm
@@ -26,9 +26,9 @@ interface IUnitsDialogProps {
         description: string;
         image?: File | null;
         is_active: boolean;
-        price: number;
-        usd_price: number;
-        discount: number;
+        price: string;
+        usd_price: string;
+        discount: string;
     };
     setData: (field: any, value: any) => void;
     errors: { name?: string; description?: string; image?: string; is_active?: string; price?: string; usd_price?: string; discount?: string };
@@ -56,9 +56,9 @@ export default function UnitsDialog({ open, isOpen, type, unit, data, setData, e
                 setData('description', '');
                 setData('image', null);
                 setData('is_active', false);
-                setData('usd_price', 0);
-                setData('price', 0);
-                setData('discount', 0);
+                setData('usd_price', '0');
+                setData('price', '0');
+                setData('discount', '0');
                 setImagePreview(null);
             }
         }
@@ -90,36 +90,36 @@ export default function UnitsDialog({ open, isOpen, type, unit, data, setData, e
         e.target.value = '';
     };
 
-    const formatRupiah = (value: string) => {
-        const number = value.replace(/\D/g, '');
-        return new Intl.NumberFormat('id-ID').format(Number(number));
+    const formatRupiah = (value: string | number | null | undefined) => {
+        const number = `${value ?? ''}`.replace(/\D/g, '');
+        return number ? new Intl.NumberFormat('id-ID').format(Number(number)) : '';
     };
 
-    const formatUsd = (value: string) => {
-        const number = value.replace(/\D/g, '');
-        return new Intl.NumberFormat('en-US').format(Number(number));
+    const formatUsd = (value: string | number | null | undefined) => {
+        const number = `${value ?? ''}`.replace(/\D/g, '');
+        return number ? new Intl.NumberFormat('en-US').format(Number(number)) : '';
     };
 
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '');
-        setData('price', Number(value));
+        setData('price', value);
     };
 
     const handleUsdPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '');
-        setData('usd_price', Number(value));
+        setData('usd_price', value);
     };
 
     const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '');
-        setData('discount', Number(value));
+        setData('discount', value);
     };
 
     return (
         <Dialog open={open} onOpenChange={isOpen}>
             <DialogPortal>
                 <DialogOverlay />
-                <DialogContent>
+                <DialogContent className="h-[90vh] overflow-auto">
                     <DialogTitle className="capitalize">{type} Collection</DialogTitle>
 
                     {type !== 'delete' ? (
@@ -159,7 +159,7 @@ export default function UnitsDialog({ open, isOpen, type, unit, data, setData, e
                                     <span className="absolute top-2 left-3 text-gray-500">Rp</span>
                                     <input
                                         type="text"
-                                        value={formatRupiah(data.price.toString())}
+                                        value={formatRupiah(data.price)}
                                         onChange={handlePriceChange}
                                         className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
                                             errors.price ? 'border-red-500' : 'border-gray-300'
@@ -177,7 +177,7 @@ export default function UnitsDialog({ open, isOpen, type, unit, data, setData, e
                                     <span className="absolute top-2 left-3 text-gray-500">$</span>
                                     <input
                                         type="text"
-                                        value={formatUsd(data.usd_price.toString())}
+                                        value={formatUsd(data.usd_price)}
                                         onChange={handleUsdPriceChange}
                                         className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border py-2 pr-3 pl-12 shadow-sm focus:ring-2 focus:outline-none ${
                                             errors.usd_price ? 'border-red-500' : 'border-gray-300'
