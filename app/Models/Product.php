@@ -17,6 +17,7 @@ class Product extends Model
         'description',
         'total_stock',
         'unit_id',
+        'sub_unit_id',
         'product_price',
         'product_usd_price',
         'product_weight',
@@ -42,15 +43,17 @@ class Product extends Model
 
     public static function generateSku($product)
     {
-        $category = $product->categories()->first();
+        // Ensure sub_unit is loaded
+        $subUnit = SubUnit::find($product->sub_unit_id);
 
-        if (!$category || !$category->unit) {
-            throw new \Exception("Product category or unit not set properly.");
+        if (!$subUnit) {
+            throw new \Exception("Sub unit not found for SKU generation.");
         }
 
-        $unitInitial = strtoupper(substr($category->unit->name, 0, 1));
+        $subUnitInitial = strtoupper(substr($subUnit->name, 0, 1));
         $productInitial = strtoupper(substr($product->product_name, 0, 1));
-        $prefix = $unitInitial . $productInitial;
+
+        $prefix = $subUnitInitial . $productInitial;
 
         // Find the last SKU starting with this prefix
         $lastProduct = self::where('product_sku', 'like', $prefix . '%')
@@ -58,17 +61,13 @@ class Product extends Model
             ->first();
 
         if ($lastProduct) {
-            // Extract numeric part and increment
             preg_match('/\d+$/', $lastProduct->product_sku, $matches);
             $number = isset($matches[0]) ? intval($matches[0]) + 1 : 1;
         } else {
             $number = 1;
         }
 
-        // Format with leading zeros (e.g., 001)
-        $sku = $prefix . str_pad($number, 3, '0', STR_PAD_LEFT);
-
-        return $sku;
+        return $prefix . str_pad($number, 4, '0', STR_PAD_LEFT); // PC0001
     }
 
     public function stocks()
@@ -81,7 +80,8 @@ class Product extends Model
         return $this->belongsTo(Unit::class, 'unit_id', 'id');
     }
 
-    public function sub_unit(){
+    public function sub_unit()
+    {
         return $this->belongsTo(SubUnit::class, 'sub_unit_id', 'id');
     }
 
