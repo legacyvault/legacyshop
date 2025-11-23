@@ -512,4 +512,8 @@ class ViewController extends Controller
             'filters' => $filters,
         ]);
     }
+
+    public function shipmentInternationalPage(){
+        return Inertia::render('shipment/international/index');
+    }
 }

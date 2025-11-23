@@ -259,6 +259,11 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
 
     Route::get('/dashboard', [SummaryController::class, 'dashboard'])->name('dashboard');
 
+    Route::prefix('shipment')->group(function () {
+        Route::redirect('/', '/shipment/international');
+        Route::get('international', [ViewController::class, 'shipmentInternationalPage']);
+    });
+
     Route::prefix('orders')->group(function () {
         Route::redirect('/', '/orders/order');
         Route::get('order', [ViewController::class, 'OrdersPage']);
