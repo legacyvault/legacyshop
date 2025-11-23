@@ -256,7 +256,7 @@ class ProductController extends Controller
 
     public function getCategoryById($id)
     {
-        $data = Category::with('unit')->find($id);
+        $data = Category::with('sub_unit')->find($id);
 
         return $data;
     }
@@ -725,7 +725,7 @@ class ProductController extends Controller
         $query = Product::with([
             'stocks',
             'unit',
-            'categories.unit',
+            'categories.sub_unit',
             'subcategories',
             'divisions',
             'tags',
@@ -778,7 +778,7 @@ class ProductController extends Controller
         $data = Product::with([
             'stocks',
             'unit',
-            'categories.unit',
+            'categories.sub_unit',
             'subcategories',
             'divisions',
             'tags',
@@ -793,7 +793,7 @@ class ProductController extends Controller
         $data = Product::with([
             'stocks',
             'unit',
-            'categories.unit',
+            'categories.sub_unit',
             'subcategories',
             'divisions',
             'tags',
@@ -808,7 +808,7 @@ class ProductController extends Controller
         $product = Product::with([
             'stocks',
             'unit',
-            'categories.unit',
+            'categories.sub_unit',
             'subcategories',
             'divisions',
             'variants',
