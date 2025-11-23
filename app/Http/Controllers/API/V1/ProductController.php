@@ -286,6 +286,7 @@ class ProductController extends Controller
             'description'      => 'required|string',
 
             'unit_id'          => 'required|exists:unit,id',
+            'sub_unit_id'       => 'required|exists:sub_unit,id',
             'use_unit_price'       => 'boolean',
             'use_unit_usd_price'   => 'boolean',
             'use_unit_discount'    => 'boolean',
@@ -333,6 +334,7 @@ class ProductController extends Controller
             DB::beginTransaction();
 
             $unit = Unit::findOrFail($request->unit_id);
+            $subunit = SubUnit::findorFail($request->sub_unit_id);
 
             $product_price = $request->boolean('use_unit_price')
                 ? $unit->price
@@ -354,6 +356,7 @@ class ProductController extends Controller
                 'product_weight'     => $request->product_weight,
                 'description'      => $request->description,
                 'unit_id'          => $request->unit_id,
+                'sub_unit_id'       => $request->sub_unit_id,
                 'is_showcase_top'          => $request->boolean('is_showcase_top'),
                 'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'),
             ]);
