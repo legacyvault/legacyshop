@@ -43,32 +43,35 @@ class Product extends Model
 
     public static function generateSku($product)
     {
-        // Ensure sub_unit is loaded
+        // Ensure sub_unit exists
         $subUnit = SubUnit::find($product->sub_unit_id);
 
         if (!$subUnit) {
             throw new \Exception("Sub unit not found for SKU generation.");
         }
 
+        // Prefix = first letter of SubUnit + first letter of Product name
         $subUnitInitial = strtoupper(substr($subUnit->name, 0, 1));
         $productInitial = strtoupper(substr($product->product_name, 0, 1));
 
-        $prefix = $subUnitInitial . $productInitial;
+        $prefix = $subUnitInitial . $productInitial; // Example: PC
 
-        // Find the last SKU starting with this prefix
+        // Get the most recent SKU starting with this prefix
         $lastProduct = self::where('product_sku', 'like', $prefix . '%')
             ->orderBy('product_sku', 'desc')
             ->first();
 
         if ($lastProduct) {
-            preg_match('/\d+$/', $lastProduct->product_sku, $matches);
-            $number = isset($matches[0]) ? intval($matches[0]) + 1 : 1;
+            // Extract the number at the end (no zero padding)
+            preg_match('/(\d+)$/', $lastProduct->product_sku, $matches);
+            $number = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
         } else {
             $number = 1;
         }
 
-        return $prefix . str_pad($number, 4, '0', STR_PAD_LEFT); // PC0001
+        return $prefix . $number; // PC1, PC2, PC3, ...
     }
+
 
     public function stocks()
     {
