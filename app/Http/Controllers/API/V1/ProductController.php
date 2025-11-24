@@ -808,7 +808,8 @@ class ProductController extends Controller
         $product = Product::with([
             'stocks',
             'unit',
-            'categories.sub_unit',
+            'sub_unit',
+            'categories',
             'subcategories',
             'divisions',
             'variants',
