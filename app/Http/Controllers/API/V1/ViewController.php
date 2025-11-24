@@ -275,14 +275,14 @@ class ViewController extends Controller
     public function frontListProducts(Request $request)
     {
         $products = $this->productController->getAllProduct($request);
-        $units = $this->productController->getAllUnit();
+        $subunits = $this->productController->getAllSubUnit();
         $tags = $this->productController->getAllTags();
 
         return Inertia::render('front/products/index', [
             'products' => $products,
-            'units' => $units,
+            'subunits' => $subunits,
             'tags' => $tags,
-            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'unit_ids', 'tag_ids'),
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'sub_unit_ids', 'tag_ids'),
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')

@@ -3,6 +3,7 @@ import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IProducts, IRootProducts, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
@@ -30,7 +31,7 @@ export default function FrontProducts() {
         translations,
         locale,
         products: productsPayload,
-        units,
+        subunits,
         tags,
         filters,
     } = usePage<SharedData>().props as SharedData & {
@@ -47,7 +48,7 @@ export default function FrontProducts() {
 
     // Filter UI state, initialized from server query
     const [selectedUnits, setSelectedUnits] = useState<Set<string>>(() => {
-        const unitFilter = (filters as any)?.unit_ids;
+        const unitFilter = (filters as any)?.sub_unit_ids;
         if (Array.isArray(unitFilter)) {
             return new Set(unitFilter.map(String));
         }
@@ -83,7 +84,7 @@ export default function FrontProducts() {
     // Build query params for server requests
     const buildParams = (extra: Record<string, any> = {}) => ({
         q: search || undefined,
-        unit_ids: selectedUnits.size > 0 ? Array.from(selectedUnits) : undefined,
+        sub_unit_ids: selectedUnits.size > 0 ? Array.from(selectedUnits) : undefined,
         tag_ids: selectedTags.size > 0 ? Array.from(selectedTags) : undefined,
         sort_by: sortOrder === 'default' ? undefined : sortField === 'name' ? 'product_name' : sortField === 'price' ? 'product_price' : 'created_at',
         sort_dir: sortOrder === 'default' ? undefined : sortOrder,
@@ -107,6 +108,7 @@ export default function FrontProducts() {
                 (filters as any)?.sort_by ||
                 (filters as any)?.sort_dir ||
                 hasFilterValue((filters as any)?.unit_ids) ||
+                hasFilterValue((filters as any)?.sub_unit_ids) ||
                 hasFilterValue((filters as any)?.category_ids) ||
                 hasFilterValue((filters as any)?.subcat_ids) ||
                 hasFilterValue((filters as any)?.division_ids) ||
@@ -171,7 +173,7 @@ export default function FrontProducts() {
                                             '/list-products',
                                             buildParams({
                                                 q: undefined,
-                                                unit_ids: undefined,
+                                                sub_unit_ids: undefined,
                                                 tag_ids: undefined,
                                                 sort_by: undefined,
                                                 sort_dir: undefined,
@@ -222,11 +224,10 @@ export default function FrontProducts() {
                                             } else {
                                                 setSortField(f.key as any);
                                                 setSortOrder('asc');
-                                                router.get(
-                                                    '/list-products',
-                                                    buildParams({ sort_by, sort_dir: 'asc', page: 1 }),
-                                                    { preserveState: true, replace: true },
-                                                );
+                                                router.get('/list-products', buildParams({ sort_by, sort_dir: 'asc', page: 1 }), {
+                                                    preserveState: true,
+                                                    replace: true,
+                                                });
                                             }
                                         };
 
@@ -248,15 +249,15 @@ export default function FrontProducts() {
                             </div>
 
                             <FilterSection
-                                title="Unit"
-                                options={units.map((unit) => ({ value: String(unit.id), label: unit.name }))}
+                                title="Category"
+                                options={subunits.map((subu) => ({ value: String(subu.id), label: subu.name }))}
                                 selected={selectedUnits}
                                 onToggle={(value, checked) => {
                                     setSelectedUnits((prev) => {
                                         const next = toggleSet(prev, value, checked);
                                         router.get(
                                             '/list-products',
-                                            buildParams({ unit_ids: next.size > 0 ? Array.from(next) : undefined, page: 1 }),
+                                            buildParams({ sub_unit_ids: next.size > 0 ? Array.from(next) : undefined, page: 1 }),
                                             { preserveState: true, replace: true },
                                         );
                                         return next;
@@ -388,8 +389,17 @@ function FilterSection({
     defaultOpen?: boolean;
 }) {
     const [open, setOpen] = useState(defaultOpen);
+    const [tagSearch, setTagSearch] = useState('');
+    const normalizedTitle = title.toLowerCase().trim();
+    const isTagSection = normalizedTitle === 'tags';
+    const filteredOptions = useMemo(() => {
+        if (!isTagSection) return options;
+        const query = tagSearch.trim().toLowerCase();
+        if (!query) return options;
+        return options.filter((opt) => opt.label.toLowerCase().includes(query) || selected.has(opt.value));
+    }, [isTagSection, options, selected, tagSearch]);
     return (
-        <Collapsible open={open} onOpenChange={setOpen}>
+        <Collapsible open={open} onOpenChange={setOpen} className="border-0">
             <div className="mb-1 flex items-center justify-between">
                 <h4 className="text-sm font-semibold">
                     {title}
@@ -402,7 +412,15 @@ function FilterSection({
             </div>
             <CollapsibleContent>
                 <div className="space-y-2 py-2">
-                    {options.map((opt) => {
+                    {isTagSection && (
+                        <Input
+                            value={tagSearch}
+                            onChange={(e) => setTagSearch(e.target.value)}
+                            placeholder="Search tags"
+                            className="h-8 rounded-md text-sm"
+                        />
+                    )}
+                    {(isTagSection ? filteredOptions : options).map((opt) => {
                         const id = `${title}-${opt.value}`.toLowerCase().replace(/\s+/g, '-');
                         const isChecked = selected.has(opt.value);
                         return (
@@ -414,7 +432,7 @@ function FilterSection({
                     })}
                 </div>
             </CollapsibleContent>
-            <div className="my-3 h-px w-full bg-border" />
+            <div className={`my-3 h-px w-full bg-border ${isTagSection && 'hidden'}`} />
         </Collapsible>
     );
 }

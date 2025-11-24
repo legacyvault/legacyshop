@@ -701,11 +701,11 @@ class ProductController extends Controller
         $sortBy  = $request->input('sort_by', 'product_name');
         $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
 
-        $unitFilter = $request->input('unit_ids', []);
-        if (!is_array($unitFilter)) {
-            $unitFilter = ($unitFilter !== null && $unitFilter !== '') ? [$unitFilter] : [];
+        $subunitFilter = $request->input('sub_unit_ids', []);
+        if (!is_array($subunitFilter)) {
+            $subunitFilter = ($subunitFilter !== null && $subunitFilter !== '') ? [$subunitFilter] : [];
         }
-        $unitIds = array_map('strval', array_values(array_unique(array_filter($unitFilter, static function ($value) {
+        $subunitIds = array_map('strval', array_values(array_unique(array_filter($subunitFilter, static function ($value) {
             return $value !== null && $value !== '';
         }))));
 
@@ -725,6 +725,7 @@ class ProductController extends Controller
         $query = Product::with([
             'stocks',
             'unit',
+            'sub_unit',
             'categories.sub_unit',
             'subcategories',
             'divisions',
@@ -737,6 +738,9 @@ class ProductController extends Controller
                 $searchQuery->where('product_name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
                     ->orWhereHas('unit', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('sub_unit', function ($uq) use ($search) {
                         $uq->where('name', 'like', "%{$search}%");
                     })
                     ->orWhereHas('categories', function ($cq) use ($search) {
@@ -758,8 +762,8 @@ class ProductController extends Controller
         }
 
         // Exact filters by IDs
-        if (count($unitIds) > 0) {
-            $query->whereIn('unit_id', $unitIds);
+        if (count($subunitIds) > 0) {
+            $query->whereIn('sub_unit_id', $subunitIds);
         }
 
         if (count($tagIds) > 0) {
