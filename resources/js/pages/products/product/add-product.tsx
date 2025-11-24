@@ -1827,6 +1827,7 @@ export function usePrefillProduct(
             price: String(selectedProd.product_price ?? ''),
             product_discount: String(selectedProd.product_discount ?? ''),
             unit: selectedProd.unit_id || '',
+            subunit: selectedProd.sub_unit_id || '',
             category: (selectedProd.categories || []).map((c) => c.id),
             subcategory: (selectedProd.subcategories || []).map((s) => s.id),
             division: (selectedProd.divisions || []).map((d) => d.id),

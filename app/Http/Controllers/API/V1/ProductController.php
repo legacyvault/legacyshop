@@ -196,11 +196,15 @@ class ProductController extends Controller
         return $data;
     }
 
-    public function getAllSubUnit()
+    public function getAllSubUnit($unitId = null)
     {
-        $data = SubUnit::orderBy('name', 'asc')->with(['unit', 'categories'])->get();
+        $query = SubUnit::orderBy('name', 'asc')->with(['unit', 'categories']);
 
-        return $data;
+        if ($unitId) {
+            $query->where('unit_id', $unitId);
+        }
+
+        return $query->get();
     }
 
     public function getCategoryPaginated(Request $request)
@@ -694,18 +698,21 @@ class ProductController extends Controller
         }
     }
 
-    public function getAllProduct(Request $request)
+    public function getAllProduct(Request $request, $unitId = null)
     {
         $perPage = (int) $request->input('per_page', 15);
         $search  = $request->input('q');
         $sortBy  = $request->input('sort_by', 'product_name');
         $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
 
-        $unitFilter = $request->input('unit_ids', []);
-        if (!is_array($unitFilter)) {
-            $unitFilter = ($unitFilter !== null && $unitFilter !== '') ? [$unitFilter] : [];
+        $unitFilter = $unitId ?? $request->input('unit_id');
+        $unitFilter = ($unitFilter !== null && $unitFilter !== '') ? (string) $unitFilter : null;
+
+        $subunitFilter = $request->input('sub_unit_ids', []);
+        if (!is_array($subunitFilter)) {
+            $subunitFilter = ($subunitFilter !== null && $subunitFilter !== '') ? [$subunitFilter] : [];
         }
-        $unitIds = array_map('strval', array_values(array_unique(array_filter($unitFilter, static function ($value) {
+        $subunitIds = array_map('strval', array_values(array_unique(array_filter($subunitFilter, static function ($value) {
             return $value !== null && $value !== '';
         }))));
 
@@ -725,6 +732,7 @@ class ProductController extends Controller
         $query = Product::with([
             'stocks',
             'unit',
+            'sub_unit',
             'categories.sub_unit',
             'subcategories',
             'divisions',
@@ -732,11 +740,18 @@ class ProductController extends Controller
             'pictures',
         ]);
 
+        if ($unitFilter) {
+            $query->where('unit_id', $unitFilter);
+        }
+
         if ($search) {
             $query->where(function ($searchQuery) use ($search) {
                 $searchQuery->where('product_name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
                     ->orWhereHas('unit', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('sub_unit', function ($uq) use ($search) {
                         $uq->where('name', 'like', "%{$search}%");
                     })
                     ->orWhereHas('categories', function ($cq) use ($search) {
@@ -758,8 +773,8 @@ class ProductController extends Controller
         }
 
         // Exact filters by IDs
-        if (count($unitIds) > 0) {
-            $query->whereIn('unit_id', $unitIds);
+        if (count($subunitIds) > 0) {
+            $query->whereIn('sub_unit_id', $subunitIds);
         }
 
         if (count($tagIds) > 0) {
@@ -808,7 +823,8 @@ class ProductController extends Controller
         $product = Product::with([
             'stocks',
             'unit',
-            'categories.sub_unit',
+            'sub_unit',
+            'categories',
             'subcategories',
             'divisions',
             'variants',
@@ -861,6 +877,124 @@ class ProductController extends Controller
                 ];
             }),
         ]);
+    }
+
+    public function getPublicProductOptions(Request $request)
+    {
+        $limit  = max(1, min((int) $request->input('limit', 8), 20));
+        $search = $request->input('q');
+        $unitId = $request->input('unit_id');
+
+        $productLimit = $limit;
+        $subUnitLimit = max(1, min($limit, 6));
+        $unitLimit = max(1, min($limit, 4));
+        $tagLimit = max(1, min($limit, 6));
+
+        $products = Product::query()
+            ->select('id', 'product_name', 'sub_unit_id', 'unit_id')
+            ->with([
+                'unit:id,name',
+                'sub_unit:id,name,unit_id',
+                'tags:id,name',
+            ])
+            ->when($unitId, function ($q) use ($unitId) {
+                $q->where('unit_id', $unitId);
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%");
+            })
+            ->orderBy('product_name', 'asc')
+            ->limit($productLimit)
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->product_name,
+                    'type' => 'product',
+                    'unit' => $product->unit ? [
+                        'id' => $product->unit->id,
+                        'name' => $product->unit->name,
+                    ] : null,
+                    'sub_unit' => $product->sub_unit ? [
+                        'id' => $product->sub_unit->id,
+                        'name' => $product->sub_unit->name,
+                    ] : null,
+                    'tags' => $product->tags->map(function ($tag) {
+                        return [
+                            'id' => $tag->id,
+                            'name' => $tag->name,
+                        ];
+                    })->values(),
+                ];
+            });
+
+        $units = Unit::query()
+            ->select('id', 'name')
+            ->where('is_active', 1)
+            ->when($search, function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('name', 'asc')
+            ->limit($unitLimit)
+            ->get()
+            ->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                    'type' => 'unit',
+                ];
+            });
+
+        $subUnits = SubUnit::query()
+            ->select('id', 'name', 'unit_id')
+            ->with(['unit:id,name'])
+            ->when($search, function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('name', 'asc')
+            ->limit($subUnitLimit)
+            ->get()
+            ->map(function ($sub) {
+                return [
+                    'id' => $sub->id,
+                    'name' => $sub->name,
+                    'type' => 'sub_unit',
+                    'unit' => $sub->unit ? [
+                        'id' => $sub->unit->id,
+                        'name' => $sub->unit->name,
+                    ] : null,
+                ];
+            });
+
+        $tags = Tags::query()
+            ->select('id', 'name',)
+            ->when($search, function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('name', 'asc')
+            ->limit($tagLimit)
+            ->get()
+            ->map(function ($tag) {
+                return [
+                    'id' => $tag->id,
+                    'name' => $tag->name,
+                    'type' => 'tags',
+                ];
+            });
+
+        $results = $products
+            ->concat($subUnits)
+            ->concat($units)
+            ->concat($tags)
+            ->sortBy(function ($item) {
+                if ($item['type'] === 'product') return 0;
+                if ($item['type'] === 'sub_unit') return 1;
+                return 2;
+            })
+            ->take($limit)
+            ->values();
+
+        return response()->json($results);
     }
 
     public function createTag(Request $request)

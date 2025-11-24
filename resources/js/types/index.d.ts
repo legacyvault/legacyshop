@@ -35,6 +35,7 @@ export interface SharedData {
     locale: string;
     units: IUnit[];
     unitsPaginated: IRootUnits;
+    unit?: IUnit | null;
     subunits: ISubUnits[];
     subunitsPaginated?: IRootSubUnits;
     categories: ICategories[];
@@ -520,6 +521,7 @@ export interface IProducts {
     categories: ICategories[];
     created_at: string;
     description: string;
+    product_sku: string;
     divisions: (IDivisions & { pivot: IPivotDivisionProd })[];
     id: string;
     pictures: {
@@ -536,7 +538,9 @@ export interface IProducts {
     subcategories: (ISubcats & { pivot: IPivotSubcatProd })[];
     tags: ITags[];
     total_stock: number;
+    sub_unit: ISubUnits;
     unit: IUnit;
+    sub_unit_id: string;
     unit_id: string;
     updated_at: string;
     variants: (IVariants & { pivot: IPivotVariantProd })[];

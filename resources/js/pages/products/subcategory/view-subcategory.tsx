@@ -135,7 +135,7 @@ export default function ViewSubcategory() {
                         </div>
                         {/* Header */}
                         <div className="mb-8">
-                            <h1 className="mb-2 text-3xl font-bold text-foreground">Sub Category Details</h1>
+                            <h1 className="mb-2 text-3xl font-bold text-foreground">Type Details</h1>
                         </div>
 
                         {/* Total Stocks Card */}

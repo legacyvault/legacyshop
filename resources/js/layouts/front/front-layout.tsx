@@ -14,9 +14,22 @@ interface IPropsHeader {
     translations: any;
     searchValue?: string;
     onSearchChange?: (value: string) => void;
+    searchRoute?: string;
+    searchScopeLabel?: string;
+    searchUnitId?: string;
 }
 
-export default function FrontLayout({ auth, locale, translations, children, searchValue, onSearchChange }: PropsWithChildren<IPropsHeader>) {
+export default function FrontLayout({
+    auth,
+    locale,
+    translations,
+    children,
+    searchValue,
+    onSearchChange,
+    searchRoute,
+    searchScopeLabel,
+    searchUnitId,
+}: PropsWithChildren<IPropsHeader>) {
     return (
         <>
             <CartProvider auth={auth}>
@@ -27,13 +40,26 @@ export default function FrontLayout({ auth, locale, translations, children, sear
                     translations={translations}
                     searchValue={searchValue}
                     onSearchChange={onSearchChange}
+                    searchRoute={searchRoute}
+                    searchScopeLabel={searchScopeLabel}
+                    searchUnitId={searchUnitId}
                 />
             </CartProvider>
         </>
     );
 }
 
-function FrontChildLayout({ children, auth, locale, translations, searchValue, onSearchChange }: PropsWithChildren<IPropsHeader>) {
+function FrontChildLayout({
+    children,
+    auth,
+    locale,
+    translations,
+    searchValue,
+    onSearchChange,
+    searchRoute,
+    searchScopeLabel,
+    searchUnitId,
+}: PropsWithChildren<IPropsHeader>) {
     const { isCartOpen } = useCart();
     const page = usePage();
     const isSettings = page.url.startsWith('/settings');
@@ -41,7 +67,16 @@ function FrontChildLayout({ children, auth, locale, translations, searchValue, o
     return (
         <>
             <DialogHandler />
-            <FrontHeader auth={auth} locale={locale} translations={translations} searchValue={searchValue} onSearchChange={onSearchChange} />
+            <FrontHeader
+                auth={auth}
+                locale={locale}
+                translations={translations}
+                searchValue={searchValue}
+                onSearchChange={onSearchChange}
+                searchRoute={searchRoute}
+                searchScopeLabel={searchScopeLabel}
+                searchUnitId={searchUnitId}
+            />
             <div className="relative min-h-screen bg-background">
                 <div
                     className={`absolute inset-0 z-40 bg-foreground transition-opacity ${

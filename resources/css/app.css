@@ -239,9 +239,27 @@
 @layer base {
     * {
         @apply border-border;
+        scrollbar-width: thin;
+        scrollbar-color: var(--muted-foreground) transparent;
     }
 
     body {
         @apply bg-background text-foreground;
+    }
+
+    *::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background-color: var(--muted-foreground);
+        border-radius: 999px;
+        border: 2px solid transparent;
+        background-clip: content-box;
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
 use App\Models\Carts;
+use App\Models\Unit;
 use Illuminate\Support\Facades\Auth;
 
 class ViewController extends Controller
@@ -95,7 +96,7 @@ class ViewController extends Controller
     {
         $productsTop = $this->productController->getAllShowcaseTopProduct();
         $productsBottom = $this->productController->getAllShowcaseBottomProduct();
-        $units = $this->productController->getAllUnit();
+        $units = $this->productController->getAllActiveUnit();
         $banner = $this->miscController->getActiveBanner();
         $articles = $this->articleController->getNewestArticle();
 
@@ -272,17 +273,30 @@ class ViewController extends Controller
         ]);
     }
 
-    public function frontListProducts(Request $request)
+    public function frontListProducts(Request $request, $unitId = null)
     {
-        $products = $this->productController->getAllProduct($request);
-        $units = $this->productController->getAllUnit();
+        $unit = null;
+
+        if ($unitId) {
+            $unit = Unit::with('sub_unit.categories')->find($unitId);
+
+            if (!$unit) {
+                abort(404);
+            }
+
+            $request->merge(['unit_id' => $unitId]);
+        }
+
+        $products = $this->productController->getAllProduct($request, $unitId);
+        $subunits = $this->productController->getAllSubUnit($unitId);
         $tags = $this->productController->getAllTags();
 
         return Inertia::render('front/products/index', [
             'products' => $products,
-            'units' => $units,
+            'subunits' => $subunits,
             'tags' => $tags,
-            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'unit_ids', 'tag_ids'),
+            'unit' => $unit,
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'sub_unit_ids', 'tag_ids', 'unit_id'),
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')

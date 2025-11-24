@@ -49,6 +49,7 @@ Route::group(['prefix' => 'v1/public'], function () {
     Route::get('district-list/{city}', [LocationController::class, 'getPublicDistrictList'])->name('public.districts.list');
     Route::get('village-list/{district}', [LocationController::class, 'getPublicVillageList'])->name('public.villages.list');
     Route::get('postal-code-list/{location}', [LocationController::class, 'getPublicPostalCodeList'])->name('public.postal_code.list');
+    Route::get('product-search', [ProductController::class, 'getPublicProductOptions'])->name('public.product.search');
 });
 
 
@@ -248,6 +249,7 @@ Route::get('/register', function () {
 })->name('register');
 
 Route::get('/list-products', [ViewController::class, 'frontListProducts']);
+Route::get('/list-productt/{unit}', [ViewController::class, 'frontListProducts']);
 
 Route::get('/view-product/{id}', [ViewController::class, 'frontViewProduct']);
 
