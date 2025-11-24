@@ -248,6 +248,7 @@ Route::get('/register', function () {
 })->name('register');
 
 Route::get('/list-products', [ViewController::class, 'frontListProducts']);
+Route::get('/list-productt/{unit}', [ViewController::class, 'frontListProducts']);
 
 Route::get('/view-product/{id}', [ViewController::class, 'frontViewProduct']);
 

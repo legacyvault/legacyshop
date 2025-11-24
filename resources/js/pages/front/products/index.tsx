@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import FrontLayout from '@/layouts/front/front-layout';
-import { IProducts, IRootProducts, SharedData } from '@/types';
+import { IProducts, IRootProducts, IUnit, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -34,9 +34,13 @@ export default function FrontProducts() {
         subunits,
         tags,
         filters,
-    } = usePage<SharedData>().props as SharedData & {
-        products?: IRootProducts;
-    };
+        unit,
+    } = usePage<
+        SharedData & {
+            products?: IRootProducts;
+            unit?: IUnit | null;
+        }
+    >().props;
 
     // Use backend payload as-is
     const products = useMemo<IProducts[]>(() => (productsPayload?.data ?? []) as IProducts[], [productsPayload]);
@@ -47,13 +51,13 @@ export default function FrontProducts() {
     const [search, setSearch] = useState(String((filters as any)?.q || ''));
 
     // Filter UI state, initialized from server query
-    const [selectedUnits, setSelectedUnits] = useState<Set<string>>(() => {
-        const unitFilter = (filters as any)?.sub_unit_ids;
-        if (Array.isArray(unitFilter)) {
-            return new Set(unitFilter.map(String));
+    const [selectedSubUnits, setSelectedSubUnits] = useState<Set<string>>(() => {
+        const subUnitFilter = (filters as any)?.sub_unit_ids;
+        if (Array.isArray(subUnitFilter)) {
+            return new Set(subUnitFilter.map(String));
         }
-        if (unitFilter !== undefined && unitFilter !== null && unitFilter !== '') {
-            return new Set([String(unitFilter)]);
+        if (subUnitFilter !== undefined && subUnitFilter !== null && subUnitFilter !== '') {
+            return new Set([String(subUnitFilter)]);
         }
         return new Set();
     });
@@ -82,9 +86,11 @@ export default function FrontProducts() {
     const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>(initialOrder);
 
     // Build query params for server requests
+    const listPath = unit ? `/list-productt/${unit.id}` : '/list-products';
     const buildParams = (extra: Record<string, any> = {}) => ({
         q: search || undefined,
-        sub_unit_ids: selectedUnits.size > 0 ? Array.from(selectedUnits) : undefined,
+        unit_id: unit?.id,
+        sub_unit_ids: selectedSubUnits.size > 0 ? Array.from(selectedSubUnits) : undefined,
         tag_ids: selectedTags.size > 0 ? Array.from(selectedTags) : undefined,
         sort_by: sortOrder === 'default' ? undefined : sortField === 'name' ? 'product_name' : sortField === 'price' ? 'product_price' : 'created_at',
         sort_dir: sortOrder === 'default' ? undefined : sortOrder,
@@ -94,11 +100,11 @@ export default function FrontProducts() {
     const currentPage = productsPayload?.current_page ?? 1;
     const lastPage = productsPayload?.last_page ?? 1;
     const goToPage = (page: number) => {
-        router.get('/list-products', buildParams({ page }), { preserveState: true, replace: true });
+        router.get(listPath, buildParams({ page }), { preserveState: true, replace: true });
     };
 
     // Persist + restore via sessionStorage
-    const STORAGE_KEY = 'frontProductsQuery';
+    const STORAGE_KEY = unit ? `frontProductsQuery:${unit.id}` : 'frontProductsQuery:all';
     const restored = useRef(false);
     useEffect(() => {
         if (restored.current) return;
@@ -107,7 +113,6 @@ export default function FrontProducts() {
             (filters as any)?.q ||
                 (filters as any)?.sort_by ||
                 (filters as any)?.sort_dir ||
-                hasFilterValue((filters as any)?.unit_ids) ||
                 hasFilterValue((filters as any)?.sub_unit_ids) ||
                 hasFilterValue((filters as any)?.category_ids) ||
                 hasFilterValue((filters as any)?.subcat_ids) ||
@@ -119,15 +124,15 @@ export default function FrontProducts() {
             try {
                 const saved = JSON.parse(savedRaw);
                 restored.current = true;
-                router.get('/list-products', saved, { preserveState: true, replace: true });
+                router.get(listPath, saved, { preserveState: true, replace: true });
             } catch {}
         }
-    }, []);
+    }, [filters, STORAGE_KEY, listPath]);
 
     useEffect(() => {
         const params = buildParams({ page: currentPage });
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(params));
-    }, [search, selectedUnits, selectedTags, sortField, sortOrder, currentPage]);
+    }, [search, selectedSubUnits, selectedTags, sortField, sortOrder, currentPage, STORAGE_KEY]);
 
     // ENABLE WHEN NEEDED
     // COMPARE FEATURES
@@ -146,11 +151,19 @@ export default function FrontProducts() {
     // };
 
     return (
-        <FrontLayout auth={auth} translations={translations} locale={locale} searchValue={search} onSearchChange={setSearch}>
+        <FrontLayout auth={auth} translations={translations} locale={locale} searchValue={search} onSearchChange={setSearch} searchRoute={listPath}>
             <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">View All Cases - Legacy Vault</h1>
+                <div className="mb-6 space-y-2">
+                    {unit ? (
+                        <>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase">Collection</p>
+                            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{unit.name}</h1>
+                            {unit.description && <p className="max-w-3xl text-sm text-muted-foreground">{unit.description}</p>}
+                        </>
+                    ) : (
+                        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">View All Cases - Legacy Vault</h1>
+                    )}
                 </div>
                 <div className="mb-8 h-px w-full bg-border" />
 
@@ -164,13 +177,13 @@ export default function FrontProducts() {
                                 <button
                                     className="text-xs text-muted-foreground underline hover:text-foreground"
                                     onClick={() => {
-                                        setSelectedUnits(new Set());
+                                        setSelectedSubUnits(new Set());
                                         setSelectedTags(new Set());
                                         setSearch('');
                                         setSortField('date');
                                         setSortOrder('default');
                                         router.get(
-                                            '/list-products',
+                                            listPath,
                                             buildParams({
                                                 q: undefined,
                                                 sub_unit_ids: undefined,
@@ -213,7 +226,7 @@ export default function FrontProducts() {
                                                 const next = sortOrder === 'asc' ? 'desc' : sortOrder === 'desc' ? 'default' : 'asc';
                                                 setSortOrder(next);
                                                 router.get(
-                                                    '/list-products',
+                                                    listPath,
                                                     buildParams({
                                                         sort_by: next === 'default' ? undefined : sort_by,
                                                         sort_dir: next === 'default' ? undefined : next,
@@ -224,7 +237,7 @@ export default function FrontProducts() {
                                             } else {
                                                 setSortField(f.key as any);
                                                 setSortOrder('asc');
-                                                router.get('/list-products', buildParams({ sort_by, sort_dir: 'asc', page: 1 }), {
+                                                router.get(listPath, buildParams({ sort_by, sort_dir: 'asc', page: 1 }), {
                                                     preserveState: true,
                                                     replace: true,
                                                 });
@@ -251,15 +264,14 @@ export default function FrontProducts() {
                             <FilterSection
                                 title="Category"
                                 options={subunits.map((subu) => ({ value: String(subu.id), label: subu.name }))}
-                                selected={selectedUnits}
+                                selected={selectedSubUnits}
                                 onToggle={(value, checked) => {
-                                    setSelectedUnits((prev) => {
+                                    setSelectedSubUnits((prev) => {
                                         const next = toggleSet(prev, value, checked);
-                                        router.get(
-                                            '/list-products',
-                                            buildParams({ sub_unit_ids: next.size > 0 ? Array.from(next) : undefined, page: 1 }),
-                                            { preserveState: true, replace: true },
-                                        );
+                                        router.get(listPath, buildParams({ sub_unit_ids: next.size > 0 ? Array.from(next) : undefined, page: 1 }), {
+                                            preserveState: true,
+                                            replace: true,
+                                        });
                                         return next;
                                     });
                                 }}
@@ -271,11 +283,10 @@ export default function FrontProducts() {
                                 onToggle={(value, checked) => {
                                     setSelectedTags((prev) => {
                                         const next = toggleSet(prev, value, checked);
-                                        router.get(
-                                            '/list-products',
-                                            buildParams({ tag_ids: next.size > 0 ? Array.from(next) : undefined, page: 1 }),
-                                            { preserveState: true, replace: true },
-                                        );
+                                        router.get(listPath, buildParams({ tag_ids: next.size > 0 ? Array.from(next) : undefined, page: 1 }), {
+                                            preserveState: true,
+                                            replace: true,
+                                        });
                                         return next;
                                     });
                                 }}

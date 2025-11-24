@@ -196,11 +196,15 @@ class ProductController extends Controller
         return $data;
     }
 
-    public function getAllSubUnit()
+    public function getAllSubUnit($unitId = null)
     {
-        $data = SubUnit::orderBy('name', 'asc')->with(['unit', 'categories'])->get();
+        $query = SubUnit::orderBy('name', 'asc')->with(['unit', 'categories']);
 
-        return $data;
+        if ($unitId) {
+            $query->where('unit_id', $unitId);
+        }
+
+        return $query->get();
     }
 
     public function getCategoryPaginated(Request $request)
@@ -694,12 +698,15 @@ class ProductController extends Controller
         }
     }
 
-    public function getAllProduct(Request $request)
+    public function getAllProduct(Request $request, $unitId = null)
     {
         $perPage = (int) $request->input('per_page', 15);
         $search  = $request->input('q');
         $sortBy  = $request->input('sort_by', 'product_name');
         $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        $unitFilter = $unitId ?? $request->input('unit_id');
+        $unitFilter = ($unitFilter !== null && $unitFilter !== '') ? (string) $unitFilter : null;
 
         $subunitFilter = $request->input('sub_unit_ids', []);
         if (!is_array($subunitFilter)) {
@@ -732,6 +739,10 @@ class ProductController extends Controller
             'tags',
             'pictures',
         ]);
+
+        if ($unitFilter) {
+            $query->where('unit_id', $unitFilter);
+        }
 
         if ($search) {
             $query->where(function ($searchQuery) use ($search) {

@@ -15,6 +15,7 @@ interface IPropsHeader {
     translations: any;
     searchValue?: string;
     onSearchChange?: (value: string) => void;
+    searchRoute?: string;
 }
 
 const NavBottom = [
@@ -32,7 +33,7 @@ const NavBottom = [
     },
 ];
 
-export default function FrontHeader({ auth, locale, translations, searchValue, onSearchChange }: IPropsHeader) {
+export default function FrontHeader({ auth, locale, translations, searchValue, onSearchChange, searchRoute }: IPropsHeader) {
     const page = usePage();
     const getInitials = useInitials();
     const [internalQuery, setInternalQuery] = useState('');
@@ -49,7 +50,7 @@ export default function FrontHeader({ auth, locale, translations, searchValue, o
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             const q = value.trim();
-            router.get('/list-products', q ? { q } : {});
+            router.get(searchRoute ?? '/list-products', q ? { q } : {});
         }
     };
 

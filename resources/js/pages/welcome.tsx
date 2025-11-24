@@ -489,7 +489,7 @@ export default function Welcome() {
                                     <button
                                         key={unit.id}
                                         type="button"
-                                        onClick={() => router.get('/list-products', { unit_ids: [String(unit.id)] })}
+                                        onClick={() => router.get(`/list-productt/${unit.id}`)}
                                         className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none md:w-[calc(33.333%_-_1rem)]"
                                         aria-label={`View products for ${unit.name}`}
                                     >

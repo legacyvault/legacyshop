@@ -35,6 +35,7 @@ export interface SharedData {
     locale: string;
     units: IUnit[];
     unitsPaginated: IRootUnits;
+    unit?: IUnit | null;
     subunits: ISubUnits[];
     subunitsPaginated?: IRootSubUnits;
     categories: ICategories[];
