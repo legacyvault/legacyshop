@@ -151,7 +151,16 @@ export default function FrontProducts() {
     // };
 
     return (
-        <FrontLayout auth={auth} translations={translations} locale={locale} searchValue={search} onSearchChange={setSearch} searchRoute={listPath}>
+        <FrontLayout
+            auth={auth}
+            translations={translations}
+            locale={locale}
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchRoute={listPath}
+            searchScopeLabel={unit?.name}
+            searchUnitId={unit?.id}
+        >
             <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-6 space-y-2">

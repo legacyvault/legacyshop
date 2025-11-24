@@ -15,9 +15,21 @@ interface IPropsHeader {
     searchValue?: string;
     onSearchChange?: (value: string) => void;
     searchRoute?: string;
+    searchScopeLabel?: string;
+    searchUnitId?: string;
 }
 
-export default function FrontLayout({ auth, locale, translations, children, searchValue, onSearchChange, searchRoute }: PropsWithChildren<IPropsHeader>) {
+export default function FrontLayout({
+    auth,
+    locale,
+    translations,
+    children,
+    searchValue,
+    onSearchChange,
+    searchRoute,
+    searchScopeLabel,
+    searchUnitId,
+}: PropsWithChildren<IPropsHeader>) {
     return (
         <>
             <CartProvider auth={auth}>
@@ -29,13 +41,25 @@ export default function FrontLayout({ auth, locale, translations, children, sear
                     searchValue={searchValue}
                     onSearchChange={onSearchChange}
                     searchRoute={searchRoute}
+                    searchScopeLabel={searchScopeLabel}
+                    searchUnitId={searchUnitId}
                 />
             </CartProvider>
         </>
     );
 }
 
-function FrontChildLayout({ children, auth, locale, translations, searchValue, onSearchChange, searchRoute }: PropsWithChildren<IPropsHeader>) {
+function FrontChildLayout({
+    children,
+    auth,
+    locale,
+    translations,
+    searchValue,
+    onSearchChange,
+    searchRoute,
+    searchScopeLabel,
+    searchUnitId,
+}: PropsWithChildren<IPropsHeader>) {
     const { isCartOpen } = useCart();
     const page = usePage();
     const isSettings = page.url.startsWith('/settings');
@@ -50,6 +74,8 @@ function FrontChildLayout({ children, auth, locale, translations, searchValue, o
                 searchValue={searchValue}
                 onSearchChange={onSearchChange}
                 searchRoute={searchRoute}
+                searchScopeLabel={searchScopeLabel}
+                searchUnitId={searchUnitId}
             />
             <div className="relative min-h-screen bg-background">
                 <div

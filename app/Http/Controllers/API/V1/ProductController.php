@@ -879,6 +879,124 @@ class ProductController extends Controller
         ]);
     }
 
+    public function getPublicProductOptions(Request $request)
+    {
+        $limit  = max(1, min((int) $request->input('limit', 8), 20));
+        $search = $request->input('q');
+        $unitId = $request->input('unit_id');
+
+        $productLimit = $limit;
+        $subUnitLimit = max(1, min($limit, 6));
+        $unitLimit = max(1, min($limit, 4));
+        $tagLimit = max(1, min($limit, 6));
+
+        $products = Product::query()
+            ->select('id', 'product_name', 'sub_unit_id', 'unit_id')
+            ->with([
+                'unit:id,name',
+                'sub_unit:id,name,unit_id',
+                'tags:id,name',
+            ])
+            ->when($unitId, function ($q) use ($unitId) {
+                $q->where('unit_id', $unitId);
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%");
+            })
+            ->orderBy('product_name', 'asc')
+            ->limit($productLimit)
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->product_name,
+                    'type' => 'product',
+                    'unit' => $product->unit ? [
+                        'id' => $product->unit->id,
+                        'name' => $product->unit->name,
+                    ] : null,
+                    'sub_unit' => $product->sub_unit ? [
+                        'id' => $product->sub_unit->id,
+                        'name' => $product->sub_unit->name,
+                    ] : null,
+                    'tags' => $product->tags->map(function ($tag) {
+                        return [
+                            'id' => $tag->id,
+                            'name' => $tag->name,
+                        ];
+                    })->values(),
+                ];
+            });
+
+        $units = Unit::query()
+            ->select('id', 'name')
+            ->where('is_active', 1)
+            ->when($search, function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('name', 'asc')
+            ->limit($unitLimit)
+            ->get()
+            ->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                    'type' => 'unit',
+                ];
+            });
+
+        $subUnits = SubUnit::query()
+            ->select('id', 'name', 'unit_id')
+            ->with(['unit:id,name'])
+            ->when($search, function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('name', 'asc')
+            ->limit($subUnitLimit)
+            ->get()
+            ->map(function ($sub) {
+                return [
+                    'id' => $sub->id,
+                    'name' => $sub->name,
+                    'type' => 'sub_unit',
+                    'unit' => $sub->unit ? [
+                        'id' => $sub->unit->id,
+                        'name' => $sub->unit->name,
+                    ] : null,
+                ];
+            });
+
+        $tags = Tags::query()
+            ->select('id', 'name',)
+            ->when($search, function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('name', 'asc')
+            ->limit($tagLimit)
+            ->get()
+            ->map(function ($tag) {
+                return [
+                    'id' => $tag->id,
+                    'name' => $tag->name,
+                    'type' => 'tags',
+                ];
+            });
+
+        $results = $products
+            ->concat($subUnits)
+            ->concat($units)
+            ->concat($tags)
+            ->sortBy(function ($item) {
+                if ($item['type'] === 'product') return 0;
+                if ($item['type'] === 'sub_unit') return 1;
+                return 2;
+            })
+            ->take($limit)
+            ->values();
+
+        return response()->json($results);
+    }
+
     public function createTag(Request $request)
     {
         $validator = Validator::make($request->all(), [
