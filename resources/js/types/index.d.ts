@@ -520,6 +520,7 @@ export interface IProducts {
     categories: ICategories[];
     created_at: string;
     description: string;
+    product_sku: string;
     divisions: (IDivisions & { pivot: IPivotDivisionProd })[];
     id: string;
     pictures: {

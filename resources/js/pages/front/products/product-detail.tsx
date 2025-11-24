@@ -212,12 +212,8 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                 </Link>
                 <span>/</span>
                 <span>{product?.unit?.name}</span>
-                {product?.categories?.[0]?.name ? (
-                    <>
-                        <span>/</span>
-                        <span>{product.categories[0].name}</span>
-                    </>
-                ) : null}
+                <span>/</span>
+                <span>{product?.sub_unit?.name}</span>
                 <span>/</span>
                 <span className="max-w-[60%] truncate md:max-w-none">{product.product_name}</span>
             </div>
@@ -281,7 +277,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                 <section className="lg:col-span-5">
                     <h1 className="mb-2 text-xl leading-snug font-bold md:text-2xl">{product.product_name}</h1>
                     <div className="mb-2 text-xs text-muted-foreground">
-                        Unit: <span className="font-medium text-foreground">{product.unit?.name}</span>
+                        <span className="font-medium">
+                            {product.unit?.name} | {product.product_sku}
+                        </span>
                     </div>
 
                     {/* Price */}
@@ -330,12 +328,11 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
-                                            <span>stock: {v.total_stock ?? 0}</span>
                                             <button
                                                 onClick={() => setSelectedSubcat((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                } ${optionOutOfStock ? 'hidden border-secondary text-secondary hover:border-secondary/60' : ''}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -357,13 +354,12 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
-                                            <span>stock: {v.total_stock ?? 0}</span>
                                             <button
                                                 key={v.id}
                                                 onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                } ${optionOutOfStock ? 'hidden border-secondary text-secondary hover:border-secondary/60' : ''}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -385,12 +381,11 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
-                                            <span>stock: {v.total_stock ?? 0}</span>
                                             <button
                                                 onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                } ${optionOutOfStock ? 'hidden border-secondary text-secondary hover:border-secondary/60' : ''}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -418,7 +413,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                             onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
                                             className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                 active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                            } ${disabled ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                            } ${disabled ? 'hidden border-secondary text-secondary hover:border-secondary/60' : ''}`}
                                             disabled={disabled}
                                             style={{ backgroundColor: color ?? '#e5e7eb' }}
                                         />
@@ -432,8 +427,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     <div className="mt-6">
                         <Tabs defaultValue="detail">
                             <TabsList className="bg-transparent p-0">
-                                <TabsTrigger value="detail">Detail</TabsTrigger>
-                                <TabsTrigger value="tnc">Terms & Condition</TabsTrigger>
+                                <TabsTrigger value="detail">Description</TabsTrigger>
                             </TabsList>
                             <TabsContent value="detail" className="prose mt-4 max-w-none text-sm leading-relaxed">
                                 <div
@@ -449,9 +443,6 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                         </span>
                                     ))}
                                 </div>
-                            </TabsContent>
-                            <TabsContent value="tnc" className="prose mt-4 max-w-none text-sm leading-relaxed">
-                                <span>Terms & Condition here</span>
                             </TabsContent>
                         </Tabs>
                     </div>

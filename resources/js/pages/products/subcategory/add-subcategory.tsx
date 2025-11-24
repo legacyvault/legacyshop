@@ -22,7 +22,7 @@ export default function AddSubCategory() {
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: `${isEdit ? 'Edit' : 'Add'} Variant`,
+            title: `${isEdit ? 'Edit' : 'Add'} Type`,
             href: '/products/subcategory/addsub',
         },
     ];

@@ -93,11 +93,16 @@ function ProductsTable({ products, filters }: { products: IRootProducts; filters
                         </th>
                         <th
                             className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
+                            onClick={() => toggleSort('product_name')}
+                        >
+                            SKU {filters?.sort_by === 'product_sku' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th
+                            className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
                             onClick={() => toggleSort('description')}
                         >
                             Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
-                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Unit</th>
                         <th
                             className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
                             onClick={() => toggleSort('product_price')}
@@ -119,8 +124,8 @@ function ProductsTable({ products, filters }: { products: IRootProducts; filters
                             <tr key={prod.id} className="hover:bg-gray-50">
                                 <td className="border border-popover px-4 py-3">{(currentPage - 1) * perPage + i + 1}</td>
                                 <td className="border border-popover px-4 py-3">{prod.product_name}</td>
+                                <td className="border border-popover px-4 py-3">{prod.product_sku}</td>
                                 <td className="border border-popover px-4 py-3">{prod.description}</td>
-                                <td className="border border-popover px-4 py-3">{prod.unit.name}</td>
                                 <td className="border border-popover px-4 py-3">Rp. {formatRupiah(prod.product_price.toString())}</td>
                                 <td className="border border-popover px-4 py-3">{prod.total_stock}</td>
                                 <td className="border border-popover px-4 py-3 text-right">

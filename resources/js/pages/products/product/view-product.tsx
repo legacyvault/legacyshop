@@ -174,6 +174,12 @@ export default function ViewProduct() {
                                     <p className="text-lg font-semibold text-card-foreground">{selectedProduct.product_name}</p>
                                 </div>
 
+                                {/* Product SKU */}
+                                <div className="space-y-2">
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">SKU</h3>
+                                    <p className="text-lg font-semibold text-card-foreground">{selectedProduct.product_sku}</p>
+                                </div>
+
                                 {/* Showcase */}
                                 <div className="space-y-2">
                                     <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Showcase 'Top Selling'</h3>
@@ -196,13 +202,19 @@ export default function ViewProduct() {
 
                                 {/* Unit */}
                                 <div className="col-span-2 space-y-2">
-                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Unit</h3>
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Collection</h3>
                                     <p className="text-lg font-semibold text-card-foreground">{selectedProduct.unit.name}</p>
+                                </div>
+
+                                {/* Sub Unit */}
+                                <div className="col-span-2 space-y-2">
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Category</h3>
+                                    <p className="text-lg font-semibold text-card-foreground">{selectedProduct.sub_unit.name}</p>
                                 </div>
 
                                 {/* Category */}
                                 <div className="col-span-2 space-y-2">
-                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Category</h3>
+                                    <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Variant</h3>
                                     <p className="text-lg font-semibold text-card-foreground">
                                         {selectedProduct.categories.map(
                                             (cat, i) => `${cat.name}${i + 1 === selectedProduct.categories.length ? '' : ', '}`,
@@ -227,21 +239,21 @@ export default function ViewProduct() {
                         {/* Subcategories with Discounts */}
                         <Collapsible defaultOpen className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
                             <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                                <h2 className="text-xl font-semibold text-card-foreground">Subcategories</h2>
+                                <h2 className="text-xl font-semibold text-card-foreground">Types</h2>
                                 <CollapsibleTrigger className="inline-flex h-8 w-8 items-center justify-center rounded transition hover:bg-muted data-[state=open]:rotate-180">
                                     <ChevronDown className="h-5 w-5" />
                                 </CollapsibleTrigger>
                             </div>
                             <CollapsibleContent className="p-6">
                                 {subcategories.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">No subcategories found.</p>
+                                    <p className="text-sm text-muted-foreground">No type found.</p>
                                 ) : (
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                         {subcategories.map((sc) => (
                                             <Collapsible key={sc.id} className="rounded-md border border-border p-4">
                                                 <div className="flex items-start justify-between">
                                                     <div>
-                                                        <p className="text-sm text-muted-foreground">Subcategory</p>
+                                                        <p className="text-sm text-muted-foreground">Type</p>
                                                         <p className="text-base font-semibold text-card-foreground">{sc.name}</p>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -271,24 +283,24 @@ export default function ViewProduct() {
                         {/* Divisions with Discounts */}
                         <Collapsible defaultOpen className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
                             <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                                <h2 className="text-xl font-semibold text-card-foreground">Divisions</h2>
+                                <h2 className="text-xl font-semibold text-card-foreground">Options</h2>
                                 <CollapsibleTrigger className="inline-flex h-8 w-8 items-center justify-center rounded transition hover:bg-muted data-[state=open]:rotate-180">
                                     <ChevronDown className="h-5 w-5" />
                                 </CollapsibleTrigger>
                             </div>
                             <CollapsibleContent className="p-6">
                                 {divisions.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">No divisions found.</p>
+                                    <p className="text-sm text-muted-foreground">No options found.</p>
                                 ) : (
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                         {divisions.map((dv) => (
                                             <Collapsible key={dv.id} className="rounded-md border border-border p-4">
                                                 <div className="flex items-start justify-between">
                                                     <div>
-                                                        <p className="text-sm text-muted-foreground">Division</p>
+                                                        <p className="text-sm text-muted-foreground">Option</p>
                                                         <p className="text-base font-semibold text-card-foreground">{dv.name}</p>
                                                         {dv?.sub_category?.name ? (
-                                                            <p className="text-xs text-muted-foreground">Subcategory: {dv.sub_category.name}</p>
+                                                            <p className="text-xs text-muted-foreground">Type: {dv.sub_category.name}</p>
                                                         ) : null}
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -318,21 +330,21 @@ export default function ViewProduct() {
                         {/* Variants with Discounts */}
                         <Collapsible defaultOpen className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
                             <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                                <h2 className="text-xl font-semibold text-card-foreground">Variants</h2>
+                                <h2 className="text-xl font-semibold text-card-foreground">Selection</h2>
                                 <CollapsibleTrigger className="inline-flex h-8 w-8 items-center justify-center rounded transition hover:bg-muted data-[state=open]:rotate-180">
                                     <ChevronDown className="h-5 w-5" />
                                 </CollapsibleTrigger>
                             </div>
                             <CollapsibleContent className="p-6">
                                 {variants.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">No variants found.</p>
+                                    <p className="text-sm text-muted-foreground">No selections found.</p>
                                 ) : (
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                         {variants.map((vr) => (
                                             <Collapsible key={vr.id} className="rounded-md border border-border p-4">
                                                 <div className="flex items-start justify-between">
                                                     <div>
-                                                        <p className="text-sm text-muted-foreground">Variant</p>
+                                                        <p className="text-sm text-muted-foreground">Selection</p>
                                                         <p className="text-base font-semibold text-card-foreground">{vr.name}</p>
                                                         {vr?.type === 'color' && vr?.color ? (
                                                             <span className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
