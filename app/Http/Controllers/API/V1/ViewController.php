@@ -95,7 +95,7 @@ class ViewController extends Controller
     {
         $productsTop = $this->productController->getAllShowcaseTopProduct();
         $productsBottom = $this->productController->getAllShowcaseBottomProduct();
-        $units = $this->productController->getAllUnit();
+        $units = $this->productController->getAllActiveUnit();
         $banner = $this->miscController->getActiveBanner();
         $articles = $this->articleController->getNewestArticle();
 

@@ -442,13 +442,13 @@ export default function Welcome() {
                     {/* UNIT SHOWCASE */}
                     {units.length > 0 && (
                         <section className="mx-auto mt-24 mb-48 max-w-6xl px-4">
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                            <div className="flex flex-wrap justify-center gap-6">
                                 {units.map((unit) => (
                                     <button
                                         key={unit.id}
                                         type="button"
                                         onClick={() => router.get('/list-products', { unit_ids: [String(unit.id)] })}
-                                        className="group relative aspect-[16/10] overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+                                        className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none md:w-[calc(33.333%_-_1rem)]"
                                         aria-label={`View products for ${unit.name}`}
                                     >
                                         {/* Background image layer with hover upscale */}
@@ -463,9 +463,9 @@ export default function Welcome() {
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
                                         {/* Content */}
-                                        <div className="relative z-10 flex h-full flex-col justify-end p-4 text-white">
+                                        {/* <div className="relative z-10 flex h-full flex-col justify-end p-4 text-white">
                                             <h3 className="text-xl font-semibold drop-shadow-sm">{unit.name}</h3>
-                                        </div>
+                                        </div> */}
                                     </button>
                                 ))}
                             </div>
