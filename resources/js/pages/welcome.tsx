@@ -7,6 +7,7 @@ import { IArticle, IBanner, IProducts, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -162,6 +163,20 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
         setCurrentIndex(index);
     };
 
+    const goToNext = () => {
+        setCurrentIndex((prev) => {
+            const nextIndex = prev + 1;
+            return nextIndex >= banners.length ? 0 : nextIndex;
+        });
+    };
+
+    const goToPrev = () => {
+        setCurrentIndex((prev) => {
+            const prevIndex = prev - 1;
+            return prevIndex < 0 ? banners.length - 1 : prevIndex;
+        });
+    };
+
     return (
         <section className="relative h-[70vh] w-full overflow-hidden">
             {banners.map((banner, index) => {
@@ -195,6 +210,33 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
                     </div>
                 );
             })}
+
+            {hasMultiple && (
+                <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-between px-4">
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            goToPrev();
+                        }}
+                        className="pointer-events-auto rounded-full bg-black/40 p-3 text-white backdrop-blur transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        aria-label="Show previous banner"
+                    >
+                        <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            goToNext();
+                        }}
+                        className="pointer-events-auto rounded-full bg-black/40 p-3 text-white backdrop-blur transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        aria-label="Show next banner"
+                    >
+                        <ChevronRight className="h-5 w-5" />
+                    </button>
+                </div>
+            )}
 
             {hasMultiple && (
                 <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
