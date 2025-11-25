@@ -499,7 +499,16 @@ class ViewController extends Controller
 
         return Inertia::render('orders/index', [
             'ordersPaginated' => $ordersPaginated,
-            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'status', 'payment_status', 'transaction_status')
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'status', 'payment_status', 'transaction_status', 'created_from', 'created_to')
+        ]);
+    }
+
+    public function orderSummaryPage(Request $request){
+        $orderItemsPaginated = $this->orderhistoryController->getOrderItemsSummary($request);
+
+        return Inertia::render('orders/summary/index', [
+            'orderItemsPaginated' => $orderItemsPaginated,
+            'filters' => $request->only('q', 'per_page', 'page', 'date_from', 'date_to'),
         ]);
     }
 

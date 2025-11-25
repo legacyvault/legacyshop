@@ -123,10 +123,18 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                                 <div className="flex flex-col gap-5">
                                     {(['product', 'subcategory', 'division', 'variant'] as IInventoryNotification['type'][]).map((section) => {
                                         const items = notificationGroups[section];
+                                        const label: Record<string, string> = {
+                                            subcategory: 'variant',
+                                            division: 'type',
+                                            variant: 'selection',
+                                            product: 'product',
+                                        };
                                         if (!items || items.length === 0) return null;
                                         return (
                                             <div key={section} className="space-y-2">
-                                                <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{section}</p>
+                                                <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                                    {label[section]}
+                                                </p>
                                                 <ul className="space-y-2">
                                                     {items.map((item) => (
                                                         <li

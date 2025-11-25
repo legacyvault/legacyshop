@@ -55,6 +55,7 @@ export interface SharedData {
     articles: IArticle[];
     carts: ICart[];
     ordersPaginated?: IOrdersPaginated;
+    orderItemsPaginated?: IOrderItemSummaryPaginated;
     invoicesPaginated?: IInvoicesPaginated;
     warehouses: IWarehouse[];
     warehouse?: IWarehouse | null;
@@ -356,6 +357,32 @@ export interface IOrdersPaginated {
     data: IRootHistoryOrders[];
 }
 
+export interface IOrderItemSummary {
+    id: string;
+    order_id: string;
+    product_id?: string | null;
+    product_name: string;
+    product_sku?: string | null;
+    category_name?: string | null;
+    quantity: number;
+    price: number | string;
+    total: number | string;
+    created_at?: string;
+    order_number?: string | null;
+    order_created_at?: string;
+    order?: IRootHistoryOrders | null;
+}
+
+export interface IOrderItemSummaryPaginated {
+    current_page: number;
+    from: number | null;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: IOrderItemSummary[];
+}
+
 export interface IInvoiceItem {
     id: string;
     invoice_id?: string;
@@ -587,6 +614,13 @@ export interface IOrderUser {
     role?: string | null;
 }
 
+export interface IOrderGuest {
+    id?: string;
+    contact_name?: string | null;
+    email?: string | null;
+    contact_phone?: string | null;
+}
+
 export interface IRootHistoryOrders {
     created_at: string;
     grand_total: string;
@@ -605,6 +639,7 @@ export interface IRootHistoryOrders {
     transaction_time: string | null;
     updated_at: string;
     user?: IOrderUser | null;
+    guest?: IOrderGuest | null;
     user_id: string;
     status: string;
     snap_token: string;
