@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { CircleDollarSign, Edit3, Globe2, Trash2 } from 'lucide-react';
+import { CircleDollarSign, Edit3, Globe2 } from 'lucide-react';
 import { useMemo } from 'react';
 
 type ShippingZoneCardProps = {
@@ -24,9 +24,7 @@ export default function ShippingZoneCard({ zone, countries, loadingCountries, di
         return map;
     }, [countries]);
 
-    const selectedCountries = zone.selectedCountries
-        .map((code) => lookup[code])
-        .filter((country): country is Country => Boolean(country));
+    const selectedCountries = zone.selectedCountries.map((code) => lookup[code]).filter((country): country is Country => Boolean(country));
 
     const continents = useMemo(() => {
         const set = new Set<string>();
@@ -63,9 +61,7 @@ export default function ShippingZoneCard({ zone, countries, loadingCountries, di
             <CardContent className="space-y-3 pt-4">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <Globe2 className="size-4 text-primary" />
-                    {loadingCountries
-                        ? 'Loading countries...'
-                        : `${selectedCountries.length} of ${countries.length || '...'} countries selected`}
+                    {loadingCountries ? 'Loading countries...' : `${selectedCountries.length} of ${countries.length || '...'} countries selected`}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -105,10 +101,10 @@ export default function ShippingZoneCard({ zone, countries, loadingCountries, di
                         <Edit3 className="size-4" />
                         Edit
                     </Button>
-                    <Button variant="ghost" size="sm" className="w-full" onClick={onDelete} disabled={disableDelete}>
+                    {/* <Button variant="ghost" size="sm" className="w-full" onClick={onDelete} disabled={disableDelete}>
                         <Trash2 className="size-4" />
                         Remove
-                    </Button>
+                    </Button> */}
                 </div>
             </CardContent>
         </Card>

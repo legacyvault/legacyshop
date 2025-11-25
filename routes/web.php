@@ -152,6 +152,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //International Shipment API
     Route::post('create/international-shipment', [InternationalShipment::class, 'createInternationalShipment'])->name('create.international-shipment');
     Route::post('update/international-shipment', [InternationalShipment::class, 'updateInternationalShipment'])->name('update.international-shipment');
+    Route::delete('international-shipment/{id}', [InternationalShipment::class, 'deleteInternationalShipment'])->name('delete.international-shipment');
 
 
     //Product API
