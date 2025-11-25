@@ -41,8 +41,8 @@ class Unit extends Model
         });
     }
 
-    public function sub_unit()
+    public function sub_units()
     {
-        return $this->hasMany(SubUnit::class);
+        return $this->belongsToMany(SubUnit::class, 'unit_sub_unit', 'unit_id', 'sub_unit_id');
     }
 }

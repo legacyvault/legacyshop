@@ -13,9 +13,8 @@ return new class extends Migration
     {
         Schema::create('sub_unit', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('unit_id');
-            $table->string('description')->nullable();
             $table->string('name');
+            $table->string('description')->nullable();
             $table->timestamps();
         });
     }
