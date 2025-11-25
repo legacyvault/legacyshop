@@ -278,6 +278,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
     Route::prefix('orders')->group(function () {
         Route::redirect('/', '/orders/order');
         Route::get('order', [ViewController::class, 'OrdersPage']);
+        Route::get('summary', [ViewController::class, 'orderSummaryPage'])->name('orders.summary');
         Route::get('invoice', [ViewController::class, 'invoicePage'])->name('orders.invoice');
     });
 

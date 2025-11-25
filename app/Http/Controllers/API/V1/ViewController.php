@@ -503,6 +503,15 @@ class ViewController extends Controller
         ]);
     }
 
+    public function orderSummaryPage(Request $request){
+        $orderItemsPaginated = $this->orderhistoryController->getOrderItemsSummary($request);
+
+        return Inertia::render('orders/summary/index', [
+            'orderItemsPaginated' => $orderItemsPaginated,
+            'filters' => $request->only('q', 'per_page', 'page', 'date_from', 'date_to'),
+        ]);
+    }
+
     public function purchasesPage(Request $request){
 
         $ordersPaginated = $this->orderhistoryController->getUserOrderHistory($request);

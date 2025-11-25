@@ -90,6 +90,10 @@ const mainNavItems: NavItem[] = [
                 title: 'Order',
                 href: '/orders/order',
             },
+            {
+                title: 'Summary',
+                href: '/orders/summary',
+            },
         ],
     },
     {
