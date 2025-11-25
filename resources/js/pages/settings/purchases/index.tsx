@@ -450,11 +450,13 @@ function TransactionDetailDialog({
                                 <div key={item.id} className="flex items-start justify-between rounded-lg border border-border px-4 py-3">
                                     <div className="space-y-1">
                                         <p className="text-sm font-medium text-foreground">{item.product_name}</p>
-                                        {item.variant_name ? <p className="text-xs text-muted-foreground">Variant: {item.variant_name}</p> : null}
-                                        {item.category_name ? <p className="text-xs text-muted-foreground">Category: {item.category_name}</p> : null}
-                                        {item.product_description ? (
-                                            <p className="line-clamp-2 text-xs text-muted-foreground">{item.product_description}</p>
+                                        <p className="text-sm font-medium text-foreground">{item.product_sku}</p>
+                                        {item.category_name ? <p className="text-xs text-muted-foreground">Variant: {item.category_name}</p> : null}
+                                        {item.sub_category_name ? (
+                                            <p className="text-xs text-muted-foreground">Type: {item.sub_category_name}</p>
                                         ) : null}
+                                        {item.division_name ? <p className="text-xs text-muted-foreground">Option: {item.division_name}</p> : null}
+                                        {item.variant_name ? <p className="text-xs text-muted-foreground">Selection: {item.variant_name}</p> : null}
                                     </div>
                                     <div className="text-right text-sm">
                                         <p className="text-muted-foreground">Qty: {item.quantity}</p>

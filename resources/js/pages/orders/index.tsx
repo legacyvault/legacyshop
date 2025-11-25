@@ -886,12 +886,7 @@ function OrdersTable({
                             <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => goToPage(1)}>
                                 First
                             </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={currentPage === 1}
-                                onClick={() => goToPage(currentPage - 1)}
-                            >
+                            <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => goToPage(currentPage - 1)}>
                                 Previous
                             </Button>
                             {paginationItems.map((item, index) =>
@@ -911,12 +906,7 @@ function OrdersTable({
                                     </span>
                                 ),
                             )}
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={currentPage === lastPage}
-                                onClick={() => goToPage(currentPage + 1)}
-                            >
+                            <Button size="sm" variant="outline" disabled={currentPage === lastPage} onClick={() => goToPage(currentPage + 1)}>
                                 Next
                             </Button>
                             <Button size="sm" variant="outline" disabled={currentPage === lastPage} onClick={() => goToPage(lastPage)}>
@@ -954,6 +944,8 @@ function OrderDetailsDialog({
     isSnapReady: boolean;
     processingOrder: string | null;
 }) {
+    console.log(order);
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-4xl">
@@ -1046,7 +1038,7 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                     <thead className="bg-muted/50">
                                         <tr>
                                             <th className="px-4 py-2 text-left font-medium">Product</th>
-                                            <th className="px-4 py-2 text-left font-medium">Variant</th>
+                                            <th className="px-4 py-2 text-left font-medium">SKU</th>
                                             <th className="px-4 py-2 text-left font-medium">Qty</th>
                                             <th className="px-4 py-2 text-left font-medium">Price</th>
                                             <th className="px-4 py-2 text-right font-medium">Total</th>
@@ -1061,8 +1053,17 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                                         {item.category_name && (
                                                             <div className="text-xs text-muted-foreground">{item.category_name}</div>
                                                         )}
+                                                        {item.sub_category_name && (
+                                                            <div className="text-xs text-muted-foreground">{item.sub_category_name}</div>
+                                                        )}
+                                                        {item.division_name && (
+                                                            <div className="text-xs text-muted-foreground">{item.division_name}</div>
+                                                        )}
+                                                        {item.variant_name && (
+                                                            <div className="text-xs text-muted-foreground">{item.variant_name}</div>
+                                                        )}
                                                     </td>
-                                                    <td className="px-4 py-2">{item.variant_name ? titleCase(item.variant_name) : '—'}</td>
+                                                    <td className="px-4 py-2">{item.product_sku}</td>
                                                     <td className="px-4 py-2">{item.quantity}</td>
                                                     <td className="px-4 py-2">{formatCurrency(item.price)}</td>
                                                     <td className="px-4 py-2 text-right">{formatCurrency(item.total)}</td>

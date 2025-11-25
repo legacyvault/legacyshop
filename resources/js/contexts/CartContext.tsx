@@ -13,6 +13,7 @@ export interface CartItem {
     serverId?: string;
     // Optional selection metadata to support server sync
     meta?: ICart;
+    sku: string;
 }
 
 interface CartContextType {
@@ -83,6 +84,7 @@ export const CartProvider = ({ children, auth }: CartProviderProps) => {
             const name = product.product_name ?? 'Product';
             const basePrice = Number(row.price_per_product ?? 0);
             const image = product.pictures?.[0]?.url ?? undefined;
+            const sku = product.product_sku ?? '';
             const meta = {
                 product_id: String(row.product_id ?? product.id ?? ''),
                 category_id: row.category_id ? String(row.category_id) : undefined,
@@ -105,6 +107,7 @@ export const CartProvider = ({ children, auth }: CartProviderProps) => {
                 image,
                 serverId: String(row.id),
                 meta,
+                sku,
             } as CartItem;
         });
         setItems(mapped);

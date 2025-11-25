@@ -33,6 +33,7 @@ interface DetailedCartItem {
     originalPrice: number;
     discountPercent: number;
     imageUrl: string;
+    sku: string;
     cart?: ICart;
     source: 'server' | 'local';
     summary: SelectionSummary;
@@ -250,8 +251,7 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
 
     const finalPrice = [serverPrice, computedFinal, fallbackPrice].find((price) => price > 0) ?? 0;
 
-    const discountPercent =
-        originalPrice > 0 && finalPrice > 0 ? Math.max(0, Math.round(((originalPrice - finalPrice) / originalPrice) * 100)) : 0;
+    const discountPercent = originalPrice > 0 && finalPrice > 0 ? Math.max(0, Math.round(((originalPrice - finalPrice) / originalPrice) * 100)) : 0;
 
     return {
         finalPrice,
@@ -295,6 +295,7 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
             const imageUrl = cart.product?.pictures?.[0]?.url ?? FALLBACK_IMAGE;
             const vendorName = summary.unit ?? cart.product?.unit?.name ?? 'Legacy Vault';
             const vendorId = cart.product?.unit?.id ?? cart.product_id ?? compositeId;
+            const sku = cart.product?.product_sku;
 
             return {
                 id: compositeId,
@@ -307,6 +308,7 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                 originalPrice: Math.max(pricing.originalPrice, pricing.finalPrice),
                 discountPercent: pricing.discountPercent,
                 imageUrl,
+                sku,
                 cart,
                 source: 'server',
                 summary,
@@ -364,7 +366,6 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
     }, [detailedItems]);
 
     const selectedItems = useMemo(() => detailedItems.filter((item) => selectedIds.includes(item.id)), [detailedItems, selectedIds]);
-
     useEffect(() => {
         const payload = selectedItems.map((item) => {
             const weightSource = item.cart?.product?.product_weight;
@@ -382,6 +383,7 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                 id: item.id,
                 store: item.vendorName,
                 name: item.productName,
+                sku: item.cart?.product.product_sku,
                 variant: item.attributes.join(', '),
                 attributes: item.attributes,
                 quantity: item.quantity,
