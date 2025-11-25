@@ -5,8 +5,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IOrdersPaginated, IRootHistoryOrders, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Loader2, MoreHorizontal, Search } from 'lucide-react';
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { Calendar as CalendarIcon, Loader2, MoreHorizontal, Search } from 'lucide-react';
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DateRange, DayPicker } from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
 
 const ORDERS_ROUTE = '/orders/order';
 
@@ -59,6 +61,19 @@ const formatDate = (value?: string | null) => {
         return '-';
     }
     return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+};
+
+const formatInputDate = (date: Date) => date.toISOString().slice(0, 10);
+
+const formatShortDate = (date?: Date | null) => {
+    if (!date) return '';
+    return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(date);
+};
+
+const parseDateInput = (value?: string | null) => {
+    if (!value) return undefined;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
 const titleCase = (value?: string | null) => {
@@ -144,6 +159,8 @@ function OrdersTable({
     const [confirmingOrder, setConfirmingOrder] = useState<string | null>(null);
     const [invoiceFeedback, setInvoiceFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [loading, setLoading] = useState(false);
+    const [datePickerOpen, setDatePickerOpen] = useState(false);
+    const datePickerRef = useRef<HTMLDivElement | null>(null);
 
     const orders = ordersPaginated?.data ?? [];
 
@@ -178,13 +195,57 @@ function OrdersTable({
         return Array.from(set).sort();
     }, [orders]);
 
-    const hasActiveFilters = Boolean(filters.q || filters.status || filters.payment_status || filters.transaction_status);
+    const createdFrom = typeof filters.created_from === 'string' ? filters.created_from : '';
+    const createdTo = typeof filters.created_to === 'string' ? filters.created_to : '';
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => ({
+        from: parseDateInput(createdFrom),
+        to: parseDateInput(createdTo),
+    }));
+
+    const hasActiveFilters = Boolean(filters.q || filters.status || filters.payment_status || filters.transaction_status || createdFrom || createdTo);
     const normalizedSearchFilter = typeof filters.q === 'string' ? filters.q : '';
     const [searchValue, setSearchValue] = useState<string>(normalizedSearchFilter);
+
+    const dateRangeLabel = useMemo(() => {
+        if (dateRange?.from && dateRange.to) {
+            return `${formatShortDate(dateRange.from)} - ${formatShortDate(dateRange.to)}`;
+        }
+        if (dateRange?.from) {
+            return `From ${formatShortDate(dateRange.from)}`;
+        }
+        if (dateRange?.to) {
+            return `Until ${formatShortDate(dateRange.to)}`;
+        }
+        return 'Created date';
+    }, [dateRange]);
 
     useEffect(() => {
         setSearchValue((prev) => (prev === normalizedSearchFilter ? prev : normalizedSearchFilter));
     }, [normalizedSearchFilter]);
+
+    useEffect(() => {
+        const nextFrom = parseDateInput(createdFrom);
+        const nextTo = parseDateInput(createdTo);
+
+        setDateRange((prev) => {
+            if (prev?.from?.getTime() === nextFrom?.getTime() && prev?.to?.getTime() === nextTo?.getTime()) {
+                return prev;
+            }
+            return { from: nextFrom, to: nextTo };
+        });
+    }, [createdFrom, createdTo]);
+
+    useEffect(() => {
+        if (!datePickerOpen) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (datePickerRef.current && event.target instanceof Node && !datePickerRef.current.contains(event.target)) {
+                setDatePickerOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [datePickerOpen]);
 
     const updateFilters = useCallback(
         (patch: Filters) => {
@@ -234,12 +295,39 @@ function OrdersTable({
         updateFilters({ transaction_status: event.target.value || null, page: 1 });
     };
 
+    const handleDateRangeSelect = (range?: DateRange) => {
+        const normalized = range && (range.from || range.to) ? range : undefined;
+        setDateRange(normalized);
+        updateFilters({
+            created_from: normalized?.from ? formatInputDate(normalized.from) : null,
+            created_to: normalized?.to ? formatInputDate(normalized.to) : null,
+            page: 1,
+        });
+    };
+
+    const clearDateRange = () => {
+        setDateRange(undefined);
+        setDatePickerOpen(false);
+        updateFilters({ created_from: null, created_to: null, page: 1 });
+    };
+
     const clearFilters = () => {
         const preserved: Filters = {};
         if (filters.per_page) {
             preserved.per_page = filters.per_page;
         }
-        updateFilters({ ...preserved, q: '', status: null, payment_status: null, transaction_status: null, page: 1, sort_by: null, sort_dir: null });
+        updateFilters({
+            ...preserved,
+            q: '',
+            status: null,
+            payment_status: null,
+            transaction_status: null,
+            created_from: null,
+            created_to: null,
+            page: 1,
+            sort_by: null,
+            sort_dir: null,
+        });
     };
 
     const handleViewDetails = (order: IRootHistoryOrders) => {
@@ -695,11 +783,39 @@ function OrdersTable({
                                 </option>
                             ))}
                         </select>
-                        {hasActiveFilters && (
-                            <Button variant="outline" onClick={clearFilters}>
-                                Clear filters
-                            </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <div className="relative" ref={datePickerRef}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setDatePickerOpen((open) => !open)}
+                                    className="flex items-center gap-2"
+                                >
+                                    <CalendarIcon className="h-4 w-4" />
+                                    <span className="text-xs font-medium whitespace-nowrap">{dateRangeLabel}</span>
+                                </Button>
+                                {datePickerOpen && (
+                                    <div className="absolute z-50 mt-2 w-max rounded-md border border-popover bg-background p-3 shadow-lg">
+                                        <DayPicker
+                                            mode="range"
+                                            selected={dateRange}
+                                            onSelect={handleDateRangeSelect}
+                                            defaultMonth={dateRange?.from ?? dateRange?.to ?? new Date()}
+                                            numberOfMonths={2}
+                                            weekStartsOn={1}
+                                        />
+                                        <div className="mt-2 flex justify-between gap-2">
+                                            <Button size="sm" variant="ghost" onClick={clearDateRange}>
+                                                Clear
+                                            </Button>
+                                            <Button size="sm" onClick={() => setDatePickerOpen(false)}>
+                                                Done
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="max-w-s relative w-full">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -76,6 +77,8 @@ class OrderHistoryController extends Controller
         $status          = $request->input('status');
         $paymentStatus   = $request->input('payment_status');
         $transactionStat = $request->input('transaction_status');
+        $createdFrom     = $request->input('created_from');
+        $createdTo       = $request->input('created_to');
 
         $sortBy  = $request->input('sort_by', 'created_at');
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
@@ -126,6 +129,24 @@ class OrderHistoryController extends Controller
 
         if ($transactionStat && $transactionStat !== 'all') {
             $ordersQuery->where('transaction_status', $transactionStat);
+        }
+
+        if ($createdFrom) {
+            try {
+                $from = Carbon::parse($createdFrom)->startOfDay();
+                $ordersQuery->where('created_at', '>=', $from);
+            } catch (\Throwable $e) {
+                // ignore invalid date input
+            }
+        }
+
+        if ($createdTo) {
+            try {
+                $to = Carbon::parse($createdTo)->endOfDay();
+                $ordersQuery->where('created_at', '<=', $to);
+            } catch (\Throwable $e) {
+                // ignore invalid date input
+            }
         }
 
         return $ordersQuery

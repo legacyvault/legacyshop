@@ -499,7 +499,7 @@ class ViewController extends Controller
 
         return Inertia::render('orders/index', [
             'ordersPaginated' => $ordersPaginated,
-            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'status', 'payment_status', 'transaction_status')
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'status', 'payment_status', 'transaction_status', 'created_from', 'created_to')
         ]);
     }
 
