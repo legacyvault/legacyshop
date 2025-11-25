@@ -188,10 +188,11 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
             meta.variant_id ?? '-',
         ].join('|');
         const name = `${product.product_name}`;
+        const sku = `${product.product_sku}`;
         const existing = items.find((i) => i.id === compositeId)?.quantity ?? 0;
         const targetQty = Math.max(1, existing + selectedQty);
 
-        void addItem({ id: compositeId, name, price: finalPrice, image: mainImage, meta }, { quantity: targetQty, meta });
+        void addItem({ id: compositeId, name, price: finalPrice, image: mainImage, meta, sku }, { quantity: targetQty, meta });
         openCart(true);
     };
 

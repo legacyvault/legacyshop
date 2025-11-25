@@ -27,6 +27,7 @@ type CheckoutItem = {
     store: string;
     name: string;
     variant?: string;
+    sku: string;
     attributes?: string[];
     quantity: number;
     price: number;
@@ -1325,12 +1326,7 @@ export default function Checkout() {
                     return true;
                 }
 
-                const compositeId =
-                    typeof cartItem.id === 'string'
-                        ? cartItem.id
-                        : typeof cartItem.id === 'number'
-                          ? String(cartItem.id)
-                          : null;
+                const compositeId = typeof cartItem.id === 'string' ? cartItem.id : typeof cartItem.id === 'number' ? String(cartItem.id) : null;
 
                 if (compositeId && selectedIds.has(compositeId)) {
                     return false;
@@ -1410,7 +1406,10 @@ export default function Checkout() {
             quantity: item.quantity,
             price: item.price,
             source: item.source ?? null,
+            product_sku: item.sku,
         }));
+
+        console.log(itemsPayload);
 
         const payload = {
             payment_method: 'snap',
