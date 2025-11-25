@@ -69,12 +69,11 @@ class InternationalShipment extends Controller
         }
     }
 
-    public function updateInternationalShipment(Request $request, $id)
+    public function updateInternationalShipment(Request $request)
     {
-        $shipment = MainInternationalShipment::findOrFail($id);
-
         $validator = Validator::make($request->all(), [
-            'name'        => 'required|string|unique:main_international_shipment,name,' . $shipment->id,
+            'id'          => 'required|exists:main_international_shipment,id',
+            'name'        => 'required|string|unique:main_international_shipment,name,' . $request->id,
             'description' => 'string|nullable',
             'usd_price'   => 'required|numeric',
             'zone_code'   => 'required|array|min:1',
@@ -87,6 +86,8 @@ class InternationalShipment extends Controller
 
         try {
             DB::beginTransaction();
+
+            $shipment = MainInternationalShipment::findOrFail($request->id);
 
             // Check conflict: any of these zone codes already belong to OTHER shipments
             $existingCodes = ZoneInternationalShipment::whereIn('country_code', $request->zone_code)
@@ -131,6 +132,32 @@ class InternationalShipment extends Controller
             return redirect()->back()->with('alert', [
                 'type'    => 'error',
                 'message' => 'Failed to update international shipment.',
+            ]);
+        }
+    }
+
+    public function deleteInternationalShipment($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $shipment = MainInternationalShipment::findOrFail($id);
+
+            ZoneInternationalShipment::where('international_shipment_id', $shipment->id)->delete();
+            $shipment->delete();
+
+            DB::commit();
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'success',
+                'message' => 'Successfully deleted international shipment.',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Failed to delete international shipment.',
             ]);
         }
     }

@@ -1,4 +1,5 @@
 import { Country, ShippingZone } from '@/components/shipment/types';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -19,6 +20,10 @@ type ShippingZoneModalProps = {
     onFieldChange: (field: keyof ShippingZone, value: string) => void;
     onToggleCountry: (code: string, checked: boolean) => void;
     onToggleContinent: (continent: string, next: CheckedState) => void;
+    onSave?: () => void;
+    saving?: boolean;
+    errorMessage?: string | null;
+    disableSave?: boolean;
 };
 
 export default function ShippingZoneModal({
@@ -32,6 +37,10 @@ export default function ShippingZoneModal({
     onFieldChange,
     onToggleCountry,
     onToggleContinent,
+    onSave,
+    saving = false,
+    errorMessage,
+    disableSave,
 }: ShippingZoneModalProps) {
     const matchesSearch = (country: Country, term: string) => {
         if (!term) return true;
@@ -129,6 +138,13 @@ export default function ShippingZoneModal({
                     <div className="text-xs text-muted-foreground">{zone.selectedCountries.length} destinations selected in this zone.</div>
                 </DialogHeader>
 
+                {errorMessage && (
+                    <Alert variant="destructive">
+                        <AlertTitle>Unable to save this zone</AlertTitle>
+                        <AlertDescription>{errorMessage}</AlertDescription>
+                    </Alert>
+                )}
+
                 <div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
@@ -199,10 +215,16 @@ export default function ShippingZoneModal({
                     </div>
                 </div>
 
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Done
+                <DialogFooter className="gap-2">
+                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+                        Cancel
                     </Button>
+                    {onSave && (
+                        <Button onClick={onSave} disabled={saving || disableSave}>
+                            {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
+                            Save changes
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

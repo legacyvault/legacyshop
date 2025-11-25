@@ -28,6 +28,7 @@ class ViewController extends Controller
     protected $biteshipController;
     protected $orderhistoryController;
     protected $invoiceController;
+    protected $internationalShipmentController;
 
     public function __construct(Request $request)
     {
@@ -44,6 +45,7 @@ class ViewController extends Controller
         $this->biteshipController = new BiteshipController();
         $this->orderhistoryController= new OrderHistoryController();
         $this->invoiceController = new AppInvoiceController();
+        $this->internationalShipmentController = new InternationalShipment();
     }
 
     public function unitPage(Request $request)
@@ -537,6 +539,9 @@ class ViewController extends Controller
     }
 
     public function shipmentInternationalPage(){
-        return Inertia::render('shipment/international/index');
+        $international_shipment = $this->internationalShipmentController->getAllInternationalShipment();
+        return Inertia::render('shipment/international/index', [
+            'international_shipment' => $international_shipment
+        ]);
     }
 }
