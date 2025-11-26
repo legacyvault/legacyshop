@@ -29,7 +29,7 @@ class ProductController extends Controller
     public function createCategory(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|unique:category,name',
+            'name' => 'required|string',
             'description' => 'string|nullable',
             'sub_unit_id' => 'required|exists:sub_unit,id'
         ]);
@@ -54,7 +54,7 @@ class ProductController extends Controller
     public function createSubUnit(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|unique:sub_unit,name',
+            'name' => 'required|string',
             'description' => 'string|nullable',
             'unit_id' => 'required|exists:unit,id'
         ]);
@@ -79,7 +79,7 @@ class ProductController extends Controller
     public function createType(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|unique:type,name',
+            'name' => 'required|string',
             'description' => 'string|nullable'
         ]);
 
@@ -105,8 +105,7 @@ class ProductController extends Controller
             'id' => 'required|exists:category,id',
             'name' => [
                 'required',
-                'string',
-                Rule::unique('category', 'name')->ignore($request->id),
+                'string'
             ],
             'sub_unit_id' => 'required|exists:sub_unit,id',
             'description' => 'string|nullable'
@@ -136,8 +135,7 @@ class ProductController extends Controller
             'id' => 'required|exists:sub_unit,id',
             'name' => [
                 'required',
-                'string',
-                Rule::unique('sub_unit', 'name')->ignore($request->id),
+                'string'
             ],
             'unit_id' => 'required|exists:unit,id',
             'description' => 'string|nullable'
@@ -168,7 +166,6 @@ class ProductController extends Controller
             'name' => [
                 'required',
                 'string',
-                Rule::unique('type', 'name')->ignore($request->id),
             ],
             'description' => 'string|nullable'
         ]);
@@ -1150,7 +1147,7 @@ class ProductController extends Controller
     public function createTag(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|unique:tags,name',
+            'name' => 'required|string',
             'description' => 'string|nullable'
         ]);
 
@@ -1176,8 +1173,7 @@ class ProductController extends Controller
             'id' => 'required|exists:tags,id',
             'name' => [
                 'required',
-                'string',
-                Rule::unique('tags', 'name')->ignore($request->id),
+                'string'
             ],
             'description' => 'string|nullable'
         ]);
@@ -1237,7 +1233,7 @@ class ProductController extends Controller
     public function createUnit(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'        => 'required|string|unique:unit,name',
+            'name'        => 'required|string',
             'description' => 'string|nullable',
             'price' => 'required|numeric|min:1',
             'usd_price' => 'required|numeric',
@@ -1297,8 +1293,7 @@ class ProductController extends Controller
             'id' => 'required|exists:unit,id',
             'name' => [
                 'required',
-                'string',
-                Rule::unique('unit', 'name')->ignore($request->id),
+                'string'
             ],
             'description' => 'string|nullable',
             'price' => 'required|numeric|min:1',
