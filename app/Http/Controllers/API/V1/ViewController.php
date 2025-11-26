@@ -309,9 +309,11 @@ class ViewController extends Controller
     public function frontViewProduct($id)
     {
         $selectedProd = $this->productController->getProductByID($id);
+        $reccomendationProd = $this->productController->getRecommendationProduct($id);
 
         return Inertia::render('front/products/product-detail', [
             'product' => $selectedProd,
+            'rec_prod' => $reccomendationProd,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')

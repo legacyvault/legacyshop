@@ -1,3 +1,4 @@
+import ProductCard from '@/components/product-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,7 +16,7 @@ import {
     IVariants,
     SharedData,
 } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -24,11 +25,12 @@ type PageProps = SharedData & {
 };
 
 export default function ProductDetail() {
-    const { auth, translations, locale, product } = usePage<PageProps>().props;
+    const { auth, translations, locale, product, rec_prod } = usePage<PageProps>().props;
 
     return (
         <FrontLayout auth={auth} translations={translations} locale={locale}>
             <DetailContent product={product} translations={translations} />
+            <ReccomendationList rec_prod={rec_prod} />
         </FrontLayout>
     );
 }
@@ -482,5 +484,20 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                 </section>
             </div>
         </div>
+    );
+}
+
+function ReccomendationList({ rec_prod }: { rec_prod: IProducts[] }) {
+    return (
+        <>
+            <div className="mx-auto w-full max-w-7xl px-4 py-8">
+                <h2 className="mb-6 text-2xl font-semibold">Top Picks for You</h2>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+                    {rec_prod.map((p) => (
+                        <ProductCard key={p.id} product={p} onClick={() => router.get(`/view-product/${p.id}`)} />
+                    ))}
+                </div>
+            </div>
+        </>
     );
 }
