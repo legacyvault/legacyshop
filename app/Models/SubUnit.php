@@ -14,12 +14,13 @@ class SubUnit extends Model
 
     protected $fillable = [
         'name',
+        'unit_id',
         'description',
     ];
 
-    public function units()
+    public function unit()
     {
-        return $this->belongsToMany(Unit::class, 'unit_sub_unit', 'sub_unit_id', 'unit_id');
+        return $this->belongsTo(Unit::class, 'unit_id', 'id');
     }
 
     public function categories()
