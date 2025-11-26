@@ -199,13 +199,10 @@ class ProductController extends Controller
 
     public function getAllSubUnit($unitId = null)
     {
-        $query = SubUnit::orderBy('name', 'asc')
-            ->with(['units', 'categories']);
+        $query = SubUnit::orderBy('name', 'asc')->with(['unit', 'categories']);
 
         if ($unitId) {
-            $query->whereHas('units', function ($q) use ($unitId) {
-                $q->where('units.id', $unitId);
-            });
+            $query->where('unit_id', $unitId);
         }
 
         return $query->get();
@@ -240,18 +237,19 @@ class ProductController extends Controller
 
     public function getSubUnitPaginated(Request $request)
     {
-        $perPage = max((int) $request->input('per_page', 15), 1);
-        $search  = $request->input('q');
-        $sortBy  = $request->input('sort_by', 'name');
-        $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-
-        // unit_id removed because no longer exists
-        $allowedSorts = ['id', 'name', 'description'];
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage <= 0) {
+            $perPage = 15;
+        }
+        $search   = $request->input('q');
+        $sortBy   = $request->input('sort_by', 'name');
+        $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $allowedSorts = ['id', 'name', 'description', 'unit_id'];
         if (!in_array($sortBy, $allowedSorts, true)) {
             $sortBy = 'name';
         }
 
-        $query = SubUnit::with(['units', 'categories']);
+        $query = SubUnit::query()->with(['unit', 'categories']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -260,9 +258,7 @@ class ProductController extends Controller
             });
         }
 
-        return $query->orderBy($sortBy, $sortDir)
-            ->paginate($perPage)
-            ->appends($request->query());
+        return $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
     }
 
 
@@ -275,7 +271,9 @@ class ProductController extends Controller
 
     public function getSubUnitById($id)
     {
-        return SubUnit::with(['units', 'categories'])->find($id);
+        $data = SubUnit::with('unit')->find($id);
+
+        return $data;
     }
 
     public function getAllType()
@@ -1362,34 +1360,35 @@ class ProductController extends Controller
 
     public function getAllUnit()
     {
-        return Unit::orderBy('name', 'asc')
-            ->with('sub_units.categories')
-            ->get();
+        $data = Unit::orderBy('name', 'asc')->with('sub_unit.categories')->get();
+        return $data;
     }
 
 
     public function getAllActiveUnit()
     {
-        return Unit::orderBy('name', 'asc')
-            ->with('sub_units.categories')
-            ->where('is_active', 1)
-            ->get();
+        $data = Unit::orderBy('name', 'asc')->with('sub_unit.categories')->where('is_active', 1)->get();
+        return $data;
     }
 
 
     public function getUnitPaginated(Request $request)
     {
-        $perPage = max((int) $request->input('per_page', 15), 1);
-        $search  = $request->input('q');
-        $sortBy  = $request->input('sort_by', 'name');
-        $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage <= 0) {
+            $perPage = 15;
+        }
+
+        $search   = $request->input('q');
+        $sortBy   = $request->input('sort_by', 'name');
+        $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
 
         $allowedSorts = ['id', 'name', 'description', 'is_active'];
         if (!in_array($sortBy, $allowedSorts, true)) {
             $sortBy = 'name';
         }
 
-        $query = Unit::with('sub_units.categories');
+        $query = Unit::query('sub_unit.categories');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -1399,8 +1398,8 @@ class ProductController extends Controller
             });
         }
 
-        return $query->orderBy($sortBy, $sortDir)
-            ->paginate($perPage)
-            ->appends($request->query());
+        $units = $query->orderBy($sortBy, $sortDir);
+
+        return $units;
     }
 }
