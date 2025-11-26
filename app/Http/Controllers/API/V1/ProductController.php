@@ -15,6 +15,7 @@ use App\Models\Unit;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
@@ -703,128 +704,274 @@ class ProductController extends Controller
         }
     }
 
+    private function mapPrice($model, $isIndonesian)
+    {
+        if (!$model) return null;
+
+        $model->default_price = $isIndonesian
+            ? ($model->price ?? null)
+            : ($model->usd_price ?? null);
+
+        $model->default_currency = $isIndonesian ? 'IDR' : 'USD';
+
+        return $model;
+    }
+
+    private function applyPriceMappingToProduct($product, $isIndonesian)
+    {
+        if (!$product) return null;
+
+        // Product price
+        $this->mapPrice($product, $isIndonesian);
+
+        // Unit
+        if ($product->unit) {
+            $this->mapPrice($product->unit, $isIndonesian);
+        }
+
+        // Sub Unit
+        if ($product->sub_unit) {
+            $this->mapPrice($product->sub_unit, $isIndonesian);
+        }
+
+        // Categories
+        foreach ($product->categories as $cat) {
+            $this->mapPrice($cat, $isIndonesian);
+        }
+
+        // Sub Categories
+        foreach ($product->subcategories as $sub) {
+            $this->mapPrice($sub, $isIndonesian);
+        }
+
+        // Divisions
+        foreach ($product->divisions as $division) {
+            $this->mapPrice($division, $isIndonesian);
+        }
+
+        // Variants
+        foreach ($product->variants as $variant) {
+            $this->mapPrice($variant, $isIndonesian);
+        }
+
+        return $product;
+    }
+
+
     public function getAllProduct(Request $request, $unitId = null)
     {
-        $perPage = (int) $request->input('per_page', 15);
-        $search  = $request->input('q');
-        $sortBy  = $request->input('sort_by', 'product_name');
-        $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        try {
+            $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+            if (env('APP_ENV') == 'local') {
+                $ip = '36.84.152.11';
+            }
 
-        $unitFilter = $unitId ?? $request->input('unit_id');
-        $unitFilter = ($unitFilter !== null && $unitFilter !== '') ? (string) $unitFilter : null;
+            $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
+            $location = $response->json();
 
-        $subunitFilter = $request->input('sub_unit_ids', []);
-        if (!is_array($subunitFilter)) {
-            $subunitFilter = ($subunitFilter !== null && $subunitFilter !== '') ? [$subunitFilter] : [];
+            if ($location['status'] == 'fail') {
+                return redirect()->back()->with('error', 'Failed to register');
+            }
+
+            $isIndonesian = ($location['countryCode'] === 'ID');
+
+            $perPage = (int) $request->input('per_page', 15);
+            $search  = $request->input('q');
+            $sortBy  = $request->input('sort_by', 'product_name');
+            $sortDir = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+            $unitFilter = $unitId ?? $request->input('unit_id');
+            $unitFilter = ($unitFilter !== null && $unitFilter !== '') ? (string) $unitFilter : null;
+
+            $subunitFilter = $request->input('sub_unit_ids', []);
+            if (!is_array($subunitFilter)) {
+                $subunitFilter = ($subunitFilter !== null && $subunitFilter !== '') ? [$subunitFilter] : [];
+            }
+            $subunitIds = array_map('strval', array_values(array_unique(array_filter($subunitFilter, static function ($value) {
+                return $value !== null && $value !== '';
+            }))));
+
+            $tagFilter = $request->input('tag_ids', []);
+            if (!is_array($tagFilter)) {
+                $tagFilter = ($tagFilter !== null && $tagFilter !== '') ? [$tagFilter] : [];
+            }
+            $tagIds = array_map('strval', array_values(array_unique(array_filter($tagFilter, static function ($value) {
+                return $value !== null && $value !== '';
+            }))));
+
+            $allowedSorts = ['id', 'product_name', 'description', 'product_price', 'total_stock', 'created_at'];
+            if (!in_array($sortBy, $allowedSorts, true)) {
+                $sortBy = 'product_name';
+            }
+
+            $query = Product::with([
+                'stocks',
+                'unit',
+                'sub_unit',
+                'categories.sub_unit',
+                'subcategories',
+                'divisions',
+                'tags',
+                'pictures',
+            ]);
+
+            if ($unitFilter) {
+                $query->where('unit_id', $unitFilter);
+            }
+
+            if ($search) {
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery->where('product_name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhereHas('unit', function ($uq) use ($search) {
+                            $uq->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('sub_unit', function ($uq) use ($search) {
+                            $uq->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('categories', function ($cq) use ($search) {
+                            $cq->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('subcategories', function ($sq) use ($search) {
+                            $sq->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('divisions', function ($dq) use ($search) {
+                            $dq->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('variants', function ($vq) use ($search) {
+                            $vq->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('tags', function ($tq) use ($search) {
+                            $tq->where('name', 'like', "%{$search}%");
+                        });
+                });
+            }
+
+            // Exact filters by IDs
+            if (count($subunitIds) > 0) {
+                $query->whereIn('sub_unit_id', $subunitIds);
+            }
+
+            if (count($tagIds) > 0) {
+                $query->whereHas('tags', function ($q) use ($tagIds) {
+                    $q->whereIn('id', $tagIds);
+                });
+            }
+
+            return $query->orderBy($sortBy, $sortDir)
+                ->paginate($perPage)
+                ->appends($request->query());
+
+            $products->getCollection()->transform(function ($product) use ($isIndonesian) {
+
+                // Product price
+                $this->mapPrice($product, $isIndonesian);
+
+                // Unit
+                if ($product->unit) {
+                    $this->mapPrice($product->unit, $isIndonesian);
+                }
+
+                // Sub Unit
+                if ($product->sub_unit) {
+                    $this->mapPrice($product->sub_unit, $isIndonesian);
+                }
+
+                // Categories
+                foreach ($product->categories as $cat) {
+                    $this->mapPrice($cat, $isIndonesian);
+                }
+
+                // Sub Categories
+                foreach ($product->subcategories as $sub) {
+                    $this->mapPrice($sub, $isIndonesian);
+                }
+
+                // Divisions
+                foreach ($product->divisions as $division) {
+                    $this->mapPrice($division, $isIndonesian);
+                }
+
+                // Variants
+                foreach ($product->variants as $variant) {
+                    $this->mapPrice($variant, $isIndonesian);
+                }
+
+                return $product;
+            });
+        } catch (Exception $e) {
+            Log::error('Failed to get all products: ' . $e);
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to get all products.',
+            ]);
         }
-        $subunitIds = array_map('strval', array_values(array_unique(array_filter($subunitFilter, static function ($value) {
-            return $value !== null && $value !== '';
-        }))));
+    }
 
-        $tagFilter = $request->input('tag_ids', []);
-        if (!is_array($tagFilter)) {
-            $tagFilter = ($tagFilter !== null && $tagFilter !== '') ? [$tagFilter] : [];
-        }
-        $tagIds = array_map('strval', array_values(array_unique(array_filter($tagFilter, static function ($value) {
-            return $value !== null && $value !== '';
-        }))));
+    public function getAllShowcaseTopProduct()
+    {
+        // ---- Country detection ----
+        $ip = request()->header('X-Forwarded-For') ?? request()->ip();
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $isIndonesian = ($location['countryCode'] === 'ID');
 
-        $allowedSorts = ['id', 'product_name', 'description', 'product_price', 'total_stock', 'created_at'];
-        if (!in_array($sortBy, $allowedSorts, true)) {
-            $sortBy = 'product_name';
-        }
-
-        $query = Product::with([
+        $data = Product::with([
             'stocks',
             'unit',
             'sub_unit',
             'categories.sub_unit',
             'subcategories',
             'divisions',
-            'tags',
-            'pictures',
-        ]);
-
-        if ($unitFilter) {
-            $query->where('unit_id', $unitFilter);
-        }
-
-        if ($search) {
-            $query->where(function ($searchQuery) use ($search) {
-                $searchQuery->where('product_name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%")
-                    ->orWhereHas('unit', function ($uq) use ($search) {
-                        $uq->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('sub_unit', function ($uq) use ($search) {
-                        $uq->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('categories', function ($cq) use ($search) {
-                        $cq->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('subcategories', function ($sq) use ($search) {
-                        $sq->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('divisions', function ($dq) use ($search) {
-                        $dq->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('variants', function ($vq) use ($search) {
-                        $vq->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('tags', function ($tq) use ($search) {
-                        $tq->where('name', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        // Exact filters by IDs
-        if (count($subunitIds) > 0) {
-            $query->whereIn('sub_unit_id', $subunitIds);
-        }
-
-        if (count($tagIds) > 0) {
-            $query->whereHas('tags', function ($q) use ($tagIds) {
-                $q->whereIn('id', $tagIds);
-            });
-        }
-
-        return $query->orderBy($sortBy, $sortDir)
-            ->paginate($perPage)
-            ->appends($request->query());
-    }
-
-    public function getAllShowcaseTopProduct()
-    {
-        $data = Product::with([
-            'stocks',
-            'unit',
-            'categories.sub_unit',
-            'subcategories',
-            'divisions',
+            'variants',
             'tags',
             'pictures',
         ])->where('is_showcase_top', true)->get();
+
+        // Apply mapping
+        $data->transform(function ($p) use ($isIndonesian) {
+            return $this->applyPriceMappingToProduct($p, $isIndonesian);
+        });
 
         return $data;
     }
 
     public function getAllShowcaseBottomProduct()
     {
+        // ---- Country detection ----
+        $ip = request()->header('X-Forwarded-For') ?? request()->ip();
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $isIndonesian = ($location['countryCode'] === 'ID');
+
         $data = Product::with([
             'stocks',
             'unit',
+            'sub_unit',
             'categories.sub_unit',
             'subcategories',
             'divisions',
+            'variants',
             'tags',
             'pictures',
         ])->where('is_showcase_bottom', true)->get();
+
+        // Apply mapping
+        $data->transform(function ($p) use ($isIndonesian) {
+            return $this->applyPriceMappingToProduct($p, $isIndonesian);
+        });
 
         return $data;
     }
 
     public function getProductByID($id)
     {
+        // ---- Country detection ----
+        $ip = request()->header('X-Forwarded-For') ?? request()->ip();
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $isIndonesian = ($location['countryCode'] === 'ID');
+
         $product = Product::with([
             'stocks',
             'unit',
@@ -844,7 +991,7 @@ class ProductController extends Controller
             ]);
         }
 
-        return $product;
+        return $this->applyPriceMappingToProduct($product, $isIndonesian);
     }
 
     public function getProductOptions(Request $request)
