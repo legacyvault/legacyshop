@@ -699,13 +699,21 @@ class ProductController extends Controller
         }
     }
 
-    private function mapPrice($model, $isIndonesian)
+    private function mapPrice($model, $isIndonesian, $isProduct = false)
     {
         if (!$model) return null;
 
-        $model->default_price = $isIndonesian
-            ? ($model->price ?? null)
-            : ($model->usd_price ?? null);
+        if ($isProduct) {
+            // Product uses product_price & product_usd_price
+            $model->default_price = $isIndonesian
+                ? ($model->product_price ?? null)
+                : ($model->product_usd_price ?? null);
+        } else {
+            // Other models use price & usd_price
+            $model->default_price = $isIndonesian
+                ? ($model->price ?? null)
+                : ($model->usd_price ?? null);
+        }
 
         $model->default_currency = $isIndonesian ? 'IDR' : 'USD';
 
@@ -717,7 +725,7 @@ class ProductController extends Controller
         if (!$product) return null;
 
         // Product price
-        $this->mapPrice($product, $isIndonesian);
+        $this->mapPrice($product, $isIndonesian, true);
 
         // Unit
         if ($product->unit) {
@@ -853,47 +861,16 @@ class ProductController extends Controller
                 });
             }
 
-            return $query->orderBy($sortBy, $sortDir)
+            $products = $query->orderBy($sortBy, $sortDir)
                 ->paginate($perPage)
                 ->appends($request->query());
 
+            // Transform each product and apply mapping
             $products->getCollection()->transform(function ($product) use ($isIndonesian) {
-
-                // Product price
-                $this->mapPrice($product, $isIndonesian);
-
-                // Unit
-                if ($product->unit) {
-                    $this->mapPrice($product->unit, $isIndonesian);
-                }
-
-                // Sub Unit
-                if ($product->sub_unit) {
-                    $this->mapPrice($product->sub_unit, $isIndonesian);
-                }
-
-                // Categories
-                foreach ($product->categories as $cat) {
-                    $this->mapPrice($cat, $isIndonesian);
-                }
-
-                // Sub Categories
-                foreach ($product->subcategories as $sub) {
-                    $this->mapPrice($sub, $isIndonesian);
-                }
-
-                // Divisions
-                foreach ($product->divisions as $division) {
-                    $this->mapPrice($division, $isIndonesian);
-                }
-
-                // Variants
-                foreach ($product->variants as $variant) {
-                    $this->mapPrice($variant, $isIndonesian);
-                }
-
-                return $product;
+                return $this->applyPriceMappingToProduct($product, $isIndonesian);
             });
+
+            return $products;
         } catch (Exception $e) {
             Log::error('Failed to get all products: ' . $e);
             return back()->with('alert', [
