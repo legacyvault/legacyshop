@@ -216,7 +216,8 @@ export default function AddVariant() {
                         {divisions.length > 0 &&
                             divisions.map((div) => (
                                 <option key={div.id} value={div.id}>
-                                    {div.name}
+                                    {div.name} - {div.sub_category.name} - {div.sub_category.category.name} -{' '}
+                                    {div.sub_category.category.sub_unit.name} - {div.sub_category.category.sub_unit.unit.name}
                                 </option>
                             ))}
                     </select>

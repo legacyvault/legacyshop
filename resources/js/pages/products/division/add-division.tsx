@@ -167,7 +167,7 @@ export default function AddDivision() {
                         {subcats.length > 0 &&
                             subcats.map((subcat) => (
                                 <option key={subcat.id} value={subcat.id}>
-                                    {subcat.name}
+                                    {subcat.name} - {subcat.category.name} - {subcat.category.sub_unit.name} - {subcat.category.sub_unit.unit.name}
                                 </option>
                             ))}
                     </select>
