@@ -26,7 +26,6 @@ type PageProps = SharedData & {
 
 export default function ProductDetail() {
     const { auth, translations, locale, product, rec_prod } = usePage<PageProps>().props;
-
     return (
         <FrontLayout auth={auth} translations={translations} locale={locale}>
             <DetailContent product={product} translations={translations} />
