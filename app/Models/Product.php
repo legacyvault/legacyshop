@@ -14,6 +14,7 @@ class Product extends Model
     protected $fillable = [
         'product_name',
         'product_sku',
+        'product_group_id',
         'description',
         'total_stock',
         'unit_id',
@@ -72,6 +73,10 @@ class Product extends Model
         return $prefix . $number; // PC1, PC2, PC3, ...
     }
 
+    public function product_group()
+    {
+        return $this->belongsTo(ProductGroup::class);
+    }
 
     public function stocks()
     {

@@ -83,6 +83,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('products', [ProductController::class, 'getAllProduct'])->name('products');
     Route::get('products-showcase', [ProductController::class, 'getAllShowcaseProduct'])->name('products.showcase');
 
+    //Product Group API
+    Route::get('product-group/{id}', [ProductController::class, 'getProductGroupById'])->name('product-group.id');
+    Route::get('product-group', [ProductController::class, 'getAllProductGroups'])->name('product-group');
+
     //Running Text API
     Route::get('running-text', [MiscController::class, 'getAllRunningText'])->name('running-text');
 
@@ -159,6 +163,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::get('products/options', [ProductController::class, 'getProductOptions'])->name('products.options');
     Route::post('add-product', [ProductController::class, 'addProduct'])->name('product.add-product');
     Route::post('update-product/{id}', [ProductController::class, 'editProduct'])->name('product.edit-product');
+
+    //Product Group
+    Route::post('add-product-group', [ProductController::class, 'addProductGroup'])->name('product.add-product-group');
+    Route::post('update-product/{id}', [ProductController::class, 'editProductGroup'])->name('product.edit-product-group');
 
     Route::post('add-product-stock', [ProductController::class, 'addStock'])->name('product.add-stock');
     Route::post('update-product-stock', [ProductController::class, 'updateLatestStock'])->name('product.update-stock');
