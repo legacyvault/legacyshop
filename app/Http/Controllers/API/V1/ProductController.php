@@ -1426,7 +1426,7 @@ class ProductController extends Controller
             });
         }
 
-        $units = $query->orderBy($sortBy, $sortDir);
+        $units = $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
 
         return $units;
     }
