@@ -88,7 +88,7 @@ export default function CategoriesDialog({ open, isOpen, type, category, onSubmi
                                     <option value="">--Select Category--</option>
                                     {subunits.map((unit, i) => (
                                         <option key={unit.id} value={unit.id}>
-                                            {unit.name}
+                                            {unit.name} - {unit.unit.name}
                                         </option>
                                     ))}
                                 </select>

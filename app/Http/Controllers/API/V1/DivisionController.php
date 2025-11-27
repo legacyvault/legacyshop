@@ -185,7 +185,7 @@ class DivisionController extends Controller
 
     public function getAllDivision()
     {
-        $data = Division::orderBy('name', 'asc')->with(['stocks','variants', 'sub_category'])->get();
+        $data = Division::orderBy('name', 'asc')->with(['stocks','variants', 'sub_category.category.sub_unit.unit'])->get();
 
         return $data;
     }

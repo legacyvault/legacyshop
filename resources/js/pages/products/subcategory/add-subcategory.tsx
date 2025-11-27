@@ -162,7 +162,7 @@ export default function AddSubCategory() {
                         {categories.length > 0 &&
                             categories.map((cat) => (
                                 <option key={cat.id} value={cat.id}>
-                                    {cat.name}
+                                    {cat.name} - {cat.sub_unit.name} - {cat.sub_unit.unit.name}
                                 </option>
                             ))}
                     </select>

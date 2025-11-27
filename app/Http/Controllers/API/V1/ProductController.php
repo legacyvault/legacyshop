@@ -189,7 +189,7 @@ class ProductController extends Controller
 
     public function getAllCategory()
     {
-        $data = Category::orderBy('name', 'asc')->with(['sub_unit', 'sub_categories'])->get();
+        $data = Category::orderBy('name', 'asc')->with(['sub_unit.unit', 'sub_categories'])->get();
 
         return $data;
     }

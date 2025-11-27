@@ -188,7 +188,7 @@ class SubCategoryController extends Controller
 
     public function getAllSubCategory()
     {
-        $data = SubCategory::orderBy('name', 'asc')->with(['stocks', 'divisions', 'category'])->get();
+        $data = SubCategory::orderBy('name', 'asc')->with(['stocks', 'divisions', 'category.sub_unit.unit'])->get();
 
         return $data;
     }
