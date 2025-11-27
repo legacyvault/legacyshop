@@ -5,7 +5,9 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
 use App\Models\Category;
+use App\Models\OrderItems;
 use App\Models\Product;
+use App\Models\ProductGroup;
 use App\Models\ProductPictures;
 use App\Models\ProductStock;
 use App\Models\SubUnit;
@@ -442,6 +444,395 @@ class ProductController extends Controller
         }
     }
 
+    public function addProductGroup(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'group_name' => 'required|string|max:255',
+
+            'unit_id'     => 'required|array|min:1',
+            'unit_id.*'   => 'exists:unit,id',
+
+            'sub_unit_id'     => 'required|array|min:1',
+            'sub_unit_id.*'   => 'exists:sub_unit,id',
+
+            'tags'        => 'nullable|array',
+            'tags.*'      => 'exists:tags,id',
+
+            'categories'  => 'nullable|array',
+            'categories.*' => 'exists:category,id',
+
+            'sub_categories' => 'nullable|array',
+            'sub_categories.*.id' => 'exists:sub_category,id',
+            'sub_categories.*.use_subcategory_discount' => 'nullable',
+            'sub_categories.*.stock' => 'nullable|integer',
+            'sub_categories.*.manual_discount' => 'nullable|numeric',
+
+            'divisions' => 'nullable|array',
+            'divisions.*.id' => 'exists:division,id',
+            'divisions.*.use_division_discount' => 'nullable',
+            'divisions.*.stock' => 'nullable|integer',
+            'divisions.*.manual_discount' => 'nullable|numeric',
+
+            'variants' => 'nullable|array',
+            'variants.*.id' => 'exists:variant,id',
+            'variants.*.use_variant_discount' => 'nullable',
+            'variants.*.stock' => 'nullable|integer',
+            'variants.*.manual_discount' => 'nullable|numeric',
+
+            // products array
+            'products' => 'required|array|min:1',
+            'products.*.product_name' => 'required|string',
+            'products.*.weight' => 'required|numeric|min:0',
+            'products.*.description' => 'required|string',
+
+            // pictures per product -> array of files
+            'products.*.pictures' => 'nullable|array',
+            'products.*.pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Create Group
+            $group = ProductGroup::create([
+                'name' => $request->group_name,
+            ]);
+
+            // Determine the highest price unit
+            $units = Unit::whereIn('id', $request->unit_id)->get();
+
+            $mainUnit = $units->sortByDesc('price')->first(); // highest price
+
+            if (!$mainUnit) {
+                throw new \Exception("No valid unit found.");
+            }
+
+            // Prepare global prices for all products
+            $default_price        = $mainUnit->price;
+            $default_usd_price    = $mainUnit->usd_price;
+            $default_discount     = $mainUnit->discount;
+
+            // iterate with index so we can use $request->file("products.$i.pictures")
+            $productsInput = $request->input('products', []);
+            $total = count($productsInput);
+
+            for ($i = 0; $i < $total; $i++) {
+                $p = $productsInput[$i];
+
+                $product = Product::create([
+                    'product_name'       => $p['product_name'],
+                    'product_weight'     => $p['weight'],
+                    'description'        => $p['description'],
+
+                    // assign the chosen main unit and a subunit (using first provided sub_unit_id)
+                    'unit_id'            => $mainUnit->id,
+                    'sub_unit_id'        => $request->sub_unit_id[0] ?? null,
+
+                    'product_price'      => $default_price,
+                    'product_usd_price'  => $default_usd_price,
+                    'product_discount'   => $default_discount,
+
+                    'product_group_id'   => $group->id,
+                ]);
+
+                // relational sync
+                if ($request->filled('tags')) {
+                    $product->tags()->sync($request->tags);
+                }
+
+                if ($request->filled('categories')) {
+                    $product->categories()->sync($request->categories);
+                }
+
+                if ($request->filled('sub_categories')) {
+                    $sync = [];
+                    foreach ($request->sub_categories as $sc) {
+                        $sync[$sc['id']] = [
+                            'use_subcategory_discount' => $sc['use_subcategory_discount'] ?? true,
+                            'manual_discount'          => $sc['manual_discount'] ?? 0,
+                            'stock'                    => $sc['stock'] ?? null,
+                        ];
+                    }
+                    $product->subcategories()->sync($sync);
+                }
+
+                if ($request->filled('divisions')) {
+                    $sync = [];
+                    foreach ($request->divisions as $d) {
+                        $sync[$d['id']] = [
+                            'use_division_discount' => $d['use_division_discount'] ?? true,
+                            'manual_discount'       => $d['manual_discount'] ?? 0,
+                            'stock'                 => $d['stock'] ?? null,
+                        ];
+                    }
+                    $product->divisions()->sync($sync);
+                }
+
+                if ($request->filled('variants')) {
+                    $sync = [];
+                    foreach ($request->variants as $v) {
+                        $sync[$v['id']] = [
+                            'use_variant_discount' => $v['use_variant_discount'] ?? true,
+                            'manual_discount'      => $v['manual_discount'] ?? 0,
+                            'stock'                => $v['stock'] ?? null,
+                        ];
+                    }
+                    $product->variants()->sync($sync);
+                }
+
+                // Handle multiple pictures for this product
+                // Expecting input names like: products[0][pictures][], products[1][pictures][]
+                $files = $request->file("products.$i.pictures");
+                if ($files && is_array($files)) {
+                    foreach ($files as $file) {
+                        if ($file instanceof \Illuminate\Http\UploadedFile) {
+                            $url = $this->uploadToS3($file, $product->id);
+
+                            ProductPictures::create([
+                                'url'        => $url,
+                                'product_id' => $product->id,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+            return redirect()->route('product')->with('alert', [
+                'type' => 'success',
+                'message' => 'Product group & products added successfully.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to create product group: ' . $e->getMessage());
+
+            return redirect()->back()->with('alert', [
+                'type'  => 'error',
+                'message' => 'Failed to add product group.',
+            ]);
+        }
+    }
+
+    public function editProductGroup(Request $request, $groupId)
+    {
+        $validator = Validator::make($request->all(), [
+            'group_name' => 'required|string|max:255',
+
+            'unit_id'   => 'required|array|min:1',
+            'unit_id.*' => 'exists:unit,id',
+
+            'sub_unit_id'   => 'required|array|min:1',
+            'sub_unit_id.*' => 'exists:sub_unit,id',
+
+            'tags' => 'nullable|array',
+            'tags.*' => 'exists:tags,id',
+
+            'categories' => 'nullable|array',
+            'categories.*' => 'exists:category,id',
+
+            'sub_categories' => 'nullable|array',
+            'sub_categories.*.id' => 'exists:sub_category,id',
+
+            'products' => 'required|array|min:1',
+            'products.*.id' => 'nullable|exists:product,id',
+            'products.*.product_name' => 'required|string',
+            'products.*.weight' => 'required|numeric|min:0',
+            'products.*.description' => 'required|string',
+
+            'products.*.pictures' => 'nullable|array',
+            'products.*.pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
+
+            'products.*.remove_picture_ids' => 'nullable|array',
+            'products.*.remove_picture_ids.*' => 'exists:product_pictures,id',
+
+            'remove_product_ids' => 'nullable|array',
+            'remove_product_ids.*' => 'exists:product,id',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $group = ProductGroup::findOrFail($groupId);
+
+            // Update group name
+            $group->update(['name' => $request->group_name]);
+
+            // Determine highest unit price
+            $units = Unit::whereIn('id', $request->unit_id)->get();
+            $mainUnit = $units->sortByDesc('price')->first();
+
+            if (!$mainUnit) {
+                throw new \Exception("Invalid unit.");
+            }
+
+            // Default prices (same logic as add)
+            $default_price = $mainUnit->price;
+            $default_usd_price = $mainUnit->usd_price;
+            $default_discount = $mainUnit->discount;
+
+            // 1️⃣ REMOVE PRODUCTS
+            if ($request->filled('remove_product_ids')) {
+                foreach ($request->remove_product_ids as $pid) {
+
+                    // check usage in OrderItems
+                    $exists = OrderItems::where('product_id', $pid)->exists();
+                    if ($exists) {
+                        throw new \Exception("Product ID $pid cannot be deleted — used in orders.");
+                    }
+
+                    // delete pictures from S3
+                    $pics = ProductPictures::where('product_id', $pid)->get();
+                    foreach ($pics as $pic) {
+                        $this->deleteFromS3($pic->url);
+                        $pic->delete();
+                    }
+
+                    // delete product
+                    Product::where('id', $pid)->delete();
+                }
+            }
+
+            // 2️⃣ ADD / UPDATE products
+            $productsInput = $request->products;
+
+
+            foreach ($productsInput as $i => $p) {
+
+                if (!empty($p['id'])) {
+                    // UPDATE PRODUCT
+                    $product = Product::findOrFail($p['id']);
+                    $product->update([
+                        'product_name'  => $p['product_name'],
+                        'product_weight' => $p['weight'],
+                        'description'   => $p['description'],
+                        'unit_id'       => $mainUnit->id,
+                        'sub_unit_id'   => $request->sub_unit_id[0] ?? null,
+                    ]);
+                } else {
+                    // CREATE PRODUCT
+                    $product = Product::create([
+                        'product_name'       => $p['product_name'],
+                        'product_weight'     => $p['weight'],
+                        'description'        => $p['description'],
+                        'unit_id'            => $mainUnit->id,
+                        'sub_unit_id'        => $request->sub_unit_id[0] ?? null,
+                        'product_price'      => $default_price,
+                        'product_usd_price'  => $default_usd_price,
+                        'product_discount'   => $default_discount,
+                        'product_group_id'   => $group->id,
+                    ]);
+                }
+
+                // RELATIONS — Same as ADD
+                if ($request->filled('tags')) {
+                    $product->tags()->sync($request->tags);
+                }
+                if ($request->filled('categories')) {
+                    $product->categories()->sync($request->categories);
+                }
+
+                // SUBCATEGORY WITH PIVOT
+                if ($request->filled('sub_categories')) {
+                    $sync = [];
+                    foreach ($request->sub_categories as $sc) {
+                        $sync[$sc['id']] = [
+                            'use_subcategory_discount' => $sc['use_subcategory_discount'] ?? true,
+                            'manual_discount'          => $sc['manual_discount'] ?? 0,
+                            'stock'                    => $sc['stock'] ?? null,
+                        ];
+                    }
+                    $product->subcategories()->sync($sync);
+                }
+
+                // PICTURE REMOVAL
+                if (!empty($p['remove_picture_ids'])) {
+                    $pics = ProductPictures::whereIn('id', $p['remove_picture_ids'])->get();
+                    foreach ($pics as $pic) {
+                        $this->deleteFromS3($pic->url);
+                        $pic->delete();
+                    }
+                }
+
+                // NEW PICTURES
+                $files = $request->file("products.$i.pictures");
+                if ($files) {
+                    foreach ($files as $file) {
+                        $url = $this->uploadToS3($file, $product->id);
+                        ProductPictures::create([
+                            'url' => $url,
+                            'product_id' => $product->id
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('product')->with('alert', [
+                'type' => 'success',
+                'message' => 'Product group updated successfully.'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error($e);
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function getAllProductGroups()
+    {
+        $productGroups = ProductGroup::with([
+            'products',
+            'products.categories',
+            'products.tags',
+            'products.units',
+            'products.pictures',
+            'products.division',
+            'products.subcategory',
+        ])->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $productGroups,
+        ]);
+    }
+
+    public function getProductGroupById($id)
+    {
+        $productGroup = ProductGroup::with([
+            'products',
+            'products.categories',
+            'products.tags',
+            'products.units',
+            'products.pictures',
+            'products.division',
+            'products.subcategory',
+        ])->find($id);
+
+        if (!$productGroup) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Product group not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $productGroup,
+        ]);
+    }
+
     public function addStock(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -808,6 +1199,7 @@ class ProductController extends Controller
             }
 
             $query = Product::with([
+                'product_group',
                 'stocks',
                 'unit',
                 'sub_unit',
@@ -889,6 +1281,7 @@ class ProductController extends Controller
         $isIndonesian = ($location['countryCode'] === 'ID');
 
         $data = Product::with([
+            'product_group',
             'stocks',
             'unit',
             'sub_unit',
@@ -917,6 +1310,7 @@ class ProductController extends Controller
         $isIndonesian = ($location['countryCode'] === 'ID');
 
         $data = Product::with([
+            'product_group',
             'stocks',
             'unit',
             'sub_unit',
@@ -965,7 +1359,7 @@ class ProductController extends Controller
 
         return $this->applyPriceMappingToProduct($product, $isIndonesian);
     }
-    
+
     public function getRecommendationProduct($id)
     {
         // ---- Country detection ----
@@ -987,7 +1381,7 @@ class ProductController extends Controller
             'variants',
             'tags',
             'pictures',
-        ])->where('id', '!=', $id)->orderBy('created_at', 'desc') ->limit(5)->get();
+        ])->where('id', '!=', $id)->orderBy('created_at', 'desc')->limit(5)->get();
 
         if (!$product) {
             return back()->with('alert', [
