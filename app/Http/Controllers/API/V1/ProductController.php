@@ -965,6 +965,39 @@ class ProductController extends Controller
 
         return $this->applyPriceMappingToProduct($product, $isIndonesian);
     }
+    
+    public function getRecommendationProduct($id)
+    {
+        // ---- Country detection ----
+        $ip = request()->header('X-Forwarded-For') ?? request()->ip();
+
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $isIndonesian = ($location['countryCode'] === 'ID');
+
+
+        $product = Product::with([
+            'stocks',
+            'unit',
+            'sub_unit',
+            'categories',
+            'subcategories',
+            'divisions',
+            'variants',
+            'tags',
+            'pictures',
+        ])->where('id', '!=', $id)->orderBy('created_at', 'desc') ->limit(5)->get();
+
+        if (!$product) {
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Cannot find product.',
+            ]);
+        };
+
+        return $product;
+    }
 
     public function getProductOptions(Request $request)
     {
@@ -1370,7 +1403,7 @@ class ProductController extends Controller
             });
         }
 
-        $units = $query->orderBy($sortBy, $sortDir);
+        $units = $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
 
         return $units;
     }

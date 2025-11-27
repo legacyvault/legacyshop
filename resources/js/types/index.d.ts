@@ -63,6 +63,7 @@ export interface SharedData {
     deliveryAddresses: IDeliveryAddress[];
     rates?: IRates | null;
     summary?: IDashboardSummary;
+    rec_prod: IProducts[];
 }
 
 export type InventoryEntityType = 'product' | 'subcategory' | 'division' | 'variant';

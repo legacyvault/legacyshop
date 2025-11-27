@@ -1,3 +1,4 @@
+import ProductCard from '@/components/product-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,7 +16,7 @@ import {
     IVariants,
     SharedData,
 } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -24,11 +25,11 @@ type PageProps = SharedData & {
 };
 
 export default function ProductDetail() {
-    const { auth, translations, locale, product } = usePage<PageProps>().props;
-
+    const { auth, translations, locale, product, rec_prod } = usePage<PageProps>().props;
     return (
         <FrontLayout auth={auth} translations={translations} locale={locale}>
             <DetailContent product={product} translations={translations} />
+            <ReccomendationList rec_prod={rec_prod} />
         </FrontLayout>
     );
 }
@@ -128,38 +129,33 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     const divisionStockInsufficient = selectedDiv ? Number(selectedDiv.total_stock ?? 0) < selectedQty : false;
     const variantStockInsufficient = selectedVar ? Number(selectedVar.total_stock ?? 0) < selectedQty : false;
 
-    const insufficientStock = useMemo(() => {
-        if (productStockInsufficient) {
-            return true;
-        }
-        if (selectedSubcat && subcatStockInsufficient) {
-            return true;
-        }
-        if (selectedDiv && divisionStockInsufficient) {
-            return true;
-        }
-        if (selectedVar && variantStockInsufficient) {
+    const disableButtonCart = useMemo(() => {
+        if (productStockInsufficient) return true;
+
+        if (
+            !selectedCat ||
+            (subcategories.length > 0 && !selectedSubcat && subcatStockInsufficient) ||
+            (divisions.length > 0 && !selectedDiv && divisionStockInsufficient) ||
+            (textVariants.length > 0 && colorVariants.length > 0 && !selectedVar && variantStockInsufficient)
+        ) {
             return true;
         }
 
         return false;
     }, [
+        selectedCat,
         productStockInsufficient,
-        selectedSubcat,
         subcatStockInsufficient,
-        selectedDiv,
         divisionStockInsufficient,
-        selectedVar,
         variantStockInsufficient,
+        selectedSubcat,
+        subcategories,
+        selectedDiv,
+        divisions,
+        selectedVar,
+        textVariants,
+        colorVariants,
     ]);
-
-    const disableButtonCart = useMemo(() => {
-        if (!selectedCat) {
-            return true;
-        }
-
-        return insufficientStock;
-    }, [selectedCat, insufficientStock]);
 
     const handleAddToCart = () => {
         const meta: ICart = {
@@ -299,7 +295,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     {/* Categories */}
                     {categories.length > 0 && (
                         <div className="mb-4">
-                            <div className="mb-2 text-sm font-semibold">Choose Category: {selectedCat?.name ?? '-'}</div>
+                            <div className="mb-2 text-sm font-semibold">Choose Variant: {selectedCat?.name ?? '-'}</div>
                             <div className="flex flex-wrap gap-2">
                                 {categories.map((v) => {
                                     const active = selectedCat?.id === v.id;
@@ -322,7 +318,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     {/* Sub Categories */}
                     {subcategories.length > 0 && selectedCat && (
                         <div className="mb-4">
-                            <div className="mb-2 text-sm font-semibold">Choose Sub Category: {selectedSubcat?.name ?? '-'}</div>
+                            <div className="mb-2 text-sm font-semibold">Choose Type: {selectedSubcat?.name ?? '-'}</div>
                             <div className="flex flex-wrap gap-2">
                                 {subcategories.map((v) => {
                                     const active = selectedSubcat?.id === v.id;
@@ -333,7 +329,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                                 onClick={() => setSelectedSubcat((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'hidden border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -348,7 +344,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     {/* Division */}
                     {divisions.length > 0 && selectedSubcat && selectedCat && (
                         <div className="mb-4">
-                            <div className="mb-2 text-sm font-semibold">Choose Division: {selectedDiv?.name ?? '-'}</div>
+                            <div className="mb-2 text-sm font-semibold">Choose Option: {selectedDiv?.name ?? '-'}</div>
                             <div className="flex flex-wrap gap-2">
                                 {divisions.map((v) => {
                                     const active = selectedDiv?.id === v.id;
@@ -360,7 +356,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                                 onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'hidden border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -375,7 +371,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     {/* Variant: text */}
                     {textVariants.length > 0 && selectedDiv && selectedSubcat && selectedCat && (
                         <div className="mb-4">
-                            <div className="mb-2 text-sm font-semibold">Choose variant: {selectedVar?.name ?? '-'}</div>
+                            <div className="mb-2 text-sm font-semibold">Choose Selected: {selectedVar?.name ?? '-'}</div>
                             <div className="flex flex-wrap gap-2">
                                 {textVariants.map((v) => {
                                     const active = selectedVar?.id === v.id;
@@ -386,7 +382,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                                 onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'hidden border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -414,7 +410,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                             onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
                                             className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                 active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                            } ${disabled ? 'hidden border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                            } ${disabled ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
                                             disabled={disabled}
                                             style={{ backgroundColor: color ?? '#e5e7eb' }}
                                         />
@@ -487,5 +483,20 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                 </section>
             </div>
         </div>
+    );
+}
+
+function ReccomendationList({ rec_prod }: { rec_prod: IProducts[] }) {
+    return (
+        <>
+            <div className="mx-auto w-full max-w-7xl px-4 py-8">
+                <h2 className="mb-6 text-2xl font-semibold">Top Picks for You</h2>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+                    {rec_prod.map((p) => (
+                        <ProductCard key={p.id} product={p} onClick={() => router.get(`/view-product/${p.id}`)} />
+                    ))}
+                </div>
+            </div>
+        </>
     );
 }

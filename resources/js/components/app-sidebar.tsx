@@ -48,7 +48,7 @@ const mainNavItems: NavItem[] = [
             },
             {
                 title: 'Product',
-                href: '/products/product',
+                href: '/products/product/group',
             },
         ],
     },

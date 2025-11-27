@@ -309,9 +309,11 @@ class ViewController extends Controller
     public function frontViewProduct($id)
     {
         $selectedProd = $this->productController->getProductByID($id);
+        $reccomendationProd = $this->productController->getRecommendationProduct($id);
 
         return Inertia::render('front/products/product-detail', [
             'product' => $selectedProd,
+            'rec_prod' => $reccomendationProd,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -542,6 +544,29 @@ class ViewController extends Controller
         $international_shipment = $this->internationalShipmentController->getAllInternationalShipment();
         return Inertia::render('shipment/international/index', [
             'international_shipment' => $international_shipment
+        ]);
+    }
+
+    public function groupProductPage(){
+        return Inertia::render('products/product/group');
+    }
+
+    public function groupProductFormPage()
+    {
+        $units = $this->productController->getAllUnit();
+        $subunits = $this->productController->getAllSubUnit();
+        $categories = $this->productController->getAllCategory();
+        $subcats = $this->subcategoryController->getAllSubCategory();
+        $divisions = $this->divisionController->getAllDivision();
+        $variants = $this->variantController->getAllVariant();
+
+        return Inertia::render('products/product/group-form', [
+            'units' => $units,
+            'subunits' => $subunits,
+            'categories' => $categories,
+            'subcats' => $subcats,
+            'divisions' => $divisions,
+            'variants' => $variants,
         ]);
     }
 }

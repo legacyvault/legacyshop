@@ -294,6 +294,8 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::prefix('product')->group(function () {
             Route::get('add-product/{id?}', [ViewController::class, 'addProdPage']);
             Route::get('viewprod/{id}', [ViewController::class, 'viewProdPage']);
+            Route::get('group', [ViewController::class, 'groupProductPage']);
+            Route::get('group/create', [ViewController::class, 'groupProductFormPage']);
         });
 
         //SUBCAT ROUTES
