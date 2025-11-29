@@ -559,6 +559,7 @@ class ViewController extends Controller
         $subcats = $this->subcategoryController->getAllSubCategory();
         $divisions = $this->divisionController->getAllDivision();
         $variants = $this->variantController->getAllVariant();
+        $tags = $this->productController->getAllTags();
 
         return Inertia::render('products/product/group-form', [
             'units' => $units,
@@ -567,6 +568,7 @@ class ViewController extends Controller
             'subcats' => $subcats,
             'divisions' => $divisions,
             'variants' => $variants,
+            'tags' => $tags
         ]);
     }
 }
