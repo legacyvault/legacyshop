@@ -17,8 +17,6 @@ class Product extends Model
         'product_group_id',
         'description',
         'total_stock',
-        'unit_id',
-        'sub_unit_id',
         'product_price',
         'product_usd_price',
         'product_weight',
@@ -32,20 +30,20 @@ class Product extends Model
         'is_showcase_bottom' => 'boolean',
     ];
 
-    protected static function booted()
-    {
-        static::creating(function ($product) {
-            // Only generate SKU if it's empty
-            if (empty($product->product_sku)) {
-                $product->product_sku = self::generateSku($product);
-            }
-        });
-    }
+    // protected static function booted()
+    // {
+    //     static::creating(function ($product) {
+    //         // Only generate SKU if it's empty
+    //         if (empty($product->product_sku)) {
+    //             $product->product_sku = self::generateSku($product);
+    //         }
+    //     });
+    // }
 
     public static function generateSku($product)
     {
         // Ensure sub_unit exists
-        $subUnit = SubUnit::find($product->sub_unit_id);
+        $subUnit = $product->subUnits()->first();
 
         if (!$subUnit) {
             throw new \Exception("Sub unit not found for SKU generation.");
@@ -83,14 +81,14 @@ class Product extends Model
         return $this->hasMany(ProductStock::class);
     }
 
-    public function unit()
+    public function units()
     {
-        return $this->belongsTo(Unit::class, 'unit_id', 'id');
+        return $this->belongsToMany(Unit::class, 'product_unit');
     }
 
-    public function sub_unit()
+    public function subUnits()
     {
-        return $this->belongsTo(SubUnit::class, 'sub_unit_id', 'id');
+        return $this->belongsToMany(SubUnit::class, 'product_sub_unit');
     }
 
     public function tags()

@@ -523,23 +523,40 @@ class ProductController extends Controller
             for ($i = 0; $i < $total; $i++) {
                 $p = $productsInput[$i];
 
+                $subUnitId = $request->sub_unit_id[0] ?? null;
+                if (!$subUnitId) {
+                    throw new \Exception("Sub unit required for SKU generation.");
+                }
+                $subUnit = SubUnit::find($subUnitId);
+                if (!$subUnit) {
+                    throw new \Exception("Sub unit not found for SKU generation.");
+                }
+
+                // Generate SKU sebelum create
+                $productSku = $this->generateSkuForProduct($p['product_name'], $subUnit);
+
                 $product = Product::create([
                     'product_name'       => $p['product_name'],
                     'product_weight'     => $p['weight'],
                     'description'        => $p['description'],
-
-                    // assign the chosen main unit and a subunit (using first provided sub_unit_id)
-                    'unit_id'            => $mainUnit->id,
-                    'sub_unit_id'        => $request->sub_unit_id[0] ?? null,
-
                     'product_price'      => $default_price,
                     'product_usd_price'  => $default_usd_price,
                     'product_discount'   => $default_discount,
-
                     'product_group_id'   => $group->id,
+                    'product_sku'        => $productSku,
                 ]);
 
                 // relational sync
+                if ($request->filled('unit_id')) {
+                    $product->units()->sync($request->unit_id);
+                }
+
+                if ($request->filled('sub_unit_id')) {
+                    $product->subUnits()->sync($request->sub_unit_id);
+                    $product->product_sku = Product::generateSku($product);
+                    $product->save();
+                }
+
                 if ($request->filled('tags')) {
                     $product->tags()->sync($request->tags);
                 }
@@ -617,6 +634,26 @@ class ProductController extends Controller
         }
     }
 
+    protected function generateSkuForProduct(string $productName, SubUnit $subUnit): string
+    {
+        $subUnitInitial = strtoupper(substr($subUnit->name, 0, 1));
+        $productInitial = strtoupper(substr($productName, 0, 1));
+        $prefix = $subUnitInitial . $productInitial;
+
+        $lastProduct = Product::where('product_sku', 'like', $prefix . '%')
+            ->orderBy('product_sku', 'desc')
+            ->first();
+
+        if ($lastProduct) {
+            preg_match('/(\d+)$/', $lastProduct->product_sku, $matches);
+            $number = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
+        } else {
+            $number = 1;
+        }
+
+        return $prefix . $number; // Contoh: PC1, PC2
+    }
+
     public function editProductGroup(Request $request, $groupId)
     {
         $validator = Validator::make($request->all(), [
@@ -665,56 +702,51 @@ class ProductController extends Controller
             // Update group name
             $group->update(['name' => $request->group_name]);
 
-            // Determine highest unit price
+            // Determine highest unit price (same as CREATE)
             $units = Unit::whereIn('id', $request->unit_id)->get();
             $mainUnit = $units->sortByDesc('price')->first();
 
             if (!$mainUnit) {
-                throw new \Exception("Invalid unit.");
+                throw new \Exception("Invalid unit list.");
             }
 
-            // Default prices (same logic as add)
-            $default_price = $mainUnit->price;
-            $default_usd_price = $mainUnit->usd_price;
-            $default_discount = $mainUnit->discount;
+            $default_price      = $mainUnit->price;
+            $default_usd_price  = $mainUnit->usd_price;
+            $default_discount   = $mainUnit->discount;
 
             // 1️⃣ REMOVE PRODUCTS
             if ($request->filled('remove_product_ids')) {
                 foreach ($request->remove_product_ids as $pid) {
 
-                    // check usage in OrderItems
-                    $exists = OrderItems::where('product_id', $pid)->exists();
-                    if ($exists) {
+                    // Check usage in orders
+                    if (OrderItems::where('product_id', $pid)->exists()) {
                         throw new \Exception("Product ID $pid cannot be deleted — used in orders.");
                     }
 
-                    // delete pictures from S3
+                    // Delete pictures from S3
                     $pics = ProductPictures::where('product_id', $pid)->get();
                     foreach ($pics as $pic) {
                         $this->deleteFromS3($pic->url);
                         $pic->delete();
                     }
 
-                    // delete product
+                    // Delete product
                     Product::where('id', $pid)->delete();
                 }
             }
 
-            // 2️⃣ ADD / UPDATE products
+            // 2️⃣ ADD / UPDATE PRODUCTS
             $productsInput = $request->products;
-
 
             foreach ($productsInput as $i => $p) {
 
                 if (!empty($p['id'])) {
-                    // UPDATE PRODUCT
+                    // UPDATE PRODUCT (no unit_id/sub_unit_id anymore)
                     $product = Product::findOrFail($p['id']);
                     $product->update([
-                        'product_name'  => $p['product_name'],
+                        'product_name'   => $p['product_name'],
                         'product_weight' => $p['weight'],
-                        'description'   => $p['description'],
-                        'unit_id'       => $mainUnit->id,
-                        'sub_unit_id'   => $request->sub_unit_id[0] ?? null,
+                        'description'    => $p['description'],
                     ]);
                 } else {
                     // CREATE PRODUCT
@@ -722,8 +754,6 @@ class ProductController extends Controller
                         'product_name'       => $p['product_name'],
                         'product_weight'     => $p['weight'],
                         'description'        => $p['description'],
-                        'unit_id'            => $mainUnit->id,
-                        'sub_unit_id'        => $request->sub_unit_id[0] ?? null,
                         'product_price'      => $default_price,
                         'product_usd_price'  => $default_usd_price,
                         'product_discount'   => $default_discount,
@@ -731,15 +761,23 @@ class ProductController extends Controller
                     ]);
                 }
 
-                // RELATIONS — Same as ADD
+                // UNITS pivot
+                $product->units()->sync($request->unit_id);
+
+                // SUBUNIT pivot
+                $product->subUnits()->sync($request->sub_unit_id);
+
+                // TAGS pivot
                 if ($request->filled('tags')) {
                     $product->tags()->sync($request->tags);
                 }
+
+                // CATEGORIES pivot
                 if ($request->filled('categories')) {
                     $product->categories()->sync($request->categories);
                 }
 
-                // SUBCATEGORY WITH PIVOT
+                // SUBCATEGORY pivot + discount/stock
                 if ($request->filled('sub_categories')) {
                     $sync = [];
                     foreach ($request->sub_categories as $sc) {
@@ -752,7 +790,7 @@ class ProductController extends Controller
                     $product->subcategories()->sync($sync);
                 }
 
-                // PICTURE REMOVAL
+                // REMOVE PICTURES
                 if (!empty($p['remove_picture_ids'])) {
                     $pics = ProductPictures::whereIn('id', $p['remove_picture_ids'])->get();
                     foreach ($pics as $pic) {
@@ -761,7 +799,7 @@ class ProductController extends Controller
                     }
                 }
 
-                // NEW PICTURES
+                // ADD NEW PICTURES
                 $files = $request->file("products.$i.pictures");
                 if ($files) {
                     foreach ($files as $file) {
@@ -797,6 +835,7 @@ class ProductController extends Controller
             'products.categories',
             'products.tags',
             'products.units',
+            'products.subUnits',
             'products.pictures',
             'products.division',
             'products.subcategory',
@@ -815,6 +854,7 @@ class ProductController extends Controller
             'products.categories',
             'products.tags',
             'products.units',
+            'products.subUnits',
             'products.pictures',
             'products.division',
             'products.subcategory',
