@@ -89,7 +89,7 @@ class SummaryController extends Controller
             ->groupBy('day')
             ->orderBy('day')
             ->pluck('total', 'day')
-            ->map(fn ($value) => (float) $value);
+            ->map(fn($value) => (float) $value);
 
         $labels = [];
         $totals = [];
@@ -118,25 +118,23 @@ class SummaryController extends Controller
 
         $items = OrderItems::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->leftJoin('products', 'products.id', '=', 'order_items.product_id')
-            ->leftJoin('unit', 'unit.id', '=', 'products.unit_id')
             ->where('orders.payment_status', 'payment_received')
             ->whereBetween('orders.created_at', [$rangeStart, $rangeEnd])
             ->selectRaw('
-                order_items.product_id,
-                order_items.product_name,
-                order_items.category_id,
-                order_items.category_name,
-                order_items.sub_category_id,
-                order_items.sub_category_name,
-                order_items.division_id,
-                order_items.division_name,
-                order_items.variant_id,
-                order_items.variant_name,
-                unit.name as unit_name,
-                SUM(order_items.quantity) as total_quantity,
-                SUM(order_items.total) as total_revenue
-            ')
+            order_items.product_id,
+            order_items.product_name,
+            order_items.category_id,
+            order_items.category_name,
+            order_items.sub_category_id,
+            order_items.sub_category_name,
+            order_items.division_id,
+            order_items.division_name,
+            order_items.variant_id,
+            order_items.variant_name,
+            order_items.price as unit_price,
+            SUM(order_items.quantity) as total_quantity,
+            SUM(order_items.total) as total_revenue
+        ')
             ->groupBy(
                 'order_items.product_id',
                 'order_items.product_name',
@@ -148,16 +146,16 @@ class SummaryController extends Controller
                 'order_items.division_name',
                 'order_items.variant_id',
                 'order_items.variant_name',
-                'unit.name'
+                'order_items.price'
             )
             ->orderByDesc('total_quantity')
             ->limit(15)
             ->get();
 
-        return $items->map(fn ($item) => [
+        return $items->map(fn($item) => [
             'product_id' => $item->product_id,
             'product_name' => $item->product_name,
-            'unit_name' => $item->unit_name,
+            'unit_price' => (float) $item->unit_price,
             'category_id' => $item->category_id,
             'category_name' => $item->category_name,
             'sub_category_id' => $item->sub_category_id,
