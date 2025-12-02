@@ -24,8 +24,8 @@ type ProductSuggestion = {
     id: string;
     name: string;
     type: 'product' | 'unit' | 'sub_unit' | 'tags' | 'any';
-    sub_unit?: { id: string; name: string } | null;
-    unit?: { id: string; name: string } | null;
+    sub_units?: { id: string; name: string }[] | null;
+    units?: { id: string; name: string }[] | null;
     tags?: { id: string; name: string }[];
 };
 
@@ -262,6 +262,8 @@ export default function FrontHeader({
                             product: 'Product',
                             tags: 'Tags',
                         };
+                        const unitNames = (s.units || []).map((u) => u.name).filter(Boolean).join(', ');
+                        const subUnitNames = (s.sub_units || []).map((u) => u.name).filter(Boolean).join(', ');
                         return (
                             <button
                                 type="button"
@@ -276,10 +278,8 @@ export default function FrontHeader({
                                         </div>
                                     </div>
                                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                        {s.type === 'product' && s.sub_unit?.name && (
-                                            <span className="rounded-full bg-muted px-2 py-0.5">
-                                                {s.unit?.name ?? ''} | {s.sub_unit.name}
-                                            </span>
+                                        {s.type === 'product' && (unitNames || subUnitNames) && (
+                                            <span className="rounded-full bg-muted px-2 py-0.5">{[unitNames, subUnitNames].filter(Boolean).join(' | ')}</span>
                                         )}
                                         {s.tags && s.tags.length > 0 && (
                                             <span className="flex flex-wrap gap-1">

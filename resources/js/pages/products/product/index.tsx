@@ -5,10 +5,6 @@ import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IProducts, IRootProducts, SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 
-interface PropsProductTable {
-    products: IRootProducts;
-}
-
 export default function Product() {
     const { products, filters } = usePage<SharedData>().props;
 

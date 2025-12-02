@@ -566,10 +566,8 @@ export interface IProducts {
     subcategories: (ISubcats & { pivot: IPivotSubcatProd })[];
     tags: ITags[];
     total_stock: number;
-    sub_unit: ISubUnits;
-    unit: IUnit;
-    sub_unit_id: string;
-    unit_id: string;
+    sub_units: ISubUnits[];
+    units: IUnit[];
     updated_at: string;
     variants: (IVariants & { pivot: IPivotVariantProd })[];
     product_usd_price: number;

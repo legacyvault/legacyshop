@@ -292,8 +292,10 @@ class ProductController extends Controller
             'product_weight'    => 'required|numeric|min:1',
             'description'      => 'required|string',
 
-            'unit_id'          => 'required|exists:unit,id',
-            'sub_unit_id'       => 'required|exists:sub_unit,id',
+            'unit_id'     => 'required|array|min:1',
+            'unit_id.*'   => 'exists:unit,id',
+            'sub_unit_id' => 'required|array|min:1',
+            'sub_unit_id.*' => 'exists:sub_unit,id',
             'use_unit_price'       => 'boolean',
             'use_unit_usd_price'   => 'boolean',
             'use_unit_discount'    => 'boolean',
@@ -340,19 +342,22 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
-            $unit = Unit::findOrFail($request->unit_id);
-            $subunit = SubUnit::findorFail($request->sub_unit_id);
+            $unitIds = $request->input('unit_id', []);
+            $subUnitIds = $request->input('sub_unit_id', []);
+
+            $primaryUnit = Unit::findOrFail($unitIds[0]);
+            SubUnit::findOrFail($subUnitIds[0]);
 
             $product_price = $request->boolean('use_unit_price')
-                ? $unit->price
+                ? $primaryUnit->price
                 : $request->product_price;
 
             $product_usd_price = $request->boolean('use_unit_usd_price')
-                ? $unit->usd_price
+                ? $primaryUnit->usd_price
                 : $request->product_usd_price;
 
             $product_discount = $request->boolean('use_unit_discount')
-                ? $unit->discount
+                ? $primaryUnit->discount
                 : ($request->product_discount ?? 0);
 
             $product = Product::create([
@@ -362,11 +367,14 @@ class ProductController extends Controller
                 'product_discount' => $product_discount,
                 'product_weight'     => $request->product_weight,
                 'description'      => $request->description,
-                'unit_id'          => $request->unit_id,
-                'sub_unit_id'       => $request->sub_unit_id,
                 'is_showcase_top'          => $request->boolean('is_showcase_top'),
                 'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'),
             ]);
+
+            $product->units()->sync($unitIds);
+            $product->subUnits()->sync($subUnitIds);
+            $product->product_sku = Product::generateSku($product);
+            $product->save();
 
             // Sync tags (no pivot)
             if ($request->filled('tag_id')) {
@@ -847,6 +855,10 @@ class ProductController extends Controller
         ]);
     }
 
+    public function getProductGroupsPaginated(Request $request){
+
+    }
+
     public function getProductGroupById($id)
     {
         $productGroup = ProductGroup::with([
@@ -923,7 +935,10 @@ class ProductController extends Controller
             'product_name'     => 'required|string|max:255',
             'description'      => 'required|string',
 
-            'unit_id'          => 'required|exists:unit,id',
+            'unit_id'     => 'required|array|min:1',
+            'unit_id.*'   => 'exists:unit,id',
+            'sub_unit_id' => 'required|array|min:1',
+            'sub_unit_id.*' => 'exists:sub_unit,id',
             'use_unit_price'       => 'boolean',
             'use_unit_usd_price'   => 'boolean',
             'use_unit_discount'    => 'boolean',
@@ -974,18 +989,20 @@ class ProductController extends Controller
             DB::beginTransaction();
 
             $product = Product::findOrFail($id);
-            $unit = Unit::findOrFail($request->unit_id);
+            $unitIds = $request->input('unit_id', []);
+            $subUnitIds = $request->input('sub_unit_id', []);
+            $primaryUnit = Unit::findOrFail($unitIds[0]);
 
             $product_price = $request->boolean('use_unit_price')
-                ? $unit->price
+                ? $primaryUnit->price
                 : $request->product_price;
 
             $product_usd_price = $request->boolean('use_unit_usd_price')
-                ? $unit->usd_price
+                ? $primaryUnit->usd_price
                 : $request->product_usd_price;
 
             $product_discount = $request->boolean('use_unit_discount')
-                ? $unit->discount
+                ? $primaryUnit->discount
                 : ($request->product_discount ?? 0);
 
             $product->update([
@@ -994,10 +1011,12 @@ class ProductController extends Controller
                 'product_usd_price' => $product_usd_price,
                 'product_discount' => $product_discount,
                 'description'      => $request->description,
-                'unit_id'          => $request->unit_id,
                 'is_showcase_top'          => $request->boolean('is_showcase_top'),
                 'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'),
             ]);
+
+            $product->units()->sync($unitIds);
+            $product->subUnits()->sync($subUnitIds);
 
             // Sync tags
             $product->tags()->sync($request->tag_id ?? []);
@@ -1158,14 +1177,14 @@ class ProductController extends Controller
         // Product price
         $this->mapPrice($product, $isIndonesian, true);
 
-        // Unit
-        if ($product->unit) {
-            $this->mapPrice($product->unit, $isIndonesian);
+        // Units
+        foreach ($product->units as $unit) {
+            $this->mapPrice($unit, $isIndonesian);
         }
 
-        // Sub Unit
-        if ($product->sub_unit) {
-            $this->mapPrice($product->sub_unit, $isIndonesian);
+        // Sub Units
+        foreach ($product->subUnits as $subUnit) {
+            $this->mapPrice($subUnit, $isIndonesian);
         }
 
         // Categories
@@ -1241,8 +1260,8 @@ class ProductController extends Controller
             $query = Product::with([
                 'product_group',
                 'stocks',
-                'unit',
-                'sub_unit',
+                'units',
+                'subUnits',
                 'categories.sub_unit',
                 'subcategories',
                 'divisions',
@@ -1250,18 +1269,23 @@ class ProductController extends Controller
                 'pictures',
             ]);
 
+            $unitTable = (new Unit())->getTable();
+            $subUnitTable = (new SubUnit())->getTable();
+
             if ($unitFilter) {
-                $query->where('unit_id', $unitFilter);
+                $query->whereHas('units', function ($uq) use ($unitTable, $unitFilter) {
+                    $uq->where("{$unitTable}.id", $unitFilter);
+                });
             }
 
             if ($search) {
                 $query->where(function ($searchQuery) use ($search) {
                     $searchQuery->where('product_name', 'like', "%{$search}%")
                         ->orWhere('description', 'like', "%{$search}%")
-                        ->orWhereHas('unit', function ($uq) use ($search) {
+                        ->orWhereHas('units', function ($uq) use ($search) {
                             $uq->where('name', 'like', "%{$search}%");
                         })
-                        ->orWhereHas('sub_unit', function ($uq) use ($search) {
+                        ->orWhereHas('subUnits', function ($uq) use ($search) {
                             $uq->where('name', 'like', "%{$search}%");
                         })
                         ->orWhereHas('categories', function ($cq) use ($search) {
@@ -1284,7 +1308,9 @@ class ProductController extends Controller
 
             // Exact filters by IDs
             if (count($subunitIds) > 0) {
-                $query->whereIn('sub_unit_id', $subunitIds);
+                $query->whereHas('subUnits', function ($q) use ($subUnitTable, $subunitIds) {
+                    $q->whereIn("{$subUnitTable}.id", $subunitIds);
+                });
             }
 
             if (count($tagIds) > 0) {
@@ -1323,8 +1349,8 @@ class ProductController extends Controller
         $data = Product::with([
             'product_group',
             'stocks',
-            'unit',
-            'sub_unit',
+            'units',
+            'subUnits',
             'categories.sub_unit',
             'subcategories',
             'divisions',
@@ -1352,8 +1378,8 @@ class ProductController extends Controller
         $data = Product::with([
             'product_group',
             'stocks',
-            'unit',
-            'sub_unit',
+            'units',
+            'subUnits',
             'categories.sub_unit',
             'subcategories',
             'divisions',
@@ -1380,8 +1406,8 @@ class ProductController extends Controller
 
         $product = Product::with([
             'stocks',
-            'unit',
-            'sub_unit',
+            'units',
+            'subUnits',
             'categories',
             'subcategories',
             'divisions',
@@ -1413,8 +1439,8 @@ class ProductController extends Controller
 
         $product = Product::with([
             'stocks',
-            'unit',
-            'sub_unit',
+            'units',
+            'subUnits',
             'categories',
             'subcategories',
             'divisions',
@@ -1480,16 +1506,19 @@ class ProductController extends Controller
         $subUnitLimit = max(1, min($limit, 6));
         $unitLimit = max(1, min($limit, 4));
         $tagLimit = max(1, min($limit, 6));
+        $unitTable = (new Unit())->getTable();
 
         $products = Product::query()
-            ->select('id', 'product_name', 'sub_unit_id', 'unit_id')
+            ->select('id', 'product_name')
             ->with([
-                'unit:id,name',
-                'sub_unit:id,name,unit_id',
+                'units:id,name',
+                'subUnits:id,name,unit_id',
                 'tags:id,name',
             ])
-            ->when($unitId, function ($q) use ($unitId) {
-                $q->where('unit_id', $unitId);
+            ->when($unitId, function ($q) use ($unitId, $unitTable) {
+                $q->whereHas('units', function ($uq) use ($unitId, $unitTable) {
+                    $uq->where("{$unitTable}.id", $unitId);
+                });
             })
             ->when($search, function ($q) use ($search) {
                 $q->where('product_name', 'like', "%{$search}%");
@@ -1502,14 +1531,18 @@ class ProductController extends Controller
                     'id' => $product->id,
                     'name' => $product->product_name,
                     'type' => 'product',
-                    'unit' => $product->unit ? [
-                        'id' => $product->unit->id,
-                        'name' => $product->unit->name,
-                    ] : null,
-                    'sub_unit' => $product->sub_unit ? [
-                        'id' => $product->sub_unit->id,
-                        'name' => $product->sub_unit->name,
-                    ] : null,
+                    'units' => $product->units->map(function ($unit) {
+                        return [
+                            'id' => $unit->id,
+                            'name' => $unit->name,
+                        ];
+                    })->values(),
+                    'sub_units' => $product->subUnits->map(function ($subUnit) {
+                        return [
+                            'id' => $subUnit->id,
+                            'name' => $subUnit->name,
+                        ];
+                    })->values(),
                     'tags' => $product->tags->map(function ($tag) {
                         return [
                             'id' => $tag->id,
@@ -1781,12 +1814,6 @@ class ProductController extends Controller
             $unit->usd_price   = $request->usd_price;
             $unit->discount    = $request->discount;
             $unit->save();
-
-            Product::where('unit_id', $unit->id)->update([
-                'product_price'      => $request->price,
-                'product_usd_price'  => $request->usd_price,
-                'product_discount'   => $request->discount,
-            ]);
 
             DB::commit();
             return redirect()->back()->with('success', 'Successfully update unit.');

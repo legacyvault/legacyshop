@@ -11,9 +11,9 @@ interface FormData {
     description: string;
     price: string;
     product_discount: string;
-    unit: string;
+    units: string[];
     product_usd_price: string;
-    subunit: string;
+    subunits: string[];
     category: string[];
     subcategory: string[];
     division: string[];
@@ -37,8 +37,8 @@ interface FormErrors {
     description?: string;
     price?: string;
     product_discount?: string;
-    unit?: string;
-    subunit?: string;
+    units?: string;
+    subunits?: string;
     category?: string;
     subcategory?: string;
     division?: string;
@@ -284,8 +284,8 @@ export default function AddProduct() {
         description: '',
         price: '',
         product_discount: '',
-        unit: '',
-        subunit: '',
+        units: [],
+        subunits: [],
         category: [],
         subcategory: [],
         division: [],
@@ -356,8 +356,10 @@ export default function AddProduct() {
 
     const selectedUnit = useMemo(() => {
         const unitList = (units as IUnit[] | undefined) || [];
-        return unitList.find((u) => u.id === formData.unit);
-    }, [units, formData.unit]);
+        const primaryUnitId = formData.units[0];
+        if (!primaryUnitId) return undefined;
+        return unitList.find((u) => u.id === primaryUnitId);
+    }, [units, formData.units]);
 
     const selectedUnitPrice = useMemo(() => Number(selectedUnit?.price ?? 0), [selectedUnit]);
     const selectedUnitUsdPrice = useMemo(() => Number(selectedUnit?.usd_price ?? 0), [selectedUnit]);
@@ -365,18 +367,18 @@ export default function AddProduct() {
 
     // Filtered options based on hierarchy selections
     const subunitOptions = useMemo(() => {
-        const unitId = formData.unit;
-        if (!unitId) return [] as { value: string; label: string }[];
+        if (formData.units.length === 0) return [] as { value: string; label: string }[];
+        const allowedUnits = new Set(formData.units);
         const subunit = (subunits as ISubUnits[] | undefined) || [];
-        return toOptions(subunit.filter((c) => c.unit_id === unitId));
-    }, [subunits, formData.unit]);
+        return toOptions(subunit.filter((c) => allowedUnits.has(c.unit_id)));
+    }, [subunits, formData.units]);
 
     const categoryOptions = useMemo(() => {
-        const subunitId = formData.subunit;
-        if (!subunitId) return [] as { value: string; label: string }[];
+        if (formData.subunits.length === 0) return [] as { value: string; label: string }[];
+        const allowedSubunits = new Set(formData.subunits);
         const cats = (categories as ICategories[] | undefined) || [];
-        return toOptions(cats.filter((c) => c.sub_unit_id === subunitId));
-    }, [categories, formData.subunit]);
+        return toOptions(cats.filter((c) => allowedSubunits.has(c.sub_unit_id)));
+    }, [categories, formData.subunits]);
 
     const subcategoryOptions = useMemo(() => {
         if (formData.category.length === 0) return [] as { value: string; label: string }[];
@@ -401,10 +403,11 @@ export default function AddProduct() {
 
     // Reset children selections when parent changes
     useEffect(() => {
-        // When unit changes, clear categories and below
+        // When units change, clear subunits and deeper selections
         if (isInitializing) return;
         setFormData((prev) => ({
             ...prev,
+            subunits: [],
             category: [],
             subcategory: [],
             division: [],
@@ -414,12 +417,12 @@ export default function AddProduct() {
             variantDiscounts: {},
         }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [formData.unit]);
+    }, [formData.units.join(',')]);
 
     useEffect(() => {
         if (isInitializing) return;
 
-        if (!formData.unit) {
+        if (formData.units.length === 0 || !selectedUnit) {
             setFormData((prev) => ({
                 ...prev,
                 price: '',
@@ -442,7 +445,7 @@ export default function AddProduct() {
             product_discount: String(selectedUnitDiscount ?? ''),
         }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [formData.unit, selectedUnitPrice, selectedUnitUsdPrice, selectedUnitDiscount]);
+    }, [formData.units.join(','), selectedUnit, selectedUnitPrice, selectedUnitUsdPrice, selectedUnitDiscount]);
 
     useEffect(() => {
         // When categories change, clear subcategory and below
@@ -834,7 +837,8 @@ export default function AddProduct() {
         const newErrors: FormErrors = {};
 
         if (!formData.name.trim()) newErrors.name = 'Product name is required';
-        if (!formData.unit) newErrors.unit = 'Unit is required';
+        if (formData.units.length === 0) newErrors.units = 'Collection is required';
+        if (formData.subunits.length === 0) newErrors.subunits = 'Category is required';
         if (!formData.use_unit_price && !formData.price) newErrors.price = 'Price is required';
         if (!formData.use_unit_usd_price && !formData.product_usd_price) newErrors.product_usd_price = 'USD price is required';
         if (!formData.use_unit_discount && formData.product_discount === '') newErrors.product_discount = 'Discount is required';
@@ -851,8 +855,8 @@ export default function AddProduct() {
         fd.append('product_price', String(effectiveProductPrice));
         fd.append('product_discount', String(effectiveProductDiscount));
         fd.append('description', formData.description);
-        fd.append('unit_id', formData.unit);
-        fd.append('sub_unit_id', formData.subunit);
+        formData.units.forEach((id) => fd.append('unit_id[]', id));
+        formData.subunits.forEach((id) => fd.append('sub_unit_id[]', id));
         fd.append('use_unit_price', formData.use_unit_price ? '1' : '0');
         fd.append('use_unit_usd_price', formData.use_unit_usd_price ? '1' : '0');
         fd.append('use_unit_discount', formData.use_unit_discount ? '1' : '0');
@@ -918,7 +922,8 @@ export default function AddProduct() {
                 if ((err as any).product_usd_price) mapped.product_usd_price = (err as any).product_usd_price as string;
                 if ((err as any).product_discount) mapped.product_discount = (err as any).product_discount as string;
                 if ((err as any).description) mapped.description = (err as any).description as string;
-                if ((err as any).unit_id) mapped.unit = (err as any).unit_id as string;
+                if ((err as any).unit_id) mapped.units = (err as any).unit_id as string;
+                if ((err as any).sub_unit_id) mapped.subunits = (err as any).sub_unit_id as string;
                 if ((err as any).categories) mapped.category = (err as any).categories as string;
                 if ((err as any).tag_id) mapped.tags = (err as any).tag_id as string;
                 if ((err as any).product_weight) mapped.product_weight = (err as any).product_weight as string;
@@ -1132,14 +1137,14 @@ export default function AddProduct() {
                 {/* Unit Field */}
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Collection *</label>
-                    <select
-                        value={formData.unit}
-                        onChange={(e) => {
-                            const val = e.target.value;
+                    <MultiSelect
+                        options={toOptions(units as IUnit[])}
+                        values={formData.units}
+                        onChange={(values) =>
                             setFormData((prev) => ({
                                 ...prev,
-                                unit: val,
-                                subunit: '',
+                                units: values,
+                                subunits: [],
                                 category: [],
                                 subcategory: [],
                                 division: [],
@@ -1147,25 +1152,16 @@ export default function AddProduct() {
                                 subcategoryDiscounts: {},
                                 divisionDiscounts: {},
                                 variantDiscounts: {},
-                            }));
-                        }}
-                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.unit ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                    >
-                        <option value={''}>Select Collection</option>
-                        {units.length > 0 &&
-                            units.map((unit) => (
-                                <option key={unit.id} value={unit.id}>
-                                    {unit.name}
-                                </option>
-                            ))}
-                    </select>
-                    {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit}</p>}
+                            }))
+                        }
+                        placeholder="Select collections"
+                        error={errors.units}
+                    />
+                    {errors.units && <p className="mt-1 text-sm text-red-500">{errors.units}</p>}
                 </div>
 
                 {/*  */}
-                {formData.unit && (
+                {formData.units.length > 0 && (
                     <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
                         <div className="mb-3">
                             <label className="text-sm font-medium">Product Pricing</label>
@@ -1364,13 +1360,13 @@ export default function AddProduct() {
                 {/* Sub Unit Multi-Select */}
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Category *</label>
-                    <select
-                        value={formData.subunit}
-                        onChange={(e) => {
-                            const val = e.target.value;
+                    <MultiSelect
+                        options={subunitOptions}
+                        values={formData.subunits}
+                        onChange={(values) =>
                             setFormData((prev) => ({
                                 ...prev,
-                                subunit: val,
+                                subunits: values,
                                 category: [],
                                 subcategory: [],
                                 division: [],
@@ -1378,35 +1374,26 @@ export default function AddProduct() {
                                 subcategoryDiscounts: {},
                                 divisionDiscounts: {},
                                 variantDiscounts: {},
-                            }));
-                        }}
-                        disabled={!formData.unit}
-                        className={`focus:border-border-primary focus:ring-border-primary w-full rounded-md border px-3 py-2 shadow-sm focus:ring-2 focus:outline-none ${
-                            errors.subunit ? 'border-red-500' : 'border-gray-300'
-                        } ${!formData.unit ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'} `}
-                    >
-                        <option value={''}>{!formData.unit ? 'Select collection first' : 'Select category'}</option>
-                        {subunitOptions.length > 0 &&
-                            subunitOptions.map((subu) => (
-                                <option key={subu.value} value={subu.value}>
-                                    {subu.label}
-                                </option>
-                            ))}
-                    </select>
-                    {errors.subunit && <p className="mt-1 text-sm text-red-500">{errors.subunit}</p>}
+                            }))
+                        }
+                        placeholder={formData.units.length === 0 ? 'Select collection first' : 'Select category'}
+                        error={errors.subunits}
+                        disabled={formData.units.length === 0}
+                    />
+                    {errors.subunits && <p className="mt-1 text-sm text-red-500">{errors.subunits}</p>}
                 </div>
 
                 {/* Category Multi-Select */}
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Variant *</label>
-                    <MultiSelect
-                        options={categoryOptions}
-                        values={formData.category}
-                        onChange={(values) => setFormData((prev) => ({ ...prev, category: values }))}
-                        placeholder={formData.subunit ? 'Select variants' : 'Select category first'}
-                        error={errors.category}
-                        disabled={!formData.subunit}
-                    />
+                <MultiSelect
+                    options={categoryOptions}
+                    values={formData.category}
+                    onChange={(values) => setFormData((prev) => ({ ...prev, category: values }))}
+                    placeholder={formData.subunits.length ? 'Select variants' : 'Select category first'}
+                    error={errors.category}
+                    disabled={formData.subunits.length === 0}
+                />
                     {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
                 </div>
 
@@ -1811,9 +1798,10 @@ export function usePrefillProduct(
             };
         });
 
-        const unitPrice = Number(selectedProd.unit?.price ?? NaN);
-        const unitUsdPrice = Number(selectedProd.unit?.usd_price ?? NaN);
-        const unitDiscount = Number(selectedProd.unit?.discount ?? NaN);
+        const primaryUnit = (selectedProd.units || [])[0];
+        const unitPrice = Number(primaryUnit?.price ?? NaN);
+        const unitUsdPrice = Number(primaryUnit?.usd_price ?? NaN);
+        const unitDiscount = Number(primaryUnit?.discount ?? NaN);
 
         const useUnitPrice = !Number.isNaN(unitPrice) && Number(selectedProd.product_price ?? 0) === unitPrice;
         const useUnitUsdPrice = !Number.isNaN(unitUsdPrice) && Number(selectedProd.product_usd_price ?? 0) === unitUsdPrice;
@@ -1826,8 +1814,8 @@ export function usePrefillProduct(
             description: selectedProd.description || '',
             price: String(selectedProd.product_price ?? ''),
             product_discount: String(selectedProd.product_discount ?? ''),
-            unit: selectedProd.unit_id || '',
-            subunit: selectedProd.sub_unit_id || '',
+            units: (selectedProd.units || []).map((u) => u.id),
+            subunits: (selectedProd.sub_units || []).map((s) => s.id),
             category: (selectedProd.categories || []).map((c) => c.id),
             subcategory: (selectedProd.subcategories || []).map((s) => s.id),
             division: (selectedProd.divisions || []).map((d) => d.id),
