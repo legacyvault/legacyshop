@@ -41,7 +41,9 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
 
             {/* Meta */}
             <div className="mt-4 space-y-2">
-                <div className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">{product.unit.name}</div>
+                <div className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">
+                    {product.units.map((un, i) => `${un.name}${i + 1 === product.units.length ? '' : ', '}`)}
+                </div>
                 <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-foreground">{product.product_name}</h3>
 
                 <div className="flex items-baseline gap-2">

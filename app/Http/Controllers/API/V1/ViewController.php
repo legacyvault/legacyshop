@@ -547,11 +547,16 @@ class ViewController extends Controller
         ]);
     }
 
-    public function groupProductPage(){
-        return Inertia::render('products/product/group');
+    public function groupProductPage(Request $request){
+        $productGroupsPaginated = $this->productController->getProductGroupsPaginated($request);
+
+        return Inertia::render('products/product/group', [
+            'productGroupsPaginated' => $productGroupsPaginated,
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page'),
+        ]);
     }
 
-    public function groupProductFormPage()
+    public function groupProductFormPage($id = null)
     {
         $units = $this->productController->getAllUnit();
         $subunits = $this->productController->getAllSubUnit();
@@ -561,14 +566,39 @@ class ViewController extends Controller
         $variants = $this->variantController->getAllVariant();
         $tags = $this->productController->getAllTags();
 
+        $productGroup = null;
+
+        if ($id) {
+            $productGroup = $this->productController->getProductGroupById($id, true);
+
+            if (!$productGroup) {
+                abort(404);
+            }
+        }
+
         return Inertia::render('products/product/group-form', [
+            'id' => $id,
             'units' => $units,
             'subunits' => $subunits,
             'categories' => $categories,
             'subcats' => $subcats,
             'divisions' => $divisions,
             'variants' => $variants,
-            'tags' => $tags
+            'tags' => $tags,
+            'productGroup' => $productGroup,
+        ]);
+    }
+
+    public function groupProductViewPage($id)
+    {
+        $productGroup = $this->productController->getProductGroupById($id, true);
+
+        if (!$productGroup) {
+            abort(404);
+        }
+
+        return Inertia::render('products/product/view-group', [
+            'productGroup' => $productGroup,
         ]);
     }
 }

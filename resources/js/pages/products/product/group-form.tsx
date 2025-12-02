@@ -3,10 +3,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, ICategories, IDivisions, ISubUnits, ISubcats, ITags, IUnit, IVariants, SharedData } from '@/types';
+import {
+    BreadcrumbItem,
+    ICategories,
+    IDivisions,
+    IProductGroup,
+    ISubUnits,
+    ISubcats,
+    ITags,
+    IUnit,
+    IVariants,
+    SharedData,
+} from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Bold, ChevronDown, Italic, Layers, ListPlus, Plus, RefreshCw, Search, Trash2, Underline, Upload, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type HierarchySelection = {
     unitIds: string[];
@@ -20,9 +31,12 @@ type HierarchySelection = {
 
 type BulkProductRow = {
     id: string;
+    productId?: string;
     name: string;
     images: File[];
     previews: string[];
+    existingPictures?: { id: string; url: string }[];
+    removePictureIds?: string[];
     description: string;
     weight: string;
 };
@@ -167,7 +181,10 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
 const toOptions = (items: { id: string; name: string }[] | undefined) => (items || []).map((i) => ({ value: i.id, label: i.name }));
 
 export default function GroupProductForm() {
-    const shared = usePage<SharedData>().props as Partial<SharedData>;
+    const shared = usePage<SharedData>().props as Partial<SharedData> & { productGroup?: IProductGroup; id?: string };
+    const productGroup = shared.productGroup;
+    const groupId = (shared.id as string | undefined) ?? productGroup?.id;
+    const isEditMode = Boolean(productGroup);
 
     const units = (shared.units as IUnit[] | undefined) ?? [];
     const subunits = (shared.subunits as ISubUnits[] | undefined) ?? [];
@@ -183,8 +200,8 @@ export default function GroupProductForm() {
             href: '/products/product/group',
         },
         {
-            title: 'Create group',
-            href: '/products/product/group/create',
+            title: isEditMode ? 'Edit group' : 'Create group',
+            href: isEditMode && groupId ? `/products/product/group/edit/${groupId}` : '/products/product/group/create',
         },
     ];
 
@@ -204,7 +221,9 @@ export default function GroupProductForm() {
     });
 
     const [bulkNames, setBulkNames] = useState('');
-    const [bulkRows, setBulkRows] = useState<BulkProductRow[]>([{ id: randomId(), name: '', images: [], previews: [], description: '', weight: '' }]);
+    const [bulkRows, setBulkRows] = useState<BulkProductRow[]>([
+        { id: randomId(), name: '', images: [], previews: [], description: '', weight: '', existingPictures: [], removePictureIds: [] },
+    ]);
     const [bulkWeight, setBulkWeight] = useState('');
     const [rowErrors, setRowErrors] = useState<Record<string, RowError>>({});
     const [formErrors, setFormErrors] = useState<{
@@ -232,6 +251,7 @@ export default function GroupProductForm() {
     const [subcategoryDiscounts, setSubcategoryDiscounts] = useState<Record<string, DiscountEntry>>({});
     const [divisionDiscounts, setDivisionDiscounts] = useState<Record<string, DiscountEntry>>({});
     const [variantDiscounts, setVariantDiscounts] = useState<Record<string, DiscountEntry>>({});
+    const [removedProductIds, setRemovedProductIds] = useState<string[]>([]);
 
     const unitOptions = useMemo(() => toOptions(units), [units]);
     const subunitOptions = useMemo(
@@ -305,6 +325,54 @@ export default function GroupProductForm() {
         return m;
     }, [variants]);
 
+    const hydrateDiscountsFromProducts = useCallback(
+        (products: IProductGroup['products']) => {
+            const nextSubcats: Record<string, DiscountEntry> = {};
+            const nextDivisions: Record<string, DiscountEntry> = {};
+            const nextVariants: Record<string, DiscountEntry> = {};
+
+            products.forEach((product) => {
+            product.subcategories?.forEach((subcat) => {
+                if (nextSubcats[subcat.id]) return;
+                const pivot: any = (subcat as any).pivot ?? {};
+                const useDefault = pivot?.use_subcategory_discount !== 0 && pivot?.use_subcategory_discount !== false;
+                nextSubcats[subcat.id] = {
+                    source: useDefault ? subcat.id : 'manual',
+                    value: useDefault ? '' : String(pivot?.manual_discount ?? ''),
+                    base_price: subcatPriceById[subcat.id] ?? 0,
+                };
+            });
+
+            product.divisions?.forEach((division) => {
+                if (nextDivisions[division.id]) return;
+                const pivot: any = (division as any).pivot ?? {};
+                const useDefault = pivot?.use_division_discount !== 0 && pivot?.use_division_discount !== false;
+                nextDivisions[division.id] = {
+                    source: useDefault ? division.id : 'manual',
+                    value: useDefault ? '' : String(pivot?.manual_discount ?? ''),
+                    base_price: divisionPriceById[division.id] ?? 0,
+                };
+            });
+
+            product.variants?.forEach((variant) => {
+                if (nextVariants[variant.id]) return;
+                const pivot: any = (variant as any).pivot ?? {};
+                const useDefault = pivot?.use_variant_discount !== 0 && pivot?.use_variant_discount !== false;
+                nextVariants[variant.id] = {
+                    source: useDefault ? variant.id : 'manual',
+                    value: useDefault ? '' : String(pivot?.manual_discount ?? ''),
+                    base_price: variantPriceById[variant.id] ?? 0,
+                };
+            });
+            });
+
+            setSubcategoryDiscounts(nextSubcats);
+            setDivisionDiscounts(nextDivisions);
+            setVariantDiscounts(nextVariants);
+        },
+        [divisionPriceById, subcatPriceById, variantPriceById],
+    );
+
     const selectedUnits = useMemo(() => units.filter((u) => hierarchy.unitIds.includes(u.id)), [units, hierarchy.unitIds]);
     const selectedUnit = useMemo(() => {
         if (!selectedUnits.length) return null;
@@ -337,6 +405,64 @@ export default function GroupProductForm() {
         }, selectedUnits[0]);
         setDefaultUnitId(fallback.id);
     }, [defaultUnitId, selectedUnits]);
+
+    useEffect(() => {
+        if (!productGroup) return;
+
+        const products = productGroup.products ?? [];
+        const unique = (values: (string | null | undefined)[]) =>
+            Array.from(new Set(values.filter((v): v is string => Boolean(v))));
+
+        setGroupMeta({ name: productGroup.name ?? '', notes: '' });
+
+        const nextHierarchy: HierarchySelection = {
+            unitIds: unique(products.flatMap((p) => p.units?.map((u) => u.id))),
+            subunitIds: unique(products.flatMap((p) => p.sub_units?.map((s) => s.id))),
+            categoryIds: unique(products.flatMap((p) => p.categories?.map((c) => c.id))),
+            subcategoryIds: unique(products.flatMap((p) => p.subcategories?.map((s) => s.id))),
+            divisionIds: unique(products.flatMap((p) => p.divisions?.map((d) => d.id))),
+            variantIds: unique(products.flatMap((p) => p.variants?.map((v) => v.id))),
+            tagIds: unique(products.flatMap((p) => p.tags?.map((t) => t.id))),
+        };
+
+        setHierarchy(nextHierarchy);
+        if (nextHierarchy.unitIds.length) {
+            setDefaultUnitId((prev) => prev ?? nextHierarchy.unitIds[0]);
+        }
+
+        const nextRows: BulkProductRow[] = products.map((p) => ({
+            id: p.id || randomId(),
+            productId: p.id,
+            name: p.product_name || '',
+            images: [],
+            previews: [],
+            existingPictures: (p.pictures || []).map((pic) => ({ id: pic.id, url: pic.url })),
+            removePictureIds: [],
+            description: p.description || '',
+            weight: p.product_weight !== null && p.product_weight !== undefined ? String(p.product_weight) : '',
+        }));
+
+        setBulkRows(
+            nextRows.length
+                ? nextRows
+                : [
+                      {
+                          id: randomId(),
+                          name: '',
+                          images: [],
+                          previews: [],
+                          existingPictures: [],
+                          removePictureIds: [],
+                          description: '',
+                          weight: '',
+                      },
+                  ],
+        );
+
+        hydrateDiscountsFromProducts(products);
+        setRowErrors({});
+        setRemovedProductIds([]);
+    }, [productGroup, hydrateDiscountsFromProducts]);
 
     useEffect(
         () => () => {
@@ -568,14 +694,16 @@ export default function GroupProductForm() {
             prev.map((row) => {
                 if (row.id !== id) return row;
 
+                const existingCount = row.existingPictures?.length ?? 0;
                 const currentCount = row.images.length;
-                const totalImages = currentCount + files.length;
+                const totalImages = currentCount + files.length + existingCount;
                 if (totalImages > 5) {
+                    const remaining = Math.max(0, 5 - (currentCount + existingCount));
                     setRowErrors((errs) => ({
                         ...errs,
                         [id]: {
                             ...errs[id],
-                            images: `Maximum 5 images allowed. You can add only ${Math.max(0, 5 - currentCount)} more image(s).`,
+                            images: `Maximum 5 images allowed. You can add only ${remaining} more image(s).`,
                         },
                     }));
                     return row;
@@ -635,6 +763,20 @@ export default function GroupProductForm() {
                     [rowId]: { ...errs[rowId], images: undefined },
                 }));
                 return { ...row, images: nextImages, previews: nextPreviews };
+            }),
+        );
+    };
+
+    const handleRemoveExistingPicture = (rowId: string, pictureId: string) => {
+        setBulkRows((prev) =>
+            prev.map((row) => {
+                if (row.id !== rowId) return row;
+                const nextRemove = Array.from(new Set([...(row.removePictureIds ?? []), pictureId]));
+                return {
+                    ...row,
+                    existingPictures: row.existingPictures?.filter((pic) => pic.id !== pictureId) ?? [],
+                    removePictureIds: nextRemove,
+                };
             }),
         );
     };
@@ -774,18 +916,27 @@ export default function GroupProductForm() {
         });
 
         bulkRows.forEach((row, i) => {
+            if (row.productId) {
+                fd.append(`products[${i}][id]`, row.productId);
+            }
             fd.append(`products[${i}][product_name]`, row.name);
             fd.append(`products[${i}][weight]`, row.weight || '0');
             fd.append(`products[${i}][description]`, row.description);
+            row.removePictureIds?.forEach((picId) => fd.append(`products[${i}][remove_picture_ids][]`, picId));
             row.images.forEach((file, j) => fd.append(`products[${i}][pictures][${j}]`, file));
         });
+
+        removedProductIds.forEach((id) => fd.append('remove_product_ids[]', id));
 
         setRowErrors({});
         setFormErrors({});
 
         setIsSubmitting(true);
 
-        router.post(route('product.add-product-group'), fd, {
+        const targetRoute =
+            isEditMode && groupId ? route('product.edit-product-group', groupId) : route('product.add-product-group');
+
+        router.post(targetRoute, fd, {
             forceFormData: true,
             onError: (errors) => {
                 const mappedFormErrors: typeof formErrors = {};
@@ -842,20 +993,44 @@ export default function GroupProductForm() {
 
         setBulkRows((prev) => [
             ...prev,
-            ...names.map((name) => ({ id: randomId(), name, images: [], previews: [], description: '', weight: bulkWeight })),
+            ...names.map((name) => ({
+                id: randomId(),
+                name,
+                images: [],
+                previews: [],
+                existingPictures: [],
+                removePictureIds: [],
+                description: '',
+                weight: bulkWeight,
+            })),
         ]);
         setBulkNames('');
         setRowErrors({});
     };
 
     const addEmptyRow = () =>
-        setBulkRows((prev) => [...prev, { id: randomId(), name: '', images: [], previews: [], description: '', weight: bulkWeight }]);
+        setBulkRows((prev) => [
+            ...prev,
+            {
+                id: randomId(),
+                name: '',
+                images: [],
+                previews: [],
+                existingPictures: [],
+                removePictureIds: [],
+                description: '',
+                weight: bulkWeight,
+            },
+        ]);
 
     const removeRow = (id: string) => {
         setBulkRows((prev) => {
             if (prev.length === 1) return prev;
             const target = prev.find((row) => row.id === id);
             target?.previews.forEach((url) => URL.revokeObjectURL(url));
+            if (target?.productId) {
+                setRemovedProductIds((current) => (current.includes(target.productId!) ? current : [...current, target.productId!]));
+            }
             return prev.filter((row) => row.id !== id);
         });
         setRowErrors((errs) => {
@@ -868,7 +1043,7 @@ export default function GroupProductForm() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Products - Group Builder" />
+            <Head title={isEditMode ? 'Products - Edit Group' : 'Products - Group Builder'} />
 
             <div className="space-y-6 p-6">
                 <div className="flex flex-col gap-2">
@@ -878,7 +1053,9 @@ export default function GroupProductForm() {
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <h1 className="text-2xl font-semibold">Create a product group</h1>
+                            <h1 className="text-2xl font-semibold">
+                                {isEditMode ? 'Edit product group' : 'Create a product group'}
+                            </h1>
                         </div>
                         <Button variant="outline" asChild>
                             <Link href="/products/product/group">Back to groups</Link>
@@ -1398,17 +1575,44 @@ export default function GroupProductForm() {
                                                     {rowErrors[row.id]?.weight && <p className="text-xs text-red-500">{rowErrors[row.id]?.weight}</p>}
                                                 </div>
 
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <Label htmlFor={`file-${row.id}`}>Product images (max 5)</Label>
-                                                        <span className="text-xs text-muted-foreground">{row.images.length} / 5</span>
-                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <Label htmlFor={`file-${row.id}`}>Product images (max 5)</Label>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {row.images.length + (row.existingPictures?.length ?? 0)} / 5
+                                                            </span>
+                                                        </div>
 
-                                                    {row.previews.length > 0 && (
-                                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                                            {row.previews.map((preview, index) => (
-                                                                <div key={preview} className="relative">
-                                                                    <img
+                                                        {row.existingPictures && row.existingPictures.length > 0 && (
+                                                            <div className="space-y-2">
+                                                                <p className="text-xs font-medium text-muted-foreground">Current pictures</p>
+                                                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                                                    {row.existingPictures.map((pic) => (
+                                                                        <div key={pic.id} className="relative">
+                                                                            <img
+                                                                                src={pic.url}
+                                                                                alt={row.name || 'Existing product image'}
+                                                                                className="h-24 w-full rounded-md border object-cover"
+                                                                            />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleRemoveExistingPicture(row.id, pic.id)}
+                                                                                className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow hover:bg-red-600"
+                                                                                aria-label="Remove existing image"
+                                                                            >
+                                                                                <X size={12} />
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {row.previews.length > 0 && (
+                                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                                                {row.previews.map((preview, index) => (
+                                                                    <div key={preview} className="relative">
+                                                                        <img
                                                                         src={preview}
                                                                         alt={row.images[index]?.name || `Preview ${index + 1}`}
                                                                         className="h-24 w-full rounded-md border object-cover"
@@ -1429,11 +1633,13 @@ export default function GroupProductForm() {
                                                         </div>
                                                     )}
 
-                                                    {row.images.length < 5 && (
+                                                    {row.images.length + (row.existingPictures?.length ?? 0) < 5 && (
                                                         <label className="flex h-28 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
                                                             <Upload className="h-6 w-6 text-gray-400" />
                                                             <p className="mt-1 text-xs text-muted-foreground">Upload images</p>
-                                                            <p className="text-[11px] text-muted-foreground">{5 - row.images.length} remaining</p>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                {5 - row.images.length - (row.existingPictures?.length ?? 0)} remaining
+                                                            </p>
                                                             <input
                                                                 id={`file-${row.id}`}
                                                                 type="file"
@@ -1540,7 +1746,7 @@ export default function GroupProductForm() {
                     <div className="space-y-6">
                         <div className="flex flex-col gap-2">
                             <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
-                                {isSubmitting ? 'Saving…' : 'Save group'}
+                                {isSubmitting ? 'Saving…' : isEditMode ? 'Update group' : 'Save group'}
                             </Button>
                             {formErrors.products && <p className="text-sm text-red-500">{formErrors.products}</p>}
                         </div>

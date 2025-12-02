@@ -2,55 +2,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { BreadcrumbItem, IProductGroup, IRootProductGroups, SharedData } from '@/types';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-
-type ProductGroup = {
-    id: string;
-    name: string;
-    hierarchy: string[];
-    items: number;
-    weight: string;
-    weightUnit: string;
-    updatedAt: string;
-    cover?: string;
-    createdBy?: string;
-};
-
-const mockGroups: ProductGroup[] = [
-    {
-        id: 'grp-001',
-        name: 'Starter pack / 500ml',
-        hierarchy: ['Collection A', 'Sub collection 1', 'Category: Drinks', 'Subcat: Ready to serve', 'Option: Cold', 'Variant: Mint'],
-        items: 6,
-        weight: '500',
-        weightUnit: 'gram',
-        updatedAt: '2024-06-08T08:00:00Z',
-        createdBy: 'Ann',
-    },
-    {
-        id: 'grp-002',
-        name: 'Travel minis',
-        hierarchy: ['Collection A', 'Sub collection 2', 'Category: Accessories', 'Subcat: Travel'],
-        items: 4,
-        weight: '320',
-        weightUnit: 'gram',
-        updatedAt: '2024-06-05T12:00:00Z',
-        createdBy: 'Irfan',
-    },
-    {
-        id: 'grp-003',
-        name: 'Family size box',
-        hierarchy: ['Collection B', 'Sub collection Kitchen', 'Category: Dry goods'],
-        items: 8,
-        weight: '2.5',
-        weightUnit: 'kilogram',
-        updatedAt: '2024-05-28T10:00:00Z',
-        createdBy: 'Nadia',
-    },
-];
 
 const formatDate = (value: string) =>
     new Intl.DateTimeFormat('en', {
@@ -59,25 +14,37 @@ const formatDate = (value: string) =>
         year: 'numeric',
     }).format(new Date(value));
 
+const getHierarchy = (group: IProductGroup): string[] => {
+    const names = new Set<string>();
+
+    group.products?.forEach((product) => {
+        product.units?.forEach((unit) => names.add(unit.name));
+        product.sub_units?.forEach((sub) => names.add(sub.name));
+        product.categories?.forEach((cat) => names.add(cat.name));
+        product.subcategories?.forEach((subcat) => names.add(subcat.name));
+        product.divisions?.forEach((division) => names.add(division.name));
+        product.variants?.forEach((variant) => names.add(variant.name));
+    });
+
+    return Array.from(names);
+};
+
+const getWeightLabel = (group: IProductGroup) => {
+    const product = group.products?.[0];
+    if (!product || product.product_weight === null || product.product_weight === undefined) return '—';
+    return `${product.product_weight} gram`;
+};
+
+const getProductCount = (group: IProductGroup) => group.products_count ?? group.products?.length ?? 0;
+
 export default function GroupProductList() {
-    const { productGroups } = usePage<SharedData>().props as SharedData & { productGroups?: ProductGroup[] };
+    const { productGroupsPaginated, filters } = usePage<SharedData>().props as SharedData & {
+        productGroupsPaginated?: IRootProductGroups;
+        filters?: Record<string, any>;
+    };
 
-    const [query, setQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
-
-    const groups = useMemo(() => (productGroups?.length ? productGroups : mockGroups), [productGroups]);
-
-    const filteredGroups = useMemo(
-        () =>
-            groups.filter((group) => {
-                const matchesSearch =
-                    query.trim().length === 0 ||
-                    group.name.toLowerCase().includes(query.toLowerCase()) ||
-                    group.hierarchy.some((h) => h.toLowerCase().includes(query.toLowerCase()));
-                return matchesSearch;
-            }),
-        [groups, query, statusFilter],
-    );
+    const [query, setQuery] = useState<string>((filters as any)?.q ?? '');
+    const groups = useMemo(() => productGroupsPaginated?.data ?? [], [productGroupsPaginated]);
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -86,7 +53,29 @@ export default function GroupProductList() {
         },
     ];
 
-    const renderHierarchy = (hierarchy: string[]) => hierarchy.join(' • ');
+    const handleSearch = (value: string) => {
+        setQuery(value);
+        router.get(
+            '/products/product/group',
+            { ...(filters || {}), q: value, page: 1 },
+            { preserveState: true, replace: true },
+        );
+    };
+
+    const goToPage = (page: number) => {
+        router.get(
+            '/products/product/group',
+            { ...(filters || {}), q: query, page },
+            { preserveState: true, replace: true },
+        );
+    };
+
+    const paginationSummary = useMemo(() => {
+        if (!productGroupsPaginated?.total) return 'No groups available';
+        return `Showing ${productGroupsPaginated.from ?? 0}-${productGroupsPaginated.to ?? 0} of ${
+            productGroupsPaginated.total
+        }`;
+    }, [productGroupsPaginated]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -96,6 +85,7 @@ export default function GroupProductList() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
                         <h1 className="text-2xl font-semibold">Product groups</h1>
+                        <p className="text-sm text-muted-foreground">{paginationSummary}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <Button asChild>
@@ -117,7 +107,7 @@ export default function GroupProductList() {
                                     placeholder="Search group or hierarchy..."
                                     className="pl-9"
                                     value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
+                                    onChange={(e) => handleSearch(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -136,41 +126,44 @@ export default function GroupProductList() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                    {filteredGroups.length ? (
-                                        filteredGroups.map((group) => (
-                                            <tr key={group.id} className="hover:bg-muted/30">
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
-                                                            {group.name.charAt(0)}
+                                    {groups.length ? (
+                                        groups.map((group) => {
+                                            const hierarchy = getHierarchy(group);
+                                            return (
+                                                <tr key={group.id} className="hover:bg-muted/30">
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
+                                                                {group.name.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium">{group.name}</p>
+                                                                <p className="text-xs text-muted-foreground">ID: {group.id}</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="font-medium">{group.name}</p>
-                                                            <p className="text-xs text-muted-foreground">ID: {group.id}</p>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-muted-foreground">
+                                                        {hierarchy.length ? hierarchy.join(' • ') : '—'}
+                                                    </td>
+                                                    <td className="px-4 py-3 font-semibold">{getProductCount(group)}</td>
+                                                    <td className="px-4 py-3">{getWeightLabel(group)}</td>
+                                                    <td className="px-4 py-3 text-muted-foreground">{formatDate(group.updated_at)}</td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button variant="ghost" size="sm" asChild>
+                                                                <Link href={`/products/product/group/edit/${group.id}`}>Edit</Link>
+                                                            </Button>
+                                                            <Button variant="outline" size="sm" asChild>
+                                                                <Link href={`/products/product/group/view/${group.id}`}>Open</Link>
+                                                            </Button>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground">{renderHierarchy(group.hierarchy)}</td>
-                                                <td className="px-4 py-3 font-semibold">{group.items}</td>
-                                                <td className="px-4 py-3">
-                                                    {group.weight} {group.weightUnit}
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground">{formatDate(group.updatedAt)}</td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" size="sm" asChild>
-                                                            <Link href="/products/product/group/create">Edit</Link>
-                                                        </Button>
-                                                        <Button variant="outline" size="sm">
-                                                            Open
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan={7} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                                            <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted-foreground">
                                                 No groups found. Try adjusting your filters or create a new group.
                                             </td>
                                         </tr>
@@ -180,38 +173,70 @@ export default function GroupProductList() {
                         </div>
 
                         <div className="grid gap-3 lg:hidden">
-                            {filteredGroups.length ? (
-                                filteredGroups.map((group) => (
-                                    <div key={group.id} className="rounded-lg border p-4">
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <p className="text-sm text-muted-foreground">ID: {group.id}</p>
-                                                <h3 className="text-lg font-semibold">{group.name}</h3>
+                            {groups.length ? (
+                                groups.map((group) => {
+                                    const hierarchy = getHierarchy(group);
+                                    return (
+                                        <div key={group.id} className="rounded-lg border p-4">
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">ID: {group.id}</p>
+                                                    <h3 className="text-lg font-semibold">{group.name}</h3>
+                                                </div>
+                                            </div>
+                                            <p className="mt-2 text-sm text-muted-foreground">
+                                                {hierarchy.length ? hierarchy.join(' • ') : 'No hierarchy data yet'}
+                                            </p>
+                                            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                                                <span className="rounded-full bg-muted px-3 py-1">Items: {getProductCount(group)}</span>
+                                                <span className="rounded-full bg-muted px-3 py-1">Weight: {getWeightLabel(group)}</span>
+                                                <span className="rounded-full bg-muted px-3 py-1">
+                                                    Updated {formatDate(group.updated_at)}
+                                                </span>
+                                            </div>
+                                            <div className="mt-4 flex gap-2">
+                                                <Button size="sm" asChild>
+                                                    <Link href={`/products/product/group/edit/${group.id}`}>Edit</Link>
+                                                </Button>
+                                                <Button variant="outline" size="sm" asChild>
+                                                    <Link href={`/products/product/group/view/${group.id}`}>Open</Link>
+                                                </Button>
                                             </div>
                                         </div>
-                                        <p className="mt-2 text-sm text-muted-foreground">{renderHierarchy(group.hierarchy)}</p>
-                                        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                                            <span className="rounded-full bg-muted px-3 py-1">Items: {group.items}</span>
-                                            <span className="rounded-full bg-muted px-3 py-1">
-                                                Weight: {group.weight} {group.weightUnit}
-                                            </span>
-                                            <span className="rounded-full bg-muted px-3 py-1">Updated {formatDate(group.updatedAt)}</span>
-                                        </div>
-                                        <div className="mt-4 flex gap-2">
-                                            <Button size="sm" asChild>
-                                                <Link href="/products/product/group/create">Edit</Link>
-                                            </Button>
-                                            <Button variant="outline" size="sm">
-                                                Open
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             ) : (
                                 <div className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
                                     No groups match your filters.
                                 </div>
                             )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{paginationSummary}</span>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={(productGroupsPaginated?.current_page ?? 1) <= 1}
+                                    onClick={() => goToPage((productGroupsPaginated?.current_page ?? 1) - 1)}
+                                >
+                                    Previous
+                                </Button>
+                                <span>
+                                    Page {productGroupsPaginated?.current_page ?? 1} of {productGroupsPaginated?.last_page ?? 1}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={
+                                        (productGroupsPaginated?.current_page ?? 1) >= (productGroupsPaginated?.last_page ?? 1)
+                                    }
+                                    onClick={() => goToPage((productGroupsPaginated?.current_page ?? 1) + 1)}
+                                >
+                                    Next
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
