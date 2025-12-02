@@ -838,16 +838,18 @@ class ProductController extends Controller
 
     public function getAllProductGroups()
     {
-        $productGroups = ProductGroup::with([
-            'products',
-            'products.categories',
-            'products.tags',
-            'products.units',
-            'products.subUnits',
-            'products.pictures',
-            'products.division',
-            'products.subcategory',
-        ])->get();
+        $productGroups = ProductGroup::withCount('products')
+            ->with([
+                'products',
+                'products.categories',
+                'products.tags',
+                'products.units',
+                'products.subUnits',
+                'products.pictures',
+                'products.divisions',
+                'products.subcategories',
+                'products.variants',
+            ])->get();
 
         return response()->json([
             'status' => true,
@@ -856,27 +858,95 @@ class ProductController extends Controller
     }
 
     public function getProductGroupsPaginated(Request $request){
+        $perPage = (int) $request->input('per_page', 10);
+        if ($perPage <= 0) {
+            $perPage = 10;
+        }
+        $perPage = min($perPage, 100);
 
+        $search  = $request->input('q');
+        $sortBy  = $request->input('sort_by', 'updated_at');
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $allowedSorts = ['name', 'created_at', 'updated_at', 'products_count'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'updated_at';
+        }
+
+        $query = ProductGroup::query()
+            ->withCount('products')
+            ->with([
+                'products' => function ($q) {
+                    $q->select([
+                        'id',
+                        'product_group_id',
+                        'product_name',
+                        'product_weight',
+                        'product_price',
+                        'product_usd_price',
+                        'product_discount',
+                        'product_sku',
+                        'total_stock',
+                        'description',
+                        'updated_at',
+                        'created_at',
+                    ]);
+                },
+                'products.units:id,name',
+                'products.subUnits:id,name,unit_id',
+                'products.categories:id,name,sub_unit_id',
+                'products.subcategories:id,name,category_id',
+                'products.divisions:id,name,sub_category_id',
+                'products.variants:id,name,division_id',
+                'products.tags:id,name',
+                'products.pictures:id,url,product_id,created_at,updated_at',
+            ]);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhereHas('products', function ($productQuery) use ($search) {
+                        $productQuery->where('product_name', 'like', "%{$search}%")
+                            ->orWhere('description', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($sortBy === 'products_count') {
+            $query->orderBy('products_count', $sortDir);
+        } else {
+            $query->orderBy($sortBy, $sortDir);
+        }
+
+        return $query->paginate($perPage)->appends($request->query());
     }
 
-    public function getProductGroupById($id)
+    public function getProductGroupById($id, $raw = false)
     {
-        $productGroup = ProductGroup::with([
+        $productGroup = ProductGroup::withCount('products')->with([
             'products',
             'products.categories',
             'products.tags',
             'products.units',
             'products.subUnits',
             'products.pictures',
-            'products.division',
-            'products.subcategory',
+            'products.divisions',
+            'products.subcategories',
+            'products.variants',
         ])->find($id);
 
         if (!$productGroup) {
+            if ($raw) {
+                return null;
+            }
             return response()->json([
                 'status' => false,
                 'message' => 'Product group not found'
             ], 404);
+        }
+
+        if ($raw) {
+            return $productGroup;
         }
 
         return response()->json([

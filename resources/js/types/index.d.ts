@@ -49,6 +49,8 @@ export interface SharedData {
     variants: IVariants[];
     variantsPaginated?: IRootVariants;
     products: IRootProducts;
+    productGroupsPaginated?: IRootProductGroups;
+    productGroup?: IProductGroup;
     runningText: IRunningText[];
     banner: IBanner[];
     article: IArticle;
@@ -543,6 +545,54 @@ export interface IRootVariants {
     total?: number;
     to?: number;
     data: IVariants[];
+}
+
+export interface IProductGroupProduct {
+    id: string;
+    product_group_id: string;
+    product_name: string;
+    product_weight: string | number | null;
+    description: string;
+    product_price?: number;
+    product_usd_price?: number;
+    product_discount?: number;
+    product_sku?: string;
+    total_stock?: number;
+    updated_at: string;
+    created_at: string;
+    units: IUnit[];
+    sub_units: ISubUnits[];
+    categories: ICategories[];
+    subcategories: ISubcats[];
+    divisions: IDivisions[];
+    variants: IVariants[];
+    tags?: ITags[];
+    pictures?: {
+        id: string;
+        url: string;
+        product_id: string;
+        created_at?: string;
+        updated_at?: string;
+    }[];
+}
+
+export interface IProductGroup {
+    id: string;
+    name: string;
+    created_at: string;
+    updated_at: string;
+    products_count?: number;
+    products: IProductGroupProduct[];
+}
+
+export interface IRootProductGroups {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    total?: number;
+    to?: number;
+    data: IProductGroup[];
 }
 
 export interface IProducts {
