@@ -15,6 +15,8 @@ class Product extends Model
         'product_name',
         'product_sku',
         'product_group_id',
+        'unit_id',
+        'sub_unit_id',
         'description',
         'total_stock',
         'product_price',
@@ -42,38 +44,28 @@ class Product extends Model
 
     public static function generateSku($product)
     {
-        // Ensure sub_unit exists
-        $subUnit = $product->subUnits()->first();
+        $subUnit = SubUnit::find($product->sub_unit_id);
 
         if (!$subUnit) {
             throw new \Exception("Sub unit not found for SKU generation.");
         }
 
-        // Prefix = first letter of SubUnit + first letter of Product name
-        $subUnitInitial = strtoupper(substr($subUnit->name, 0, 1));
-        $productInitial = strtoupper(substr($product->product_name, 0, 1));
+        $subInitial = strtoupper(substr($subUnit->name, 0, 1));
+        $prodInitial = strtoupper(substr($product->product_name, 0, 1));
 
-        $prefix = $subUnitInitial . $productInitial; // Example: PC
+        $prefix = $subInitial . $prodInitial; // Example: PC
 
-        // Get the most recent SKU starting with this prefix
-        $lastProduct = self::where('product_sku', 'like', $prefix . '%')
+        $last = self::where('product_sku', 'like', $prefix . '%')
             ->orderBy('product_sku', 'desc')
             ->first();
 
-        if ($lastProduct) {
-            // Extract the number at the end (no zero padding)
-            preg_match('/(\d+)$/', $lastProduct->product_sku, $matches);
-            $number = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
+        if ($last && preg_match('/(\d+)$/', $last->product_sku, $m)) {
+            $num = intval($m[1]) + 1;
         } else {
-            $number = 1;
+            $num = 1;
         }
 
-        return $prefix . $number; // PC1, PC2, PC3, ...
-    }
-
-    public function product_group()
-    {
-        return $this->belongsTo(ProductGroup::class);
+        return $prefix . $num;
     }
 
     public function stocks()
@@ -81,14 +73,14 @@ class Product extends Model
         return $this->hasMany(ProductStock::class);
     }
 
-    public function units()
+    public function unit()
     {
-        return $this->belongsToMany(Unit::class, 'product_unit');
+        return $this->belongsTo(Unit::class, 'unit_id', 'id');
     }
 
-    public function subUnits()
+    public function subUnit()
     {
-        return $this->belongsToMany(SubUnit::class, 'product_sub_unit');
+        return $this->belongsTo(SubUnit::class, 'sub_unit_id', 'id');
     }
 
     public function tags()

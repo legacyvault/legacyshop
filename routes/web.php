@@ -116,6 +116,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('sub-unit', [ProductController::class, 'getAllSubUnit'])->name('sub-unit');
     Route::get('sub-unit/{id}', [ProductController::class, 'getSubUnitById'])->name('subunit.id');
 
+    Route::get('vouchers', [MiscController::class, 'getAllVoucher'])->name('vouchers');
+    Route::get('voucher/{id}', [MiscController::class, 'getVoucherById'])->name('voucher.id');
 
     Route::get('type', [ProductController::class, 'getAllType'])->name('type');
 
@@ -152,6 +154,11 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Warehouse API
     Route::post('create-warehouse', [WarehouseController::class, 'createWarehouse'])->name('create.warehouse');
     Route::post('update-warehouse', [WarehouseController::class, 'updateWarehouse'])->name('update.warehouse');
+
+    //Voucher API
+    Route::post('create-voucher', [MiscController::class, 'createVoucher'])->name('create.voucher');
+    Route::post('update-voucher', [MiscController::class, 'updateVoucher'])->name('update.voucher');
+
 
     //International Shipment API
     Route::post('create/international-shipment', [InternationalShipment::class, 'createInternationalShipment'])->name('create.international-shipment');

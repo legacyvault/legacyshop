@@ -457,11 +457,8 @@ class ProductController extends Controller
         $validator = Validator::make($request->all(), [
             'group_name' => 'required|string|max:255',
 
-            'unit_id'     => 'required|array|min:1',
-            'unit_id.*'   => 'exists:unit,id',
-
-            'sub_unit_id'     => 'required|array|min:1',
-            'sub_unit_id.*'   => 'exists:sub_unit,id',
+            'unit_id'     => 'required|exists:unit,id',
+            'sub_unit_id' => 'required|exists:sub_unit,id',
 
             'tags'        => 'nullable|array',
             'tags.*'      => 'exists:tags,id',
@@ -541,8 +538,6 @@ class ProductController extends Controller
                 }
 
                 // Generate SKU sebelum create
-                $productSku = $this->generateSkuForProduct($p['product_name'], $subUnit);
-
                 $product = Product::create([
                     'product_name'       => $p['product_name'],
                     'product_weight'     => $p['weight'],
@@ -551,20 +546,15 @@ class ProductController extends Controller
                     'product_usd_price'  => $default_usd_price,
                     'product_discount'   => $default_discount,
                     'product_group_id'   => $group->id,
-                    'product_sku'        => $productSku,
+                    'unit_id'            => $request->unit_id,
+                    'sub_unit_id'        => $request->sub_unit_id,
+                    'product_sku'        => Product::generateSku(new Product([
+                        'product_name' => $p['product_name'],
+                        'sub_unit_id'  => $request->sub_unit_id
+                    ])),
                 ]);
 
                 // relational sync
-                if ($request->filled('unit_id')) {
-                    $product->units()->sync($request->unit_id);
-                }
-
-                if ($request->filled('sub_unit_id')) {
-                    $product->subUnits()->sync($request->sub_unit_id);
-                    $product->product_sku = Product::generateSku($product);
-                    $product->save();
-                }
-
                 if ($request->filled('tags')) {
                     $product->tags()->sync($request->tags);
                 }
@@ -642,36 +632,33 @@ class ProductController extends Controller
         }
     }
 
-    protected function generateSkuForProduct(string $productName, SubUnit $subUnit): string
-    {
-        $subUnitInitial = strtoupper(substr($subUnit->name, 0, 1));
-        $productInitial = strtoupper(substr($productName, 0, 1));
-        $prefix = $subUnitInitial . $productInitial;
+    // protected function generateSkuForProduct(string $productName, SubUnit $subUnit): string
+    // {
+    //     $subUnitInitial = strtoupper(substr($subUnit->name, 0, 1));
+    //     $productInitial = strtoupper(substr($productName, 0, 1));
+    //     $prefix = $subUnitInitial . $productInitial;
 
-        $lastProduct = Product::where('product_sku', 'like', $prefix . '%')
-            ->orderBy('product_sku', 'desc')
-            ->first();
+    //     $lastProduct = Product::where('product_sku', 'like', $prefix . '%')
+    //         ->orderBy('product_sku', 'desc')
+    //         ->first();
 
-        if ($lastProduct) {
-            preg_match('/(\d+)$/', $lastProduct->product_sku, $matches);
-            $number = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
-        } else {
-            $number = 1;
-        }
+    //     if ($lastProduct) {
+    //         preg_match('/(\d+)$/', $lastProduct->product_sku, $matches);
+    //         $number = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
+    //     } else {
+    //         $number = 1;
+    //     }
 
-        return $prefix . $number; // Contoh: PC1, PC2
-    }
+    //     return $prefix . $number; // Contoh: PC1, PC2
+    // }
 
     public function editProductGroup(Request $request, $groupId)
     {
         $validator = Validator::make($request->all(), [
             'group_name' => 'required|string|max:255',
 
-            'unit_id'   => 'required|array|min:1',
-            'unit_id.*' => 'exists:unit,id',
-
-            'sub_unit_id'   => 'required|array|min:1',
-            'sub_unit_id.*' => 'exists:sub_unit,id',
+            'unit_id'     => 'required|exists:unit,id',
+            'sub_unit_id' => 'required|exists:sub_unit,id',
 
             'tags' => 'nullable|array',
             'tags.*' => 'exists:tags,id',
@@ -711,16 +698,11 @@ class ProductController extends Controller
             $group->update(['name' => $request->group_name]);
 
             // Determine highest unit price (same as CREATE)
-            $units = Unit::whereIn('id', $request->unit_id)->get();
-            $mainUnit = $units->sortByDesc('price')->first();
+            $unit = Unit::where('id', $request->unit_id)->first();
 
-            if (!$mainUnit) {
-                throw new \Exception("Invalid unit list.");
-            }
-
-            $default_price      = $mainUnit->price;
-            $default_usd_price  = $mainUnit->usd_price;
-            $default_discount   = $mainUnit->discount;
+            $default_price      = $unit->price;
+            $default_usd_price  = $unit->usd_price;
+            $default_discount   = $unit->discount;
 
             // 1️⃣ REMOVE PRODUCTS
             if ($request->filled('remove_product_ids')) {
@@ -743,6 +725,9 @@ class ProductController extends Controller
                 }
             }
 
+            $unitId = $request->unit_id;
+            $subUnitId = $request->sub_unit_id;
+
             // 2️⃣ ADD / UPDATE PRODUCTS
             $productsInput = $request->products;
 
@@ -751,11 +736,15 @@ class ProductController extends Controller
                 if (!empty($p['id'])) {
                     // UPDATE PRODUCT (no unit_id/sub_unit_id anymore)
                     $product = Product::findOrFail($p['id']);
-                    $product->update([
-                        'product_name'   => $p['product_name'],
-                        'product_weight' => $p['weight'],
-                        'description'    => $p['description'],
-                    ]);
+                    $product->product_name       = $p['product_name'];
+                    $product->product_weight     = $p['weight'];
+                    $product->description        = $p['description'];
+                    $product->unit_id            = $unitId;
+                    $product->sub_unit_id        = $subUnitId;
+                    $product->product_price      = $default_price;
+                    $product->product_usd_price  = $default_usd_price;
+                    $product->product_discount   = $default_discount;
+                    $product->save();
                 } else {
                     // CREATE PRODUCT
                     $product = Product::create([
@@ -766,14 +755,14 @@ class ProductController extends Controller
                         'product_usd_price'  => $default_usd_price,
                         'product_discount'   => $default_discount,
                         'product_group_id'   => $group->id,
+                        'unit_id'            => $unitId,
+                        'sub_unit_id'        => $subUnitId,
+                        'product_sku'        => Product::generateSku(new Product([
+                            'product_name' => $p['product_name'],
+                            'sub_unit_id'  => $request->sub_unit_id
+                        ])),
                     ]);
                 }
-
-                // UNITS pivot
-                $product->units()->sync($request->unit_id);
-
-                // SUBUNIT pivot
-                $product->subUnits()->sync($request->sub_unit_id);
 
                 // TAGS pivot
                 if ($request->filled('tags')) {
@@ -843,8 +832,8 @@ class ProductController extends Controller
                 'products',
                 'products.categories',
                 'products.tags',
-                'products.units',
-                'products.subUnits',
+                'products.unit',
+                'products.subUnit',
                 'products.pictures',
                 'products.divisions',
                 'products.subcategories',
@@ -857,7 +846,8 @@ class ProductController extends Controller
         ]);
     }
 
-    public function getProductGroupsPaginated(Request $request){
+    public function getProductGroupsPaginated(Request $request)
+    {
         $perPage = (int) $request->input('per_page', 10);
         if ($perPage <= 0) {
             $perPage = 10;
@@ -892,8 +882,8 @@ class ProductController extends Controller
                         'created_at',
                     ]);
                 },
-                'products.units:id,name',
-                'products.subUnits:id,name,unit_id',
+                'products.unit:id,name',
+                'products.subUnit:id,name,unit_id',
                 'products.categories:id,name,sub_unit_id',
                 'products.subcategories:id,name,category_id',
                 'products.divisions:id,name,sub_category_id',
@@ -927,8 +917,8 @@ class ProductController extends Controller
             'products',
             'products.categories',
             'products.tags',
-            'products.units',
-            'products.subUnits',
+            'products.unit',
+            'products.subUnit',
             'products.pictures',
             'products.divisions',
             'products.subcategories',
@@ -1419,8 +1409,8 @@ class ProductController extends Controller
         $data = Product::with([
             'product_group',
             'stocks',
-            'units',
-            'subUnits',
+            'unit',
+            'subUnit',
             'categories.sub_unit',
             'subcategories',
             'divisions',
@@ -1448,8 +1438,8 @@ class ProductController extends Controller
         $data = Product::with([
             'product_group',
             'stocks',
-            'units',
-            'subUnits',
+            'unit',
+            'subUnit',
             'categories.sub_unit',
             'subcategories',
             'divisions',
@@ -1476,8 +1466,8 @@ class ProductController extends Controller
 
         $product = Product::with([
             'stocks',
-            'units',
-            'subUnits',
+            'unit',
+            'subUnit',
             'categories',
             'subcategories',
             'divisions',
@@ -1509,8 +1499,8 @@ class ProductController extends Controller
 
         $product = Product::with([
             'stocks',
-            'units',
-            'subUnits',
+            'unit',
+            'subUnit',
             'categories',
             'subcategories',
             'divisions',
@@ -1581,8 +1571,8 @@ class ProductController extends Controller
         $products = Product::query()
             ->select('id', 'product_name')
             ->with([
-                'units:id,name',
-                'subUnits:id,name,unit_id',
+                'unit:id,name',
+                'subUnit:id,name,unit_id',
                 'tags:id,name',
             ])
             ->when($unitId, function ($q) use ($unitId, $unitTable) {
@@ -1695,7 +1685,8 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
-            'description' => 'string|nullable'
+            'description' => 'string|nullable',
+            'is_show'     => 'nullable'
         ]);
 
         if ($validator->fails()) {
@@ -1704,7 +1695,8 @@ class ProductController extends Controller
 
         $create = Tags::create([
             'name' => $request->name,
-            'description' => $request->description
+            'description' => $request->description,
+            'is_show' => $request->is_show ?? 0,
         ]);
 
         if ($create) {
@@ -1722,7 +1714,8 @@ class ProductController extends Controller
                 'required',
                 'string'
             ],
-            'description' => 'string|nullable'
+            'description' => 'string|nullable',
+            'is_show'   => 'nullable'
         ]);
 
         if ($validator->fails()) {
@@ -1740,6 +1733,7 @@ class ProductController extends Controller
 
         $data->name = $request->name;
         $data->description = $request->description;
+        $data->is_show = $request->is_show ?? 0;
         $data->save();
 
         return redirect()->back()->with('success', 'Successfully update tag.');

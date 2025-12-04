@@ -16,6 +16,8 @@ return new class extends Migration
             $table->uuid('product_group_id')->nullable();
             $table->string('product_sku');
             $table->string('product_name');
+            $table->string('unit_id');
+            $table->string('sub_unit_id');
             $table->longText('description');
             $table->integer('total_stock')->default(0);
             $table->float('product_price');
