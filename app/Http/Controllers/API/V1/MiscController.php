@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
 use App\Models\Banner;
 use App\Models\RunningText;
+use App\Models\VoucherModel;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -211,5 +212,77 @@ class MiscController extends Controller
         $data = Banner::orderBy('created_at', 'desc')->where('is_active', true)->get();
 
         return $data;
+    }
+
+    public function getAllVoucher()
+    {
+        $vouchers = VoucherModel::with('products')->get();
+
+        return $vouchers;
+    }
+
+    public function getVoucherById($id)
+    {
+        $voucher = VoucherModel::with('products')->find($id);
+
+        return $voucher;
+    }
+
+    public function createVoucher(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string',
+            'voucher_code' => 'required|string|unique:voucher,voucher_code',
+            'is_limit' => 'required|boolean',
+            'limit' => 'required_if:is_limit,1|nullable|integer|min:1',
+            'product_ids' => 'array',
+        ]);
+
+        $voucher = VoucherModel::create($request->only([
+            'name',
+            'voucher_code',
+            'limit',
+            'is_limit'
+        ]));
+
+        if ($request->has('product_ids')) {
+            $voucher->products()->sync($request->product_ids);
+        }
+
+        return redirect()->back()->with('success', 'Successfully create voucher.');
+    }
+
+    public function updateVoucher(Request $request, $id)
+    {
+        $voucher = VoucherModel::find($id);
+
+        if (!$voucher) {
+            return redirect()->back()->with('error', 'Failed to get voucher.');
+        }
+
+        $request->validate([
+            'name' => 'required|string',
+            'voucher_code' => 'required|string|unique:voucher,voucher_code,' . $id,
+            'is_limit' => 'required|boolean',
+            'limit' => 'required_if:is_limit,1|nullable|integer|min:1',
+            'product_ids' => 'array',
+        ]);
+
+        if (!$request->is_limit) {
+            $request->merge(['limit' => null]);
+        }
+
+        $voucher->update($request->only([
+            'name',
+            'voucher_code',
+            'limit',
+            'is_limit'
+        ]));
+
+        if ($request->has('product_ids')) {
+            $voucher->products()->sync($request->product_ids);
+        }
+
+        return redirect()->back()->with('success', 'Successfully update voucher.');
     }
 }
