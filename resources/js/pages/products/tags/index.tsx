@@ -17,6 +17,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface TagsForm {
     name: string;
     description: string;
+    is_show: number | boolean;
 }
 
 interface PropsTagsTable {
@@ -34,6 +35,7 @@ export default function Tags() {
     const { data, setData, post, errors } = useForm<Required<TagsForm>>({
         name: '',
         description: '',
+        is_show: 0,
     });
 
     const [openAdd, isOpenAdd] = useState(false);
@@ -67,11 +69,12 @@ function TagsTable({ tagsPaginated, filters }: PropsTagsTable) {
         id: '',
         name: '',
         description: '',
+        is_show: 0,
     });
 
     const [openEdit, isOpenEdit] = useState(false);
 
-    const [selectedTags, setSelectedTags] = useState();
+    const [selectedTags, setSelectedTags] = useState<ITags | undefined>();
 
     const itemHandler = (type: 'edit' | 'delete', selectedItem: any) => {
         setSelectedTags(selectedItem);
@@ -143,18 +146,18 @@ function TagsTable({ tagsPaginated, filters }: PropsTagsTable) {
             <table className="mt-4 min-w-full border-collapse text-sm">
                 <thead>
                     <tr className="bg-sidebar-accent">
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('id')}>
-                                    # {filters?.sort_by === 'id' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('name')}>
-                                    Name {filters?.sort_by === 'name' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('description')}>
-                                    Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
-                                </th>
-                                <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
-                            </tr>
-                        </thead>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('id')}>
+                            # {filters?.sort_by === 'id' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('name')}>
+                            Name {filters?.sort_by === 'name' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground cursor-pointer" onClick={() => toggleSort('description')}>
+                            Description {filters?.sort_by === 'description' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
+                        </th>
+                        <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {tagsPaginated?.data?.length > 0 ? (
                         tagsPaginated.data.map((tag: ITags, i: number) => (

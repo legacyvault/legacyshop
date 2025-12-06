@@ -291,7 +291,7 @@ class ViewController extends Controller
 
         $products = $this->productController->getAllProduct($request, $unitId);
         $subunits = $this->productController->getAllSubUnit($unitId);
-        $tags = $this->productController->getAllTags();
+        $tags = $this->productController->getAllShowTags();
 
         return Inertia::render('front/products/index', [
             'products' => $products,

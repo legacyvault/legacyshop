@@ -149,7 +149,7 @@ export default function FrontHeader({
         }
 
         if (suggestion.type === 'unit') {
-            router.get(`/list-productt/${suggestion.id}`);
+            router.get(`/list-products/${suggestion.id}`);
             return;
         }
 
@@ -279,7 +279,9 @@ export default function FrontHeader({
                                     </div>
                                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                         {s.type === 'product' && (unitName || subUnitName) && (
-                                            <span className="rounded-full bg-muted px-2 py-0.5">{[unitName, subUnitName].filter(Boolean).join(' | ')}</span>
+                                            <span className="rounded-full bg-muted px-2 py-0.5">
+                                                {[unitName, subUnitName].filter(Boolean).join(' | ')}
+                                            </span>
                                         )}
                                         {s.tags && s.tags.length > 0 && (
                                             <span className="flex flex-wrap gap-1">

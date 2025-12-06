@@ -246,6 +246,7 @@ export interface ITags {
     id: string;
     name: string;
     description: string;
+    is_show: string | number | boolean;
 }
 
 export interface ISubcats {

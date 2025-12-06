@@ -1345,7 +1345,8 @@ class ProductController extends Controller
                             $vq->where('name', 'like', "%{$search}%");
                         })
                         ->orWhereHas('tags', function ($tq) use ($search) {
-                            $tq->where('name', 'like', "%{$search}%");
+                            $tq->where('is_show', 1)
+                               ->where('name', 'like', "%{$search}%");
                         });
                 });
             }
@@ -1717,6 +1718,13 @@ class ProductController extends Controller
     public function getAllTags()
     {
         $data = Tags::orderBy('name', 'asc')->get();
+
+        return $data;
+    }
+
+    public function getAllShowTags()
+    {
+        $data = Tags::orderBy('name', 'asc')->where('is_show', 1)->get();
 
         return $data;
     }
