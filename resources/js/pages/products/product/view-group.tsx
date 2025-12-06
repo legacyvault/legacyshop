@@ -17,8 +17,8 @@ const getHierarchy = (group: IProductGroup): string[] => {
     const names = new Set<string>();
 
     group.products?.forEach((product) => {
-        product.units?.forEach((unit) => names.add(unit.name));
-        product.sub_units?.forEach((sub) => names.add(sub.name));
+        if (product.unit?.name) names.add(product.unit.name);
+        if (product.sub_unit?.name) names.add(product.sub_unit.name);
         product.categories?.forEach((cat) => names.add(cat.name));
         product.subcategories?.forEach((subcat) => names.add(subcat.name));
         product.divisions?.forEach((division) => names.add(division.name));
@@ -176,7 +176,7 @@ export default function ViewGroup() {
                                                     <td className="px-4 py-3 text-muted-foreground">{product.product_sku ?? '—'}</td>
                                                     <td className="px-4 py-3">{product.product_weight ? `${product.product_weight} gram` : '—'}</td>
                                                     <td className="px-4 py-3 text-muted-foreground">
-                                                        {product.units?.map((u) => u.name).join(', ') || '—'}
+                                                        {product.unit?.name || '—'}
                                                     </td>
                                                     <td className="px-4 py-3 text-muted-foreground">{formatDate(product.updated_at)}</td>
                                                     <td className="px-4 py-3 text-right">

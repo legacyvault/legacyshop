@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction, useEffect } from 'react';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from './ui/dialog';
 
 interface ITagsDialog {
@@ -9,9 +10,9 @@ interface ITagsDialog {
     tags?: IFormData;
 
     //Inertia’s useForm
-    data: { id?: string; name: string; description: string };
-    setData: (field: 'name' | 'description' | 'id' | 'unit_id', value: string) => void;
-    errors: { name?: string; description?: string };
+    data: { id?: string; name: string; description: string; is_show: number | boolean };
+    setData: (field: 'name' | 'description' | 'id' | 'is_show', value: string | number | boolean) => void;
+    errors: { name?: string; description?: string; is_show?: string };
 
     onSubmit: (e: React.FormEvent) => void;
 }
@@ -20,6 +21,7 @@ interface IFormData {
     id: string;
     name: string;
     description: string;
+    is_show?: string | number | boolean;
 }
 
 export default function TagsDialog({ open, isOpen, type, tags, onSubmit, data, setData, errors }: ITagsDialog) {
@@ -29,9 +31,11 @@ export default function TagsDialog({ open, isOpen, type, tags, onSubmit, data, s
                 setData('id', tags.id);
                 setData('name', tags.name);
                 setData('description', tags.description);
+                setData('is_show', Number(tags.is_show) === 1 ? 1 : 0);
             } else if (type === 'add') {
                 setData('name', '');
                 setData('description', '');
+                setData('is_show', 0);
             }
         }
     }, [open, tags, type]);
@@ -71,6 +75,18 @@ export default function TagsDialog({ open, isOpen, type, tags, onSubmit, data, s
                                 />
                                 {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
                             </div>
+
+                            <div className="mb-6 flex items-center gap-2">
+                                <Checkbox
+                                    id="is_show"
+                                    checked={Boolean(data.is_show)}
+                                    onCheckedChange={(checked) => setData('is_show', checked ? 1 : 0)}
+                                />
+                                <label htmlFor="is_show" className="text-sm font-medium">
+                                    Show tag
+                                </label>
+                            </div>
+                            {errors.is_show && <p className="mt-1 text-sm text-red-500">{errors.is_show}</p>}
                             <DialogClose asChild>
                                 <Button type="submit" className="capitalize">
                                     {type}
