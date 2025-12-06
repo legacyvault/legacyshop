@@ -208,9 +208,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     Home
                 </Link>
                 <span>/</span>
-                <span>{product.units.map((un, i) => `${un.name}${i + 1 === product.units.length ? '' : ', '}`)}</span>
+                <span>{product.unit?.name ?? ''}</span>
                 <span>/</span>
-                <span>{product.sub_units.map((un, i) => `${un.name}${i + 1 === product.sub_units.length ? '' : ', '}`)}</span>
+                <span>{product.sub_unit?.name ?? ''}</span>
                 <span>/</span>
                 <span className="max-w-[60%] truncate md:max-w-none">{product.product_name}</span>
             </div>
@@ -275,7 +275,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     <h1 className="mb-2 text-xl leading-snug font-bold md:text-2xl">{product.product_name}</h1>
                     <div className="mb-2 text-xs text-muted-foreground">
                         <span className="font-medium">
-                            {product.units.map((un, i) => `${un.name}${i + 1 === product.units.length ? '' : ', '}`)} | {product.product_sku}
+                            {[product.unit?.name, product.product_sku].filter(Boolean).join(' | ')}
                         </span>
                     </div>
 

@@ -203,19 +203,13 @@ export default function ViewProduct() {
                                 {/* Unit */}
                                 <div className="col-span-2 space-y-2">
                                     <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Collection</h3>
-                                    <p className="text-lg font-semibold text-card-foreground">
-                                        {selectedProduct.units.map((un, i) => `${un.name}${i + 1 === selectedProduct.units.length ? '' : ', '}`)}
-                                    </p>
+                                    <p className="text-lg font-semibold text-card-foreground">{selectedProduct.unit?.name ?? '-'}</p>
                                 </div>
 
                                 {/* Sub Unit */}
                                 <div className="col-span-2 space-y-2">
                                     <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Category</h3>
-                                    <p className="text-lg font-semibold text-card-foreground">
-                                        {selectedProduct.sub_units.map(
-                                            (un, i) => `${un.name}${i + 1 === selectedProduct.sub_units.length ? '' : ', '}`,
-                                        )}
-                                    </p>
+                                    <p className="text-lg font-semibold text-card-foreground">{selectedProduct.sub_unit?.name ?? '-'}</p>
                                 </div>
 
                                 {/* Category */}

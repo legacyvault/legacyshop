@@ -105,7 +105,7 @@ const resolveCategory = (cart: ICart | CartItem['meta'] | undefined) => {
     const fromProduct = productCategories.find((item) => normalizeId(item.id) === targetId);
     if (fromProduct) return fromProduct;
 
-    const unitCategories = cart.product?.units?.[0]?.categories ?? [];
+    const unitCategories = cart.product?.unit?.categories ?? [];
     return unitCategories.find((item) => normalizeId(item.id) === targetId);
 };
 
@@ -175,8 +175,7 @@ const extractSelectionSummary = (cart: ICart | CartItem['meta'] | undefined): Se
     const division = resolveDivision(cart);
     const variant = resolveVariant(cart);
 
-    const unitNames = (cart.product?.units ?? []).map((u) => u.name).filter(Boolean);
-    const unitName = unitNames.length ? unitNames.join(', ') : undefined;
+    const unitName = cart.product?.unit?.name;
     const variantColor = typeof variant?.color === 'string' && variant.color.trim().length ? variant.color : null;
 
     return {
@@ -294,11 +293,8 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
             const summary = extractSelectionSummary(cart);
             const pricing = computePricingDetails(cart, contextItem);
             const imageUrl = cart.product?.pictures?.[0]?.url ?? FALLBACK_IMAGE;
-            const productUnits = cart.product?.units ?? [];
-            const vendorName =
-                summary.unit ??
-                (productUnits.length ? productUnits.map((u) => u.name).filter(Boolean).join(', ') : 'Legacy Vault');
-            const vendorId = productUnits[0]?.id ?? cart.product_id ?? compositeId;
+            const vendorName = summary.unit ?? cart.product?.unit?.name ?? 'Legacy Vault';
+            const vendorId = cart.product?.unit?.id ?? cart.product_id ?? compositeId;
             const sku = cart.product?.product_sku;
 
             return {
@@ -328,7 +324,7 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
             const summary = extractSelectionSummary(meta);
             const pricing = computePricingDetails(meta, item);
             const vendorName = summary.unit ?? 'Legacy Vault';
-            const primaryUnitId = meta?.product?.units?.[0]?.id ?? null;
+            const primaryUnitId = meta?.product?.unit?.id ?? null;
 
             return {
                 id: item.id,
@@ -379,7 +375,7 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
             const subCategoryEntity = resolveSubCategory(item.cart);
             const divisionEntity = resolveDivision(item.cart);
             const variantEntity = resolveVariant(item.cart);
-            const unitId = normalizeId(item.cart?.product?.units?.[0]?.id);
+            const unitId = normalizeId(item.cart?.product?.unit?.id);
             const categoryId = normalizeId(item.cart?.category_id ?? item.cart?.category?.[0]?.id);
             const subCategoryId = normalizeId(item.cart?.sub_category_id ?? item.cart?.sub_category?.[0]?.id);
             const divisionId = normalizeId(item.cart?.division_id ?? item.cart?.division?.[0]?.id);

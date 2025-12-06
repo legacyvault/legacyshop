@@ -560,8 +560,8 @@ export interface IProductGroupProduct {
     total_stock?: number;
     updated_at: string;
     created_at: string;
-    units: IUnit[];
-    sub_units: ISubUnits[];
+    unit?: IUnit | null;
+    sub_unit?: ISubUnits | null;
     categories: ICategories[];
     subcategories: ISubcats[];
     divisions: IDivisions[];
@@ -616,8 +616,10 @@ export interface IProducts {
     subcategories: (ISubcats & { pivot: IPivotSubcatProd })[];
     tags: ITags[];
     total_stock: number;
-    sub_units: ISubUnits[];
-    units: IUnit[];
+    sub_unit?: ISubUnits | null;
+    unit?: IUnit | null;
+    sub_unit_id?: string;
+    unit_id?: string;
     updated_at: string;
     variants: (IVariants & { pivot: IPivotVariantProd })[];
     product_usd_price: number;

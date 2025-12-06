@@ -416,8 +416,8 @@ export default function GroupProductForm() {
         setGroupMeta({ name: productGroup.name ?? '', notes: '' });
 
         const nextHierarchy: HierarchySelection = {
-            unitIds: unique(products.flatMap((p) => p.units?.map((u) => u.id))),
-            subunitIds: unique(products.flatMap((p) => p.sub_units?.map((s) => s.id))),
+            unitIds: unique(products.map((p) => p.unit?.id)),
+            subunitIds: unique(products.map((p) => p.sub_unit?.id)),
             categoryIds: unique(products.flatMap((p) => p.categories?.map((c) => c.id))),
             subcategoryIds: unique(products.flatMap((p) => p.subcategories?.map((s) => s.id))),
             divisionIds: unique(products.flatMap((p) => p.divisions?.map((d) => d.id))),
@@ -886,9 +886,11 @@ export default function GroupProductForm() {
 
         const fd = new FormData();
         fd.append('group_name', groupMeta.name);
+        const unitId = hierarchy.unitIds[0];
+        const subUnitId = hierarchy.subunitIds[0];
         if (defaultUnitId) fd.append('main_unit_id', defaultUnitId);
-        hierarchy.unitIds.forEach((id) => fd.append('unit_id[]', id));
-        hierarchy.subunitIds.forEach((id) => fd.append('sub_unit_id[]', id));
+        if (unitId) fd.append('unit_id', unitId);
+        if (subUnitId) fd.append('sub_unit_id', subUnitId);
         hierarchy.categoryIds.forEach((id) => fd.append('categories[]', id));
         hierarchy.tagIds.forEach((id) => fd.append('tags[]', id));
 
