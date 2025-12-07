@@ -116,6 +116,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('sub-unit', [ProductController::class, 'getAllSubUnit'])->name('sub-unit');
     Route::get('sub-unit/{id}', [ProductController::class, 'getSubUnitById'])->name('subunit.id');
 
+    Route::get('events', [MiscController::class, 'getAllEvents'])->name('all-events');
+    Route::get('active-events', [MiscController::class, 'getSubUnitById'])->name('active-events');
+    Route::get('event/{id}', [MiscController::class, 'getEventById'])->name('event.id');
+
     Route::get('vouchers', [MiscController::class, 'getAllVoucher'])->name('vouchers');
     Route::get('voucher/{id}', [MiscController::class, 'getVoucherById'])->name('voucher.id');
 
@@ -209,6 +213,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
 
     Route::post('create-unit', [ProductController::class, 'createUnit'])->name('unit.create');
     Route::post('update-unit', [ProductController::class, 'updateUnit'])->name('unit.update');
+
+    //Events
+    Route::post('create-event', [MiscController::class, 'createEvent'])->name('event.create');
+    Route::post('update-event', [MiscController::class, 'updateEvent'])->name('event.update');
 
     //Subcat API
     Route::post('create-sub-category', [SubCategoryController::class, 'createSubCategory'])->name('subcat.create');
