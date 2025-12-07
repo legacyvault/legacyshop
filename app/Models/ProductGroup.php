@@ -17,4 +17,9 @@ class ProductGroup extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    public function stocks()
+    {
+        return $this->hasMany(GroupStock::class, 'id', 'group_id');
+    }
 }

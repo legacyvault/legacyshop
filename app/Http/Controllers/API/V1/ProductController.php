@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
 use App\Models\Category;
+use App\Models\GroupStock;
 use App\Models\OrderItems;
 use App\Models\Product;
 use App\Models\ProductGroup;
@@ -502,9 +503,7 @@ class ProductController extends Controller
             ]);
 
             // Determine the highest price unit
-            $units = Unit::whereIn('id', $request->unit_id)->get();
-
-            $mainUnit = $units->sortByDesc('price')->first(); // highest price
+            $mainUnit = Unit::where('id', $request->unit_id)->first();
 
             if (!$mainUnit) {
                 throw new \Exception("No valid unit found.");
@@ -522,11 +521,7 @@ class ProductController extends Controller
             for ($i = 0; $i < $total; $i++) {
                 $p = $productsInput[$i];
 
-                $subUnitId = $request->sub_unit_id[0] ?? null;
-                if (!$subUnitId) {
-                    throw new \Exception("Sub unit required for SKU generation.");
-                }
-                $subUnit = SubUnit::find($subUnitId);
+                $subUnit = SubUnit::find($request->sub_unit_id);
                 if (!$subUnit) {
                     throw new \Exception("Sub unit not found for SKU generation.");
                 }
@@ -908,6 +903,7 @@ class ProductController extends Controller
     public function getProductGroupById($id, $raw = false)
     {
         $productGroup = ProductGroup::withCount('products')->with([
+            'stocks',
             'products',
             'products.categories',
             'products.tags',
@@ -979,6 +975,67 @@ class ProductController extends Controller
             return back()->with('alert', [
                 'type' => 'error',
                 'message' => 'Failed to add product stock.',
+            ]);
+        }
+    }
+
+    public function addStockGroup(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'group_id' => 'required|string|exists:product_group,id',
+            'quantity' => 'required|numeric|min:1',
+            'remarks' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $products = Product::where('product_group_id', $request->group_id)->get();
+
+            if ($products->isEmpty()) {
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'No products found in this group.',
+                ]);
+            }
+
+            foreach ($products as $product) {
+
+                // Create stock record for each product
+                ProductStock::create([
+                    'product_id' => $product->id,
+                    'quantity'   => $request->quantity,
+                    'remarks'    => $request->remarks,
+                ]);
+
+                // Increase product total stock
+                $product->total_stock = $product->total_stock + $request->quantity;
+                $product->save();
+            }
+
+            GroupStock::create([
+                'group_id' => $request->group_id,
+                'quantity'   => $request->quantity,
+                'remarks'    => $request->remarks,
+            ]);
+
+            DB::commit();
+
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully added stock to all products in the group.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to add stock to group: ' . $e->getMessage());
+
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to add stock to product group.',
             ]);
         }
     }
@@ -1307,7 +1364,6 @@ class ProductController extends Controller
             }
 
             $query = Product::with([
-                'product_group',
                 'stocks',
                 'unit',
                 'subUnit',
@@ -1346,7 +1402,7 @@ class ProductController extends Controller
                         })
                         ->orWhereHas('tags', function ($tq) use ($search) {
                             $tq->where('is_show', 1)
-                               ->where('name', 'like', "%{$search}%");
+                                ->where('name', 'like', "%{$search}%");
                         });
                 });
             }
