@@ -1946,7 +1946,6 @@ class ProductController extends Controller
         return $data;
     }
 
-
     public function getUnitPaginated(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);

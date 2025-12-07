@@ -5,6 +5,8 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
 use App\Models\Banner;
+use App\Models\EventProducts;
+use App\Models\Events;
 use App\Models\RunningText;
 use App\Models\VoucherModel;
 use Exception;
@@ -284,5 +286,175 @@ class MiscController extends Controller
         }
 
         return redirect()->back()->with('success', 'Successfully update voucher.');
+    }
+
+    public function createEvent(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name'        => 'required|string',
+            'description' => 'string|nullable',
+            'discount' => 'required|numeric',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
+            'is_active' => 'nullable',
+            'product_ids' => 'required|array|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // ---- CHECK MAX ACTIVE EVENT ----
+            if ($request->is_active) {
+                $activeCount = Events::where('is_active', 1)->count();
+                if ($activeCount >= 3) {
+                    return redirect()->back()->with('error', 'Maximum 3 active events allowed.');
+                }
+            }
+
+            // ---- CHECK PRODUCT BELONGS TO ONLY ONE EVENT ----
+            $existingProducts = EventProducts::whereIn('product_id', $request->product_ids)->get();
+
+            if ($existingProducts->count() > 0) {
+                $usedProductIds = $existingProducts->pluck('product_id')->toArray();
+
+                return redirect()->back()
+                    ->with('error', 'Some products are already assigned to another event: ' . implode(', ', $usedProductIds))
+                    ->withInput();
+            }
+
+            // ---- UPLOAD IMAGE ----
+            $pictureUrl = null;
+            if ($request->hasFile('image')) {
+                $pictureUrl = $this->uploadEventImageToS3($request->file('image'));
+            }
+
+            // ---- CREATE EVENT ----
+            $event = Events::create([
+                'name'        => $request->name,
+                'description' => $request->description,
+                'discount' => $request->discount,
+                'picture_url' => $pictureUrl,
+                'is_active' => $request->is_active ?? true,
+            ]);
+
+            // ---- INSERT EVENT PRODUCTS ----
+            foreach ($request->product_ids as $pid) {
+                EventProducts::create([
+                    'event_id' => $event->id,
+                    'product_id' => $pid,
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully created event.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to create event: ' . $e);
+            return redirect()->back()->with('error', 'Failed to create event: ' . $e->getMessage());
+        }
+    }
+
+    public function updateEvent(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'name'        => 'required|string',
+            'description' => 'string|nullable',
+            'discount'    => 'required|numeric',
+            'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
+            'is_active'   => 'nullable',
+            'product_ids' => 'required|array|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $event = Events::findOrFail($id);
+
+            // ---- CHECK ACTIVE LIMIT (exclude current event) ----
+            if ($request->is_active) {
+                $activeCount = Events::where('is_active', 1)
+                    ->where('id', '<>', $id)
+                    ->count();
+
+                if ($activeCount >= 3) {
+                    return redirect()->back()->with('error', 'Maximum 3 active events allowed.');
+                }
+            }
+
+            // ---- CHECK PRODUCT CAN ONLY BE IN ONE EVENT ----
+            // exclude products already belonging to this event
+            $existingProducts = EventProducts::whereIn('product_id', $request->product_ids)
+                ->where('event_id', '<>', $id) // exclude current event
+                ->get();
+
+            if ($existingProducts->count() > 0) {
+                $usedProductIds = $existingProducts->pluck('product_id')->toArray();
+                return redirect()->back()
+                    ->with('error', 'Some products are already assigned to another event: ' . implode(', ', $usedProductIds))
+                    ->withInput();
+            }
+
+            // ---- IMAGE UPDATE (optional) ----
+            $pictureUrl = $event->picture_url;
+            if ($request->hasFile('image')) {
+                if ($event->picture_url) {
+                    $this->deleteFromS3($event->picture_url);
+                }
+                $pictureUrl = $this->uploadEventImageToS3($request->file('image'));
+            }
+
+            // ---- UPDATE MAIN EVENT ----
+            $event->update([
+                'name'        => $request->name,
+                'description' => $request->description,
+                'discount'    => $request->discount,
+                'picture_url' => $pictureUrl,
+                'is_active'   => $request->is_active ?? false,
+            ]);
+
+            // ---- UPDATE EVENT PRODUCTS ----
+            // remove old
+            EventProducts::where('event_id', $id)->delete();
+
+            // insert new
+            foreach ($request->product_ids as $pid) {
+                EventProducts::create([
+                    'event_id' => $id,
+                    'product_id' => $pid,
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully updated event.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to update event: ' . $e);
+            return redirect()->back()->with('error', 'Failed to update event: ' . $e->getMessage());
+        }
+    }
+
+    public function getAllEvents()
+    {
+        $data = Events::orderBy('name', 'asc')->with('event_products.product')->get();
+        return $data;
+    }
+
+    public function getAllActiveEvents()
+    {
+        $data = Events::orderBy('name', 'asc')->with('event_products.product')->where('is_active', 1)->get();
+        return $data;
+    }
+
+    public function getEventById($id)
+    {
+        $data = Events::orderBy('name', 'asc')->with('event_products.product')->find($id);
+        return $data;
     }
 }
