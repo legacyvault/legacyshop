@@ -10,6 +10,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
 use App\Models\Carts;
 use App\Models\Unit;
+use App\Models\ProductGroup;
 use Illuminate\Support\Facades\Auth;
 
 class ViewController extends Controller
@@ -599,6 +600,31 @@ class ViewController extends Controller
 
         return Inertia::render('products/product/view-group', [
             'productGroup' => $productGroup,
+        ]);
+    }
+
+    public function voucherPage()
+    {
+        $vouchers = $this->miscController->getAllVoucher();
+        $productGroups = ProductGroup::with([
+            'products' => function ($query) {
+                $query->select([
+                    'id',
+                    'product_group_id',
+                    'product_name',
+                    'product_sku',
+                    'product_price',
+                    'product_usd_price',
+                ]);
+            }
+        ])
+            ->withCount('products')
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('misc/voucher', [
+            'vouchers' => $vouchers,
+            'productGroups' => $productGroups,
         ]);
     }
 }

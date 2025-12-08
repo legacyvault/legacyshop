@@ -659,7 +659,7 @@ class ProductController extends Controller
             'sub_categories.*.id' => 'exists:sub_category,id',
 
             'products' => 'required|array|min:1',
-            'products.*.id' => 'nullable|exists:product,id',
+            'products.*.id' => 'nullable|exists:products,id',
             'products.*.product_name' => 'required|string',
             'products.*.weight' => 'required|numeric|min:0',
             'products.*.description' => 'required|string',
@@ -671,7 +671,7 @@ class ProductController extends Controller
             'products.*.remove_picture_ids.*' => 'exists:product_pictures,id',
 
             'remove_product_ids' => 'nullable|array',
-            'remove_product_ids.*' => 'exists:product,id',
+            'remove_product_ids.*' => 'exists:products,id',
         ]);
 
         if ($validator->fails()) {
