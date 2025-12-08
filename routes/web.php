@@ -161,7 +161,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
 
     //Voucher API
     Route::post('create-voucher', [MiscController::class, 'createVoucher'])->name('create.voucher');
-    Route::post('update-voucher', [MiscController::class, 'updateVoucher'])->name('update.voucher');
+    Route::post('update-voucher/{id}', [MiscController::class, 'updateVoucher'])->name('update.voucher');
 
 
     //International Shipment API
@@ -349,6 +349,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::redirect('/', '/misc/view-running-text');
         Route::get('view-running-text', [ViewController::class, 'runningTextPage']);
         Route::get('view-banner', [ViewController::class, 'bannerPage']);
+        Route::get('voucher',[ViewController::class, 'voucherPage']);
     });
 
     Route::prefix('admin-articles')->group(function () {
