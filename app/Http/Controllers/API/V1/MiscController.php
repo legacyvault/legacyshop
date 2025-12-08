@@ -238,11 +238,13 @@ class MiscController extends Controller
             'is_limit' => 'required|boolean',
             'limit' => 'required_if:is_limit,1|nullable|integer|min:1',
             'product_ids' => 'array',
+            'discount'  => 'required'
         ]);
 
         $voucher = VoucherModel::create($request->only([
             'name',
             'voucher_code',
+            'discount',
             'limit',
             'is_limit'
         ]));
@@ -266,6 +268,7 @@ class MiscController extends Controller
             'name' => 'required|string',
             'voucher_code' => 'required|string|unique:voucher,voucher_code,' . $id,
             'is_limit' => 'required|boolean',
+            'discount' => 'required',
             'limit' => 'required_if:is_limit,1|nullable|integer|min:1',
             'product_ids' => 'array',
         ]);
@@ -278,7 +281,8 @@ class MiscController extends Controller
             'name',
             'voucher_code',
             'limit',
-            'is_limit'
+            'is_limit',
+            'discount'
         ]));
 
         if ($request->has('product_ids')) {
