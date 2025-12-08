@@ -3,18 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import {
-    BreadcrumbItem,
-    ICategories,
-    IDivisions,
-    IProductGroup,
-    ISubUnits,
-    ISubcats,
-    ITags,
-    IUnit,
-    IVariants,
-    SharedData,
-} from '@/types';
+import { BreadcrumbItem, ICategories, IDivisions, IProductGroup, ISubUnits, ISubcats, ITags, IUnit, IVariants, SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Bold, ChevronDown, Italic, Layers, ListPlus, Plus, RefreshCw, Search, Trash2, Underline, Upload, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -233,6 +222,7 @@ export default function GroupProductForm() {
         { id: randomId(), name: '', images: [], previews: [], description: '', weight: '', existingPictures: [], removePictureIds: [] },
     ]);
     const [bulkWeight, setBulkWeight] = useState('');
+    const [bulkDescription, setBulkDescription] = useState('');
     const [rowErrors, setRowErrors] = useState<Record<string, RowError>>({});
     const [formErrors, setFormErrors] = useState<{
         group_name?: string;
@@ -244,6 +234,7 @@ export default function GroupProductForm() {
         variants?: string;
         products?: string;
     }>({});
+    const bulkDescriptionRef = useRef<HTMLTextAreaElement | null>(null);
     const descriptionRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
     const latestPreviewsRef = useRef<string[]>([]);
     const [defaultUnitId, setDefaultUnitId] = useState<string | null>(null);
@@ -340,38 +331,38 @@ export default function GroupProductForm() {
             const nextVariants: Record<string, DiscountEntry> = {};
 
             products.forEach((product) => {
-            product.subcategories?.forEach((subcat) => {
-                if (nextSubcats[subcat.id]) return;
-                const pivot: any = (subcat as any).pivot ?? {};
-                const useDefault = pivot?.use_subcategory_discount !== 0 && pivot?.use_subcategory_discount !== false;
-                nextSubcats[subcat.id] = {
-                    source: useDefault ? subcat.id : 'manual',
-                    value: useDefault ? '' : String(pivot?.manual_discount ?? ''),
-                    base_price: subcatPriceById[subcat.id] ?? 0,
-                };
-            });
+                product.subcategories?.forEach((subcat) => {
+                    if (nextSubcats[subcat.id]) return;
+                    const pivot: any = (subcat as any).pivot ?? {};
+                    const useDefault = pivot?.use_subcategory_discount !== 0 && pivot?.use_subcategory_discount !== false;
+                    nextSubcats[subcat.id] = {
+                        source: useDefault ? subcat.id : 'manual',
+                        value: useDefault ? '' : String(pivot?.manual_discount ?? ''),
+                        base_price: subcatPriceById[subcat.id] ?? 0,
+                    };
+                });
 
-            product.divisions?.forEach((division) => {
-                if (nextDivisions[division.id]) return;
-                const pivot: any = (division as any).pivot ?? {};
-                const useDefault = pivot?.use_division_discount !== 0 && pivot?.use_division_discount !== false;
-                nextDivisions[division.id] = {
-                    source: useDefault ? division.id : 'manual',
-                    value: useDefault ? '' : String(pivot?.manual_discount ?? ''),
-                    base_price: divisionPriceById[division.id] ?? 0,
-                };
-            });
+                product.divisions?.forEach((division) => {
+                    if (nextDivisions[division.id]) return;
+                    const pivot: any = (division as any).pivot ?? {};
+                    const useDefault = pivot?.use_division_discount !== 0 && pivot?.use_division_discount !== false;
+                    nextDivisions[division.id] = {
+                        source: useDefault ? division.id : 'manual',
+                        value: useDefault ? '' : String(pivot?.manual_discount ?? ''),
+                        base_price: divisionPriceById[division.id] ?? 0,
+                    };
+                });
 
-            product.variants?.forEach((variant) => {
-                if (nextVariants[variant.id]) return;
-                const pivot: any = (variant as any).pivot ?? {};
-                const useDefault = pivot?.use_variant_discount !== 0 && pivot?.use_variant_discount !== false;
-                nextVariants[variant.id] = {
-                    source: useDefault ? variant.id : 'manual',
-                    value: useDefault ? '' : String(pivot?.manual_discount ?? ''),
-                    base_price: variantPriceById[variant.id] ?? 0,
-                };
-            });
+                product.variants?.forEach((variant) => {
+                    if (nextVariants[variant.id]) return;
+                    const pivot: any = (variant as any).pivot ?? {};
+                    const useDefault = pivot?.use_variant_discount !== 0 && pivot?.use_variant_discount !== false;
+                    nextVariants[variant.id] = {
+                        source: useDefault ? variant.id : 'manual',
+                        value: useDefault ? '' : String(pivot?.manual_discount ?? ''),
+                        base_price: variantPriceById[variant.id] ?? 0,
+                    };
+                });
             });
 
             setSubcategoryDiscounts(nextSubcats);
@@ -418,8 +409,7 @@ export default function GroupProductForm() {
         if (!productGroup) return;
 
         const products = productGroup.products ?? [];
-        const unique = (values: (string | null | undefined)[]) =>
-            Array.from(new Set(values.filter((v): v is string => Boolean(v))));
+        const unique = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => Boolean(v))));
 
         setGroupMeta({ name: productGroup.name ?? '', notes: '' });
 
@@ -529,8 +519,7 @@ export default function GroupProductForm() {
 
     const initializeDiscounts = (type: 'subcategory' | 'division' | 'variant', values: string[]) => {
         const priceMap = type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
-        const setter =
-            type === 'subcategory' ? setSubcategoryDiscounts : type === 'division' ? setDivisionDiscounts : setVariantDiscounts;
+        const setter = type === 'subcategory' ? setSubcategoryDiscounts : type === 'division' ? setDivisionDiscounts : setVariantDiscounts;
         setter((prev) => {
             const next: Record<string, DiscountEntry> = { ...prev };
             values.forEach((id) => {
@@ -580,11 +569,9 @@ export default function GroupProductForm() {
     };
 
     const buildDiscountPayload = (type: 'subcategory' | 'division' | 'variant') => {
-        const ids =
-            type === 'subcategory' ? hierarchy.subcategoryIds : type === 'division' ? hierarchy.divisionIds : hierarchy.variantIds;
+        const ids = type === 'subcategory' ? hierarchy.subcategoryIds : type === 'division' ? hierarchy.divisionIds : hierarchy.variantIds;
         const map = type === 'subcategory' ? subcategoryDiscounts : type === 'division' ? divisionDiscounts : variantDiscounts;
-        const prefix =
-            type === 'subcategory' ? 'sub_categories' : type === 'division' ? 'divisions' : 'variants';
+        const prefix = type === 'subcategory' ? 'sub_categories' : type === 'division' ? 'divisions' : 'variants';
 
         return ids.map((id, index) => {
             const entry = map[id];
@@ -595,18 +582,8 @@ export default function GroupProductForm() {
                 useDefault,
                 value: entry?.value || '0',
                 prefix,
-                useKey:
-                    type === 'subcategory'
-                        ? 'use_subcategory_discount'
-                        : type === 'division'
-                          ? 'use_division_discount'
-                          : 'use_variant_discount',
-                manualKey:
-                    type === 'subcategory'
-                        ? 'manual_discount'
-                        : type === 'division'
-                          ? 'manual_discount'
-                          : 'manual_discount',
+                useKey: type === 'subcategory' ? 'use_subcategory_discount' : type === 'division' ? 'use_division_discount' : 'use_variant_discount',
+                manualKey: type === 'subcategory' ? 'manual_discount' : type === 'division' ? 'manual_discount' : 'manual_discount',
             };
         });
     };
@@ -828,8 +805,7 @@ export default function GroupProductForm() {
     };
 
     const handleDiscountSourceChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, source: string) => {
-        const setter =
-            type === 'subcategory' ? setSubcategoryDiscounts : type === 'division' ? setDivisionDiscounts : setVariantDiscounts;
+        const setter = type === 'subcategory' ? setSubcategoryDiscounts : type === 'division' ? setDivisionDiscounts : setVariantDiscounts;
         const priceMap = type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
 
         setter((prev) => {
@@ -840,7 +816,7 @@ export default function GroupProductForm() {
                 [selectedValue]: {
                     ...(current ?? { source: '', value: '', base_price: basePrice }),
                     source,
-                    value: source === 'manual' ? current?.value ?? '' : '',
+                    value: source === 'manual' ? (current?.value ?? '') : '',
                     base_price: basePrice,
                 },
             };
@@ -849,8 +825,7 @@ export default function GroupProductForm() {
 
     const handleDiscountValueChange = (type: 'subcategory' | 'division' | 'variant', selectedValue: string, value: string) => {
         if (Number(value) > 100) return;
-        const setter =
-            type === 'subcategory' ? setSubcategoryDiscounts : type === 'division' ? setDivisionDiscounts : setVariantDiscounts;
+        const setter = type === 'subcategory' ? setSubcategoryDiscounts : type === 'division' ? setDivisionDiscounts : setVariantDiscounts;
         const priceMap = type === 'subcategory' ? subcatPriceById : type === 'division' ? divisionPriceById : variantPriceById;
 
         setter((prev) => {
@@ -945,8 +920,7 @@ export default function GroupProductForm() {
 
         setIsSubmitting(true);
 
-        const targetRoute =
-            isEditMode && groupId ? route('product.edit-product-group', groupId) : route('product.add-product-group');
+        const targetRoute = isEditMode && groupId ? route('product.edit-product-group', groupId) : route('product.add-product-group');
 
         router.post(targetRoute, fd, {
             forceFormData: true,
@@ -995,6 +969,42 @@ export default function GroupProductForm() {
         setBulkRows((prev) => prev.map((row) => ({ ...row, weight: value })));
     };
 
+    const applyBulkDescription = (value: string) => {
+        setBulkDescription(value);
+        setBulkRows((prev) => prev.map((row) => ({ ...row, description: value })));
+        setRowErrors((prev) => {
+            const hasDescriptionError = Object.values(prev).some((err) => err?.description);
+            if (!hasDescriptionError) return prev;
+            const next = { ...prev };
+            Object.keys(next).forEach((rowId) => {
+                if (next[rowId]?.description) {
+                    next[rowId] = { ...next[rowId], description: undefined };
+                }
+            });
+            return next;
+        });
+    };
+
+    const insertBulkFormatting = (startTag: string, endTag: string) => {
+        const textarea = bulkDescriptionRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selected = textarea.value.substring(start, end);
+        const before = textarea.value.substring(0, start);
+        const after = textarea.value.substring(end);
+        const nextValue = before + startTag + selected + endTag + after;
+
+        applyBulkDescription(nextValue);
+
+        setTimeout(() => {
+            textarea.focus();
+            const cursorPos = start + startTag.length + selected.length + endTag.length;
+            textarea.setSelectionRange(cursorPos, cursorPos);
+        }, 0);
+    };
+
     const addBulkRowsFromNames = () => {
         const names = bulkNames
             .split('\n')
@@ -1012,7 +1022,7 @@ export default function GroupProductForm() {
                 previews: [],
                 existingPictures: [],
                 removePictureIds: [],
-                description: '',
+                description: bulkDescription,
                 weight: bulkWeight,
             })),
         ]);
@@ -1030,7 +1040,7 @@ export default function GroupProductForm() {
                 previews: [],
                 existingPictures: [],
                 removePictureIds: [],
-                description: '',
+                description: bulkDescription,
                 weight: bulkWeight,
             },
         ]);
@@ -1065,9 +1075,7 @@ export default function GroupProductForm() {
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <h1 className="text-2xl font-semibold">
-                                {isEditMode ? 'Edit product group' : 'Create a product group'}
-                            </h1>
+                            <h1 className="text-2xl font-semibold">{isEditMode ? 'Edit product group' : 'Create a product group'}</h1>
                         </div>
                         <Button variant="outline" asChild>
                             <Link href="/products/product/group">Back to groups</Link>
@@ -1139,35 +1147,35 @@ export default function GroupProductForm() {
                                         {formErrors.unit_id && <p className="text-xs text-red-500">{formErrors.unit_id}</p>}
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="subunit">Sub collection</Label>
+                                        <Label htmlFor="subunit">Category</Label>
                                         <MultiSelect
                                             options={subunitOptions}
                                             values={hierarchy.subunitIds}
                                             onChange={handleSubunitChange}
-                                            placeholder="Select a sub collection"
+                                            placeholder="Select a Category"
                                             disabled={!subunitOptions.length}
                                             maxSelections={1}
                                         />
                                         {formErrors.sub_unit_id && <p className="text-xs text-red-500">{formErrors.sub_unit_id}</p>}
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="category">Category</Label>
+                                        <Label htmlFor="category">Variant</Label>
                                         <MultiSelect
                                             options={categoryOptions}
                                             values={hierarchy.categoryIds}
                                             onChange={handleCategoryChange}
-                                            placeholder="Select category(ies)"
+                                            placeholder="Select Variant(s)"
                                             disabled={!categoryOptions.length}
                                         />
                                         {formErrors.categories && <p className="text-xs text-red-500">{formErrors.categories}</p>}
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="subcategory">Subcategory</Label>
+                                        <Label htmlFor="subcategory">Type</Label>
                                         <MultiSelect
                                             options={subcategoryOptions}
                                             values={hierarchy.subcategoryIds}
                                             onChange={handleSubcategoryChange}
-                                            placeholder="Select subcategory(ies)"
+                                            placeholder="Select type(s)"
                                             disabled={!subcategoryOptions.length}
                                         />
                                         {formErrors.sub_categories && <p className="text-xs text-red-500">{formErrors.sub_categories}</p>}
@@ -1184,12 +1192,12 @@ export default function GroupProductForm() {
                                         {formErrors.divisions && <p className="text-xs text-red-500">{formErrors.divisions}</p>}
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="variant">Variant</Label>
+                                        <Label htmlFor="variant">Selection</Label>
                                         <MultiSelect
                                             options={variantOptions}
                                             values={hierarchy.variantIds}
                                             onChange={handleVariantChange}
-                                            placeholder="Select variant(s)"
+                                            placeholder="Select selection(s)"
                                             disabled={!variantOptions.length}
                                         />
                                         {formErrors.variants && <p className="text-xs text-red-500">{formErrors.variants}</p>}
@@ -1200,326 +1208,333 @@ export default function GroupProductForm() {
                                             options={tagsOptions}
                                             values={hierarchy.tagIds}
                                             onChange={handleTagChange}
-                                            placeholder="Select variant(s)"
+                                            placeholder="Select tags(s)"
                                         />
                                     </div>
                                 </div>
 
-                        {!units.length && (
-                            <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                                No hierarchy data was shared with this page yet. The selects will populate automatically once units and
-                                related collections are passed from the server.
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                {!units.length && (
+                                    <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                        No hierarchy data was shared with this page yet. The selects will populate automatically once units and
+                                        related collections are passed from the server.
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Pricing & Discounts</CardTitle>
-                        <CardDescription>Choose to use default prices/discounts from the selected collection or enter manual values.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {selectedUnits.length > 1 && (
-                            <div className="space-y-2">
-                                <Label htmlFor="default-unit">Default collection for pricing</Label>
-                                <select
-                                    id="default-unit"
-                                    className="w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none"
-                                    value={defaultUnitId ?? ''}
-                                    onChange={(e) => setDefaultUnitId(e.target.value)}
-                                >
-                                    {selectedUnits.map((u) => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.name} — Rp {formatRupiah(String(u.price ?? 0))} / ${formatUsd(String(u.usd_price ?? 0))}
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="text-xs text-muted-foreground">Defaults to the highest price if you don’t pick one.</p>
-                            </div>
-                        )}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Pricing & Discounts</CardTitle>
+                                <CardDescription>
+                                    Choose to use default prices/discounts from the selected collection or enter manual values.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {selectedUnits.length > 1 && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="default-unit">Default collection for pricing</Label>
+                                        <select
+                                            id="default-unit"
+                                            className="w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none"
+                                            value={defaultUnitId ?? ''}
+                                            onChange={(e) => setDefaultUnitId(e.target.value)}
+                                        >
+                                            {selectedUnits.map((u) => (
+                                                <option key={u.id} value={u.id}>
+                                                    {u.name} — Rp {formatRupiah(String(u.price ?? 0))} / ${formatUsd(String(u.usd_price ?? 0))}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-muted-foreground">Defaults to the highest price if you don’t pick one.</p>
+                                    </div>
+                                )}
 
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2 rounded-md border border-yellow-300 bg-white p-3">
-                                <div className="text-sm font-medium text-yellow-700">Price (IDR)</div>
-                                <div className="space-y-2 text-sm text-yellow-700">
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            checked={pricing.use_unit_price}
-                                            onChange={() => toggleUnitPrice(true)}
-                                            className="text-yellow-700"
-                                        />
-                                    <span>Use default price (Rp {formatRupiah(String(selectedUnitPrice || 0))})</span>
-                                    </label>
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            checked={!pricing.use_unit_price}
-                                            onChange={() => toggleUnitPrice(false)}
-                                            className="text-yellow-700"
-                                        />
-                                        <span>Enter manually</span>
-                                    </label>
-                                </div>
-                                <div className="relative">
-                                    <span className="absolute top-2 left-3 text-gray-500">Rp</span>
-                                    <input
-                                        type="text"
-                                        value={formatRupiah(pricing.price)}
-                                        onChange={handlePriceChange}
-                                        className={`w-full rounded-md border py-2 pr-3 pl-10 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
-                                            pricing.use_unit_price ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'
-                                        }`}
-                                        placeholder="0"
-                                        disabled={pricing.use_unit_price}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2 rounded-md border border-yellow-300 bg-white p-3">
-                                <div className="text-sm font-medium text-yellow-700">Price (USD)</div>
-                                <div className="space-y-2 text-sm text-yellow-700">
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            checked={pricing.use_unit_usd_price}
-                                            onChange={() => toggleUnitUsdPrice(true)}
-                                            className="text-yellow-700"
-                                        />
-                                        <span>Use default price (${formatUsd(String(selectedUnitUsdPrice || 0))})</span>
-                                    </label>
-                                    <label className="flex items-center space-x-2">
-                                        <input
-                                            type="radio"
-                                            checked={!pricing.use_unit_usd_price}
-                                            onChange={() => toggleUnitUsdPrice(false)}
-                                            className="text-yellow-700"
-                                        />
-                                        <span>Enter manually</span>
-                                    </label>
-                                </div>
-                                <div className="relative">
-                                    <span className="absolute top-2 left-3 text-gray-500">$</span>
-                                    <input
-                                        type="text"
-                                        value={formatUsd(pricing.product_usd_price)}
-                                        onChange={handlePriceUsdChange}
-                                        className={`w-full rounded-md border py-2 pr-3 pl-10 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
-                                            pricing.use_unit_usd_price ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'
-                                        }`}
-                                        placeholder="0"
-                                        disabled={pricing.use_unit_usd_price}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="rounded-md border border-yellow-300 bg-white p-3">
-                            <div className="mb-2 text-sm font-medium text-yellow-700">Product discount</div>
-                            <div className="space-y-2 text-sm text-yellow-700">
-                                <label className="flex items-center space-x-2">
-                                    <input
-                                        type="radio"
-                                        checked={pricing.use_unit_discount}
-                                        onChange={() => toggleUnitDiscount(true)}
-                                        className="text-yellow-700"
-                                    />
-                                    <span>Use default discount ({selectedUnitDiscount || 0}%)</span>
-                                </label>
-                                <label className="flex items-center space-x-2">
-                                    <input
-                                        type="radio"
-                                        checked={!pricing.use_unit_discount}
-                                        onChange={() => toggleUnitDiscount(false)}
-                                        className="text-yellow-700"
-                                    />
-                                    <span>Enter manually</span>
-                                </label>
-                            </div>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={pricing.product_discount}
-                                    onChange={handleDiscountChange}
-                                    className={`w-full rounded-md border px-3 py-2 pr-10 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
-                                        pricing.use_unit_discount ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'
-                                    }`}
-                                    placeholder="Enter discount percentage"
-                                    maxLength={3}
-                                    disabled={pricing.use_unit_discount}
-                                />
-                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                            </div>
-                        </div>
-
-                        {hierarchy.subcategoryIds.length > 0 && (
-                            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                <div className="mb-3">
-                                    <label className="text-sm font-medium">Subcategory discounts</label>
-                                </div>
-                                <div className="space-y-4">
-                                    {hierarchy.subcategoryIds.map((id) => (
-                                        <div key={id} className="rounded-md border border-blue-300 bg-white p-3">
-                                            <div className="mb-2 text-sm font-medium">{subcatNameById[id] || id}</div>
-                                            <div className="space-y-2 text-sm text-blue-700">
-                                                <label className="flex items-center space-x-2">
-                                                    <input
-                                                        type="radio"
-                                                        name={`subcatDiscount-${id}`}
-                                                        value={id}
-                                                        checked={subcategoryDiscounts[id]?.source === id}
-                                                        onChange={() => handleDiscountSourceChange('subcategory', id, id)}
-                                                        className="text-blue-700"
-                                                    />
-                                                    <span>
-                                                        Use default ({subcatDiscountById[id] ?? 0}%)
-                                                    </span>
-                                                </label>
-                                                <label className="flex items-center space-x-2">
-                                                    <input
-                                                        type="radio"
-                                                        name={`subcatDiscount-${id}`}
-                                                        value="manual"
-                                                        checked={subcategoryDiscounts[id]?.source === 'manual'}
-                                                        onChange={() => handleDiscountSourceChange('subcategory', id, 'manual')}
-                                                        className="text-blue-700"
-                                                    />
-                                                    <span>Enter manually</span>
-                                                </label>
-                                            </div>
-                                            <div className="relative">
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="space-y-2 rounded-md border border-yellow-300 bg-white p-3">
+                                        <div className="text-sm font-medium text-yellow-700">Price (IDR)</div>
+                                        <div className="space-y-2 text-sm text-yellow-700">
+                                            <label className="flex items-center space-x-2">
                                                 <input
-                                                    type="text"
-                                                    value={subcategoryDiscounts[id]?.value || ''}
-                                                    onChange={(e) =>
-                                                        handleDiscountValueChange('subcategory', id, e.target.value.replace(/\D/g, ''))
-                                                    }
-                                                    className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
-                                                    placeholder="Enter discount percentage"
-                                                    disabled={subcategoryDiscounts[id]?.source !== 'manual' && subcategoryDiscounts[id]?.source !== ''}
-                                                    maxLength={3}
+                                                    type="radio"
+                                                    checked={pricing.use_unit_price}
+                                                    onChange={() => toggleUnitPrice(true)}
+                                                    className="text-yellow-700"
                                                 />
-                                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {hierarchy.divisionIds.length > 0 && (
-                            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                <div className="mb-3">
-                                    <label className="text-sm font-medium">Option discounts</label>
-                                </div>
-                                <div className="space-y-4">
-                                    {hierarchy.divisionIds.map((id) => (
-                                        <div key={id} className="rounded-md border border-blue-300 bg-white p-3">
-                                            <div className="mb-2 text-sm font-medium">{divisionNameById[id] || id}</div>
-                                            <div className="space-y-2 text-sm text-blue-700">
-                                                <label className="flex items-center space-x-2">
-                                                    <input
-                                                        type="radio"
-                                                        name={`divisionDiscount-${id}`}
-                                                        value={id}
-                                                        checked={divisionDiscounts[id]?.source === id}
-                                                        onChange={() => handleDiscountSourceChange('division', id, id)}
-                                                        className="text-blue-700"
-                                                    />
-                                                    <span>Use default ({divisionDiscountById[id] ?? 0}%)</span>
-                                                </label>
-                                                <label className="flex items-center space-x-2">
-                                                    <input
-                                                        type="radio"
-                                                        name={`divisionDiscount-${id}`}
-                                                        value="manual"
-                                                        checked={divisionDiscounts[id]?.source === 'manual'}
-                                                        onChange={() => handleDiscountSourceChange('division', id, 'manual')}
-                                                        className="text-blue-700"
-                                                    />
-                                                    <span>Enter manually</span>
-                                                </label>
-                                            </div>
-                                            <div className="relative">
+                                                <span>Use default price (Rp {formatRupiah(String(selectedUnitPrice || 0))})</span>
+                                            </label>
+                                            <label className="flex items-center space-x-2">
                                                 <input
-                                                    type="text"
-                                                    value={divisionDiscounts[id]?.value || ''}
-                                                    onChange={(e) =>
-                                                        handleDiscountValueChange('division', id, e.target.value.replace(/\D/g, ''))
-                                                    }
-                                                    className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
-                                                    placeholder="Enter discount percentage"
-                                                    disabled={divisionDiscounts[id]?.source !== 'manual' && divisionDiscounts[id]?.source !== ''}
-                                                    maxLength={3}
+                                                    type="radio"
+                                                    checked={!pricing.use_unit_price}
+                                                    onChange={() => toggleUnitPrice(false)}
+                                                    className="text-yellow-700"
                                                 />
-                                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                                            </div>
+                                                <span>Enter manually</span>
+                                            </label>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                                        <div className="relative">
+                                            <span className="absolute top-2 left-3 text-gray-500">Rp</span>
+                                            <input
+                                                type="text"
+                                                value={formatRupiah(pricing.price)}
+                                                onChange={handlePriceChange}
+                                                className={`w-full rounded-md border py-2 pr-3 pl-10 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                                    pricing.use_unit_price ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'
+                                                }`}
+                                                placeholder="0"
+                                                disabled={pricing.use_unit_price}
+                                            />
+                                        </div>
+                                    </div>
 
-                        {hierarchy.variantIds.length > 0 && (
-                            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                <div className="mb-3">
-                                    <label className="text-sm font-medium">Variant discounts</label>
-                                </div>
-                                <div className="space-y-4">
-                                    {hierarchy.variantIds.map((id) => (
-                                        <div key={id} className="rounded-md border border-blue-300 bg-white p-3">
-                                            <div className="mb-2 text-sm font-medium">{variantNameById[id] || id}</div>
-                                            <div className="space-y-2 text-sm text-blue-700">
-                                                <label className="flex items-center space-x-2">
-                                                    <input
-                                                        type="radio"
-                                                        name={`variantDiscount-${id}`}
-                                                        value={id}
-                                                        checked={variantDiscounts[id]?.source === id}
-                                                        onChange={() => handleDiscountSourceChange('variant', id, id)}
-                                                        className="text-blue-700"
-                                                    />
-                                                    <span>Use default ({variantDiscountById[id] ?? 0}%)</span>
-                                                </label>
-                                                <label className="flex items-center space-x-2">
-                                                    <input
-                                                        type="radio"
-                                                        name={`variantDiscount-${id}`}
-                                                        value="manual"
-                                                        checked={variantDiscounts[id]?.source === 'manual'}
-                                                        onChange={() => handleDiscountSourceChange('variant', id, 'manual')}
-                                                        className="text-blue-700"
-                                                    />
-                                                    <span>Enter manually</span>
-                                                </label>
-                                            </div>
-                                            <div className="relative">
+                                    <div className="space-y-2 rounded-md border border-yellow-300 bg-white p-3">
+                                        <div className="text-sm font-medium text-yellow-700">Price (USD)</div>
+                                        <div className="space-y-2 text-sm text-yellow-700">
+                                            <label className="flex items-center space-x-2">
                                                 <input
-                                                    type="text"
-                                                    value={variantDiscounts[id]?.value || ''}
-                                                    onChange={(e) =>
-                                                        handleDiscountValueChange('variant', id, e.target.value.replace(/\D/g, ''))
-                                                    }
-                                                    className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
-                                                    placeholder="Enter discount percentage"
-                                                    disabled={variantDiscounts[id]?.source !== 'manual' && variantDiscounts[id]?.source !== ''}
-                                                    maxLength={3}
+                                                    type="radio"
+                                                    checked={pricing.use_unit_usd_price}
+                                                    onChange={() => toggleUnitUsdPrice(true)}
+                                                    className="text-yellow-700"
                                                 />
-                                                <span className="absolute top-2 right-3 text-gray-500">%</span>
-                                            </div>
+                                                <span>Use default price (${formatUsd(String(selectedUnitUsdPrice || 0))})</span>
+                                            </label>
+                                            <label className="flex items-center space-x-2">
+                                                <input
+                                                    type="radio"
+                                                    checked={!pricing.use_unit_usd_price}
+                                                    onChange={() => toggleUnitUsdPrice(false)}
+                                                    className="text-yellow-700"
+                                                />
+                                                <span>Enter manually</span>
+                                            </label>
                                         </div>
-                                    ))}
+                                        <div className="relative">
+                                            <span className="absolute top-2 left-3 text-gray-500">$</span>
+                                            <input
+                                                type="text"
+                                                value={formatUsd(pricing.product_usd_price)}
+                                                onChange={handlePriceUsdChange}
+                                                className={`w-full rounded-md border py-2 pr-3 pl-10 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                                    pricing.use_unit_usd_price ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'
+                                                }`}
+                                                placeholder="0"
+                                                disabled={pricing.use_unit_usd_price}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                <div className="rounded-md border border-yellow-300 bg-white p-3">
+                                    <div className="mb-2 text-sm font-medium text-yellow-700">Product discount</div>
+                                    <div className="space-y-2 text-sm text-yellow-700">
+                                        <label className="flex items-center space-x-2">
+                                            <input
+                                                type="radio"
+                                                checked={pricing.use_unit_discount}
+                                                onChange={() => toggleUnitDiscount(true)}
+                                                className="text-yellow-700"
+                                            />
+                                            <span>Use default discount ({selectedUnitDiscount || 0}%)</span>
+                                        </label>
+                                        <label className="flex items-center space-x-2">
+                                            <input
+                                                type="radio"
+                                                checked={!pricing.use_unit_discount}
+                                                onChange={() => toggleUnitDiscount(false)}
+                                                className="text-yellow-700"
+                                            />
+                                            <span>Enter manually</span>
+                                        </label>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={pricing.product_discount}
+                                            onChange={handleDiscountChange}
+                                            className={`w-full rounded-md border px-3 py-2 pr-10 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                                pricing.use_unit_discount ? 'bg-gray-50 text-gray-500' : 'bg-white text-foreground'
+                                            }`}
+                                            placeholder="Enter discount percentage"
+                                            maxLength={3}
+                                            disabled={pricing.use_unit_discount}
+                                        />
+                                        <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                    </div>
+                                </div>
 
-                <Card>
-                    <CardHeader className="flex-row items-center justify-between gap-4">
-                        <div>
-                            <CardTitle>Bulk add products</CardTitle>
-                            <CardDescription>Draft multiple products at once with names, weight (gram), and a cover image.</CardDescription>
+                                {hierarchy.subcategoryIds.length > 0 && (
+                                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                        <div className="mb-3">
+                                            <label className="text-sm font-medium">Subcategory discounts</label>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {hierarchy.subcategoryIds.map((id) => (
+                                                <div key={id} className="rounded-md border border-blue-300 bg-white p-3">
+                                                    <div className="mb-2 text-sm font-medium">{subcatNameById[id] || id}</div>
+                                                    <div className="space-y-2 text-sm text-blue-700">
+                                                        <label className="flex items-center space-x-2">
+                                                            <input
+                                                                type="radio"
+                                                                name={`subcatDiscount-${id}`}
+                                                                value={id}
+                                                                checked={subcategoryDiscounts[id]?.source === id}
+                                                                onChange={() => handleDiscountSourceChange('subcategory', id, id)}
+                                                                className="text-blue-700"
+                                                            />
+                                                            <span>Use default ({subcatDiscountById[id] ?? 0}%)</span>
+                                                        </label>
+                                                        <label className="flex items-center space-x-2">
+                                                            <input
+                                                                type="radio"
+                                                                name={`subcatDiscount-${id}`}
+                                                                value="manual"
+                                                                checked={subcategoryDiscounts[id]?.source === 'manual'}
+                                                                onChange={() => handleDiscountSourceChange('subcategory', id, 'manual')}
+                                                                className="text-blue-700"
+                                                            />
+                                                            <span>Enter manually</span>
+                                                        </label>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="text"
+                                                            value={subcategoryDiscounts[id]?.value || ''}
+                                                            onChange={(e) =>
+                                                                handleDiscountValueChange('subcategory', id, e.target.value.replace(/\D/g, ''))
+                                                            }
+                                                            className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
+                                                            placeholder="Enter discount percentage"
+                                                            disabled={
+                                                                subcategoryDiscounts[id]?.source !== 'manual' &&
+                                                                subcategoryDiscounts[id]?.source !== ''
+                                                            }
+                                                            maxLength={3}
+                                                        />
+                                                        <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {hierarchy.divisionIds.length > 0 && (
+                                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                        <div className="mb-3">
+                                            <label className="text-sm font-medium">Option discounts</label>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {hierarchy.divisionIds.map((id) => (
+                                                <div key={id} className="rounded-md border border-blue-300 bg-white p-3">
+                                                    <div className="mb-2 text-sm font-medium">{divisionNameById[id] || id}</div>
+                                                    <div className="space-y-2 text-sm text-blue-700">
+                                                        <label className="flex items-center space-x-2">
+                                                            <input
+                                                                type="radio"
+                                                                name={`divisionDiscount-${id}`}
+                                                                value={id}
+                                                                checked={divisionDiscounts[id]?.source === id}
+                                                                onChange={() => handleDiscountSourceChange('division', id, id)}
+                                                                className="text-blue-700"
+                                                            />
+                                                            <span>Use default ({divisionDiscountById[id] ?? 0}%)</span>
+                                                        </label>
+                                                        <label className="flex items-center space-x-2">
+                                                            <input
+                                                                type="radio"
+                                                                name={`divisionDiscount-${id}`}
+                                                                value="manual"
+                                                                checked={divisionDiscounts[id]?.source === 'manual'}
+                                                                onChange={() => handleDiscountSourceChange('division', id, 'manual')}
+                                                                className="text-blue-700"
+                                                            />
+                                                            <span>Enter manually</span>
+                                                        </label>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="text"
+                                                            value={divisionDiscounts[id]?.value || ''}
+                                                            onChange={(e) =>
+                                                                handleDiscountValueChange('division', id, e.target.value.replace(/\D/g, ''))
+                                                            }
+                                                            className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
+                                                            placeholder="Enter discount percentage"
+                                                            disabled={
+                                                                divisionDiscounts[id]?.source !== 'manual' && divisionDiscounts[id]?.source !== ''
+                                                            }
+                                                            maxLength={3}
+                                                        />
+                                                        <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {hierarchy.variantIds.length > 0 && (
+                                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                        <div className="mb-3">
+                                            <label className="text-sm font-medium">Variant discounts</label>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {hierarchy.variantIds.map((id) => (
+                                                <div key={id} className="rounded-md border border-blue-300 bg-white p-3">
+                                                    <div className="mb-2 text-sm font-medium">{variantNameById[id] || id}</div>
+                                                    <div className="space-y-2 text-sm text-blue-700">
+                                                        <label className="flex items-center space-x-2">
+                                                            <input
+                                                                type="radio"
+                                                                name={`variantDiscount-${id}`}
+                                                                value={id}
+                                                                checked={variantDiscounts[id]?.source === id}
+                                                                onChange={() => handleDiscountSourceChange('variant', id, id)}
+                                                                className="text-blue-700"
+                                                            />
+                                                            <span>Use default ({variantDiscountById[id] ?? 0}%)</span>
+                                                        </label>
+                                                        <label className="flex items-center space-x-2">
+                                                            <input
+                                                                type="radio"
+                                                                name={`variantDiscount-${id}`}
+                                                                value="manual"
+                                                                checked={variantDiscounts[id]?.source === 'manual'}
+                                                                onChange={() => handleDiscountSourceChange('variant', id, 'manual')}
+                                                                className="text-blue-700"
+                                                            />
+                                                            <span>Enter manually</span>
+                                                        </label>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="text"
+                                                            value={variantDiscounts[id]?.value || ''}
+                                                            onChange={(e) =>
+                                                                handleDiscountValueChange('variant', id, e.target.value.replace(/\D/g, ''))
+                                                            }
+                                                            className="w-full rounded-md border border-blue-300 px-3 py-2 pr-8 focus:border-blue-500 focus:outline-none"
+                                                            placeholder="Enter discount percentage"
+                                                            disabled={
+                                                                variantDiscounts[id]?.source !== 'manual' && variantDiscounts[id]?.source !== ''
+                                                            }
+                                                            maxLength={3}
+                                                        />
+                                                        <span className="absolute top-2 right-3 text-gray-500">%</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="flex-row items-center justify-between gap-4">
+                                <div>
+                                    <CardTitle>Bulk add products</CardTitle>
+                                    <CardDescription>Draft multiple products at once with names, weight (gram), and a cover image.</CardDescription>
                                 </div>
                                 <div className="flex gap-2">
                                     <Button type="button" variant="outline" size="sm" onClick={addEmptyRow}>
@@ -1545,6 +1560,65 @@ export default function GroupProductForm() {
                                     />
                                     <p className="text-xs text-muted-foreground">
                                         Setting this will fill the weight field for all rows (including existing ones).
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="bulk-description">Bulk description</Label>
+                                        <span className="text-xs text-muted-foreground">Applies to all rows</span>
+                                    </div>
+                                    <div className="rounded-md border">
+                                        <div className="flex space-x-2 border-b border-gray-200 p-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => insertBulkFormatting('**', '**')}
+                                                className="rounded p-2 hover:bg-gray-100 focus:bg-gray-200 focus:outline-none"
+                                                title="Bold (wrap with **text**)"
+                                            >
+                                                <Bold size={14} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => insertBulkFormatting('*', '*')}
+                                                className="rounded p-2 hover:bg-gray-100 focus:bg-gray-200 focus:outline-none"
+                                                title="Italic (wrap with *text*)"
+                                            >
+                                                <Italic size={14} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => insertBulkFormatting('__', '__')}
+                                                className="rounded p-2 hover:bg-gray-100 focus:bg-gray-200 focus:outline-none"
+                                                title="Underline (wrap with __text__)"
+                                            >
+                                                <Underline size={14} />
+                                            </button>
+                                        </div>
+                                        <textarea
+                                            ref={bulkDescriptionRef}
+                                            id="bulk-description"
+                                            rows={5}
+                                            className="min-h-[110px] w-full resize-none p-3 text-sm focus:outline-none"
+                                            placeholder="Enter product description... Use **bold**, *italic*, __underline__"
+                                            value={bulkDescription}
+                                            onChange={(e) => applyBulkDescription(e.target.value)}
+                                        />
+                                        {bulkDescription && (
+                                            <div className="border-t border-gray-200 bg-gray-50 p-3">
+                                                <div className="mb-1 text-xs text-muted-foreground">Preview:</div>
+                                                <div
+                                                    className="prose prose-sm max-w-none"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: formatDescriptionPreview(bulkDescription),
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Setting this will fill the description field for all rows (including existing ones). Formatting: **bold**,
+                                        *italic*, __underline__
                                     </p>
                                 </div>
 
@@ -1590,44 +1664,44 @@ export default function GroupProductForm() {
                                                     {rowErrors[row.id]?.weight && <p className="text-xs text-red-500">{rowErrors[row.id]?.weight}</p>}
                                                 </div>
 
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label htmlFor={`file-${row.id}`}>Product images (max 5)</Label>
-                                                            <span className="text-xs text-muted-foreground">
-                                                                {row.images.length + (row.existingPictures?.length ?? 0)} / 5
-                                                            </span>
-                                                        </div>
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label htmlFor={`file-${row.id}`}>Product images (max 5)</Label>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {row.images.length + (row.existingPictures?.length ?? 0)} / 5
+                                                        </span>
+                                                    </div>
 
-                                                        {row.existingPictures && row.existingPictures.length > 0 && (
-                                                            <div className="space-y-2">
-                                                                <p className="text-xs font-medium text-muted-foreground">Current pictures</p>
-                                                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                                                    {row.existingPictures.map((pic) => (
-                                                                        <div key={pic.id} className="relative">
-                                                                            <img
-                                                                                src={pic.url}
-                                                                                alt={row.name || 'Existing product image'}
-                                                                                className="h-24 w-full rounded-md border object-cover"
-                                                                            />
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleRemoveExistingPicture(row.id, pic.id)}
-                                                                                className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow hover:bg-red-600"
-                                                                                aria-label="Remove existing image"
-                                                                            >
-                                                                                <X size={12} />
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {row.previews.length > 0 && (
+                                                    {row.existingPictures && row.existingPictures.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            <p className="text-xs font-medium text-muted-foreground">Current pictures</p>
                                                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                                                {row.previews.map((preview, index) => (
-                                                                    <div key={preview} className="relative">
+                                                                {row.existingPictures.map((pic) => (
+                                                                    <div key={pic.id} className="relative">
                                                                         <img
+                                                                            src={pic.url}
+                                                                            alt={row.name || 'Existing product image'}
+                                                                            className="h-24 w-full rounded-md border object-cover"
+                                                                        />
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleRemoveExistingPicture(row.id, pic.id)}
+                                                                            className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow hover:bg-red-600"
+                                                                            aria-label="Remove existing image"
+                                                                        >
+                                                                            <X size={12} />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {row.previews.length > 0 && (
+                                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                                            {row.previews.map((preview, index) => (
+                                                                <div key={preview} className="relative">
+                                                                    <img
                                                                         src={preview}
                                                                         alt={row.images[index]?.name || `Preview ${index + 1}`}
                                                                         className="h-24 w-full rounded-md border object-cover"
@@ -1718,23 +1792,23 @@ export default function GroupProductForm() {
                                                             className="min-h-[110px] w-full resize-none p-3 text-sm focus:outline-none"
                                                             rows={5}
                                                         />
-                                                            {row.description && (
-                                                                <div className="border-t border-gray-200 bg-gray-50 p-3">
-                                                                    <div className="mb-1 text-xs text-muted-foreground">Preview:</div>
-                                                                    <div
-                                                                        className="prose prose-sm max-w-none"
+                                                        {row.description && (
+                                                            <div className="border-t border-gray-200 bg-gray-50 p-3">
+                                                                <div className="mb-1 text-xs text-muted-foreground">Preview:</div>
+                                                                <div
+                                                                    className="prose prose-sm max-w-none"
                                                                     dangerouslySetInnerHTML={{
                                                                         __html: formatDescriptionPreview(row.description),
                                                                     }}
                                                                 />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        {rowErrors[row.id]?.description && (
-                                                            <p className="text-xs text-red-500">{rowErrors[row.id]?.description}</p>
+                                                            </div>
                                                         )}
-                                                        <p className="text-xs text-muted-foreground">Formatting: **bold**, *italic*, __underline__</p>
                                                     </div>
+                                                    {rowErrors[row.id]?.description && (
+                                                        <p className="text-xs text-red-500">{rowErrors[row.id]?.description}</p>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground">Formatting: **bold**, *italic*, __underline__</p>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
