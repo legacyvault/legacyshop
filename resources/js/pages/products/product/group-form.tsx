@@ -62,13 +62,16 @@ interface MultiSelectProps {
     onChange: (values: string[]) => void;
     placeholder: string;
     disabled?: boolean;
+    maxSelections?: number;
 }
 
-const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, placeholder, disabled }) => {
+const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, placeholder, disabled, maxSelections }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const selectionLimit = maxSelections ?? Infinity;
+    const isSingleSelect = selectionLimit === 1;
 
     const filteredOptions = useMemo(() => {
         const term = searchTerm.toLowerCase();
@@ -94,8 +97,13 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
     const toggleValue = (value: string) => {
         if (values.includes(value)) {
             onChange(values.filter((v) => v !== value));
-        } else {
-            onChange([...values, value]);
+            return;
+        }
+        const nextValues = isSingleSelect ? [value] : [...values, value];
+        onChange(nextValues.slice(0, selectionLimit));
+        if (isSingleSelect) {
+            setIsOpen(false);
+            setSearchTerm('');
         }
     };
 
@@ -164,7 +172,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, values, onChange, pl
                                         values.includes(option.value) ? 'bg-blue-50 text-blue-700' : ''
                                     }`}
                                 >
-                                    <input type="checkbox" checked={values.includes(option.value)} readOnly />
+                                    <input type={isSingleSelect ? 'radio' : 'checkbox'} checked={values.includes(option.value)} readOnly />
                                     <span className="flex-1">{option.label}</span>
                                 </div>
                             ))
@@ -416,8 +424,8 @@ export default function GroupProductForm() {
         setGroupMeta({ name: productGroup.name ?? '', notes: '' });
 
         const nextHierarchy: HierarchySelection = {
-            unitIds: unique(products.map((p) => p.unit?.id)),
-            subunitIds: unique(products.map((p) => p.sub_unit?.id)),
+            unitIds: unique(products.map((p) => p.unit?.id)).slice(0, 1),
+            subunitIds: unique(products.map((p) => p.sub_unit?.id)).slice(0, 1),
             categoryIds: unique(products.flatMap((p) => p.categories?.map((c) => c.id))),
             subcategoryIds: unique(products.flatMap((p) => p.subcategories?.map((s) => s.id))),
             divisionIds: unique(products.flatMap((p) => p.divisions?.map((d) => d.id))),
@@ -482,9 +490,10 @@ export default function GroupProductForm() {
     };
 
     const handleUnitChange = (values: string[]) => {
+        const nextValues = values.slice(0, 1);
         setHierarchy((prev) => {
-            const next = resetHierarchyBelow({ ...prev, unitIds: values }, 'unitIds');
-            const allowedSubunits = new Set(subunits.filter((s) => values.includes(s.unit_id)).map((s) => s.id));
+            const next = resetHierarchyBelow({ ...prev, unitIds: nextValues }, 'unitIds');
+            const allowedSubunits = new Set(subunits.filter((s) => nextValues.includes(s.unit_id)).map((s) => s.id));
             next.subunitIds = next.subunitIds.filter((id) => allowedSubunits.has(id));
             return next;
         });
@@ -494,9 +503,10 @@ export default function GroupProductForm() {
     };
 
     const handleSubunitChange = (values: string[]) => {
+        const nextValues = values.slice(0, 1);
         setHierarchy((prev) => {
-            const next = resetHierarchyBelow({ ...prev, subunitIds: values }, 'subunitIds');
-            const allowedCategories = new Set(categories.filter((c) => values.includes(c.sub_unit_id)).map((c) => c.id));
+            const next = resetHierarchyBelow({ ...prev, subunitIds: nextValues }, 'subunitIds');
+            const allowedCategories = new Set(categories.filter((c) => nextValues.includes(c.sub_unit_id)).map((c) => c.id));
             next.categoryIds = next.categoryIds.filter((id) => allowedCategories.has(id));
             return next;
         });
@@ -863,8 +873,8 @@ export default function GroupProductForm() {
         const newRowErrors: Record<string, RowError> = {};
 
         if (!groupMeta.name.trim()) newFormErrors.group_name = 'Group name is required';
-        if (hierarchy.unitIds.length === 0) newFormErrors.unit_id = 'Select at least one collection';
-        if (hierarchy.subunitIds.length === 0) newFormErrors.sub_unit_id = 'Select at least one sub collection';
+        if (hierarchy.unitIds.length === 0) newFormErrors.unit_id = 'Select a collection';
+        if (hierarchy.subunitIds.length === 0) newFormErrors.sub_unit_id = 'Select a sub collection';
         if (hierarchy.categoryIds.length === 0) newFormErrors.categories = 'Select at least one category';
         if (hierarchy.subcategoryIds.length === 0) newFormErrors.sub_categories = 'Select at least one subcategory';
         if (hierarchy.divisionIds.length === 0) newFormErrors.divisions = 'Select at least one option';
@@ -1091,7 +1101,8 @@ export default function GroupProductForm() {
                                 <div>
                                     <CardTitle>Hierarchy selection</CardTitle>
                                     <CardDescription>
-                                        Follow the same steps as the single product flow to anchor this group. Multiple selections are allowed.
+                                        Follow the same steps as the single product flow to anchor this group. Collection and sub collection are
+                                        single-select; the rest can take multiple selections.
                                     </CardDescription>
                                 </div>
                                 <Button
@@ -1122,7 +1133,8 @@ export default function GroupProductForm() {
                                             options={unitOptions}
                                             values={hierarchy.unitIds}
                                             onChange={handleUnitChange}
-                                            placeholder="Select collection(s)"
+                                            placeholder="Select a collection"
+                                            maxSelections={1}
                                         />
                                         {formErrors.unit_id && <p className="text-xs text-red-500">{formErrors.unit_id}</p>}
                                     </div>
@@ -1132,8 +1144,9 @@ export default function GroupProductForm() {
                                             options={subunitOptions}
                                             values={hierarchy.subunitIds}
                                             onChange={handleSubunitChange}
-                                            placeholder="Select sub collection(s)"
+                                            placeholder="Select a sub collection"
                                             disabled={!subunitOptions.length}
+                                            maxSelections={1}
                                         />
                                         {formErrors.sub_unit_id && <p className="text-xs text-red-500">{formErrors.sub_unit_id}</p>}
                                     </div>
