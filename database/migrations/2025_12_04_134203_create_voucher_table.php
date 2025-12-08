@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('voucher_code')->unique();
             $table->integer('limit')->nullable();
+            $table->float('discount');
             $table->boolean('is_limit')->default(0);
             $table->timestamps();
         });

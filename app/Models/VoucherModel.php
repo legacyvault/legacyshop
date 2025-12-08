@@ -16,6 +16,7 @@ class VoucherModel extends Model
         'name',
         'voucher_code',
         'limit',
+        'discount',
         'is_limit',
     ];
 
