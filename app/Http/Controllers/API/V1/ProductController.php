@@ -827,6 +827,7 @@ class ProductController extends Controller
                 'products.divisions',
                 'products.subcategories',
                 'products.variants',
+                'products.event'
             ])->get();
 
         return response()->json([
@@ -1372,6 +1373,7 @@ class ProductController extends Controller
                 'divisions',
                 'tags',
                 'pictures',
+                'event'
             ]);
 
             if ($unitFilter) {
