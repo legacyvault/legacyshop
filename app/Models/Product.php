@@ -119,4 +119,21 @@ class Product extends Model
     {
         return $this->hasMany(ProductPictures::class);
     }
+    
+    public function event_product()
+    {
+        return $this->hasOne(EventProducts::class, 'product_id', 'id');
+    }
+
+    public function event()
+    {
+        return $this->hasOneThrough(
+            Events::class,
+            EventProducts::class,
+            'product_id', // Foreign key on EventProducts
+            'id',         // Foreign key on Events
+            'id',         // Local key on Product
+            'event_id'    // Local key on EventProducts
+        );
+    }
 }

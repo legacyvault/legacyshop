@@ -458,7 +458,23 @@ class MiscController extends Controller
 
     public function getEventById($id)
     {
-        $data = Events::orderBy('name', 'asc')->with('event_products.product')->find($id);
+        $data = Events::with([
+            'event_products.product' => function ($query) {
+                $query->with([
+                    'stocks',
+                    'unit',
+                    'subUnit',
+                    'tags',
+                    'categories',
+                    'subcategories',
+                    'divisions',
+                    'variants',
+                    'pictures'
+                ]);
+            }
+        ])
+            ->find($id);
+
         return $data;
     }
 }
