@@ -69,6 +69,10 @@ const mainNavItems: NavItem[] = [
                 title: 'Voucher',
                 href: '/misc/voucher',
             },
+            {
+                title: 'Event',
+                href: '/misc/event',
+            },
         ],
     },
     {
