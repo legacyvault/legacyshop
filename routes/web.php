@@ -216,7 +216,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
 
     //Events
     Route::post('create-event', [MiscController::class, 'createEvent'])->name('event.create');
-    Route::post('update-event', [MiscController::class, 'updateEvent'])->name('event.update');
+    Route::post('update-event/{id}', [MiscController::class, 'updateEvent'])->name('event.update');
 
     //Subcat API
     Route::post('create-sub-category', [SubCategoryController::class, 'createSubCategory'])->name('subcat.create');
@@ -350,6 +350,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('view-running-text', [ViewController::class, 'runningTextPage']);
         Route::get('view-banner', [ViewController::class, 'bannerPage']);
         Route::get('voucher',[ViewController::class, 'voucherPage']);
+        Route::get('event',[ViewController::class, 'eventPage']);
     });
 
     Route::prefix('admin-articles')->group(function () {
