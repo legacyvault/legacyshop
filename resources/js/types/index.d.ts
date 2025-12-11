@@ -600,6 +600,15 @@ export interface IProductGroupProduct {
     }[];
 }
 
+export interface IGroupStock {
+    id: string;
+    group_id: string;
+    quantity: number;
+    remarks: string | null;
+    created_at: string;
+    updated_at?: string;
+}
+
 export interface IProductGroup {
     id: string;
     name: string;
@@ -607,6 +616,8 @@ export interface IProductGroup {
     updated_at: string;
     products_count?: number;
     products: IProductGroupProduct[];
+    stocks?: IGroupStock[];
+    total_stock?: number;
 }
 
 export interface IRootProductGroups {

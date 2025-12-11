@@ -137,18 +137,27 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         if (!selectedCat) return true;
 
         if (subcategories.length > 0) {
-            if (!selectedSubcat) return true;
-            if (subcatStockInsufficient) return true;
+            if (!subcatStockInsufficient) {
+                if (selectedSubcat) return true;
+            } else {
+                return true;
+            }
         }
 
         if (divisions.length > 0) {
-            if (!selectedDiv) return true;
-            if (divisionStockInsufficient) return true;
+            if (!divisionStockInsufficient) {
+                if (selectedDiv) return true;
+            } else {
+                return true;
+            }
         }
 
         if (textVariants.length > 0 && colorVariants.length > 0) {
-            if (!selectedVar) return true;
-            if (variantStockInsufficient) return true;
+            if (!variantStockInsufficient) {
+                if (selectedVar) return true;
+            } else {
+                return true;
+            }
         }
 
         return false;

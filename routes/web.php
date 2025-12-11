@@ -179,6 +179,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Product Group
     Route::post('add-product-group', [ProductController::class, 'addProductGroup'])->name('product.add-product-group');
     Route::post('update-product/{id}', [ProductController::class, 'editProductGroup'])->name('product.edit-product-group');
+    Route::post('add-product-group-stock', [ProductController::class, 'addStockGroup'])->name('product.add-stock-group');
 
     Route::post('add-product-stock', [ProductController::class, 'addStock'])->name('product.add-stock');
     Route::post('update-product-stock', [ProductController::class, 'updateLatestStock'])->name('product.update-stock');
