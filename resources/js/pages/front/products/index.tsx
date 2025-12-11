@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import FrontLayout from '@/layouts/front/front-layout';
-import { IProducts, IRootProducts, IUnit, SharedData } from '@/types';
+import { IEvents, IProducts, IRootProducts, IUnit, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -35,10 +35,12 @@ export default function FrontProducts() {
         tags,
         filters,
         unit,
+        event,
     } = usePage<
         SharedData & {
             products?: IRootProducts;
             unit?: IUnit | null;
+            event?: IEvents | null;
         }
     >().props;
 
@@ -86,10 +88,11 @@ export default function FrontProducts() {
     const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>(initialOrder);
 
     // Build query params for server requests
-    const listPath = unit ? `/list-productt/${unit.id}` : '/list-products';
+    const listPath = event ? `/list-product/${event.id}` : unit ? `/list-product/${unit.id}` : '/list-products';
     const buildParams = (extra: Record<string, any> = {}) => ({
         q: search || undefined,
         unit_id: unit?.id,
+        event_id: event?.id,
         sub_unit_ids: selectedSubUnits.size > 0 ? Array.from(selectedSubUnits) : undefined,
         tag_ids: selectedTags.size > 0 ? Array.from(selectedTags) : undefined,
         sort_by: sortOrder === 'default' ? undefined : sortField === 'name' ? 'product_name' : sortField === 'price' ? 'product_price' : 'created_at',
@@ -104,7 +107,7 @@ export default function FrontProducts() {
     };
 
     // Persist + restore via sessionStorage
-    const STORAGE_KEY = unit ? `frontProductsQuery:${unit.id}` : 'frontProductsQuery:all';
+    const STORAGE_KEY = event ? `frontProductsQuery:event:${event.id}` : unit ? `frontProductsQuery:${unit.id}` : 'frontProductsQuery:all';
     const restored = useRef(false);
     useEffect(() => {
         if (restored.current) return;
@@ -113,6 +116,7 @@ export default function FrontProducts() {
             (filters as any)?.q ||
                 (filters as any)?.sort_by ||
                 (filters as any)?.sort_dir ||
+                hasFilterValue((filters as any)?.event_id) ||
                 hasFilterValue((filters as any)?.sub_unit_ids) ||
                 hasFilterValue((filters as any)?.category_ids) ||
                 hasFilterValue((filters as any)?.subcat_ids) ||
@@ -158,13 +162,24 @@ export default function FrontProducts() {
             searchValue={search}
             onSearchChange={setSearch}
             searchRoute={listPath}
-            searchScopeLabel={unit?.name}
+            searchScopeLabel={event?.name ?? unit?.name}
             searchUnitId={unit?.id}
         >
             <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-6 space-y-2">
-                    {unit ? (
+                    {event ? (
+                        <>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase">Event</p>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{event.name}</h1>
+                                <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
+                                    {event.discount}% off
+                                </span>
+                            </div>
+                            {event.description && <p className="max-w-3xl text-sm text-muted-foreground">{event.description}</p>}
+                        </>
+                    ) : unit ? (
                         <>
                             <p className="text-xs font-semibold text-muted-foreground uppercase">Collection</p>
                             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{unit.name}</h1>

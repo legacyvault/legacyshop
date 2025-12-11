@@ -1343,6 +1343,9 @@ class ProductController extends Controller
             $unitFilter = $unitId ?? $request->input('unit_id');
             $unitFilter = ($unitFilter !== null && $unitFilter !== '') ? (string) $unitFilter : null;
 
+            $eventFilter = $request->input('event_id');
+            $eventFilter = ($eventFilter !== null && $eventFilter !== '') ? (string) $eventFilter : null;
+
             $subunitFilter = $request->input('sub_unit_ids', []);
             if (!is_array($subunitFilter)) {
                 $subunitFilter = ($subunitFilter !== null && $subunitFilter !== '') ? [$subunitFilter] : [];
@@ -1378,6 +1381,12 @@ class ProductController extends Controller
 
             if ($unitFilter) {
                 $query->where('unit_id', $unitFilter);
+            }
+
+            if ($eventFilter) {
+                $query->whereHas('event_product', function ($q) use ($eventFilter) {
+                    $q->where('event_id', $eventFilter);
+                });
             }
 
             if ($search) {
@@ -1515,6 +1524,7 @@ class ProductController extends Controller
             'variants',
             'tags',
             'pictures',
+            'event',
         ])->find($id);
 
         if (!$product) {
@@ -1548,6 +1558,7 @@ class ProductController extends Controller
             'variants',
             'tags',
             'pictures',
+            'event',
         ])->where('id', '!=', $id)->orderBy('created_at', 'desc')->limit(5)->get();
 
         if (!$product) {

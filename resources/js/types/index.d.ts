@@ -66,6 +66,29 @@ export interface SharedData {
     rates?: IRates | null;
     summary?: IDashboardSummary;
     rec_prod: IProducts[];
+    events: IEvents[];
+    event?: IEvents | null;
+}
+
+export interface IEvents {
+    created_at: string | Date;
+    description: string;
+    discount: number;
+    id: string;
+    is_active: number;
+    name: string;
+    picture_url: string;
+    updated_at: string | Date;
+    event_products: IEventProduct[];
+}
+
+export interface IEventProduct {
+    event_id: string;
+    created_at: string | Date;
+    updated_at: string | Date;
+    id: string;
+    product_id: string;
+    product: IProducts;
 }
 
 export type InventoryEntityType = 'product' | 'subcategory' | 'division' | 'variant';
@@ -600,6 +623,8 @@ export interface IProducts {
     categories: ICategories[];
     created_at: string;
     description: string;
+    event?: IEvents | null;
+    event_id?: string | null;
     product_sku: string;
     divisions: (IDivisions & { pivot: IPivotDivisionProd })[];
     id: string;

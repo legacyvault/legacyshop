@@ -3,7 +3,7 @@ import { CartDropdown } from '@/components/CartDropdown';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
-import { Auth, IRunningText } from '@/types';
+import { Auth, IEvents, IRunningText } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { Loader2, SearchIcon, X } from 'lucide-react';
@@ -69,6 +69,12 @@ export default function FrontHeader({
     const [runningTexts, setRunningTexts] = useState<IRunningText[]>([]);
     const [isRTLoading, setIsRTLoading] = useState(true);
     const [repeatFactor, setRepeatFactor] = useState(1);
+    const pageEvents = useMemo(() => {
+        const raw = (page.props as { events?: IEvents[] }).events;
+        return Array.isArray(raw) ? raw : [];
+    }, [page.props]);
+    const [activeEvents, setActiveEvents] = useState<IEvents[]>(pageEvents);
+    const [isEventsLoading, setIsEventsLoading] = useState(false);
     const placeholder = useMemo(() => {
         if (searchScopeLabel) {
             return `Search within ${searchScopeLabel}...`;
@@ -396,6 +402,40 @@ export default function FrontHeader({
         };
     }, []);
 
+    // Fetch active events for quick access in the header (use page-provided data when available)
+    useEffect(() => {
+        if (pageEvents.length > 0) {
+            setActiveEvents(pageEvents);
+            return;
+        }
+
+        let aborted = false;
+        const controller = new AbortController();
+
+        const loadEvents = async () => {
+            try {
+                setIsEventsLoading(true);
+                const url = route('public.active-events');
+                const res = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin', signal: controller.signal });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (aborted) return;
+                const list: IEvents[] = Array.isArray(data) ? data : data && typeof data === 'object' ? [data as IEvents] : [];
+                setActiveEvents(list);
+            } catch (err: any) {
+                if (err?.name === 'AbortError') return;
+            } finally {
+                if (!aborted) setIsEventsLoading(false);
+            }
+        };
+
+        void loadEvents();
+        return () => {
+            aborted = true;
+            controller.abort();
+        };
+    }, [pageEvents]);
+
     return (
         <>
             {/* <Link href={route('locale.switch', locale === 'en' ? 'id' : 'en')} className="rounded bg-gray-200 px-4 py-2">
@@ -555,6 +595,23 @@ export default function FrontHeader({
                                     <h1 className={`font-bold uppercase ${page.url === nav.url ? 'opacity-70' : ''}`}>{nav.title}</h1>
                                 </Link>
                             ))}
+                            {(activeEvents.length > 0 || isEventsLoading) && (
+                                <>
+                                    {activeEvents.map((event) => (
+                                        <div className="relative" key={event.id}>
+                                            <Link
+                                                href={`/list-product/${event.id}`}
+                                                className={`font-bold uppercase ${page.url === 'event' ? 'opacity-70' : ''}`}
+                                            >
+                                                {event.name}
+                                            </Link>
+                                            <span className="absolute -top-2 -right-4 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] leading-none font-semibold text-destructive-foreground">
+                                                {event.discount}%
+                                            </span>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

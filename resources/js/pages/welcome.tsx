@@ -3,7 +3,7 @@ import ImageSequence from '@/components/image-sequence';
 import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
 import FrontLayout from '@/layouts/front/front-layout';
-import { IArticle, IBanner, IProducts, type SharedData } from '@/types';
+import { IArticle, IBanner, IEventProduct, IProducts, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -219,7 +219,7 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
                             e.stopPropagation();
                             goToPrev();
                         }}
-                        className="pointer-events-auto rounded-full bg-black/40 p-3 text-white backdrop-blur transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        className="pointer-events-auto rounded-full bg-black/40 p-3 text-white backdrop-blur transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                         aria-label="Show previous banner"
                     >
                         <ChevronLeft className="h-5 w-5" />
@@ -230,7 +230,7 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
                             e.stopPropagation();
                             goToNext();
                         }}
-                        className="pointer-events-auto rounded-full bg-black/40 p-3 text-white backdrop-blur transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        className="pointer-events-auto rounded-full bg-black/40 p-3 text-white backdrop-blur transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                         aria-label="Show next banner"
                     >
                         <ChevronRight className="h-5 w-5" />
@@ -423,6 +423,170 @@ const ProductCardsSection = ({ products, title }: { products: IProducts[]; title
     );
 };
 
+const ProductCardsSectionEvent = ({ products, title }: { products: IEventProduct[]; title: string }) => {
+    const [activeSlide, setActiveSlide] = useState(0);
+    const [visibleCount, setVisibleCount] = useState(1);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const calculateVisibleCount = () => {
+            const width = window.innerWidth;
+
+            if (width >= 1280) return 5;
+            if (width >= 1024) return 4;
+            if (width >= 768) return 3;
+            if (width >= 640) return 2;
+            return 1;
+        };
+
+        const updateVisibleCount = () => {
+            setVisibleCount(calculateVisibleCount());
+        };
+
+        updateVisibleCount();
+
+        window.addEventListener('resize', updateVisibleCount);
+
+        return () => {
+            window.removeEventListener('resize', updateVisibleCount);
+        };
+    }, []);
+
+    const slides = useMemo(() => {
+        if (!products.length || visibleCount < 1) return [];
+
+        const chunked: (IEventProduct | null)[][] = [];
+
+        for (let i = 0; i < products.length; i += visibleCount) {
+            const slice = products.slice(i, i + visibleCount);
+
+            if (slice.length < visibleCount) {
+                const placeholders = Array.from({ length: visibleCount - slice.length }, () => null);
+                chunked.push([...slice, ...placeholders]);
+            } else {
+                chunked.push(slice);
+            }
+        }
+
+        return chunked;
+    }, [products, visibleCount]);
+
+    useEffect(() => {
+        if (!slides.length) {
+            setActiveSlide(0);
+            return;
+        }
+
+        setActiveSlide((current) => Math.min(current, slides.length - 1));
+    }, [slides.length]);
+
+    if (!slides.length) {
+        return null;
+    }
+
+    const goToSlide = (direction: 'prev' | 'next') => {
+        setActiveSlide((current) => {
+            if (direction === 'prev') {
+                return current === 0 ? slides.length - 1 : current - 1;
+            }
+
+            return current === slides.length - 1 ? 0 : current + 1;
+        });
+    };
+
+    return (
+        <section className="py-16">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                {/* Section Header */}
+                <div className="mb-12 text-center">
+                    <h2 className="mb-4 text-5xl font-bold text-primary">{title}</h2>
+                </div>
+                {/* Product Carousel */}
+                <div className="relative">
+                    <button
+                        type="button"
+                        aria-label="Show previous products"
+                        onClick={() => goToSlide('prev')}
+                        className="absolute top-1/2 left-0 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
+                    >
+                        <span className="sr-only">Previous products</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-5 w-5"
+                        >
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                    </button>
+
+                    <div className="overflow-hidden">
+                        <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
+                            {slides.map((slide, index) => (
+                                <div key={index} className="flex w-full min-w-full shrink-0 basis-full gap-4 px-1">
+                                    {slide.map((product, itemIndex) => (
+                                        <div key={product ? product.id : `placeholder-${itemIndex}`} className="min-w-0 flex-1">
+                                            {product ? (
+                                                <ProductCard product={product.product} onClick={() => router.get(`/view-product/${product.id}`)} />
+                                            ) : (
+                                                <div className="h-full w-full opacity-0" aria-hidden="true" />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        aria-label="Show next products"
+                        onClick={() => goToSlide('next')}
+                        className="absolute top-1/2 right-0 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
+                    >
+                        <span className="sr-only">Next products</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-5 w-5"
+                        >
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                </div>
+                <div className="mt-6 flex items-center justify-center gap-2">
+                    {slides.map((_, index) => (
+                        <button
+                            key={`indicator-${index}`}
+                            type="button"
+                            onClick={() => setActiveSlide(index)}
+                            className={`h-2 w-8 rounded-full transition ${activeSlide === index ? 'bg-primary' : 'bg-muted'}`}
+                            aria-label={`Go to slide ${index + 1}`}
+                            aria-current={activeSlide === index}
+                        />
+                    ))}
+                </div>
+                {/* Section Footer */}
+                <div className="mt-12 text-center">
+                    <Link href={'/list-products'}>
+                        <Button className="mt-4">Explore More</Button>
+                    </Link>
+                </div>
+            </div>
+        </section>
+    );
+};
+
 export default function Welcome() {
     const { auth, translations, locale } = usePage<SharedData>().props;
 
@@ -455,8 +619,9 @@ export default function Welcome() {
         });
     }, []);
 
-    const { productsTop, productsBottom, units, banner, articles } = usePage<SharedData & { productsTop: IProducts[]; productsBottom: IProducts[] }>()
-        .props;
+    const { productsTop, productsBottom, units, banner, articles, events } = usePage<
+        SharedData & { productsTop: IProducts[]; productsBottom: IProducts[] }
+    >().props;
 
     const activeBanner = useMemo(() => {
         if (Array.isArray(banner)) {
@@ -469,6 +634,8 @@ export default function Welcome() {
 
         return [] as IBanner[];
     }, [banner]);
+
+    console.log(events);
 
     return (
         <>
@@ -483,13 +650,13 @@ export default function Welcome() {
 
                     {/* UNIT SHOWCASE */}
                     {units.length > 0 && (
-                        <section className="mx-auto mt-24 mb-48 max-w-6xl px-4">
+                        <section className="mx-auto mt-24 max-w-6xl px-4">
                             <div className="flex flex-wrap justify-center gap-6">
                                 {units.map((unit) => (
                                     <button
                                         key={unit.id}
                                         type="button"
-                                        onClick={() => router.get(`/list-productt/${unit.id}`)}
+                                        onClick={() => router.get(`/list-product/${unit.id}`)}
                                         className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none md:w-[calc(33.333%_-_1rem)]"
                                         aria-label={`View products for ${unit.name}`}
                                     >
@@ -498,6 +665,38 @@ export default function Welcome() {
                                             className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
                                             style={{
                                                 backgroundImage: `url('${unit.picture_url ?? '/banner-example.jpg'}')`,
+                                            }}
+                                        />
+
+                                        {/* Subtle overlay for text readability */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+                                        {/* Content */}
+                                        {/* <div className="relative z-10 flex h-full flex-col justify-end p-4 text-white">
+                                            <h3 className="text-xl font-semibold drop-shadow-sm">{unit.name}</h3>
+                                        </div> */}
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* EVENT SHOWCASE */}
+                    {events.length > 0 && (
+                        <section className="mx-auto mt-12 mb-48 max-w-6xl px-4">
+                            <div className="flex flex-wrap justify-center gap-6">
+                                {events.map((event) => (
+                                    <button
+                                        key={event.id}
+                                        type="button"
+                                        className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none md:w-[calc(33.333%_-_1rem)]"
+                                        aria-label={`View products for ${event.name}`}
+                                    >
+                                        {/* Background image layer with hover upscale */}
+                                        <div
+                                            className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
+                                            style={{
+                                                backgroundImage: `url('${event.picture_url ?? '/banner-example.jpg'}')`,
                                             }}
                                         />
 
@@ -542,6 +741,18 @@ export default function Welcome() {
                             </Button>
                         </div>
                     </section>
+
+                    {/* EVENT SHOWCASE PRODUCT SECTION */}
+
+                    {events.length > 0 && (
+                        <section>
+                            {events.map((v) => (
+                                <section key={v.id} id={`event-${v.id}`} className="my-8 scroll-mt-40">
+                                    <ProductCardsSectionEvent products={v.event_products} title={v.name} />
+                                </section>
+                            ))}
+                        </section>
+                    )}
 
                     <div className="my-8">
                         <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />
