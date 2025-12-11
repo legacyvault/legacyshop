@@ -20,6 +20,6 @@ class ProductGroup extends Model
 
     public function stocks()
     {
-        return $this->hasMany(GroupStock::class, 'id', 'group_id');
+        return $this->hasMany(GroupStock::class, 'group_id', 'id');
     }
 }

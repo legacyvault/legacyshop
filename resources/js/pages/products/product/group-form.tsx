@@ -1,10 +1,24 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, ICategories, IDivisions, IProductGroup, ISubUnits, ISubcats, ITags, IUnit, IVariants, SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    BreadcrumbItem,
+    ICategories,
+    IDivisions,
+    IGroupStock,
+    IProductGroup,
+    ISubUnits,
+    ISubcats,
+    ITags,
+    IUnit,
+    IVariants,
+    SharedData,
+} from '@/types';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { DialogPortal } from '@radix-ui/react-dialog';
 import { Bold, ChevronDown, Italic, Layers, ListPlus, Plus, RefreshCw, Search, Trash2, Underline, Upload, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -41,6 +55,12 @@ type DiscountEntry = {
     source: string;
     value: string;
     base_price: number;
+};
+
+type GroupStockFormData = {
+    group_id: string;
+    quantity: string;
+    remarks: string;
 };
 
 const randomId = () => Math.random().toString(36).slice(2, 10);
@@ -251,6 +271,19 @@ export default function GroupProductForm() {
     const [divisionDiscounts, setDivisionDiscounts] = useState<Record<string, DiscountEntry>>({});
     const [variantDiscounts, setVariantDiscounts] = useState<Record<string, DiscountEntry>>({});
     const [removedProductIds, setRemovedProductIds] = useState<string[]>([]);
+    const [openAddGroupStock, setOpenAddGroupStock] = useState(false);
+
+    const {
+        data: groupStockData,
+        setData: setGroupStockData,
+        post: postGroupStock,
+        errors: groupStockErrors,
+        processing: isGroupStockSubmitting,
+    } = useForm<GroupStockFormData>({
+        group_id: groupId ?? '',
+        quantity: '',
+        remarks: '',
+    });
 
     const unitOptions = useMemo(() => toOptions(units), [units]);
     const subunitOptions = useMemo(
@@ -324,6 +357,13 @@ export default function GroupProductForm() {
         return m;
     }, [variants]);
 
+    const groupStocks = useMemo<IGroupStock[]>(() => {
+        const stocks = productGroup?.stocks ?? [];
+        return [...stocks].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+    }, [productGroup?.stocks]);
+
     const hydrateDiscountsFromProducts = useCallback(
         (products: IProductGroup['products']) => {
             const nextSubcats: Record<string, DiscountEntry> = {};
@@ -386,6 +426,12 @@ export default function GroupProductForm() {
     const selectedUnitPrice = useMemo(() => Number(selectedUnit?.price ?? 0), [selectedUnit]);
     const selectedUnitUsdPrice = useMemo(() => Number(selectedUnit?.usd_price ?? 0), [selectedUnit]);
     const selectedUnitDiscount = useMemo(() => Number(selectedUnit?.discount ?? 0), [selectedUnit]);
+
+    useEffect(() => {
+        if (groupId) {
+            setGroupStockData('group_id', groupId);
+        }
+    }, [groupId, setGroupStockData]);
 
     useEffect(() => {
         latestPreviewsRef.current = bulkRows.flatMap((row) => row.previews);
@@ -587,6 +633,13 @@ export default function GroupProductForm() {
             };
         });
     };
+
+    const formatDate = (value: string) =>
+        new Date(value).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
 
     const formatRupiah = (value: string) => {
         const number = value.replace(/\D/g, '');
@@ -843,6 +896,29 @@ export default function GroupProductForm() {
         });
     };
 
+    const handleOpenGroupStockDialog = () => {
+        if (groupId) {
+            setGroupStockData('group_id', groupId);
+        }
+        setGroupStockData('quantity', '');
+        setGroupStockData('remarks', '');
+        setOpenAddGroupStock(true);
+    };
+
+    const handleGroupStockSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!groupId) return;
+        postGroupStock(route('product.add-stock-group'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setOpenAddGroupStock(false);
+                setGroupStockData('quantity', '');
+                setGroupStockData('remarks', '');
+            },
+            onError: () => setOpenAddGroupStock(true),
+        });
+    };
+
     const handleSubmit = () => {
         const newFormErrors: typeof formErrors = {};
         const newRowErrors: Record<string, RowError> = {};
@@ -1064,26 +1140,38 @@ export default function GroupProductForm() {
     };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={isEditMode ? 'Products - Edit Group' : 'Products - Group Builder'} />
+        <>
+            {isEditMode && groupId && (
+                <GroupStockDialog
+                    open={openAddGroupStock}
+                    onOpenChange={setOpenAddGroupStock}
+                    onSubmit={handleGroupStockSubmit}
+                    data={groupStockData}
+                    setData={setGroupStockData}
+                    errors={groupStockErrors}
+                    isSubmitting={isGroupStockSubmitting}
+                />
+            )}
+            <AppLayout breadcrumbs={breadcrumbs}>
+                <Head title={isEditMode ? 'Products - Edit Group' : 'Products - Group Builder'} />
 
-            <div className="space-y-6 p-6">
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                        <Layers className="size-4" />
-                        <span>Group builder</span>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <h1 className="text-2xl font-semibold">{isEditMode ? 'Edit product group' : 'Create a product group'}</h1>
+                <div className="space-y-6 p-6">
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                            <Layers className="size-4" />
+                            <span>Group builder</span>
                         </div>
-                        <Button variant="outline" asChild>
-                            <Link href="/products/product/group">Back to groups</Link>
-                        </Button>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h1 className="text-2xl font-semibold">{isEditMode ? 'Edit product group' : 'Create a product group'}</h1>
+                            </div>
+                            <Button variant="outline" asChild>
+                                <Link href="/products/product/group">Back to groups</Link>
+                            </Button>
+                        </div>
                     </div>
-                </div>
 
-                <div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
+                    <div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
                     <div className="space-y-6">
                         <Card>
                             <CardHeader>
@@ -1839,9 +1927,140 @@ export default function GroupProductForm() {
                             </Button>
                             {formErrors.products && <p className="text-sm text-red-500">{formErrors.products}</p>}
                         </div>
+
+                        {isEditMode && (
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <CardTitle>Group stock</CardTitle>
+                                            <CardDescription>Add stock to every product in this group.</CardDescription>
+                                        </div>
+                                        <Button size="sm" type="button" onClick={handleOpenGroupStockDialog}>
+                                            <Plus className="mr-2 size-4" />
+                                            Add stock
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-muted">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                                                        No
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                                                        Date
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                                                        Stock Added
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                                                        Remarks
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border">
+                                                {groupStocks.length ? (
+                                                    groupStocks.map((stock, index) => (
+                                                        <tr key={stock.id} className="transition-colors hover:bg-muted/50">
+                                                            <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-card-foreground">
+                                                                {index + 1}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
+                                                                {formatDate(stock.created_at)}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
+                                                                <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
+                                                                    +{stock.quantity}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
+                                                                {stock.remarks || '—'}
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-muted-foreground">
+                                                            No stock purchase history available
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 </div>
             </div>
-        </AppLayout>
+            </AppLayout>
+        </>
+    );
+}
+
+type GroupStockDialogProps = {
+    open: boolean;
+    onOpenChange: (value: boolean) => void;
+    onSubmit: (e: React.FormEvent) => void;
+    data: GroupStockFormData;
+    setData: (field: keyof GroupStockFormData, value: string) => void;
+    errors: Partial<Record<keyof GroupStockFormData, string>>;
+    isSubmitting: boolean;
+};
+
+function GroupStockDialog({ open, onOpenChange, onSubmit, data, setData, errors, isSubmitting }: GroupStockDialogProps) {
+    useEffect(() => {
+        if (open) {
+            setData('quantity', data.quantity || '');
+            setData('remarks', data.remarks || '');
+        }
+    }, [data.quantity, data.remarks, open, setData]);
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogPortal>
+                <DialogOverlay />
+                <DialogContent>
+                    <DialogTitle className="capitalize">Add stock</DialogTitle>
+                    <form method="POST" onSubmit={onSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Quantity *</label>
+                            <input
+                                type="text"
+                                value={data.quantity}
+                                onChange={(e) => setData('quantity', e.target.value)}
+                                className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                    errors.quantity ? 'border-red-500' : 'border-gray-200'
+                                }`}
+                                placeholder="0"
+                            />
+                            {errors.quantity && <p className="mt-1 text-sm text-red-500">{errors.quantity}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Remarks</label>
+                            <input
+                                type="text"
+                                value={data.remarks}
+                                onChange={(e) => setData('remarks', e.target.value)}
+                                className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                    errors.remarks ? 'border-red-500' : 'border-gray-200'
+                                }`}
+                                placeholder="Enter remarks"
+                            />
+                            {errors.remarks && <p className="mt-1 text-sm text-red-500">{errors.remarks}</p>}
+                        </div>
+                        <DialogClose asChild>
+                            <Button type="submit" className="capitalize" disabled={isSubmitting}>
+                                {isSubmitting ? 'Saving…' : 'Add stock'}
+                            </Button>
+                        </DialogClose>
+                    </form>
+                </DialogContent>
+            </DialogPortal>
+        </Dialog>
     );
 }

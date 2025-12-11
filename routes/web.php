@@ -50,6 +50,7 @@ Route::group(['prefix' => 'v1/public'], function () {
     Route::get('village-list/{district}', [LocationController::class, 'getPublicVillageList'])->name('public.villages.list');
     Route::get('postal-code-list/{location}', [LocationController::class, 'getPublicPostalCodeList'])->name('public.postal_code.list');
     Route::get('product-search', [ProductController::class, 'getPublicProductOptions'])->name('public.product.search');
+    Route::get('active-events', [MiscController::class, 'getAllActiveEvents'])->name('public.active-events');
 });
 
 
@@ -117,7 +118,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('sub-unit/{id}', [ProductController::class, 'getSubUnitById'])->name('subunit.id');
 
     Route::get('events', [MiscController::class, 'getAllEvents'])->name('all-events');
-    Route::get('active-events', [MiscController::class, 'getSubUnitById'])->name('active-events');
+    Route::get('active-events', [MiscController::class, 'getAllActiveEvents'])->name('active-events');
     Route::get('event/{id}', [MiscController::class, 'getEventById'])->name('event.id');
 
     Route::get('vouchers', [MiscController::class, 'getAllVoucher'])->name('vouchers');
@@ -178,6 +179,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Product Group
     Route::post('add-product-group', [ProductController::class, 'addProductGroup'])->name('product.add-product-group');
     Route::post('update-product/{id}', [ProductController::class, 'editProductGroup'])->name('product.edit-product-group');
+    Route::post('add-product-group-stock', [ProductController::class, 'addStockGroup'])->name('product.add-stock-group');
 
     Route::post('add-product-stock', [ProductController::class, 'addStock'])->name('product.add-stock');
     Route::post('update-product-stock', [ProductController::class, 'updateLatestStock'])->name('product.update-stock');
@@ -273,7 +275,7 @@ Route::get('/register', function () {
 })->name('register');
 
 Route::get('/list-products', [ViewController::class, 'frontListProducts']);
-Route::get('/list-productt/{unit}', [ViewController::class, 'frontListProducts']);
+Route::get('/list-product/{slug}', [ViewController::class, 'frontListProducts']);
 
 Route::get('/view-product/{id}', [ViewController::class, 'frontViewProduct']);
 

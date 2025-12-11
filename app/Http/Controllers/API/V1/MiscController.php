@@ -452,11 +452,32 @@ class MiscController extends Controller
 
     public function getAllActiveEvents()
     {
-        $data = Events::orderBy('name', 'asc')->with('event_products.product')->where('is_active', 1)->get();
+        $data = Events::orderBy('name', 'asc')->with([
+            'event_products.product' => function ($query) {
+                $query->with([
+                    'stocks',
+                    'unit',
+                    'subUnit',
+                    'tags',
+                    'categories',
+                    'subcategories',
+                    'divisions',
+                    'variants',
+                    'pictures'
+                ]);
+            }
+        ])->where('is_active', 1)->get();
         return $data;
     }
 
     public function getEventById($id)
+    {
+        $data = Events::orderBy('name', 'asc')->with('event_products.product')->find($id);
+
+        return $data;
+    }
+
+    public function getProductEventById($id)
     {
         $data = Events::with([
             'event_products.product' => function ($query) {

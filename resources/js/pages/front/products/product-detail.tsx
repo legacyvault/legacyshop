@@ -110,15 +110,18 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     }, [selectedVar]);
 
     const basePrice = product.product_price;
+    const eventDiscountPct = Number(product.event?.discount ?? 0);
+    const productDiscountPct = Number(product.product_discount ?? 0);
+    const appliedDiscountPct = eventDiscountPct > 0 ? eventDiscountPct : productDiscountPct;
+    const hasEventDiscount = Boolean(product.event && eventDiscountPct > 0);
     const basePriceWithExtra = useMemo(() => {
         return basePrice + (selectedSubcat?.price ?? 0) + (selectedDiv?.price ?? 0) + (selectedVar?.price ?? 0);
     }, [selectedSubcat, selectedDiv, selectedVar]);
-    const discountPct = Number(product.product_discount);
     const finalPrice = useMemo(() => {
-        const discountedBase = discountPct ? Math.round(basePrice - (basePrice * discountPct) / 100) : Math.round(basePrice);
+        const discountedBase = appliedDiscountPct ? Math.round(basePrice - (basePrice * appliedDiscountPct) / 100) : Math.round(basePrice);
         const total = discountedBase + extraPriceSubcat + extraPriceDivision + extraPriceVariant;
         return Math.max(0, total);
-    }, [basePrice, discountPct, extraPriceSubcat, extraPriceDivision, extraPriceVariant]);
+    }, [basePrice, appliedDiscountPct, extraPriceSubcat, extraPriceDivision, extraPriceVariant]);
 
     const totalStock = Number(product.total_stock);
 
@@ -131,14 +134,30 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
     const disableButtonCart = useMemo(() => {
         if (productStockInsufficient) return true;
+        if (!selectedCat) return true;
 
-        if (
-            !selectedCat ||
-            (subcategories.length > 0 && !selectedSubcat && subcatStockInsufficient) ||
-            (divisions.length > 0 && !selectedDiv && divisionStockInsufficient) ||
-            (textVariants.length > 0 && colorVariants.length > 0 && !selectedVar && variantStockInsufficient)
-        ) {
-            return true;
+        if (subcategories.length > 0) {
+            if (!subcatStockInsufficient) {
+                if (selectedSubcat) return true;
+            } else {
+                return true;
+            }
+        }
+
+        if (divisions.length > 0) {
+            if (!divisionStockInsufficient) {
+                if (selectedDiv) return true;
+            } else {
+                return true;
+            }
+        }
+
+        if (textVariants.length > 0 && colorVariants.length > 0) {
+            if (!variantStockInsufficient) {
+                if (selectedVar) return true;
+            } else {
+                return true;
+            }
         }
 
         return false;
@@ -274,18 +293,23 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                 <section className="lg:col-span-5">
                     <h1 className="mb-2 text-xl leading-snug font-bold md:text-2xl">{product.product_name}</h1>
                     <div className="mb-2 text-xs text-muted-foreground">
-                        <span className="font-medium">
-                            {[product.unit?.name, product.product_sku].filter(Boolean).join(' | ')}
-                        </span>
+                        <span className="font-medium">{[product.unit?.name, product.product_sku].filter(Boolean).join(' | ')}</span>
                     </div>
+
+                    {hasEventDiscount && (
+                        <div className="mb-3 flex items-center gap-2">
+                            <Badge className="bg-red-500 text-white">
+                                {product.event?.name ?? 'Event'} • {eventDiscountPct}% OFF
+                            </Badge>
+                        </div>
+                    )}
 
                     {/* Price */}
                     <div className="my-4 flex items-end gap-3">
-                        {discountPct > 0 ? (
+                        {appliedDiscountPct > 0 ? (
                             <>
                                 <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(finalPrice)}</div>
                                 <span className="text-sm text-destructive line-through">{formatPrice(basePriceWithExtra)}</span>
-                                <Badge variant="destructive">{discountPct}%</Badge>
                             </>
                         ) : (
                             <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(basePriceWithExtra)}</div>

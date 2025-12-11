@@ -102,6 +102,7 @@ class ViewController extends Controller
         $units = $this->productController->getAllActiveUnit();
         $banner = $this->miscController->getActiveBanner();
         $articles = $this->articleController->getNewestArticle();
+        $events = $this->miscController->getAllActiveEvents();
 
         return Inertia::render('welcome', [
             'productsTop' => $productsTop,
@@ -109,6 +110,7 @@ class ViewController extends Controller
             'units' => $units,
             'banner' => $banner,
             'articles' => $articles,
+            'events' => $events,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -276,30 +278,40 @@ class ViewController extends Controller
         ]);
     }
 
-    public function frontListProducts(Request $request, $unitId = null)
+    public function frontListProducts(Request $request, $slug = null)
     {
         $unit = null;
+        $event = null;
 
-        if ($unitId) {
-            $unit = Unit::with('sub_unit.categories')->find($unitId);
+        if ($slug) {
+            $unit = Unit::with('sub_unit.categories')->find($slug);
 
-            if (!$unit) {
-                abort(404);
+            if ($unit) {
+                $request->merge(['unit_id' => $unit->id]);
+            } else {
+                $event = $this->miscController->getProductEventById($slug);
+
+                if (!$event) {
+                    abort(404);
+                }
+
+                $request->merge(['event_id' => $slug]);
             }
-
-            $request->merge(['unit_id' => $unitId]);
         }
 
-        $products = $this->productController->getAllProduct($request, $unitId);
-        $subunits = $this->productController->getAllSubUnit($unitId);
+        $products = $this->productController->getAllProduct($request, $unit?->id);
+        $subunits = $this->productController->getAllSubUnit($unit?->id);
         $tags = $this->productController->getAllShowTags();
+        $events = $this->miscController->getAllActiveEvents();
 
         return Inertia::render('front/products/index', [
             'products' => $products,
             'subunits' => $subunits,
             'tags' => $tags,
             'unit' => $unit,
-            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'sub_unit_ids', 'tag_ids', 'unit_id'),
+            'event' => $event,
+            'events' => $events,
+            'filters' => $request->only('q', 'per_page', 'sort_by', 'sort_dir', 'page', 'sub_unit_ids', 'tag_ids', 'unit_id', 'event_id'),
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -376,9 +388,11 @@ class ViewController extends Controller
 
     public function frontArticlesPage()
     {  
-       $articles = $this->articleController->getAllArticle(); 
+        $articles = $this->articleController->getAllArticle();
+        $events = $this->miscController->getAllActiveEvents();
         return Inertia::render('front/articles/index', [
             'articles' => $articles,
+            'events' => $events,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -389,6 +403,7 @@ class ViewController extends Controller
     public function frontArticleView($slug)
     {
         $article = $this->articleController->getArticleBySlug($slug);
+        $events = $this->miscController->getAllActiveEvents();
 
         if (!$article) {
             abort(404);
@@ -396,6 +411,7 @@ class ViewController extends Controller
 
         return Inertia::render('front/articles/view-article', [
             'article' => $article,
+            'events' => $events,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
