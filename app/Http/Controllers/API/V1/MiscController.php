@@ -230,6 +230,60 @@ class MiscController extends Controller
         return $voucher;
     }
 
+    public function checkVoucher(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'product_ids'     => 'required|array|min:1',
+            'product_ids.*'   => 'exists:products,id',
+            'voucher_code'    => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $voucher = VoucherModel::with('products')
+            ->where('voucher_code', $request->voucher_code)
+            ->first();
+
+        if (!$voucher) {
+            return response()->json([
+                'message' => 'Voucher not found',
+            ], 404);
+        }
+
+        $isApplicable = $voucher->products()
+            ->whereIn('products.id', $request->product_ids)
+            ->exists();
+
+        if (!$isApplicable) {
+            return response()->json([
+                'message' => 'Voucher is not applicable for selected products',
+            ], 400);
+        }
+
+        if (!$voucher->is_limit) {
+            return response()->json([
+                'message' => 'Voucher is valid',
+                'data'    => $voucher,
+            ], 200);
+        }
+
+        if ($voucher->limit > 0) {
+            return response()->json([
+                'message' => 'Voucher is valid',
+                'data'    => $voucher,
+            ], 200);
+        }
+
+        return response()->json([
+            'message' => 'Voucher limit has been reached',
+        ], 400);
+    }
+
     public function createVoucher(Request $request)
     {
         $request->validate([

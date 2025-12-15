@@ -11,11 +11,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
 use App\Models\DeliveryAddress;
 use App\Models\Division;
+use App\Models\Events;
 use App\Models\Guest;
 use App\Models\Product;
 use App\Models\Profile;
 use App\Models\SubCategory;
 use App\Models\Variant;
+use App\Models\VoucherModel;
 use App\Models\Warehouse;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -70,11 +72,12 @@ class OrderController extends Controller
             'shipping_duration_range' => 'nullable|string',
             'shipping_duration_unit' => 'nullable|string',
             'biteship_destination_id' => 'nullable|string',
+            'voucher_code'            => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|uuid',
             'items.*.product_name' => 'required|string',
             'items.*.product_description' => 'nullable|string',
-            'items.*.product_sku'=>'required|string',
+            'items.*.product_sku' => 'required|string',
             'items.*.product_image' => 'nullable|string',
             'items.*.category_id' => 'nullable|uuid',
             'items.*.category_name' => 'nullable|string',
@@ -106,13 +109,92 @@ class OrderController extends Controller
             'postal_code' => 'required_if:customer_type,guest',
         ]);
 
-        $isManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
-        $items = $request->items;
-        $subtotal = collect($items)->sum(fn($item) => $item['quantity'] * $item['price']);
-        $shippingFee = $request->shipping_fee;
-        $grandTotal = $subtotal + $shippingFee;
 
         DB::beginTransaction();
+
+        $isManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
+        $items = $request->items;
+
+        $activeEvents = Events::with('event_products')
+            ->where('is_active', true)
+            ->get();
+
+        $eventProductDiscounts = [];
+
+        foreach ($activeEvents as $event) {
+            foreach ($event->event_products as $ep) {
+                $eventProductDiscounts[$ep->product_id] = $event->discount;
+            }
+        }
+
+        $shippingFee = $request->shipping_fee;
+        $subtotal = 0;
+        $eventDiscountTotal = 0;
+
+        foreach ($items as &$item) {
+            $lineTotal = $item['quantity'] * $item['price'];
+            $subtotal += $lineTotal;
+
+            $eventDiscount = 0;
+
+            if (
+                !empty($item['product_id']) &&
+                isset($eventProductDiscounts[$item['product_id']])
+            ) {
+                $eventDiscount = min(
+                    $eventProductDiscounts[$item['product_id']] * $item['quantity'],
+                    $lineTotal
+                );
+            }
+
+            $item['event_discount'] = $eventDiscount;
+            $item['total_after_event'] = $lineTotal - $eventDiscount;
+
+            $eventDiscountTotal += $eventDiscount;
+        }
+        unset($item);
+
+        $subtotalAfterEvent = max(0, $subtotal - $eventDiscountTotal);
+        $voucherDiscount = 0;
+        $eligibleProductIds = [];
+
+        if ($request->filled('voucher_code')) {
+            $voucher = VoucherModel::with('products')
+                ->where('voucher_code', $request->voucher_code)
+                ->lockForUpdate()
+                ->first();
+
+            if ($voucher) {
+                $productIdsInCart = collect($items)->pluck('product_id')->filter()->toArray();
+
+                $eligibleProductIds = $voucher->products()
+                    ->whereIn('products.id', $productIdsInCart)
+                    ->pluck('products.id')
+                    ->toArray();
+
+                if (!empty($eligibleProductIds) && (!$voucher->is_limit || $voucher->limit > 0)) {
+                    $voucherBaseTotal = 0;
+
+                    foreach ($items as &$item) {
+                        if (!empty($item['product_id']) && in_array($item['product_id'], $eligibleProductIds)) {
+                            $voucherBaseTotal += $item['total_after_event'];
+                            $item['voucher_discount'] = min($voucher->discount, $item['total_after_event']);
+                        } else {
+                            $item['voucher_discount'] = 0;
+                        }
+                    }
+                    unset($item);
+
+                    $voucherDiscount = min($voucher->discount, $voucherBaseTotal);
+                }
+            }
+        }
+
+        $grandTotal = max(
+            0,
+            $subtotalAfterEvent - $voucherDiscount + $shippingFee
+        );
+
         try {
             $userId = null;
             $guestId = null;
@@ -145,6 +227,7 @@ class OrderController extends Controller
                 'user_id' => $userId,
                 'guest_id' => $guestId,
                 'subtotal' => $subtotal,
+                'voucher_code' => $voucher?->voucher_code,
                 'shipping_fee' => $shippingFee,
                 'grand_total' => $grandTotal,
                 'payment_method' => $request->payment_method,
@@ -152,6 +235,10 @@ class OrderController extends Controller
                 'status' => $isManualInvoice ? 'finished' : 'pending',
                 'paid_at' => $isManualInvoice ? now() : null,
             ]);
+
+            if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
+                $voucher->decrement('limit', 1);
+            }
 
             if ($isManualInvoice) {
                 $order->forceFill([
@@ -383,7 +470,6 @@ class OrderController extends Controller
             return null;
         }
     }
-
 
     public function createMidtransPayment($order, $payment_method, $bank)
     {
@@ -622,7 +708,7 @@ class OrderController extends Controller
             $notification = $request->all();
 
             $orderId = $notification['order_id'] ?? null;
-            $transaction_id = $notification['ransaction_id'] ?? null;
+            $transaction_id = $notification['transaction_id'] ?? null;
             $transaction_status = $notification['transaction_status'] ?? null;
             $expiry_time = $notification['expiry_time'] ?? null;
 
@@ -678,6 +764,15 @@ class OrderController extends Controller
                         }
                     } catch (\Exception $e) {
                         Log::error("Failed to restore stock for item {$item->id}: " . $e->getMessage());
+                    }
+                }
+
+                // Restore voucher limit
+                if ($order->voucher_code) {
+                    $voucher = VoucherModel::where('voucher_code', $order->voucher_code)->first();
+
+                    if ($voucher && $voucher->is_limit) {
+                        $voucher->increment('limit', 1);
                     }
                 }
 

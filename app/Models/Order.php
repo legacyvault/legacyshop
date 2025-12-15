@@ -17,6 +17,7 @@ class Order extends Model
         'user_id',
         'guest_id',
         'order_number',
+        'voucher_code',
         'transaction_id',
         'transaction_status',
         'transaction_time',

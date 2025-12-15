@@ -41,6 +41,8 @@ Route::group(['prefix' => 'v1'], function () {
 
     //Checkout API
     Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
+
+    Route::get('check-voucher', [MiscController::class, 'checkVoucher'])->name('check.voucher');
 });
 
 Route::group(['prefix' => 'v1/public'], function () {
@@ -351,8 +353,8 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::redirect('/', '/misc/view-running-text');
         Route::get('view-running-text', [ViewController::class, 'runningTextPage']);
         Route::get('view-banner', [ViewController::class, 'bannerPage']);
-        Route::get('voucher',[ViewController::class, 'voucherPage']);
-        Route::get('event',[ViewController::class, 'eventPage']);
+        Route::get('voucher', [ViewController::class, 'voucherPage']);
+        Route::get('event', [ViewController::class, 'eventPage']);
     });
 
     Route::prefix('admin-articles')->group(function () {
