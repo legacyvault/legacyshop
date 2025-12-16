@@ -1135,11 +1135,132 @@ export default function Checkout() {
         [setIsCourierModalOpen, setShouldAutoOpenCourier],
     );
 
+    const [voucherCode, setVoucherCode] = useState('');
+    const [voucherError, setVoucherError] = useState<string | null>(null);
+    const [voucherApplying, setVoucherApplying] = useState(false);
+    const [appliedVoucher, setAppliedVoucher] = useState<{
+        code: string;
+        discount: number;
+        eligibleProductIds: string[];
+    } | null>(null);
+
+    const handleApplyVoucher = useCallback(async () => {
+        const trimmedCode = voucherCode.trim();
+        if (!trimmedCode) {
+            setVoucherError('Please enter a voucher code.');
+            return;
+        }
+
+        const productIds = Array.from(new Set(checkoutItems.map((item) => item.productId).filter(Boolean))) as string[];
+        if (!productIds.length) {
+            setVoucherError('Voucher can only be applied to products with valid IDs.');
+            return;
+        }
+
+        setVoucherApplying(true);
+        setVoucherError(null);
+
+        try {
+            const params = new URLSearchParams();
+            productIds.forEach((id) => params.append('product_ids[]', String(id)));
+            params.set('voucher_code', trimmedCode);
+
+            const response = await fetch(`/v1/check-voucher?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            const contentType = response.headers.get('content-type') ?? '';
+            const isJson = contentType.includes('application/json');
+
+            if (!response.ok) {
+                const body = isJson ? await response.json().catch(() => null) : null;
+                const message =
+                    (body && typeof body.message === 'string' && body.message.length ? body.message : null) ||
+                    'Voucher is not valid for these items.';
+                setVoucherError(message);
+                setAppliedVoucher(null);
+                return;
+            }
+
+            const body = isJson ? await response.json().catch(() => ({})) : {};
+            const voucherData = body?.data ?? null;
+            const discountValue = Number(voucherData?.discount ?? 0);
+            const productsFromResponse: string[] = Array.isArray(voucherData?.products)
+                ? voucherData.products
+                      .map((product: any) => {
+                          const idCandidate = product?.product_id ?? product?.id ?? null;
+                          return typeof idCandidate === 'string' && idCandidate.length ? idCandidate : null;
+                      })
+                      .filter((id: any): id is string => Boolean(id))
+                : [];
+
+            const eligibleProductIds = productsFromResponse.length ? productsFromResponse : productIds;
+
+            setAppliedVoucher({
+                code: trimmedCode,
+                discount: Number.isFinite(discountValue) ? discountValue : 0,
+                eligibleProductIds,
+            });
+            setVoucherError(null);
+        } catch (error) {
+            const fallbackMessage = error instanceof Error ? error.message : 'Unable to apply voucher. Please try again.';
+            setVoucherError(fallbackMessage);
+            setAppliedVoucher(null);
+        } finally {
+            setVoucherApplying(false);
+        }
+    }, [checkoutItems, voucherCode]);
+
     const subtotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
     const protection = checkoutItems.reduce((total, item) => total + (item.protectionPrice ?? 0), 0);
     const shipping = selectedRate?.price ?? 0;
     const insurance = 0;
-    const total = subtotal + protection + shipping + insurance;
+    const voucherDiscount = useMemo(() => {
+        if (!appliedVoucher) return 0;
+
+        const eligibleSet = new Set(appliedVoucher.eligibleProductIds.map((id) => String(id)).filter(Boolean));
+        const hasEligible =
+            eligibleSet.size === 0
+                ? checkoutItems.some((item) => Boolean(item.productId))
+                : checkoutItems.some((item) => item.productId && eligibleSet.has(String(item.productId)));
+
+        if (!hasEligible) {
+            return 0;
+        }
+
+        const eligibleSubtotal = checkoutItems.reduce((sum, item) => {
+            if (!item.productId) return sum;
+            const id = String(item.productId);
+            if (eligibleSet.size > 0 && !eligibleSet.has(id)) {
+                return sum;
+            }
+            return sum + item.price * item.quantity;
+        }, 0);
+
+        if (eligibleSubtotal <= 0) return 0;
+
+        const discountValue = Math.max(0, appliedVoucher.discount);
+        return Math.min(discountValue, eligibleSubtotal);
+    }, [appliedVoucher, checkoutItems]);
+    const total = Math.max(0, subtotal + protection + shipping + insurance - voucherDiscount);
+    useEffect(() => {
+        if (!appliedVoucher) return;
+
+        const eligibleSet = new Set(appliedVoucher.eligibleProductIds.map((id) => String(id)).filter(Boolean));
+        const hasEligible =
+            eligibleSet.size === 0
+                ? checkoutItems.some((item) => Boolean(item.productId))
+                : checkoutItems.some((item) => item.productId && eligibleSet.has(String(item.productId)));
+
+        if (!hasEligible) {
+            setAppliedVoucher(null);
+            setVoucherError('Voucher removed because no eligible products remain.');
+        }
+    }, [appliedVoucher, checkoutItems]);
     const hasCheckoutItems = checkoutItems.length > 0;
     const groupedCheckoutItems = useMemo(() => {
         const groups: { key: string; label: string; items: CheckoutItem[] }[] = [];
@@ -1409,8 +1530,6 @@ export default function Checkout() {
             product_sku: item.sku,
         }));
 
-        console.log(itemsPayload);
-
         const payload = {
             payment_method: 'snap',
             bank_payment: '',
@@ -1421,6 +1540,7 @@ export default function Checkout() {
             shipping_fee: Number(selectedRate.price ?? 0),
             shipping_duration_range: selectedRate.shipment_duration_range ?? selectedRate.duration ?? null,
             shipping_duration_unit: selectedRate.shipment_duration_unit ?? null,
+            voucher_code: appliedVoucher?.code ?? undefined,
             receiver_name: selectedCheckoutAddress.contact_name,
             receiver_phone: selectedCheckoutAddress.contact_phone,
             receiver_address: selectedCheckoutAddress.address,
@@ -1521,6 +1641,7 @@ export default function Checkout() {
         isThankYou,
         setPendingSnapToken,
         clearCheckoutStorage,
+        appliedVoucher,
     ]);
 
     const embedSnap = useCallback(
@@ -2241,7 +2362,7 @@ export default function Checkout() {
                             <CardHeader className="pb-0">
                                 <CardTitle className="text-lg font-semibold text-foreground">Transaction Summary</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-3 text-sm">
+                            <CardContent className="space-y-4 text-sm">
                                 <div className="flex items-center justify-between text-muted-foreground">
                                     <span>Subtotal</span>
                                     <span className="font-medium text-foreground">{formatCurrency(subtotal)}</span>
@@ -2249,6 +2370,49 @@ export default function Checkout() {
                                 <div className="flex items-center justify-between text-muted-foreground">
                                     <span>Shipping Rates</span>
                                     <span className="font-medium text-foreground">{selectedRate ? formatCurrency(shipping) : '—'}</span>
+                                </div>
+                                {appliedVoucher && voucherDiscount > 0 ? (
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                        <span className="flex items-center gap-2">
+                                            Voucher
+                                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary uppercase">
+                                                {appliedVoucher.code}
+                                            </span>
+                                        </span>
+                                        <span className="font-medium text-emerald-600">- {formatCurrency(voucherDiscount)}</span>
+                                    </div>
+                                ) : null}
+                                <div className="space-y-2">
+                                    <Label htmlFor="voucher-code" className="text-xs font-semibold text-foreground">
+                                        Voucher Code
+                                    </Label>
+                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                        <Input
+                                            id="voucher-code"
+                                            value={voucherCode}
+                                            placeholder="Enter voucher"
+                                            onChange={(event) => setVoucherCode(event.target.value)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter') {
+                                                    event.preventDefault();
+                                                    void handleApplyVoucher();
+                                                }
+                                            }}
+                                            className="h-10"
+                                        />
+                                        <Button
+                                            type="button"
+                                            className="shrink-0"
+                                            onClick={() => void handleApplyVoucher()}
+                                            disabled={voucherApplying}
+                                        >
+                                            {voucherApplying ? 'Checking...' : appliedVoucher ? 'Update' : 'Apply'}
+                                        </Button>
+                                    </div>
+                                    {voucherError ? <p className="text-xs text-destructive">{voucherError}</p> : null}
+                                    {appliedVoucher && !voucherError ? (
+                                        <p className="text-xs text-emerald-600">Voucher applied. Discount: {formatCurrency(voucherDiscount)}</p>
+                                    ) : null}
                                 </div>
                             </CardContent>
                             <CardFooter className="flex flex-col gap-4 pb-6">

@@ -226,6 +226,8 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
 
     const productBase = toNumber(cart.product?.product_price);
     const productDiscount = toNumber(cart.product?.product_discount);
+    const eventDiscount = toNumber(cart.product?.event?.discount);
+    const appliedProductDiscount = eventDiscount > 0 ? eventDiscount : productDiscount;
 
     const subCategory = resolveSubCategory(cart);
     const subBase = toNumber(subCategory?.price);
@@ -241,7 +243,7 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
 
     const originalPrice = Math.max(0, Math.round(productBase + subBase + divisionBase + variantBase));
 
-    const discountedBase = computeDiscountedPrice(productBase, productDiscount);
+    const discountedBase = computeDiscountedPrice(productBase, appliedProductDiscount);
     const discountedSub = computeDiscountedPrice(subBase, subDiscount);
     const discountedDivision = computeDiscountedPrice(divisionBase, divisionDiscount);
     const discountedVariant = computeDiscountedPrice(variantBase, variantDiscount);
@@ -249,7 +251,8 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
     const computedFinal = discountedBase + discountedSub + discountedDivision + discountedVariant;
     const serverPrice = toNumber((cart as ICart)?.price_per_product);
 
-    const finalPrice = [serverPrice, computedFinal, fallbackPrice].find((price) => price > 0) ?? 0;
+    const candidatePrices = [serverPrice, computedFinal, fallbackPrice].filter((price) => price > 0);
+    const finalPrice = candidatePrices.length ? Math.min(...candidatePrices) : 0;
 
     const discountPercent = originalPrice > 0 && finalPrice > 0 ? Math.max(0, Math.round(((originalPrice - finalPrice) / originalPrice) * 100)) : 0;
 
