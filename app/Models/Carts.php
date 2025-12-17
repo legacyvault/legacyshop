@@ -56,8 +56,12 @@ class Carts extends Model
         if ($this->product) {
             $price = $this->product->product_price;
 
-            if ($this->product->product_discount) {
-                $discountPercent = $this->product->product_discount;
+            $eventDiscount = ($this->product->event && ($this->product->event->is_active ?? false)) ? $this->product->event->discount : 0;
+            $productDiscount = $this->product->product_discount ?? 0;
+            $appliedDiscount = $eventDiscount > 0 ? $eventDiscount : $productDiscount;
+
+            if ($appliedDiscount) {
+                $discountPercent = $appliedDiscount;
                 $price = $price - ($price * $discountPercent / 100);
             }
 

@@ -91,6 +91,7 @@ export const CartProvider = ({ children, auth }: CartProviderProps) => {
                 sub_category_id: row.sub_category_id ? String(row.sub_category_id) : null,
                 division_id: row.division_id ? String(row.division_id) : null,
                 variant_id: row.variant_id ? String(row.variant_id) : null,
+                product,
             };
             const compositeId = [
                 meta.product_id ?? '',

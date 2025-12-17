@@ -31,6 +31,10 @@ type CheckoutItem = {
     attributes?: string[];
     quantity: number;
     price: number;
+    originalPrice?: number;
+    eventName?: string | null;
+    eventDiscountPct?: number | null;
+    isEventActive?: boolean | null;
     image?: string | null;
     weight?: number;
     source?: 'server' | 'local';
@@ -200,6 +204,7 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
             ...item,
             quantity: Math.max(1, Number(item.quantity ?? 1)),
             price: Number(item.price ?? 0),
+            originalPrice: Number(item.originalPrice ?? item.price ?? 0),
             weight: Number(item.weight ?? 0),
             protectionPrice: Number(item.protectionPrice ?? 0),
             unitId: item.unitId ?? null,
@@ -213,6 +218,17 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
             variantDescription: item.variantDescription ?? null,
             variantColor: item.variantColor ?? null,
             selectionSummary: item.selectionSummary ?? null,
+            eventName: item.eventName ?? null,
+            eventDiscountPct: (() => {
+                const raw = (item as any)?.eventDiscountPct;
+                if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+                if (typeof raw === 'string') {
+                    const parsed = Number(raw.trim());
+                    return Number.isFinite(parsed) ? parsed : null;
+                }
+                return null;
+            })(),
+            isEventActive: typeof item.isEventActive === 'boolean' ? item.isEventActive : null,
         }));
     } catch (error) {
         router.visit('/');
@@ -2295,6 +2311,14 @@ export default function Checkout() {
 
                                 <div className="divide-y">
                                     {group.items.map((item) => {
+                                        const originalUnitPrice = Number(item.originalPrice ?? item.price ?? 0);
+                                        const originalTotal = originalUnitPrice * item.quantity;
+                                        const hasEventDiscount =
+                                            Boolean(item.isEventActive) &&
+                                            typeof item.eventDiscountPct === 'number' &&
+                                            item.eventDiscountPct > 0 &&
+                                            originalUnitPrice > item.price;
+
                                         const summary = item.selectionSummary ?? null;
                                         const attributesLabel = item.attributes?.length ? item.attributes.join(' • ') : (item.variant ?? null);
 
@@ -2346,7 +2370,19 @@ export default function Checkout() {
                                                         <span className="text-lg font-semibold text-foreground">
                                                             {formatCurrency(item.price * item.quantity)}
                                                         </span>
-                                                        <span className="text-xs text-muted-foreground">({formatCurrency(item.price)} each)</span>
+                                                        {hasEventDiscount ? (
+                                                            <span className="text-xs text-muted-foreground line-through">
+                                                                {formatCurrency(originalTotal)}
+                                                            </span>
+                                                        ) : null}
+                                                        <span className="text-xs text-muted-foreground">
+                                                            ({formatCurrency(item.price)} each)
+                                                        </span>
+                                                        {hasEventDiscount ? (
+                                                            <span className="text-[11px] font-semibold uppercase text-emerald-600">
+                                                                Event {item.eventName ?? ''} • {item.eventDiscountPct}% OFF
+                                                            </span>
+                                                        ) : null}
                                                     </div>
                                                 </div>
                                             </div>

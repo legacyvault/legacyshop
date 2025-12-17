@@ -35,34 +35,66 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
         }).format(price);
     };
 
+    const computePriceInfo = useCallback((item: (typeof items)[number]) => {
+        const product = item.meta?.product as any;
+        const basePrice = Number(product?.product_price ?? item.price ?? 0);
+        const eventDiscount = Number(product?.event?.discount ?? 0);
+        const isEventActive = Boolean(product?.event && (product.event.is_active === 1 || product.event.is_active === true));
+        const discountedBase = isEventActive && eventDiscount > 0 ? Math.max(0, Math.round(basePrice - (basePrice * eventDiscount) / 100)) : null;
+
+        const candidatePrices = [discountedBase, Number(item.price ?? 0)].filter(
+            (price): price is number => typeof price === 'number' && Number.isFinite(price) && price > 0,
+        );
+        const finalPrice = candidatePrices.length ? Math.min(...candidatePrices) : 0;
+        const originalPrice = Number.isFinite(basePrice) && basePrice > 0 ? basePrice : finalPrice;
+
+        return {
+            finalPrice,
+            originalPrice,
+            isEventActive,
+            eventName: isEventActive ? (product?.event?.name ?? null) : null,
+            eventDiscount,
+        };
+    }, []);
+
     const persistCheckoutItems = useCallback(() => {
         if (typeof window === 'undefined' || items.length === 0) {
             return;
         }
 
-        const payload = items.map((item) => ({
-            id: item.id,
-            store: 'Legacy Vault',
-            name: item.name,
-            variant: undefined,
-            attributes: [],
-            quantity: Math.max(1, Number(item.quantity ?? 0)),
-            price: Number(item.price ?? 0),
-            image: item.image,
-            weight: 0,
-            source: item.serverId ? 'server' : 'local',
-            cartId: item.serverId ?? null,
-            productId: item.meta?.product_id ?? null,
-            protectionPrice: 0,
-            protectionLabel: null,
-        }));
+        const payload = items.map((item) => {
+            const priceInfo = computePriceInfo(item);
+            return {
+                id: item.id,
+                store: 'Legacy Vault',
+                name: item.name,
+                variant: undefined,
+                attributes: [],
+                quantity: Math.max(1, Number(item.quantity ?? 0)),
+                price: Number(priceInfo.finalPrice ?? item.price ?? 0),
+                originalPrice: Number(priceInfo.originalPrice ?? priceInfo.finalPrice ?? item.price ?? 0),
+                image: item.image,
+                weight: 0,
+                source: item.serverId ? 'server' : 'local',
+                cartId: item.serverId ?? null,
+                productId: item.meta?.product_id ?? null,
+                protectionPrice: 0,
+                protectionLabel: null,
+                eventName: priceInfo.eventName ?? null,
+                eventDiscountPct: priceInfo.isEventActive ? (priceInfo.eventDiscount ?? null) : null,
+                isEventActive: priceInfo.isEventActive,
+                selectionSummary: {
+                    unit: item.meta?.product?.unit?.name ?? undefined,
+                },
+            };
+        });
 
         try {
             sessionStorage.setItem(CHECKOUT_ITEMS_STORAGE_KEY, JSON.stringify(payload));
         } catch (error) {
             // Ignore write errors (e.g. private mode)
         }
-    }, [items]);
+    }, [items, computePriceInfo]);
 
     return (
         <div className="relative z-20" ref={dropdownRef}>
@@ -99,51 +131,68 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                             <>
                                 {/* Cart Items */}
                                 <div className="mb-4 max-h-64 space-y-3 overflow-y-auto">
-                                    {items.map((item) => (
-                                        <div key={item.id} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
-                                            {/* Product Image */}
-                                            <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-muted">
-                                                {item.image ? (
-                                                    <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <div className="flex h-full w-full items-center justify-center bg-muted">
-                                                        <ShoppingBag className="h-6 w-6 text-muted-foreground" />
+                                    {items.map((item) => {
+                                        const priceInfo = computePriceInfo(item);
+                                        return (
+                                            <div key={item.id} className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
+                                                {/* Product Image */}
+                                                <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                                                    {item.image ? (
+                                                        <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <div className="flex h-full w-full items-center justify-center bg-muted">
+                                                            <ShoppingBag className="h-6 w-6 text-muted-foreground" />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Product Info */}
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="truncate text-sm font-medium text-card-foreground">{item.name}</h4>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-semibold text-card-foreground">
+                                                            {formatPrice(priceInfo.finalPrice)}
+                                                        </span>
+                                                        {priceInfo.isEventActive && priceInfo.originalPrice > priceInfo.finalPrice ? (
+                                                            <>
+                                                                <span className="text-[11px] text-muted-foreground line-through">
+                                                                    {formatPrice(priceInfo.originalPrice)}
+                                                                </span>
+                                                                <span className="text-[11px] font-semibold text-emerald-600 uppercase">
+                                                                    Event {priceInfo.eventName ?? ''} • {priceInfo.eventDiscount}% OFF
+                                                                </span>
+                                                            </>
+                                                        ) : null}
                                                     </div>
-                                                )}
-                                            </div>
+                                                </div>
 
-                                            {/* Product Info */}
-                                            <div className="min-w-0 flex-1">
-                                                <h4 className="truncate text-sm font-medium text-card-foreground">{item.name}</h4>
-                                                <p className="text-xs text-muted-foreground">{formatPrice(item.price)}</p>
-                                            </div>
+                                                {/* Quantity Controls */}
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                        className="rounded p-1 hover:bg-muted"
+                                                    >
+                                                        <Minus className="h-3 w-3" />
+                                                    </button>
+                                                    <span className="min-w-[2rem] text-center text-sm font-medium">{item.quantity}</span>
+                                                    <button
+                                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                        className="rounded p-1 hover:bg-muted"
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                    </button>
+                                                </div>
 
-                                            {/* Quantity Controls */}
-                                            <div className="flex items-center gap-1">
+                                                {/* Remove Button */}
                                                 <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                    className="rounded p-1 hover:bg-muted"
+                                                    onClick={() => removeItem(item.id)}
+                                                    className="rounded p-1 text-destructive hover:bg-destructive/10"
                                                 >
-                                                    <Minus className="h-3 w-3" />
-                                                </button>
-                                                <span className="min-w-[2rem] text-center text-sm font-medium">{item.quantity}</span>
-                                                <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                    className="rounded p-1 hover:bg-muted"
-                                                >
-                                                    <Plus className="h-3 w-3" />
+                                                    <X className="h-3 w-3" />
                                                 </button>
                                             </div>
-
-                                            {/* Remove Button */}
-                                            <button
-                                                onClick={() => removeItem(item.id)}
-                                                className="rounded p-1 text-destructive hover:bg-destructive/10"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </button>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Total */}

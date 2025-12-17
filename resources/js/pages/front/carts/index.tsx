@@ -32,6 +32,9 @@ interface DetailedCartItem {
     finalPrice: number;
     originalPrice: number;
     discountPercent: number;
+    eventName?: string | null;
+    eventDiscount?: number | null;
+    isEventActive?: boolean;
     imageUrl: string;
     sku: string;
     cart?: ICart;
@@ -221,13 +224,18 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
             finalPrice: fallbackPrice,
             originalPrice: fallbackPrice,
             discountPercent: 0,
+            eventName: null,
+            eventDiscount: 0,
+            isEventActive: false,
         };
     }
 
     const productBase = toNumber(cart.product?.product_price);
     const productDiscount = toNumber(cart.product?.product_discount);
     const eventDiscount = toNumber(cart.product?.event?.discount);
-    const appliedProductDiscount = eventDiscount > 0 ? eventDiscount : productDiscount;
+    const isEventActive = Boolean(cart.product?.event && cart.product.event.is_active === 1);
+    const appliedEventDiscount = isEventActive ? eventDiscount : 0;
+    const appliedProductDiscount = appliedEventDiscount > 0 ? appliedEventDiscount : productDiscount;
 
     const subCategory = resolveSubCategory(cart);
     const subBase = toNumber(subCategory?.price);
@@ -260,6 +268,9 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
         finalPrice,
         originalPrice: originalPrice || finalPrice,
         discountPercent,
+        eventName: isEventActive ? (cart.product?.event?.name ?? null) : null,
+        eventDiscount: appliedEventDiscount,
+        isEventActive,
     };
 };
 
@@ -310,6 +321,9 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                 finalPrice: pricing.finalPrice,
                 originalPrice: Math.max(pricing.originalPrice, pricing.finalPrice),
                 discountPercent: pricing.discountPercent,
+                eventName: pricing.eventName,
+                eventDiscount: pricing.eventDiscount,
+                isEventActive: pricing.isEventActive,
                 imageUrl,
                 sku,
                 cart,
@@ -339,6 +353,9 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                 finalPrice: pricing.finalPrice || item.price,
                 originalPrice: Math.max(pricing.originalPrice, pricing.finalPrice || item.price),
                 discountPercent: pricing.discountPercent,
+                eventName: pricing.eventName,
+                eventDiscount: pricing.eventDiscount,
+                isEventActive: pricing.isEventActive,
                 imageUrl: item.image ?? FALLBACK_IMAGE,
                 cart: meta as ICart | undefined,
                 source: 'local',
@@ -392,6 +409,7 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                 attributes: item.attributes,
                 quantity: item.quantity,
                 price: item.finalPrice,
+                originalPrice: item.originalPrice,
                 image: item.imageUrl,
                 weight: Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : 0,
                 source: item.source,
@@ -417,6 +435,9 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                     variant: item.summary.variant ?? null,
                     variantColor: item.summary.variantColor ?? null,
                 },
+                eventName: item.eventName ?? null,
+                eventDiscountPct: item.eventDiscount ?? null,
+                isEventActive: item.isEventActive ?? null,
             };
         });
 
@@ -548,6 +569,11 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                                                             {formatCurrency(item.originalPrice)}
                                                         </div>
                                                     )}
+                                                    {item.isEventActive && item.eventDiscount ? (
+                                                        <div className="text-[11px] font-semibold text-emerald-600 uppercase">
+                                                            Event {item.eventName ?? ''} • {item.eventDiscount}% OFF
+                                                        </div>
+                                                    ) : null}
                                                 </div>
 
                                                 <div className="flex items-center justify-between gap-3 sm:justify-center">
