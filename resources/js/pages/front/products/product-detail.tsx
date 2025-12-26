@@ -292,9 +292,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                 {/* Info */}
                 <section className="lg:col-span-5">
                     <h1 className="mb-2 text-xl leading-snug font-bold md:text-2xl">{product.product_name}</h1>
-                    <div className="mb-2 text-xs text-muted-foreground">
+                    {/* <div className="mb-2 text-xs text-muted-foreground">
                         <span className="font-medium">{[product.unit?.name, product.product_sku].filter(Boolean).join(' | ')}</span>
-                    </div>
+                    </div> */}
 
                     {hasEventDiscount && (
                         <div className="mb-3 flex items-center gap-2">
@@ -488,7 +488,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     <Plus className="h-4 w-4" />
                                 </button>
                             </div>
-                            <div className="text-xs text-muted-foreground">Stock: {totalStock}</div>
+                            {/* <div className="text-xs text-muted-foreground">Stock: {totalStock}</div> */}
                         </div>
 
                         {/* Subtotal */}
