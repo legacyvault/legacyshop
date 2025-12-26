@@ -67,10 +67,12 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
     const categories = useMemo(() => product?.categories ?? [], [product]);
     const subcategories = useMemo(() => (product?.subcategories ?? []).filter((v) => v.category_id === selectedCat?.id), [product, selectedCat?.id]);
+    const subcategoriesHaveStock = useMemo(() => subcategories.some((subcat) => Number(subcat.total_stock ?? 0) > 0), [subcategories]);
     const divisions = useMemo(
         () => (product?.divisions ?? []).filter((v) => v.sub_category_id === selectedSubcat?.id),
         [product, selectedSubcat?.id],
     );
+    const divisionsHaveStock = useMemo(() => divisions.some((div) => Number(div.total_stock ?? 0) > 0), [divisions]);
     const textVariants = useMemo(
         () => (product?.variants ?? []).filter((v) => v.type === 'text' && v.division_id === selectedDiv?.id),
         [product, selectedDiv?.id],
@@ -78,6 +80,10 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     const colorVariants = useMemo(
         () => (product?.variants ?? []).filter((v) => v.type === 'color' && v.division_id === selectedDiv?.id),
         [product, selectedDiv?.id],
+    );
+    const variantsHaveStock = useMemo(
+        () => [...textVariants, ...colorVariants].some((variant) => Number(variant.total_stock ?? 0) > 0),
+        [textVariants, colorVariants],
     );
 
     const formatPrice = (price: number) =>
@@ -137,26 +143,20 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         if (!selectedCat) return true;
 
         if (subcategories.length > 0) {
-            if (!subcatStockInsufficient) {
-                if (selectedSubcat) return true;
-            } else {
-                return true;
+            if (subcategoriesHaveStock) {
+                if (!selectedSubcat) return true;
             }
         }
 
         if (divisions.length > 0) {
-            if (!divisionStockInsufficient) {
-                if (selectedDiv) return true;
-            } else {
-                return true;
+            if (divisionsHaveStock) {
+                if (!selectedDiv) return true;
             }
         }
 
-        if (textVariants.length > 0 && colorVariants.length > 0) {
-            if (!variantStockInsufficient) {
-                if (selectedVar) return true;
-            } else {
-                return true;
+        if (textVariants.length > 0 || colorVariants.length > 0) {
+            if (variantsHaveStock) {
+                if (!selectedVar) return true;
             }
         }
 
@@ -169,11 +169,14 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         variantStockInsufficient,
         selectedSubcat,
         subcategories,
+        subcategoriesHaveStock,
         selectedDiv,
         divisions,
+        divisionsHaveStock,
         selectedVar,
         textVariants,
         colorVariants,
+        variantsHaveStock,
     ]);
 
     const handleAddToCart = () => {
@@ -349,6 +352,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
+                                            <span>{v.total_stock}</span>
                                             <button
                                                 onClick={() => setSelectedSubcat((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
@@ -375,6 +379,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
+                                            <span>{v.total_stock}</span>
                                             <button
                                                 key={v.id}
                                                 onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
@@ -395,7 +400,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     {/* Variant: text */}
                     {textVariants.length > 0 && selectedDiv && selectedSubcat && selectedCat && (
                         <div className="mb-4">
-                            <div className="mb-2 text-sm font-semibold">Choose Selected: {selectedVar?.name ?? '-'}</div>
+                            <div className="mb-2 text-sm font-semibold">Choose Selection: {selectedVar?.name ?? '-'}</div>
                             <div className="flex flex-wrap gap-2">
                                 {textVariants.map((v) => {
                                     const active = selectedVar?.id === v.id;
@@ -421,7 +426,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     {/* Variant: color */}
                     {colorVariants.length > 0 && selectedDiv && selectedSubcat && selectedCat && (
                         <div className="mb-4">
-                            <div className="mb-2 text-sm font-semibold">Choose warna: {selectedVar?.name ?? '-'}</div>
+                            <div className="mb-2 text-sm font-semibold">Choose Color: {selectedVar?.name ?? '-'}</div>
                             <div className="flex flex-wrap items-center gap-3">
                                 {colorVariants.map((v) => {
                                     const active = selectedVar?.id === v.id;
