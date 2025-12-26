@@ -91,9 +91,9 @@ export default function VoucherCard({ voucher, products, onEdit }: VoucherCardPr
                 <div className="flex flex-wrap gap-2">
                     {previewProducts.length ? (
                         previewProducts.map((product) => (
-                            <Badge key={product.id} variant="outline" className="flex items-center gap-2">
-                                <span className="text-xs font-semibold">{product.name}</span>
-                                {product.sku && <span className="rounded bg-muted px-1 text-[10px] uppercase text-muted-foreground">SKU {product.sku}</span>}
+                            <Badge key={product.id} variant="outline" className="flex w-full min-w-0 items-center gap-2">
+                                <span className="truncate text-xs font-semibold">{product.name}</span>
+                                {product.sku && <span className="shrink-0 rounded bg-muted px-1 text-[10px] uppercase text-muted-foreground">SKU {product.sku}</span>}
                             </Badge>
                         ))
                     ) : (
