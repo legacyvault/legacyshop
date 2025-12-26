@@ -635,8 +635,6 @@ export default function Welcome() {
         return [] as IBanner[];
     }, [banner]);
 
-    console.log(events);
-
     return (
         <>
             <Head title="Welcome">
@@ -650,7 +648,7 @@ export default function Welcome() {
 
                     {/* UNIT SHOWCASE */}
                     {units.length > 0 && (
-                        <section className="mx-auto mt-24 max-w-6xl px-4">
+                        <section className={`mx-auto mt-24 max-w-6xl px-4 ${events.length === 0 ? 'mb-48' : ''}`}>
                             <div className="flex flex-wrap justify-center gap-6">
                                 {units.map((unit) => (
                                     <button
