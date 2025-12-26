@@ -16,7 +16,13 @@ class SubCategoryController extends Controller
     public function createSubCategory(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|unique:sub_category,name',
+            'name' => [
+                'required',
+                'string',
+                Rule::unique('sub_category')->where(function ($query) use ($request) {
+                    return $query->where('category_id', $request->category_id);
+                }),
+            ],
             'description' => 'string|nullable',
             'category_id' => 'required|exists:category,id',
             'price' => 'required|numeric',
@@ -35,7 +41,6 @@ class SubCategoryController extends Controller
                 'type' => 'success',
                 'message' => 'Successfully create sub category.',
             ]);
-
         } else {
             return back()->with('alert', [
                 'type' => 'error',
@@ -78,7 +83,6 @@ class SubCategoryController extends Controller
                 'type' => 'success',
                 'message' => 'Successfully add sub category stock.',
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::info('Failed to add stock on sub category: ' . $e);
@@ -132,7 +136,6 @@ class SubCategoryController extends Controller
                 'type' => 'success',
                 'message' => 'Successfully add sub category stock.',
             ]);
-            
         } catch (\Exception $e) {
             DB::rollBack();
             Log::info('Failed to add stock on sub category: ' . $e);
@@ -150,7 +153,11 @@ class SubCategoryController extends Controller
             'name' => [
                 'required',
                 'string',
-                Rule::unique('sub_category', 'name')->ignore($request->id),
+                Rule::unique('sub_category')
+                    ->where(function ($query) use ($request) {
+                        return $query->where('category_id', $request->category_id);
+                    })
+                    ->ignore($request->id),
             ],
             'category_id' => 'required|exists:category,id',
             'description' => 'string|nullable',
@@ -196,22 +203,26 @@ class SubCategoryController extends Controller
     public function getSubCategoryPaginated(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);
-        if ($perPage <= 0) { $perPage = 15; }
+        if ($perPage <= 0) {
+            $perPage = 15;
+        }
         $search   = $request->input('q');
         $sortBy   = $request->input('sort_by', 'name');
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSorts = ['id','name','description','price','usd_price','discount','total_stock','category_id','created_at'];
-        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
+        $allowedSorts = ['id', 'name', 'description', 'price', 'usd_price', 'discount', 'total_stock', 'category_id', 'created_at'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'name';
+        }
 
-        $query = SubCategory::query()->with(['stocks','divisions','category']);
+        $query = SubCategory::query()->with(['stocks', 'divisions', 'category']);
         if ($search) {
-            $query->where(function($q) use ($search){
-                $q->where('name','like',"%{$search}%")
-                  ->orWhere('description','like',"%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        return $query->orderBy($sortBy,$sortDir)->paginate($perPage)->appends($request->query());
+        return $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
     }
 
     public function getSubCategoryById($id)
