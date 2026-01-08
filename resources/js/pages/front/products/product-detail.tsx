@@ -352,7 +352,6 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
-                                            <span>{v.total_stock}</span>
                                             <button
                                                 onClick={() => setSelectedSubcat((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
@@ -379,7 +378,6 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
-                                            <span>{v.total_stock}</span>
                                             <button
                                                 key={v.id}
                                                 onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
