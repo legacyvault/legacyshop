@@ -1070,11 +1070,7 @@ export default function AddDeliveryAddressModal({
 
         post(route(isEdit ? 'update.delivery-address' : 'create.delivery-address'), {
             onSuccess: () => {
-                if (closeOnSuccess) {
-                    setSkipCancelOnClose(true);
-                    onOpenChange?.(false);
-                }
-                onSuccess?.();
+                onOpenChange?.(false);
             },
         });
     };
@@ -1677,8 +1673,9 @@ export default function AddDeliveryAddressModal({
                                     onChange={(next) => handleLocationPick({ lat: next.lat, lng: next.lng })}
                                     className="h-[320px]"
                                 />
+                                {errors.latitude || errors.longitude && <p className="text-sm text-destructive">Location required.</p>}
 
-                                <div className="grid hidden gap-4 md:grid-cols-2">
+                                {/* <div className="grid hidden gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="latitude">Latitude *</Label>
                                         <Input
@@ -1701,7 +1698,7 @@ export default function AddDeliveryAddressModal({
                                         />
                                         {errors.longitude && <p className="text-sm text-destructive">{errors.longitude}</p>}
                                     </div>
-                                </div>
+                                </div> */}
                             </div>
                         </section>
                     </div>
