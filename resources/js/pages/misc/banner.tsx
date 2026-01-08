@@ -126,6 +126,8 @@ function BannerTable({ banner }: PropsTable) {
         });
     };
 
+    console.log(banner)
+
     return (
         <>
             <BannerDialog
@@ -143,6 +145,7 @@ function BannerTable({ banner }: PropsTable) {
                 <thead>
                     <tr className="bg-sidebar-accent">
                         <th className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground">#</th>
+                        <th className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Title</th>
                         <th className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Text</th>
                         <th className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground">Active</th>
                         <th className="border border-popover px-4 py-3 text-right font-medium text-primary-foreground">Actions</th>
@@ -153,6 +156,7 @@ function BannerTable({ banner }: PropsTable) {
                         banner.map((item, i) => (
                             <tr key={item.id} className="hover:bg-gray-50">
                                 <td className="border border-popover px-4 py-3">{i + 1}</td>
+                                <td className="border border-popover px-4 py-3 break-words whitespace-normal">{item.banner_title}</td>
                                 <td className="border border-popover px-4 py-3 break-words whitespace-normal">{item.banner_text}</td>
                                 <td className="border border-popover px-4 py-3">{item.is_active ? 'Yes' : 'No'}</td>
                                 <td className="border border-popover px-4 py-3 text-right">

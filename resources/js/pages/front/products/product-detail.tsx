@@ -40,6 +40,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     const pictures = product?.pictures ?? [];
     const [activeIndex, setActiveIndex] = useState(0);
     const [selectedQty, setSelectedQty] = useState(1);
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
     const [selectedCat, setSelectedCat] = useState<ICategories | undefined>();
     const [selectedSubcat, setSelectedSubcat] = useState<(ISubcats & { pivot: IPivotSubcatProd }) | undefined>();
@@ -222,6 +223,17 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
             .replace(/\n/g, '<br />');
     };
 
+    const DESCRIPTION_PREVIEW_LIMIT = 350;
+    const descriptionText = product.description ?? '';
+    const formattedDescription = useMemo(() => formatDescriptionPreview(descriptionText), [descriptionText]);
+    const formattedPreview = useMemo(() => {
+        if (descriptionText.length <= DESCRIPTION_PREVIEW_LIMIT) return formattedDescription;
+        const truncatedText = descriptionText.slice(0, DESCRIPTION_PREVIEW_LIMIT).trimEnd();
+        return formatDescriptionPreview(`${truncatedText}...`);
+    }, [descriptionText, formattedDescription]);
+    const descriptionHtml = isDescriptionExpanded ? formattedDescription : formattedPreview;
+    const showReadMore = descriptionText.length > DESCRIPTION_PREVIEW_LIMIT;
+
     return (
         <div className="mx-auto w-full max-w-7xl px-4 py-8">
             {/* Breadcrumbs */}
@@ -352,7 +364,6 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
-                                            <span>{v.total_stock}</span>
                                             <button
                                                 onClick={() => setSelectedSubcat((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
@@ -379,7 +390,6 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                     const optionOutOfStock = Number(v.total_stock ?? 0) < 1;
                                     return (
                                         <div key={v.id} className="text-muted-foreground:20 flex flex-col text-xs">
-                                            <span>{v.total_stock}</span>
                                             <button
                                                 key={v.id}
                                                 onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
@@ -459,9 +469,18 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                 <div
                                     className="prose prose-sm whitespace-pre-line text-foreground"
                                     dangerouslySetInnerHTML={{
-                                        __html: formatDescriptionPreview(product.description),
+                                        __html: descriptionHtml,
                                     }}
                                 />
+                                {showReadMore && (
+                                    <button
+                                        type="button"
+                                        className="mt-2 text-sm font-semibold text-primary underline underline-offset-2"
+                                        onClick={() => setIsDescriptionExpanded((prev) => !prev)}
+                                    >
+                                        {isDescriptionExpanded ? 'Read less' : 'Read more'}
+                                    </button>
+                                )}
                                 <div className="my-12">
                                     {product.tags.map((tag, i) => (
                                         <span className={`rounded-full bg-secondary p-2 text-xs ${i === 0 ? 'ml-0' : 'ml-4'}`} key={tag.id}>
