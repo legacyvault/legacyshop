@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
+import { IProducts, SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
 import { Link, router, usePage, useRemember } from '@inertiajs/react';
 import { Check, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1157,6 +1157,7 @@ export default function Checkout() {
     const [appliedVoucher, setAppliedVoucher] = useState<{
         code: string;
         discount: number;
+        totalVoucherPrice: number;
         eligibleProductIds: string[];
     } | null>(null);
 
@@ -1205,7 +1206,7 @@ export default function Checkout() {
             const body = isJson ? await response.json().catch(() => ({})) : {};
             const voucherData = body?.data ?? null;
             const discountValue = Number(voucherData?.discount ?? 0);
-            const productsFromResponse: string[] = Array.isArray(voucherData?.products)
+            const productsFromResponse: string[] = Array.isArray(voucherData?.products as IProducts[])
                 ? voucherData.products
                       .map((product: any) => {
                           const idCandidate = product?.product_id ?? product?.id ?? null;
@@ -1215,12 +1216,25 @@ export default function Checkout() {
                 : [];
 
             const eligibleProductIds = productsFromResponse.length ? productsFromResponse : productIds;
+            let totalVoucherPrice = 0;
+            if(voucherData){
+                totalVoucherPrice = voucherData.products.reduce((sum: number, product: IProducts) => {
+                    const discount = product.event?.discount ?? 0;
+                    const discountedPrice = product.product_price * (1 - discount / 100);
+                    const finalPrice = discountedPrice * (1-discountValue/100);
+                    return sum + finalPrice; 
+                }, 0);
+            }
+
 
             setAppliedVoucher({
                 code: trimmedCode,
                 discount: Number.isFinite(discountValue) ? discountValue : 0,
-                eligibleProductIds,
+                totalVoucherPrice,
+                eligibleProductIds
             });
+
+            console.log(appliedVoucher)
             setVoucherError(null);
         } catch (error) {
             const fallbackMessage = error instanceof Error ? error.message : 'Unable to apply voucher. Please try again.';
@@ -1235,34 +1249,11 @@ export default function Checkout() {
     const protection = checkoutItems.reduce((total, item) => total + (item.protectionPrice ?? 0), 0);
     const shipping = selectedRate?.price ?? 0;
     const insurance = 0;
-    const voucherDiscount = useMemo(() => {
-        if (!appliedVoucher) return 0;
 
-        const eligibleSet = new Set(appliedVoucher.eligibleProductIds.map((id) => String(id)).filter(Boolean));
-        const hasEligible =
-            eligibleSet.size === 0
-                ? checkoutItems.some((item) => Boolean(item.productId))
-                : checkoutItems.some((item) => item.productId && eligibleSet.has(String(item.productId)));
+    const voucherDiscount = useMemo(() => (appliedVoucher?.totalVoucherPrice), [appliedVoucher]);
 
-        if (!hasEligible) {
-            return 0;
-        }
-
-        const eligibleSubtotal = checkoutItems.reduce((sum, item) => {
-            if (!item.productId) return sum;
-            const id = String(item.productId);
-            if (eligibleSet.size > 0 && !eligibleSet.has(id)) {
-                return sum;
-            }
-            return sum + item.price * item.quantity;
-        }, 0);
-
-        if (eligibleSubtotal <= 0) return 0;
-
-        const discountValue = Math.max(0, appliedVoucher.discount);
-        return Math.min(discountValue, eligibleSubtotal);
-    }, [appliedVoucher, checkoutItems]);
-    const total = Math.max(0, subtotal + protection + shipping + insurance - voucherDiscount);
+    const total = Math.max(0, subtotal + protection + shipping + insurance - (voucherDiscount ?? 0));
+    
     useEffect(() => {
         if (!appliedVoucher) return;
 
@@ -1277,6 +1268,8 @@ export default function Checkout() {
             setVoucherError('Voucher removed because no eligible products remain.');
         }
     }, [appliedVoucher, checkoutItems]);
+
+
     const hasCheckoutItems = checkoutItems.length > 0;
     const groupedCheckoutItems = useMemo(() => {
         const groups: { key: string; label: string; items: CheckoutItem[] }[] = [];
@@ -2407,7 +2400,7 @@ export default function Checkout() {
                                     <span>Shipping Rates</span>
                                     <span className="font-medium text-foreground">{selectedRate ? formatCurrency(shipping) : '—'}</span>
                                 </div>
-                                {appliedVoucher && voucherDiscount > 0 ? (
+                                {appliedVoucher && (voucherDiscount ?? 0) > 0 ? (
                                     <div className="flex items-center justify-between text-muted-foreground">
                                         <span className="flex items-center gap-2">
                                             Voucher
@@ -2415,7 +2408,7 @@ export default function Checkout() {
                                                 {appliedVoucher.code}
                                             </span>
                                         </span>
-                                        <span className="font-medium text-emerald-600">- {formatCurrency(voucherDiscount)}</span>
+                                        <span className="font-medium text-emerald-600">- {formatCurrency(voucherDiscount ?? 0)}</span>
                                     </div>
                                 ) : null}
                                 <div className="space-y-2">
@@ -2447,7 +2440,7 @@ export default function Checkout() {
                                     </div>
                                     {voucherError ? <p className="text-xs text-destructive">{voucherError}</p> : null}
                                     {appliedVoucher && !voucherError ? (
-                                        <p className="text-xs text-emerald-600">Voucher applied. Discount: {formatCurrency(voucherDiscount)}</p>
+                                        <p className="text-xs text-emerald-600">Voucher applied. Discount: {appliedVoucher.discount}%</p>
                                     ) : null}
                                 </div>
                             </CardContent>

@@ -245,7 +245,7 @@ class MiscController extends Controller
             ], 422);
         }
 
-        $voucher = VoucherModel::with('products')
+        $voucher = VoucherModel::with(['products.event'])
             ->where('voucher_code', $request->voucher_code)
             ->first();
 
