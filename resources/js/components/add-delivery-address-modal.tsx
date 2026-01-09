@@ -1665,6 +1665,7 @@ export default function AddDeliveryAddressModal({
                                 <p className="mt-1 text-sm text-muted-foreground">
                                     Drag the marker or search to update the coordinates. Address text will not change automatically.
                                 </p>
+                                {(errors.latitude || errors.longitude) && <p className="text-sm text-destructive">Location required.</p>}
                             </div>
 
                             <div className="space-y-4">
@@ -1673,7 +1674,7 @@ export default function AddDeliveryAddressModal({
                                     onChange={(next) => handleLocationPick({ lat: next.lat, lng: next.lng })}
                                     className="h-[320px]"
                                 />
-                                {errors.latitude || errors.longitude && <p className="text-sm text-destructive">Location required.</p>}
+
 
                                 {/* <div className="grid hidden gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
