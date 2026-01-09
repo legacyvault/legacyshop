@@ -1216,15 +1216,22 @@ export default function Checkout() {
                 : [];
 
             const eligibleProductIds = productsFromResponse.length ? productsFromResponse : productIds;
-            let totalVoucherPrice = 0;
-            if(voucherData){
-                totalVoucherPrice = voucherData.products.reduce((sum: number, product: IProducts) => {
-                    const discount = product.event?.discount ?? 0;
-                    const discountedPrice = product.product_price * (1 - discount / 100);
-                    const finalPrice = discountedPrice * (1-discountValue/100);
-                    return sum + finalPrice; 
-                }, 0);
-            }
+            const eligibleProductIdSet = new Set(eligibleProductIds.map((id) => String(id)));
+            const eligibleItems = checkoutItems.filter(
+                (item) => item.productId && eligibleProductIdSet.has(String(item.productId)),
+            );
+
+            const totalVoucherPrice = voucherData
+                ? eligibleItems.reduce((sum: number, item) => {
+                      const eventDiscount = item.isEventActive ? item.eventDiscountPct ?? 0 : 0;
+                      const basePrice = Number(item.originalPrice ?? item.price ?? 0);
+                      const discountedPrice = basePrice * (1 - eventDiscount / 100);
+                      const voucherPrice = discountedPrice * (1 - discountValue / 100);
+
+                      const finalPrice = discountedPrice - voucherPrice
+                      return sum + finalPrice * item.quantity;
+                  }, 0)
+                : 0;
 
 
             setAppliedVoucher({
