@@ -260,7 +260,7 @@ class OrderController extends Controller
 
             // Create Order Items
             foreach ($items as $item) {
-
+                Log::info($item);
                 $eventDiscountPerUnit =
                     ($item['event_discount'] ?? 0) / max(1, $item['quantity']);
 
