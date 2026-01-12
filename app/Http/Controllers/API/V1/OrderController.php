@@ -258,6 +258,26 @@ class OrderController extends Controller
 
             // Create Order Items
             foreach ($items as $item) {
+                // Check if item has event discount
+                Log::info($item);
+                $eventDiscountPerUnit = 0;
+                if (!empty($item['product_id']) && ($item['event_discount'] ?? 0) > 0) {
+                    $eventDiscountPerUnit = $item['event_discount'] / max(1, $item['quantity']);
+                }
+
+                if ($request->filled('voucher_code')) {
+                    // Check if item is eligible for voucher
+                    $voucherDiscountPerUnit = 0;
+                    if (!empty($item['product_id']) && !empty($eligibleProductIds) && in_array($item['product_id'], $eligibleProductIds)) {
+                        $voucherDiscountPerUnit = ($item['voucher_discount'] ?? 0) / max(1, $item['quantity']);
+                    }
+
+                    // Final price per unit
+                    $finalPricePerUnit = max(0, $item['price'] - $eventDiscountPerUnit - $voucherDiscountPerUnit);
+                } else {
+                    $finalPricePerUnit = max(0, $item['price'] - $eventDiscountPerUnit);
+                }
+
                 OrderItems::create([
                     'id' => Str::uuid(),
                     'order_id' => $order->id,
@@ -279,8 +299,8 @@ class OrderController extends Controller
                     'variant_name' => $item['variant_name'] ?? null,
                     'variant_description' => $item['variant_description'] ?? null,
                     'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                    'total' => $item['quantity'] * $item['price'],
+                    'price' => $finalPricePerUnit,
+                    'total' => $finalPricePerUnit * $item['quantity'],
                 ]);
             }
 
