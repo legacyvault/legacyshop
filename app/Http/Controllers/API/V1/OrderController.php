@@ -222,22 +222,29 @@ class OrderController extends Controller
             }
 
             // Create Order
-            $order = Order::create([
+            $data_order = [
                 'id' => Str::uuid(),
                 'user_id' => $userId,
                 'guest_id' => $guestId,
                 'subtotal' => $subtotal,
-                'voucher_code' => $voucher?->voucher_code,
                 'shipping_fee' => $shippingFee,
                 'grand_total' => $grandTotal,
                 'payment_method' => $request->payment_method,
                 'payment_status' => $isManualInvoice ? 'payment_received' : 'awaiting_payment',
                 'status' => $isManualInvoice ? 'finished' : 'pending',
                 'paid_at' => $isManualInvoice ? now() : null,
-            ]);
+            ];
 
-            if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
-                $voucher->decrement('limit', 1);
+            if ($request->filled('voucher_code')) {
+                $data['voucher_code'] = $voucher->voucher_code;
+            }
+
+            $order = Order::create($data_order);
+
+            if ($request->filled('voucher_code')) {
+                if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
+                    $voucher->decrement('limit', 1);
+                }
             }
 
             if ($isManualInvoice) {
