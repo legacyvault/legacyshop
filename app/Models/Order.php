@@ -41,7 +41,7 @@ class Order extends Model
         parent::boot();
 
         static::creating(function ($order) {
-            $latestOrder = self::where('order_number', 'LIKE', 'ORDERTESTNEW-%')
+            $latestOrder = self::where('order_number', 'LIKE', 'ORDERTESTNEWASELOLENGONDEKHAHA-%')
                 ->orderByRaw('CAST(SUBSTRING(order_number, 15) AS UNSIGNED) DESC')
                 ->first();
 
