@@ -115,44 +115,50 @@ class OrderController extends Controller
         $isManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
         $items = $request->items;
 
-        $activeEvents = Events::with('event_products')
-            ->where('is_active', true)
-            ->get();
+        // $activeEvents = Events::with('event_products')
+        //     ->where('is_active', true)
+        //     ->get();
 
-        $eventProductDiscounts = [];
+        // $eventProductDiscounts = [];
 
-        foreach ($activeEvents as $event) {
-            foreach ($event->event_products as $ep) {
-                $eventProductDiscounts[$ep->product_id] = $event->discount;
-            }
-        }
+        // foreach ($activeEvents as $event) {
+        //     foreach ($event->event_products as $ep) {
+        //         $eventProductDiscounts[$ep->product_id] = $event->discount;
+        //     }
+        // }
 
-        $shippingFee = $request->shipping_fee;
+        // $shippingFee = $request->shipping_fee;
+        // $subtotal = 0;
+        // $eventDiscountTotal = 0;
+
+        // foreach ($items as &$item) {
+        //     $lineTotal = $item['quantity'] * $item['price'];
+        //     $subtotal += $lineTotal;
+
+        //     $eventDiscount = 0;
+
+        //     if (
+        //         !empty($item['product_id']) &&
+        //         isset($eventProductDiscounts[$item['product_id']])
+        //     ) {
+        //         $eventPercent = $eventProductDiscounts[$item['product_id']]; // contoh: 10 = 10%
+        //         $eventDiscount = ($lineTotal * $eventPercent) / 100;
+        //     }
+
+        //     $item['event_discount'] = round($eventDiscount, 2);
+        //     $item['total_after_event'] = round($lineTotal - $eventDiscount, 2);
+
+        //     $eventDiscountTotal += $eventDiscount;
+        // }
+        // unset($item);
+
+        // $subtotalAfterEvent = max(0, $subtotal - $eventDiscountTotal);
         $subtotal = 0;
-        $eventDiscountTotal = 0;
 
-        foreach ($items as &$item) {
-            $lineTotal = $item['quantity'] * $item['price'];
-            $subtotal += $lineTotal;
-
-            $eventDiscount = 0;
-
-            if (
-                !empty($item['product_id']) &&
-                isset($eventProductDiscounts[$item['product_id']])
-            ) {
-                $eventPercent = $eventProductDiscounts[$item['product_id']]; // contoh: 10 = 10%
-                $eventDiscount = ($lineTotal * $eventPercent) / 100;
-            }
-
-            $item['event_discount'] = round($eventDiscount, 2);
-            $item['total_after_event'] = round($lineTotal - $eventDiscount, 2);
-
-            $eventDiscountTotal += $eventDiscount;
+        foreach ($items as $item) {
+            $subtotal += $item['price'] * $item['quantity'];
         }
-        unset($item);
-
-        $subtotalAfterEvent = max(0, $subtotal - $eventDiscountTotal);
+        $shippingFee = $request->shipping_fee;
         $voucherDiscount = 0;
         $eligibleProductIds = [];
 
@@ -162,9 +168,9 @@ class OrderController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if ($voucher) {
-                $voucherPercent = $voucher->discount; // contoh: 15 = 15%
+            if ($voucher && (!$voucher->is_limit || $voucher->limit > 0)) {
 
+                $voucherPercent = $voucher->discount;
                 $productIdsInCart = collect($items)->pluck('product_id')->filter()->toArray();
 
                 $eligibleProductIds = $voucher->products()
@@ -172,29 +178,27 @@ class OrderController extends Controller
                     ->pluck('products.id')
                     ->toArray();
 
-                if (!empty($eligibleProductIds) && (!$voucher->is_limit || $voucher->limit > 0)) {
-
-                    foreach ($items as &$item) {
-                        if (
-                            !empty($item['product_id']) &&
-                            in_array($item['product_id'], $eligibleProductIds)
-                        ) {
-                            $item['voucher_discount'] =
-                                ($item['total_after_event'] * $voucherPercent) / 100;
-                        } else {
-                            $item['voucher_discount'] = 0;
-                        }
+                foreach ($items as &$item) {
+                    if (
+                        !empty($item['product_id']) &&
+                        in_array($item['product_id'], $eligibleProductIds)
+                    ) {
+                        $item['voucher_discount'] =
+                            ($item['price'] * $item['quantity'] * $voucherPercent) / 100;
+                    } else {
+                        $item['voucher_discount'] = 0;
                     }
-                    unset($item);
-
-                    $voucherDiscount = collect($items)->sum('voucher_discount');
                 }
+                unset($item);
+
+                $voucherDiscount = collect($items)->sum('voucher_discount');
             }
         }
 
+
         $grandTotal = max(
             0,
-            $subtotalAfterEvent - $voucherDiscount + $shippingFee
+            $subtotal - $voucherDiscount + $shippingFee
         );
 
         try {
@@ -261,8 +265,8 @@ class OrderController extends Controller
             // Create Order Items
             foreach ($items as $item) {
                 Log::info($item);
-                $eventDiscountPerUnit =
-                    ($item['event_discount'] ?? 0) / max(1, $item['quantity']);
+                // $eventDiscountPerUnit =
+                //     ($item['event_discount'] ?? 0) / max(1, $item['quantity']);
 
                 if ($request->filled('voucher_code')) {
                     $voucherDiscountPerUnit =
@@ -270,12 +274,12 @@ class OrderController extends Controller
 
                     $finalPricePerUnit = max(
                         0,
-                        $item['price'] - $eventDiscountPerUnit - $voucherDiscountPerUnit
+                        $item['price'] - $voucherDiscountPerUnit
                     );
                 } else {
                     $finalPricePerUnit = max(
                         0,
-                        $item['price'] - $eventDiscountPerUnit
+                        $item['price']
                     );
                 }
 
