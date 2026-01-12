@@ -41,20 +41,21 @@ class Order extends Model
         parent::boot();
 
         static::creating(function ($order) {
-            $latestOrder = self::where('order_number', 'LIKE', 'ORDERTESTNEWASELOLENGONDEKHAHA-%')
-                ->orderByRaw('CAST(SUBSTRING(order_number, 15) AS UNSIGNED) DESC')
+            $prefix = 'ORDERTESTNEWASELOLENGONDEKHAHA-';
+            $prefixLength = strlen($prefix);
+
+            $latestOrder = self::where('order_number', 'LIKE', $prefix . '%')
+                ->lockForUpdate() // 🔒 PENTING
+                ->orderByRaw("CAST(SUBSTRING(order_number, {$prefixLength}+1) AS UNSIGNED) DESC")
                 ->first();
 
             $lastNumber = $latestOrder
-                ? intval(substr($latestOrder->order_number, 15))
+                ? intval(substr($latestOrder->order_number, $prefixLength))
                 : 0;
 
-            $newNumber = str_pad($lastNumber + 1, 10, '0', STR_PAD_LEFT);
-
-            $order->order_number = 'ORDERTESTNEWASELOLENGONDEKHAHA-' . $newNumber;
+            $order->order_number = $prefix . str_pad($lastNumber + 1, 10, '0', STR_PAD_LEFT);
         });
     }
-
 
     public function user()
     {
