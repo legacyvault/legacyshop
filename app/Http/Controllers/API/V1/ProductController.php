@@ -455,9 +455,6 @@ class ProductController extends Controller
             'unit_id'     => 'required|exists:unit,id',
             'sub_unit_id' => 'required|exists:sub_unit,id',
 
-            'tags'        => 'nullable|array',
-            'tags.*'      => 'exists:tags,id',
-
             'categories'  => 'nullable|array',
             'categories.*' => 'exists:category,id',
 
@@ -488,6 +485,9 @@ class ProductController extends Controller
             // pictures per product -> array of files
             'products.*.pictures' => 'nullable|array',
             'products.*.pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
+
+            'products.*.tags'     => 'nullable|array',
+            'products.*.tags.*'   => 'exists:tags,id',
         ]);
 
         if ($validator->fails()) {
@@ -544,8 +544,8 @@ class ProductController extends Controller
                 ]);
 
                 // relational sync
-                if ($request->filled('tags')) {
-                    $product->tags()->sync($request->tags);
+                if (!empty($p['tags']) && is_array($p['tags'])) {
+                    $product->tags()->sync($p['tags']);
                 }
 
                 if ($request->filled('categories')) {
@@ -649,9 +649,6 @@ class ProductController extends Controller
             'unit_id'     => 'required|exists:unit,id',
             'sub_unit_id' => 'required|exists:sub_unit,id',
 
-            'tags' => 'nullable|array',
-            'tags.*' => 'exists:tags,id',
-
             'categories' => 'nullable|array',
             'categories.*' => 'exists:category,id',
 
@@ -669,6 +666,9 @@ class ProductController extends Controller
 
             'products.*.remove_picture_ids' => 'nullable|array',
             'products.*.remove_picture_ids.*' => 'exists:product_pictures,id',
+
+            'products.*.tags'   => 'nullable|array',
+            'products.*.tags.*' => 'exists:tags,id',
 
             'remove_product_ids' => 'nullable|array',
             'remove_product_ids.*' => 'exists:products,id',
@@ -754,8 +754,8 @@ class ProductController extends Controller
                 }
 
                 // TAGS pivot
-                if ($request->filled('tags')) {
-                    $product->tags()->sync($request->tags);
+                if (array_key_exists('tags', $p)) {
+                    $product->tags()->sync(is_array($p['tags']) ? $p['tags'] : []);
                 }
 
                 // CATEGORIES pivot
