@@ -195,10 +195,11 @@ class OrderController extends Controller
             }
         }
 
+        $subtotal = $subtotal - $voucherDiscount;
 
         $grandTotal = max(
             0,
-            $subtotal - $voucherDiscount + $shippingFee
+            $subtotal + $shippingFee
         );
 
         try {
