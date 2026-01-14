@@ -29,7 +29,6 @@ type HierarchySelection = {
     subcategoryIds: string[];
     divisionIds: string[];
     variantIds: string[];
-    tagIds: string[];
 };
 
 type BulkProductRow = {
@@ -42,6 +41,7 @@ type BulkProductRow = {
     removePictureIds?: string[];
     description: string;
     weight: string;
+    tags: string[];
 };
 
 type RowError = {
@@ -49,6 +49,7 @@ type RowError = {
     weight?: string;
     description?: string;
     images?: string;
+    tags?: string;
 };
 
 type DiscountEntry = {
@@ -234,12 +235,11 @@ export default function GroupProductForm() {
         subcategoryIds: [],
         divisionIds: [],
         variantIds: [],
-        tagIds: [],
     });
 
     const [bulkNames, setBulkNames] = useState('');
     const [bulkRows, setBulkRows] = useState<BulkProductRow[]>([
-        { id: randomId(), name: '', images: [], previews: [], description: '', weight: '', existingPictures: [], removePictureIds: [] },
+        { id: randomId(), name: '', images: [], previews: [], description: '', weight: '', existingPictures: [], removePictureIds: [], tags: [] },
     ]);
     const [bulkWeight, setBulkWeight] = useState('');
     const [bulkDescription, setBulkDescription] = useState('');
@@ -455,7 +455,8 @@ export default function GroupProductForm() {
         if (!productGroup) return;
 
         const products = productGroup.products ?? [];
-        const unique = (values: (string | null | undefined)[]) => Array.from(new Set(values.filter((v): v is string => Boolean(v))));
+        const unique = (values: (string | number | null | undefined)[]) =>
+            Array.from(new Set(values.filter((v): v is string | number => v !== null && v !== undefined))).map((v) => String(v));
 
         setGroupMeta({ name: productGroup.name ?? '', notes: '' });
 
@@ -466,7 +467,6 @@ export default function GroupProductForm() {
             subcategoryIds: unique(products.flatMap((p) => p.subcategories?.map((s) => s.id))),
             divisionIds: unique(products.flatMap((p) => p.divisions?.map((d) => d.id))),
             variantIds: unique(products.flatMap((p) => p.variants?.map((v) => v.id))),
-            tagIds: unique(products.flatMap((p) => p.tags?.map((t) => t.id))),
         };
 
         setHierarchy(nextHierarchy);
@@ -484,6 +484,7 @@ export default function GroupProductForm() {
             removePictureIds: [],
             description: p.description || '',
             weight: p.product_weight !== null && p.product_weight !== undefined ? String(p.product_weight) : '',
+            tags: p.tags?.map((tag) => (tag.id)) || []
         }));
 
         setBulkRows(
@@ -499,6 +500,7 @@ export default function GroupProductForm() {
                           removePictureIds: [],
                           description: '',
                           weight: '',
+                          tags: []
                       },
                   ],
         );
@@ -610,8 +612,12 @@ export default function GroupProductForm() {
         initializeDiscounts('variant', values);
     };
 
-    const handleTagChange = (values: string[]) => {
-        setHierarchy((prev) => ({ ...prev, tagIds: values }));
+    const handleTagChange = (id: string, tags: string[]) => {
+        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, tags } : row)));
+        setRowErrors((prev) => {
+            if (!prev[id]?.tags) return prev;
+            return { ...prev, [id]: { ...prev[id], tags: undefined } };
+        });
     };
 
     const buildDiscountPayload = (type: 'subcategory' | 'division' | 'variant') => {
@@ -953,7 +959,6 @@ export default function GroupProductForm() {
         if (unitId) fd.append('unit_id', unitId);
         if (subUnitId) fd.append('sub_unit_id', subUnitId);
         hierarchy.categoryIds.forEach((id) => fd.append('categories[]', id));
-        hierarchy.tagIds.forEach((id) => fd.append('tags[]', id));
 
         fd.append('use_unit_price', pricing.use_unit_price ? '1' : '0');
         fd.append('use_unit_usd_price', pricing.use_unit_usd_price ? '1' : '0');
@@ -985,6 +990,7 @@ export default function GroupProductForm() {
             fd.append(`products[${i}][product_name]`, row.name);
             fd.append(`products[${i}][weight]`, row.weight || '0');
             fd.append(`products[${i}][description]`, row.description);
+            row.tags.forEach((tag) => fd.append(`products[${i}][tags][]`, tag));
             row.removePictureIds?.forEach((picId) => fd.append(`products[${i}][remove_picture_ids][]`, picId));
             row.images.forEach((file, j) => fd.append(`products[${i}][pictures][${j}]`, file));
         });
@@ -1100,6 +1106,7 @@ export default function GroupProductForm() {
                 removePictureIds: [],
                 description: bulkDescription,
                 weight: bulkWeight,
+                tags: []
             })),
         ]);
         setBulkNames('');
@@ -1118,6 +1125,7 @@ export default function GroupProductForm() {
                 removePictureIds: [],
                 description: bulkDescription,
                 weight: bulkWeight,
+                tags: []
             },
         ]);
 
@@ -1212,8 +1220,7 @@ export default function GroupProductForm() {
                                             categoryIds: [],
                                             subcategoryIds: [],
                                             divisionIds: [],
-                                            variantIds: [],
-                                            tagIds: [],
+                                            variantIds: []
                                         })
                                     }
                                 >
@@ -1289,15 +1296,6 @@ export default function GroupProductForm() {
                                             disabled={!variantOptions.length}
                                         />
                                         {/* {formErrors.variants && <p className="text-xs text-red-500">{formErrors.variants}</p>} */}
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="variant">Tags</Label>
-                                        <MultiSelect
-                                            options={tagsOptions}
-                                            values={hierarchy.tagIds}
-                                            onChange={handleTagChange}
-                                            placeholder="Select tags(s)"
-                                        />
                                     </div>
                                 </div>
 
@@ -1750,6 +1748,17 @@ export default function GroupProductForm() {
                                                         onChange={(e) => handleRowWeightChange(row.id, e.target.value)}
                                                     />
                                                     {rowErrors[row.id]?.weight && <p className="text-xs text-red-500">{rowErrors[row.id]?.weight}</p>}
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <Label>Tags</Label>
+                                                    <MultiSelect
+                                                        options={tagsOptions}
+                                                        values={row.tags}
+                                                        onChange={(e) => handleTagChange(row.id, e)}
+                                                        placeholder="Select tags(s)"
+                                                    />
+                                                    {rowErrors[row.id]?.tags && <p className="text-xs text-red-500">{rowErrors[row.id]?.tags}</p>}
                                                 </div>
 
                                                 <div className="space-y-2">
