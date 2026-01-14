@@ -168,7 +168,8 @@ class OrderHistoryController extends Controller
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->with(['order.user.profile', 'order.guest', 'order.shipment'])
             ->where('orders.payment_status', 'payment_received')
-            ->where('orders.status', 'preparing_order')
+            //ENABLE IF NEEDED
+            // ->where('orders.status', 'preparing_order')
             ->orderBy('orders.created_at', 'desc');
 
         if ($search) {
