@@ -342,7 +342,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                         <button
                                             key={v.id}
                                             onClick={() => setSelectedCat((prev) => (prev?.id === v.id ? undefined : v))}
-                                            className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
+                                            className={`rounded-md border border-primary px-3 py-1.5 text-sm transition cursor-pointer ${
                                                 active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
                                             }`}
                                         >
@@ -368,7 +368,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                                 onClick={() => setSelectedSubcat((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60 cursor-not-allowed' : 'cursor-pointer'}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -395,7 +395,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                                 onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60 cursor-not-allowed' : 'cursor-pointer'}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -421,7 +421,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                                 onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60 cursor-not-allowed' : 'cursor-pointer'}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -449,7 +449,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                             onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
                                             className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                 active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                            } ${disabled ? 'border-secondary text-secondary hover:border-secondary/60' : ''}`}
+                                            } ${disabled ? 'border-secondary text-secondary hover:border-secondary/60 cursor-not-allowed' : 'cursor-pointer'}`}
                                             disabled={disabled}
                                             style={{ backgroundColor: color ?? '#e5e7eb' }}
                                         />
