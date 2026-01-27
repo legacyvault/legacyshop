@@ -36,7 +36,7 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
                 <Link href={getArticleLink(featuredArticle)}>
                     <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
                         <div className="group relative block overflow-hidden bg-muted" aria-label={`Read article ${featuredArticle.title}`}>
-                            <div className="aspect-[16/11] w-full overflow-hidden">
+                            <div className="aspect-[4/3] w-full overflow-hidden rounded-md">
                                 <img
                                     src={featuredArticle.image_cover ?? '/banner-example.jpg'}
                                     alt={featuredArticle.title}
@@ -178,7 +178,7 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
     };
 
     return (
-        <section className="relative h-[70vh] w-full overflow-hidden">
+        <section className="relative w-full overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
             {banners.map((banner, index) => {
                 const isActive = index === currentIndex;
 
@@ -423,7 +423,8 @@ const ProductCardsSection = ({ products, title }: { products: IProducts[]; title
     );
 };
 
-const ProductCardsSectionEvent = ({ products, title }: { products: IEventProduct[]; title: string }) => {
+const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEventProduct[]; title: string; event_id: string }) => {
+
     const [activeSlide, setActiveSlide] = useState(0);
     const [visibleCount, setVisibleCount] = useState(1);
 
@@ -532,7 +533,10 @@ const ProductCardsSectionEvent = ({ products, title }: { products: IEventProduct
                                     {slide.map((product, itemIndex) => (
                                         <div key={product ? product.id : `placeholder-${itemIndex}`} className="min-w-0 flex-1">
                                             {product ? (
-                                                <ProductCard product={product.product} onClick={() => router.get(`/view-product/${product.id}`)} />
+                                                <ProductCard
+                                                    product={product.product}
+                                                    onClick={() => router.get(`/view-product/${product.product_id}`)}
+                                                />
                                             ) : (
                                                 <div className="h-full w-full opacity-0" aria-hidden="true" />
                                             )}
@@ -578,7 +582,7 @@ const ProductCardsSectionEvent = ({ products, title }: { products: IEventProduct
                 </div>
                 {/* Section Footer */}
                 <div className="mt-12 text-center">
-                    <Link href={'/list-products'}>
+                    <Link href={`/list-product/${event_id}`}>
                         <Button className="mt-4">Explore More</Button>
                     </Link>
                 </div>
@@ -746,7 +750,7 @@ export default function Welcome() {
                         <section>
                             {events.map((v) => (
                                 <section key={v.id} id={`event-${v.id}`} className="my-8 scroll-mt-40">
-                                    <ProductCardsSectionEvent products={v.event_products} title={v.name} />
+                                    <ProductCardsSectionEvent products={v.event_products} title={v.name} event_id={v.id} />
                                 </section>
                             ))}
                         </section>

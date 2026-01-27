@@ -32,7 +32,7 @@ export default function FrontArticles() {
                                         className="group relative block overflow-hidden bg-muted"
                                         aria-label={`Read article ${featuredArticle.title}`}
                                     >
-                                        <div className="aspect-[16/11] w-full overflow-hidden">
+                                        <div className="aspect-[16/9] w-full overflow-hidden rounded-md">
                                             <img
                                                 src={featuredArticle.image_cover ?? '/banner-example.jpg'}
                                                 alt={featuredArticle.title}
@@ -85,7 +85,7 @@ export default function FrontArticles() {
                                         >
                                             <Link
                                                 href={getArticleLink(article)}
-                                                className="relative block aspect-[16/10] overflow-hidden bg-muted"
+                                                className="relative block aspect-[16/9] overflow-hidden bg-muted rounded-md"
                                                 aria-label={`Read article ${article.title}`}
                                             >
                                                 <img

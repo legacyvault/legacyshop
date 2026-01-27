@@ -68,7 +68,7 @@ export default function FrontArticleView() {
 
                 <section className="border-y border-muted/50 bg-background">
                     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-                        <div className="aspect-[16/7] overflow-hidden">
+                        <div className="aspect-[16/9] overflow-hidden rounded-sm">
                             <img src={heroImage} alt={article.title} className="h-full w-full object-cover" loading="lazy" />
                         </div>
                     </div>
