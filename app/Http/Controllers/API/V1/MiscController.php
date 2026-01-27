@@ -512,12 +512,12 @@ class MiscController extends Controller
                     'stocks',
                     'unit',
                     'subUnit',
-                    'tags',
-                    'categories',
+                    'categories.sub_unit',
                     'subcategories',
                     'divisions',
-                    'variants',
-                    'pictures'
+                    'tags',
+                    'pictures',
+                    'event'
                 ]);
             }
         ])->where('is_active', 1)->get();
