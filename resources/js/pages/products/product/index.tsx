@@ -121,7 +121,9 @@ function ProductsTable({ products, filters }: { products: IRootProducts; filters
                                 <td className="border border-popover px-4 py-3">{(currentPage - 1) * perPage + i + 1}</td>
                                 <td className="border border-popover px-4 py-3">{prod.product_name}</td>
                                 <td className="border border-popover px-4 py-3">{prod.product_sku}</td>
-                                <td className="border border-popover px-4 py-3">{prod.description}</td>
+                                <td className="border border-popover px-4 py-3 max-w-xs truncate whitespace-nowrap" title={prod.description}>
+                                    {prod.description}
+                                </td>
                                 <td className="border border-popover px-4 py-3">Rp. {formatRupiah(prod.product_price.toString())}</td>
                                 <td className="border border-popover px-4 py-3">{prod.total_stock}</td>
                                 <td className="border border-popover px-4 py-3 text-right">
