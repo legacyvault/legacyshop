@@ -36,7 +36,7 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
                 <Link href={getArticleLink(featuredArticle)}>
                     <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
                         <div className="group relative block overflow-hidden bg-muted" aria-label={`Read article ${featuredArticle.title}`}>
-                            <div className="aspect-[16/11] w-full overflow-hidden">
+                            <div className="aspect-[4/3] w-full overflow-hidden rounded-md">
                                 <img
                                     src={featuredArticle.image_cover ?? '/banner-example.jpg'}
                                     alt={featuredArticle.title}
@@ -178,7 +178,7 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
     };
 
     return (
-        <section className="relative h-[70vh] w-full overflow-hidden">
+        <section className="relative w-full overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
             {banners.map((banner, index) => {
                 const isActive = index === currentIndex;
 
