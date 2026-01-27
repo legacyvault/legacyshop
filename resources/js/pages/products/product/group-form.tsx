@@ -250,7 +250,7 @@ export default function GroupProductForm() {
         sub_unit_id?: string;
         categories?: string;
         sub_categories?: string;
-        // divisions?: string;
+        divisions?: string;
         // variants?: string;
         products?: string;
     }>({});
@@ -934,7 +934,7 @@ export default function GroupProductForm() {
         if (hierarchy.subunitIds.length === 0) newFormErrors.sub_unit_id = 'Select a sub collection';
         if (hierarchy.categoryIds.length === 0) newFormErrors.categories = 'Select at least one category';
         if (hierarchy.subcategoryIds.length === 0) newFormErrors.sub_categories = 'Select at least one subcategory';
-        // if (hierarchy.divisionIds.length === 0) newFormErrors.divisions = 'Select at least one option';
+        if (hierarchy.divisionIds.length === 0) newFormErrors.divisions = 'Select at least one option';
         // if (hierarchy.variantIds.length === 0) newFormErrors.variants = 'Select at least one variant';
 
         bulkRows.forEach((row) => {
@@ -1284,7 +1284,7 @@ export default function GroupProductForm() {
                                             placeholder="Select option(s)"
                                             disabled={!divisionOptions.length}
                                         />
-                                        {/* {formErrors.divisions && <p className="text-xs text-red-500">{formErrors.divisions}</p>} */}
+                                        {formErrors.divisions && <p className="text-xs text-red-500">{formErrors.divisions}</p>}
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label htmlFor="variant">Selection</Label>
