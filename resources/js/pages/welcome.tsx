@@ -691,6 +691,7 @@ export default function Welcome() {
                                     <button
                                         key={event.id}
                                         type="button"
+                                        onClick={() => router.get(`/list-product/${event.id}`)}
                                         className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none md:w-[calc(33.333%_-_1rem)]"
                                         aria-label={`View products for ${event.name}`}
                                     >
