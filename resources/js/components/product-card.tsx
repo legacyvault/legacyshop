@@ -2,6 +2,9 @@ import { IProducts } from '@/types';
 import { useMemo, useState } from 'react';
 
 export default function ProductCard({ product, onClick }: { product: IProducts; onClick: () => void }) {
+
+    console.log(product)
+
     const [hover, setHover] = useState(false);
 
     const formatPrice = (price: number) =>
@@ -21,7 +24,7 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
     const appliedDiscountPct = eventDiscountPct > 0 ? eventDiscountPct : productDiscountPct;
     const salePrice = appliedDiscountPct > 0 ? Math.round(basePrice - (basePrice * appliedDiscountPct) / 100) : undefined;
     const isOnSale = appliedDiscountPct > 0;
-    const hasEvent = Boolean(product.event && eventDiscountPct > 0);
+    const hasEvent = Boolean(product.event);
 
     return (
         <div
@@ -34,7 +37,7 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
             <div className="relative overflow-hidden rounded bg-background">
                 {hasEvent && (
                     <span className="absolute top-2 left-2 z-10 rounded-full bg-red-500 px-3 py-1 text-[10px] font-bold text-primary-foreground uppercase shadow-sm">
-                        {product.event?.name ?? 'Event'} · {eventDiscountPct}% off
+                        {product.event?.name ?? 'Event'} { eventDiscountPct > 0 && (`· ${eventDiscountPct}% off`)}
                     </span>
                 )}
                 {/* Image */}
