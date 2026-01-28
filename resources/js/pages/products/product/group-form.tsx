@@ -250,7 +250,7 @@ export default function GroupProductForm() {
         sub_unit_id?: string;
         categories?: string;
         sub_categories?: string;
-        divisions?: string;
+        // divisions?: string;
         // variants?: string;
         products?: string;
     }>({});
@@ -934,7 +934,7 @@ export default function GroupProductForm() {
         if (hierarchy.subunitIds.length === 0) newFormErrors.sub_unit_id = 'Select a sub collection';
         if (hierarchy.categoryIds.length === 0) newFormErrors.categories = 'Select at least one category';
         if (hierarchy.subcategoryIds.length === 0) newFormErrors.sub_categories = 'Select at least one subcategory';
-        if (hierarchy.divisionIds.length === 0) newFormErrors.divisions = 'Select at least one option';
+        // if (hierarchy.divisionIds.length === 0) newFormErrors.divisions = 'Select at least one option';
         // if (hierarchy.variantIds.length === 0) newFormErrors.variants = 'Select at least one variant';
 
         bulkRows.forEach((row) => {
@@ -1284,7 +1284,7 @@ export default function GroupProductForm() {
                                             placeholder="Select option(s)"
                                             disabled={!divisionOptions.length}
                                         />
-                                        {formErrors.divisions && <p className="text-xs text-red-500">{formErrors.divisions}</p>}
+                                        {/* {formErrors.divisions && <p className="text-xs text-red-500">{formErrors.divisions}</p>} */}
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label htmlFor="variant">Selection</Label>
@@ -1936,73 +1936,6 @@ export default function GroupProductForm() {
                             </Button>
                             {formErrors.products && <p className="text-sm text-red-500">{formErrors.products}</p>}
                         </div>
-
-                        {isEditMode && (
-                            <Card>
-                                <CardHeader>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <CardTitle>Group stock</CardTitle>
-                                            <CardDescription>Add stock to every product in this group.</CardDescription>
-                                        </div>
-                                        <Button size="sm" type="button" onClick={handleOpenGroupStockDialog}>
-                                            <Plus className="mr-2 size-4" />
-                                            Add stock
-                                        </Button>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-muted">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                                                        No
-                                                    </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                                                        Date
-                                                    </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                                                        Stock Added
-                                                    </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                                                        Remarks
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-border">
-                                                {groupStocks.length ? (
-                                                    groupStocks.map((stock, index) => (
-                                                        <tr key={stock.id} className="transition-colors hover:bg-muted/50">
-                                                            <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-card-foreground">
-                                                                {index + 1}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
-                                                                {formatDate(stock.created_at)}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
-                                                                <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
-                                                                    +{stock.quantity}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
-                                                                {stock.remarks || '—'}
-                                                            </td>
-                                                        </tr>
-                                                    ))
-                                                ) : (
-                                                    <tr>
-                                                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-muted-foreground">
-                                                            No stock purchase history available
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
                     </div>
                 </div>
             </div>

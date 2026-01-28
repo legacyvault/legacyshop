@@ -173,9 +173,12 @@ export default function FrontProducts() {
                             <p className="text-xs font-semibold text-muted-foreground uppercase">Event</p>
                             <div className="flex flex-wrap items-center gap-3">
                                 <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{event.name}</h1>
-                                <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
-                                    {event.discount}% off
-                                </span>
+                                {event.discount > 0 && (
+                                    <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
+                                        {event.discount}% off
+                                    </span>
+                                )}
+
                             </div>
                             {event.description && <p className="max-w-3xl text-sm text-muted-foreground">{event.description}</p>}
                         </>

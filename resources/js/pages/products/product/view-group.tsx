@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IProductGroup, SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, ExternalLink, Layers } from 'lucide-react';
-import { useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 
 const formatDate = (value: string) =>
     new Intl.DateTimeFormat('en', {
@@ -28,10 +29,39 @@ const getHierarchy = (group: IProductGroup): string[] => {
     return Array.from(names);
 };
 
+interface IStockFormData {
+    group_id: string;
+    remarks: string;
+    quantity: string | number;
+}
+
+interface IStockErrorData {
+    group_id?: string;
+    remarks?: string;
+    quantity?: string;
+}
+
+interface IAddStockDialogProps {
+    open: boolean;
+    isOpen: Dispatch<SetStateAction<boolean>>;
+    data: IStockFormData;
+    setData: (field: 'group_id' | 'remarks' | 'quantity', value: string) => void;
+    errors: IStockErrorData;
+    onConfirmSubmit: () => void;
+    groupId: string;
+    processing?: boolean;
+}
+
 export default function ViewGroup() {
     const { productGroup } = usePage<SharedData>().props as SharedData & { productGroup: IProductGroup };
 
     const [openAddStock, isOpenAddStock] = useState(false);
+
+    const { data, setData, post, errors, processing, reset } = useForm<IStockFormData>({
+        group_id: productGroup?.id ?? '',
+        remarks: '',
+        quantity: '',
+    });
 
     if (!productGroup) return null;
 
@@ -48,31 +78,31 @@ export default function ViewGroup() {
 
     const hierarchy = getHierarchy(productGroup);
     const products = productGroup.products ?? [];
+    const groupStocks = productGroup.stocks ?? [];
+
+    const submitHandlder = () => {
+        post(route('product.add-stock-group'), {
+            onSuccess: () => {
+                isOpenAddStock(false);
+                reset('quantity', 'remarks');
+            },
+            onError: () => isOpenAddStock(true),
+            preserveScroll: true,
+        });
+    };
 
     return (
         <>
-            {/* <AddStockDialog
+            <AddStockDialog
                 open={openAddStock}
                 isOpen={isOpenAddStock}
-                type={'add'}
-                onSubmit={submitHandlder}
+                onConfirmSubmit={submitHandlder}
                 errors={errors}
                 data={data}
                 setData={setData}
-                subcatId={selectedSubcat.id}
+                groupId={productGroup.id}
+                processing={processing}
             />
-
-            <AddStockDialog
-                open={openEditStock}
-                isOpen={isOpenEditStock}
-                type={'edit'}
-                onSubmit={editSubmitHandler}
-                errors={errors}
-                data={data}
-                setData={setData}
-                subcatId={selectedSubcat.id}
-                stock={selectedStock}
-            /> */}
             <AppLayout breadcrumbs={breadcrumbs}>
                 <Head title={`Group - ${productGroup.name}`} />
 
@@ -235,43 +265,35 @@ export default function ViewGroup() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        <tr>
-                                            <td colSpan={4} className="px-6 py-8 text-center text-sm text-muted-foreground">
-                                                No stock purchase history available
-                                            </td>
-                                        </tr>
-                                        {/* {selectedSubcat.stocks.length > 0 ? (
-                                        selectedSubcat.stocks.map((item, index) => (
-                                            <tr key={item.id} className="transition-colors hover:bg-muted/50">
-                                                <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-card-foreground">{index + 1}</td>
-                                                <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
-                                                    {formatDate(item.created_at)}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
-                                                    <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
-                                                        +{item.quantity}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">{item.remarks}</td>
-                                                {index === 0 ? (
-                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
-                                                        <div className="flex gap-4">
-                                                            <PencilLine onClick={() => editStockHandler(item, 'edit')}></PencilLine>
-                                                            <Trash2Icon className="text-destructive"></Trash2Icon>
-                                                        </div>
+                                        {groupStocks.length > 0 ? (
+                                            groupStocks.map((item, index) => (
+                                                <tr key={item.id} className="transition-colors hover:bg-muted/50">
+                                                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-card-foreground">
+                                                        {index + 1}
                                                     </td>
-                                                ) : (
-                                                    <td></td>
-                                                )}
+                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
+                                                        {formatDate(item.created_at)}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
+                                                        <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
+                                                            +{item.quantity}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
+                                                        {item.remarks ?? '—'}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground text-right text-muted-foreground">
+                                                        —
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-8 text-center text-sm text-muted-foreground">
+                                                    No stock purchase history available
+                                                </td>
                                             </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={4} className="px-6 py-8 text-center text-sm text-muted-foreground">
-                                                No stock purchase history available
-                                            </td>
-                                        </tr>
-                                    )} */}
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -283,71 +305,103 @@ export default function ViewGroup() {
     );
 }
 
-// function AddStockDialog({ open, isOpen, type, onSubmit, data, setData, errors, subcatId, stock }: IDialog) {
-//     useEffect(() => {
-//         if (open) {
-//             if (type === 'edit') {
-//                 setData('id', stock!.id);
-//                 setData('sub_category_id', subcatId);
-//                 setData('quantity', stock!.quantity.toString());
-//                 setData('remarks', stock!.remarks);
-//             } else if (type === 'add') {
-//                 setData('sub_category_id', subcatId);
-//                 setData('quantity', '');
-//                 setData('remarks', '');
-//             }
-//         }
-//     }, [open, type]);
-//     return (
-//         <Dialog open={open} onOpenChange={isOpen}>
-//             <DialogPortal>
-//                 <DialogOverlay />
-//                 <DialogContent>
-//                     <DialogTitle className="capitalize">{type} Categories</DialogTitle>
-//                     {type !== 'delete' ? (
-//                         <form method="POST" onSubmit={onSubmit}>
-//                             <div className="mb-6">
-//                                 <label className="mb-2 block text-sm font-medium">Quantity *</label>
-//                                 <input
-//                                     type="text"
-//                                     value={data.quantity}
-//                                     onChange={(e) => setData('quantity', e.target.value)}
-//                                     className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
-//                                         errors.quantity ? 'border-red-500' : 'border-gray-200'
-//                                     }`}
-//                                     placeholder="0"
-//                                 />
-//                                 {errors.quantity && <p className="mt-1 text-sm text-red-500">{errors.quantity}</p>}
-//                             </div>
-//                             <div className="mb-6">
-//                                 <label className="mb-2 block text-sm font-medium">Remarks</label>
-//                                 <input
-//                                     type="text"
-//                                     value={data.remarks}
-//                                     onChange={(e) => setData('remarks', e.target.value)}
-//                                     className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
-//                                         errors.remarks ? 'border-red-500' : 'border-gray-200'
-//                                     }`}
-//                                     placeholder="Enter Remarks"
-//                                 />
-//                                 {errors.remarks && <p className="mt-1 text-sm text-red-500">{errors.remarks}</p>}
-//                             </div>
-//                             <DialogClose asChild>
-//                                 <Button type="submit" className="capitalize">
-//                                     {type}
-//                                 </Button>
-//                             </DialogClose>
-//                         </form>
-//                     ) : (
-//                         <>
-//                             <span>Are you sure want to delete this category?</span>
-//                             <DialogClose asChild>
-//                                 <Button className="capitalize">{type}</Button>
-//                             </DialogClose>
-//                         </>
-//                     )}
-//                 </DialogContent>
-//             </DialogPortal>
-//         </Dialog>
-//     );
-// }
+function AddStockDialog({ open, isOpen, data, setData, errors, onConfirmSubmit, groupId, processing }: IAddStockDialogProps) {
+    const [confirmOpen, setConfirmOpen] = useState(false);
+
+    useEffect(() => {
+        if (open) {
+            setData('group_id', groupId);
+            setData('quantity', '');
+            setData('remarks', '');
+        } else {
+            setConfirmOpen(false);
+        }
+    }, [open, groupId]);
+
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setConfirmOpen(true);
+    };
+
+    const handleConfirm = () => {
+        setConfirmOpen(false);
+        onConfirmSubmit();
+    };
+
+    return (
+        <>
+            <Dialog open={open} onOpenChange={isOpen}>
+                <DialogPortal>
+                    <DialogOverlay />
+                    <DialogContent>
+                        <DialogTitle className="capitalize">Add Stock to Group</DialogTitle>
+                        <form method="POST" onSubmit={handleFormSubmit} className="space-y-6">
+                            <div>
+                                <label className="mb-2 block text-sm font-medium">Quantity *</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={data.quantity}
+                                    onChange={(e) => setData('quantity', e.target.value)}
+                                    className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                        errors.quantity ? 'border-red-500' : 'border-gray-200'
+                                    }`}
+                                    placeholder="0"
+                                />
+                                {errors.quantity && <p className="mt-1 text-sm text-red-500">{errors.quantity}</p>}
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium">Remarks</label>
+                                <input
+                                    type="text"
+                                    value={data.remarks}
+                                    onChange={(e) => setData('remarks', e.target.value)}
+                                    className={`w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none ${
+                                        errors.remarks ? 'border-red-500' : 'border-gray-200'
+                                    }`}
+                                    placeholder="Enter remarks (optional)"
+                                />
+                                {errors.remarks && <p className="mt-1 text-sm text-red-500">{errors.remarks}</p>}
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <DialogClose asChild>
+                                    <Button type="button" variant="outline">
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button type="submit" disabled={processing}>
+                                    Review &amp; Submit
+                                </Button>
+                            </div>
+                        </form>
+                    </DialogContent>
+                </DialogPortal>
+            </Dialog>
+
+            <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <DialogPortal>
+                    <DialogOverlay />
+                    <DialogContent className="space-y-4">
+                        <DialogTitle>Confirm Stock Addition</DialogTitle>
+                        <p className="text-sm text-muted-foreground">
+                            This will add stock to every product in this group. This action cannot be undone.
+                        </p>
+                        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                            <p className="font-semibold">Planned change</p>
+                            <p className="mt-1">+{data.quantity || 0} units to each product in the group.</p>
+                            {data.remarks ? <p className="mt-1">Remarks: {data.remarks}</p> : null}
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" type="button" onClick={() => setConfirmOpen(false)} disabled={processing}>
+                                Go Back
+                            </Button>
+                            <Button type="button" onClick={handleConfirm} disabled={processing}>
+                                Confirm &amp; Add Stock
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </DialogPortal>
+            </Dialog>
+        </>
+    );
+}

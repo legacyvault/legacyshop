@@ -605,9 +605,11 @@ export default function FrontHeader({
                                             >
                                                 {event.name}
                                             </Link>
-                                            <span className="absolute -top-2 -right-4 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] leading-none font-semibold text-destructive-foreground">
-                                                {event.discount}%
-                                            </span>
+                                            {event.discount > 0 && (
+                                                <span className="absolute -top-2 -right-4 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] leading-none font-semibold text-destructive-foreground">
+                                                    {event.discount}%
+                                                </span>
+                                            )}
                                         </div>
                                     ))}
                                 </>
