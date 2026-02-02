@@ -649,6 +649,8 @@ export interface IProducts {
     product_discount: number;
     product_name: string;
     product_price: number;
+    default_price: number;
+    default_currency: string;
     stocks: IStocks[];
     subcategories: (ISubcats & { pivot: IPivotSubcatProd })[];
     tags: ITags[];

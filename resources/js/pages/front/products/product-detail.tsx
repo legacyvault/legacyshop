@@ -87,10 +87,10 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         [textVariants, colorVariants],
     );
 
-    const formatPrice = (price: number) =>
+    const formatPrice = (price: number, currency = 'IDR') =>
         new Intl.NumberFormat('id-ID', {
             style: 'currency',
-            currency: 'IDR',
+            currency,
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
         }).format(price);
@@ -117,18 +117,31 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     }, [selectedVar]);
 
     const basePrice = product.product_price;
+    const displayCurrency = (product.default_currency ?? 'IDR').toUpperCase();
+    const isUsdCurrency = displayCurrency === 'USD';
+    const displayBasePrice = Number(product.default_price ?? basePrice);
     const eventDiscountPct = Number(product.event?.discount ?? 0);
     const productDiscountPct = Number(product.product_discount ?? 0);
     const appliedDiscountPct = eventDiscountPct > 0 ? eventDiscountPct : productDiscountPct;
     const hasEventDiscount = Boolean(product.event && eventDiscountPct > 0);
-    const basePriceWithExtra = useMemo(() => {
-        return basePrice + (selectedSubcat?.price ?? 0) + (selectedDiv?.price ?? 0) + (selectedVar?.price ?? 0);
-    }, [selectedSubcat, selectedDiv, selectedVar]);
+
+    const displayBasePriceWithExtra = useMemo(() => {
+        return displayBasePrice + extraPriceSubcat + extraPriceDivision + extraPriceVariant;
+    }, [displayBasePrice, extraPriceSubcat, extraPriceDivision, extraPriceVariant]);
+
     const finalPrice = useMemo(() => {
         const discountedBase = appliedDiscountPct ? Math.round(basePrice - (basePrice * appliedDiscountPct) / 100) : Math.round(basePrice);
         const total = discountedBase + extraPriceSubcat + extraPriceDivision + extraPriceVariant;
         return Math.max(0, total);
     }, [basePrice, appliedDiscountPct, extraPriceSubcat, extraPriceDivision, extraPriceVariant]);
+
+    const displayFinalPrice = useMemo(() => {
+        const discountedBase = appliedDiscountPct
+            ? Math.round(displayBasePrice - (displayBasePrice * appliedDiscountPct) / 100)
+            : Math.round(displayBasePrice);
+        const total = discountedBase + extraPriceSubcat + extraPriceDivision + extraPriceVariant;
+        return Math.max(0, total);
+    }, [displayBasePrice, appliedDiscountPct, extraPriceSubcat, extraPriceDivision, extraPriceVariant]);
 
     const totalStock = Number(product.total_stock);
 
@@ -141,6 +154,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
     const disableButtonCart = useMemo(() => {
         if (productStockInsufficient) return true;
+        if (isUsdCurrency) return true;
         if (!selectedCat) return true;
 
         if (subcategories.length > 0) {
@@ -165,6 +179,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     }, [
         selectedCat,
         productStockInsufficient,
+        isUsdCurrency,
         subcatStockInsufficient,
         divisionStockInsufficient,
         variantStockInsufficient,
@@ -323,11 +338,11 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     <div className="my-4 flex items-end gap-3">
                         {appliedDiscountPct > 0 ? (
                             <>
-                                <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(finalPrice)}</div>
-                                <span className="text-sm text-destructive line-through">{formatPrice(basePriceWithExtra)}</span>
+                                <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(displayFinalPrice, displayCurrency)}</div>
+                                <span className="text-sm text-destructive line-through">{formatPrice(displayBasePriceWithExtra, displayCurrency)}</span>
                             </>
                         ) : (
-                            <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(basePriceWithExtra)}</div>
+                            <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(displayBasePriceWithExtra, displayCurrency)}</div>
                         )}
                     </div>
 
@@ -518,7 +533,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                         {/* Subtotal */}
                         <div className="my-3 flex items-center justify-between border-t pt-3">
                             <div className="text-sm text-muted-foreground">Subtotal</div>
-                            <div className="text-lg font-bold">{formatPrice(finalPrice * selectedQty)}</div>
+                            <div className="text-lg font-bold">{formatPrice(displayFinalPrice * selectedQty, displayCurrency)}</div>
                         </div>
 
                         {/* Actions */}

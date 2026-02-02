@@ -7,10 +7,10 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
 
     const [hover, setHover] = useState(false);
 
-    const formatPrice = (price: number) =>
+    const formatPrice = (price: number, currency: string) =>
         new Intl.NumberFormat('id-ID', {
             style: 'currency',
-            currency: 'IDR',
+            currency,
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
         }).format(price);
@@ -18,7 +18,8 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
     // Derived fields from IProducts
     const primaryImage = useMemo(() => product.pictures?.[0]?.url || 'https://via.placeholder.com/600x800?text=No+Image', [product.pictures]);
     const secondaryImage = product.pictures?.[1]?.url;
-    const basePrice = Number(product.product_price ?? 0);
+    const currency = (product.default_currency || 'IDR').toUpperCase();
+    const basePrice = Number(product.default_price ?? 0);
     const eventDiscountPct = Number(product.event?.discount ?? 0);
     const productDiscountPct = Number(product.product_discount ?? 0);
     const appliedDiscountPct = eventDiscountPct > 0 ? eventDiscountPct : productDiscountPct;
@@ -64,8 +65,8 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
                 )} */}
 
                 <div className="flex items-baseline gap-2">
-                    <span className="text-base font-extrabold">{formatPrice(salePrice ?? basePrice)}</span>
-                    {isOnSale && <span className="text-xs text-destructive line-through">{formatPrice(basePrice)}</span>}
+                    <span className="text-base font-extrabold">{formatPrice(salePrice ?? basePrice, currency)}</span>
+                    {isOnSale && <span className="text-xs text-destructive line-through">{formatPrice(basePrice, currency)}</span>}
                 </div>
             </div>
         </div>
