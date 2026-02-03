@@ -504,24 +504,126 @@ class MiscController extends Controller
         return $data;
     }
 
-    public function getAllActiveEvents()
+    public function getAllActiveEvents(Request $request)
     {
-        $data = Events::orderBy('name', 'asc')->with([
-            'event_products.product' => function ($query) {
-                $query->with([
-                    'stocks',
-                    'unit',
-                    'subUnit',
-                    'tags',
-                    'categories',
-                    'subcategories',
-                    'divisions',
-                    'variants',
-                    'pictures'
-                ]);
+        try {
+            // Detect IP
+            $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+            if (env('APP_ENV') === 'local') {
+                $ip = '36.84.152.11';
             }
-        ])->where('is_active', 1)->get();
-        return $data;
+
+            // Get location
+            $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode");
+            $location = $response->json();
+
+            if (($location['status'] ?? 'fail') === 'fail') {
+                throw new \Exception('Failed to detect location');
+            }
+
+            $isIndonesian = ($location['countryCode'] === 'ID');
+
+            // Load events with products
+            $events = Events::orderBy('name', 'asc')
+                ->with([
+                    'event_products.product' => function ($query) {
+                        $query->with([
+                            'stocks',
+                            'unit',
+                            'subUnit',
+                            'tags',
+                            'categories',
+                            'subcategories',
+                            'divisions',
+                            'variants',
+                            'pictures'
+                        ]);
+                    }
+                ])
+                ->where('is_active', 1)
+                ->get();
+
+            //Apply price mapping
+            $events->transform(function ($event) use ($isIndonesian) {
+                foreach ($event->event_products as $eventProduct) {
+                    if ($eventProduct->product) {
+                        $this->applyPriceMappingToProduct(
+                            $eventProduct->product,
+                            $isIndonesian
+                        );
+                    }
+                }
+                return $event;
+            });
+
+            return $events;
+        } catch (\Exception $e) {
+            Log::error('Failed to get active events: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to get active events'
+            ], 500);
+        }
+    }
+
+    private function mapPrice($model, $isIndonesian, $isProduct = false)
+    {
+        if (!$model) return null;
+
+        if ($isProduct) {
+            // Product uses product_price & product_usd_price
+            $model->default_price = $isIndonesian
+                ? ($model->product_price ?? null)
+                : ($model->product_usd_price ?? null);
+        } else {
+            // Other models use price & usd_price
+            $model->default_price = $isIndonesian
+                ? ($model->price ?? null)
+                : ($model->usd_price ?? null);
+        }
+
+        $model->default_currency = $isIndonesian ? 'IDR' : 'USD';
+
+        return $model;
+    }
+
+    private function applyPriceMappingToProduct($product, $isIndonesian)
+    {
+        if (!$product) return null;
+
+        // Product price
+        $this->mapPrice($product, $isIndonesian, true);
+
+        // Unit
+        if ($product->unit) {
+            $this->mapPrice($product->unit, $isIndonesian);
+        }
+
+        // Sub Unit
+        if ($product->subUnit) {
+            $this->mapPrice($product->subUnit, $isIndonesian);
+        }
+
+        // Categories
+        foreach ($product->categories as $cat) {
+            $this->mapPrice($cat, $isIndonesian);
+        }
+
+        // Sub Categories
+        foreach ($product->subcategories as $sub) {
+            $this->mapPrice($sub, $isIndonesian);
+        }
+
+        // Divisions
+        foreach ($product->divisions as $division) {
+            $this->mapPrice($division, $isIndonesian);
+        }
+
+        // Variants
+        foreach ($product->variants as $variant) {
+            $this->mapPrice($variant, $isIndonesian);
+        }
+
+        return $product;
     }
 
     public function getEventById($id)
