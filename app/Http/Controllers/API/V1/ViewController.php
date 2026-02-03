@@ -95,14 +95,14 @@ class ViewController extends Controller
         ]);
     }
 
-    public function welcomePage()
+    public function welcomePage(Request $request)
     {
         $productsTop = $this->productController->getAllShowcaseTopProduct();
         $productsBottom = $this->productController->getAllShowcaseBottomProduct();
         $units = $this->productController->getAllActiveUnit();
         $banner = $this->miscController->getActiveBanner();
         $articles = $this->articleController->getNewestArticle();
-        $events = $this->miscController->getAllActiveEvents();
+        $events = $this->miscController->getAllActiveEvents($request);
 
         return Inertia::render('welcome', [
             'productsTop' => $productsTop,
@@ -302,7 +302,7 @@ class ViewController extends Controller
         $products = $this->productController->getAllProduct($request, $unit?->id);
         $subunits = $this->productController->getAllSubUnit($unit?->id);
         $tags = $this->productController->getAllShowTags();
-        $events = $this->miscController->getAllActiveEvents();
+        $events = $this->miscController->getAllActiveEvents($request);
 
         return Inertia::render('front/products/index', [
             'products' => $products,
@@ -386,10 +386,10 @@ class ViewController extends Controller
         ]);
     }
 
-    public function frontArticlesPage()
+    public function frontArticlesPage(Request $request)
     {  
         $articles = $this->articleController->getAllArticle();
-        $events = $this->miscController->getAllActiveEvents();
+        $events = $this->miscController->getAllActiveEvents($request);
         return Inertia::render('front/articles/index', [
             'articles' => $articles,
             'events' => $events,
@@ -400,10 +400,10 @@ class ViewController extends Controller
         ]);
     }
 
-    public function frontArticleView($slug)
+    public function frontArticleView($slug, Request $request)
     {
         $article = $this->articleController->getArticleBySlug($slug);
-        $events = $this->miscController->getAllActiveEvents();
+        $events = $this->miscController->getAllActiveEvents($request);
 
         if (!$article) {
             abort(404);
