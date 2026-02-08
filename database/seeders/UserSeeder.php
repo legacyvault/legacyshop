@@ -26,6 +26,13 @@ class UserSeeder extends Seeder
                 'confirm_password' => 'lMjKoP123!?',
             ],
             [
+                'name' => 'LegacyVault Admin',
+                'email' => 'legacyvault14@gmail.com',
+                'role' => 'admin',
+                'password' => 'lMjKoP123!?',
+                'confirm_password' => 'lMjKoP123!?',
+            ],
+            [
                 'name' => 'User Test',
                 'email' => 'ramadianardtm@gmail.com',
                 'role' => 'user',
