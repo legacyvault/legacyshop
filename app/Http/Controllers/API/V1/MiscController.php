@@ -537,7 +537,8 @@ class MiscController extends Controller
                             'subcategories',
                             'divisions',
                             'variants',
-                            'pictures'
+                            'pictures',
+                            'event'
                         ]);
                     }
                 ])
