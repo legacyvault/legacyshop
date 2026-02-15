@@ -1,79 +1,72 @@
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import React, { useState } from 'react';
+import AppLogoIcon from '@/components/app-logo-icon';
+import { Link, usePage } from '@inertiajs/react';
 
 export default function FrontFooter() {
-    const [email, setEmail] = useState('');
+    const NavBottom = [
+        {
+            title: 'home',
+            url: '/',
+        },
+        {
+            title: 'products',
+            url: '/list-products',
+        },
+        {
+            title: 'articles',
+            url: '/articles',
+        },
+    ];
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Handle newsletter signup
-        console.log('Newsletter signup:', email);
-        setEmail('');
-    };
+    const page = usePage();
+    const currentYear = new Date().getFullYear();
 
     return (
         <footer className="bg-foreground py-16">
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
                 <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-16">
-                    {/* Information Section */}
                     <div>
-                        <h3 className="mb-6 text-lg font-semibold tracking-wide">INFORMATION</h3>
-                        <ul className="space-y-4">
-                            <li>
-                                <a href="/home" className="text-background transition-colors duration-200 hover:text-muted-foreground">
-                                    Home
-                                </a>
-                            </li>
-                            <li>
-                                <a href="/products" className="text-background transition-colors duration-200 hover:text-muted-foreground">
-                                    Products
-                                </a>
-                            </li>
-                        </ul>
+                        <Link href={route('home')} className="font-bold text-foreground transition-opacity hover:opacity-80">
+                            <AppLogoIcon className="size-16" />
+                        </Link>
+                        <h1 className="mt-2 pl-2 text-2xl font-semibold text-white">Legacy Vault</h1>
                     </div>
 
-                    {/* Newsletter Section */}
+                    {/* Information Section */}
                     <div>
-                        <h3 className="mb-6 text-lg font-semibold tracking-wide text-background">LEGACYVAULT NEWSLETTER</h3>
-                        <p className="mb-6 text-background">Send your email for exclusive offers and new product releases!</p>
-                        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-                            <Input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className='text-background'
-                                placeholder="enter your email address"
-                                required
-                            />
-                            <div>
-                                <Button
-                                    type="submit"
-                                    variant={'outline'}
-                                >
-                                    Submit
-                                </Button>
-                            </div>
-                        </form>
+                        <h3 className="mb-6 text-lg font-semibold tracking-wide text-white">INFORMATION</h3>
+                        <ul className="space-y-4">
+                            {NavBottom.map((nav, i) => (
+                                <li>
+                                    <Link
+                                        key={i}
+                                        href={nav.url}
+                                        className={`text-background capitalize transition-colors duration-200 hover:text-muted-foreground ${page.url === nav.url ? 'opacity-70' : ''}`}
+                                    >
+                                        {nav.title}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
 
                     {/* Mission Section */}
                     <div>
-                        <h3 className="mb-6 text-lg font-semibold tracking-wide">OUR MISSION</h3>
+                        <h3 className="mb-6 text-lg font-semibold tracking-wide text-white">ABOUT</h3>
                         <p className="leading-relaxed text-gray-300">
-                            We craft high-quality, unique protective cases that elevate your Pokémon card display game. We're passionate about helping
-                            you celebrate your collection in an eye-popping, personal style. So, get ready to showcase your cards in a way that
-                            screams "YOU" with our crafty skills and attention to detail. KantoForge - your ultimate Pokémon card display partner!
+                            Introducing our Premium Hand-drawn Extended Art Display Case, the perfect solution to show off your collection more
+                            elegantly while ensuring the safety and protection of your cards. Enjoy exclusive Hand-drawn Extended Art Backgrounds from
+                            the Legacy Vault. Made with high-quality materials, our display cases promise excellent durability and clarity, allowing
+                            you to admire every detail without exception.
                         </p>
                     </div>
                 </div>
 
                 {/* Bottom Section */}
                 <div className="mt-16 flex flex-col items-center justify-between border-t border-gray-800 pt-8 lg:flex-row">
-                    <div className="mb-6 text-sm text-gray-400 lg:mb-0">© 2024 Legacy Vault LTD - All Rights Reserved - Company Number: 14592116</div>
+                    <div className="mb-6 text-sm text-gray-400 lg:mb-0">© {currentYear} Legacy Vault - All Rights Reserved</div>
 
                     {/* Payment Icons */}
-                    <div className="flex space-x-3">
+                    {/* <div className="flex space-x-3">
                         <div className="rounded bg-white p-2">
                             <svg className="h-5 w-8" viewBox="0 0 32 20" fill="none">
                                 <rect width="32" height="20" rx="4" fill="white" />
@@ -116,7 +109,7 @@ export default function FrontFooter() {
                                 <path d="M14 8h4v4h-4V8z" fill="#FF9500" />
                             </svg>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </footer>
