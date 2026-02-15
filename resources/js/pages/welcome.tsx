@@ -4,7 +4,7 @@ import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IArticle, IBanner, IEventProduct, IProducts, type SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -645,10 +645,6 @@ export default function Welcome() {
 
     return (
         <>
-            <Head title="Welcome">
-                <link rel="preconnect" href="https://fonts.bunny.net" />
-                <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
-            </Head>
             <div className="">
                 <FrontLayout auth={auth} locale={locale} translations={translations}>
                     {/* BANNER */}
