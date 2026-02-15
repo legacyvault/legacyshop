@@ -27,6 +27,11 @@ class Product extends Model
         'is_showcase_bottom'
     ];
 
+    protected $appends = [
+        'thumbnail_url',
+        'thumbnail_picture_id',
+    ];
+
     protected $casts = [
         'is_showcase_top' => 'boolean',
         'is_showcase_bottom' => 'boolean',
@@ -117,7 +122,8 @@ class Product extends Model
 
     public function pictures()
     {
-        return $this->hasMany(ProductPictures::class);
+        // Keep a consistent order so the first picture is the implicit thumbnail
+        return $this->hasMany(ProductPictures::class)->orderBy('created_at');
     }
     
     public function event_product()
@@ -135,5 +141,23 @@ class Product extends Model
             'id',         // Local key on Product
             'event_id'    // Local key on EventProducts
         );
+    }
+
+    public function getThumbnailUrlAttribute()
+    {
+        $pictures = $this->relationLoaded('pictures')
+            ? $this->pictures
+            : $this->pictures()->limit(1)->get();
+
+        return optional($pictures->first())->url;
+    }
+
+    public function getThumbnailPictureIdAttribute()
+    {
+        $pictures = $this->relationLoaded('pictures')
+            ? $this->pictures
+            : $this->pictures()->select('id', 'product_id')->limit(1)->get();
+
+        return optional($pictures->first())->id;
     }
 }
