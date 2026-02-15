@@ -483,16 +483,16 @@ export default function FrontHeader({
             <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
                 {/* Main header */}
                 <div className="mx-auto max-w-7xl px-4">
-                    <div className="flex items-center justify-between py-3 md:py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 py-3 md:flex-nowrap md:gap-6 md:py-4">
                         {/* Left section - Logo */}
-                        <div className="flex items-center gap-4">
+                        <div className="flex shrink-0 items-center gap-4">
                             <Link href={route('home')} className="font-bold text-foreground transition-opacity hover:opacity-80">
                                 <AppLogoIcon className="size-16" />
                             </Link>
                         </div>
 
                         {/* Center section - Search bar (desktop) */}
-                        <div className="mx-4 hidden flex-1 md:mx-8 md:block" ref={searchContainerRef}>
+                        <div className="hidden w-full min-w-0 flex-1 md:mx-6 md:block" ref={searchContainerRef}>
                             <div className="relative">
                                 <input
                                     type="text"
@@ -524,7 +524,7 @@ export default function FrontHeader({
                         </div>
 
                         {/* Right section - Actions */}
-                        <div className="flex w-64 items-center gap-2 md:gap-4">
+                        <div className="flex shrink-0 items-center gap-2 md:gap-4">
                             <button
                                 type="button"
                                 className="flex h-10 w-10 items-center justify-center rounded-lg border border-border text-gray-600 transition hover:bg-muted md:hidden"
@@ -543,7 +543,7 @@ export default function FrontHeader({
                                     {/* Shopping cart */}
                                     <CartDropdown auth={auth} />
                                     <DropdownMenu>
-                                        <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50">
+                                        <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50">
                                             <div className="hidden items-center gap-2 md:flex">
                                                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
                                                     {getInitials(auth.user.email)}
@@ -588,8 +588,8 @@ export default function FrontHeader({
                         </div>
                     </div>
 
-                    <div className="mx-auto max-w-7xl px-4 pb-4">
-                        <div className="flex flex-row gap-8 px-2">
+                    <div className="-mx-4 overflow-x-auto py-4 md:mx-0 md:overflow-visible">
+                        <div className="flex min-w-full items-center gap-6 px-2 whitespace-nowrap md:gap-8">
                             {NavBottom.map((nav, i) => (
                                 <Link key={i} href={nav.url}>
                                     <h1 className={`font-bold uppercase ${page.url === nav.url ? 'opacity-70' : ''}`}>{nav.title}</h1>

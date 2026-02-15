@@ -178,7 +178,7 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
     };
 
     return (
-        <section className="relative w-full overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
+        <section className="relative min-h-[300px] w-full overflow-hidden md:min-h-0" style={{ aspectRatio: '16 / 9' }}>
             {banners.map((banner, index) => {
                 const isActive = index === currentIndex;
 
@@ -194,8 +194,8 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
                         <div className="absolute inset-0 bg-black/30" />
 
                         <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-4 text-center text-background">
-                            {banner.banner_title && <h1 className="text-6xl font-bold md:text-7xl">{banner.banner_title}</h1>}
-                            {banner.banner_text && <h4 className="mt-4 text-lg font-medium">{banner.banner_text}</h4>}
+                            {banner.banner_title && <h1 className="text-5xl font-bold md:text-7xl">{banner.banner_title}</h1>}
+                            {banner.banner_text && <h4 className="text-md mt-4 font-medium md:text-lg">{banner.banner_text}</h4>}
                             {banner.button_text && (
                                 <div>
                                     <Button
@@ -424,7 +424,6 @@ const ProductCardsSection = ({ products, title }: { products: IProducts[]; title
 };
 
 const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEventProduct[]; title: string; event_id: string }) => {
-
     const [activeSlide, setActiveSlide] = useState(0);
     const [visibleCount, setVisibleCount] = useState(1);
 
@@ -599,28 +598,33 @@ export default function Welcome() {
     const bottomRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        if (!textRef1.current && !textRef2.current) return;
+        if (!textRef1.current || !textRef2.current || !bottomRef.current) return;
 
-        // 👇 Intro reveal (on first load)
-        gsap.from([textRef1.current, textRef2.current], {
-            opacity: 0,
-            y: 50,
-            duration: 1,
-            ease: 'power3.out',
-            stagger: 0.2,
+        // Scope GSAP instances so React Strict Mode double-runs don't orphan DOM nodes
+        const ctx = gsap.context(() => {
+            // 👇 Intro reveal (on first load)
+            gsap.from([textRef1.current, textRef2.current], {
+                opacity: 0,
+                y: 50,
+                duration: 1,
+                ease: 'power3.out',
+                stagger: 0.2,
+            });
+
+            gsap.from(bottomRef.current, {
+                opacity: 0,
+                y: 100,
+                duration: 1,
+                ease: 'power3.out',
+                scrollTrigger: {
+                    trigger: bottomRef.current,
+                    start: 'top 80%', // reveal when top enters 80% of viewport
+                    toggleActions: 'play none none reverse',
+                },
+            });
         });
 
-        gsap.from(bottomRef.current, {
-            opacity: 0,
-            y: 100,
-            duration: 1,
-            ease: 'power3.out',
-            scrollTrigger: {
-                trigger: bottomRef.current,
-                start: 'top 80%', // reveal when top enters 80% of viewport
-                toggleActions: 'play none none reverse',
-            },
-        });
+        return () => ctx.revert();
     }, []);
 
     const { productsTop, productsBottom, units, banner, articles, events } = usePage<
@@ -724,19 +728,19 @@ export default function Welcome() {
                         </div>
 
                         {/* Overlay text */}
-                        <div className="absolute top-0 flex h-screen w-full flex-col items-center justify-center text-center text-white">
-                            <h1 ref={textRef1} className="mb-6 text-5xl font-black drop-shadow-lg md:text-7xl">
+                        <div className="justifty-start absolute top-[32px] flex h-screen w-full flex-col items-center text-center text-white md:top-0 md:justify-center">
+                            <h1 ref={textRef1} className="mb-6 text-3xl font-black drop-shadow-lg md:text-7xl">
                                 {translations.home.welcome}
                             </h1>
-                            <p ref={textRef2} className="max-w-2xl px-4 text-lg md:text-xl">
+                            <p ref={textRef2} className="text-md max-w-2xl px-4 md:text-xl">
                                 {translations.home.description1}
                             </p>
                         </div>
 
                         {/* Scroll down to reveal more content */}
-                        <div ref={bottomRef} className="relative z-10 mt-auto py-24 text-center">
-                            <h2 className="mx-auto mb-6 max-w-3xl text-xl font-bold text-background">{translations.home.description2}</h2>
-                            <p className="mx-auto max-w-xl text-background">
+                        <div ref={bottomRef} className="relative z-10 mt-auto py-12 text-center">
+                            <h2 className="text-md mx-auto mb-6 max-w-3xl font-bold text-background md:text-xl">{translations.home.description2}</h2>
+                            <p className="text-md mx-auto max-w-xl text-background md:text-lg">
                                 Discover more about our work, technology, and how we bring ideas to life.
                             </p>
                             <Button className="mt-8 bg-background text-foreground transition hover:scale-105" variant={'secondary'}>

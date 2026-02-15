@@ -1,6 +1,6 @@
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import React, { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -9,7 +9,7 @@ const ImageSequence: React.FC = () => {
     const frameCount = 50; // total frames
     const currentFrame = (index: number) => `/sequence/${String(index).padStart(4, '0')}.png`;
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const canvas = canvasRef.current;
         const context = canvas?.getContext('2d');
 
@@ -42,21 +42,38 @@ const ImageSequence: React.FC = () => {
             context.drawImage(img, 0, 0, img.width, img.height, centerShiftX, centerShiftY, img.width * ratio, img.height * ratio);
         };
 
-        gsap.to(state, {
-            frame: frameCount - 1,
-            snap: 'frame',
-            ease: 'none',
-            scrollTrigger: {
-                trigger: canvas,
-                start: 'top top',
-                end: '200% bottom', // scroll length
-                scrub: true,
-                pin: true,
-            },
-            onUpdate: render,
-        });
+        // Use gsap.context so revert() cleans up ScrollTrigger pin/markers safely when unmounting
+        const ctx = gsap.context(() => {
+            gsap.to(state, {
+                frame: frameCount - 1,
+                snap: 'frame',
+                ease: 'none',
+                scrollTrigger: {
+                    trigger: canvas,
+                    start: 'top top',
+                    end: '180% bottom', // scroll length
+                    scrub: true,
+                    pin: true,
+                    pinSpacing: false, // avoid spacer node that can misalign during unmount
+                },
+                onUpdate: render,
+            });
+        }, canvas);
 
         images[0].onload = render;
+
+        return () => {
+            // kill only triggers tied to this canvas before reverting scope; guards against orphaned pin nodes
+            ScrollTrigger.getAll()
+                .filter((st) => st.trigger === canvas)
+                .forEach((st) => st.kill());
+
+            try {
+                ctx.revert();
+            } catch (err) {
+                console.warn('GSAP cleanup skipped:', err);
+            }
+        };
     }, []);
 
     return (

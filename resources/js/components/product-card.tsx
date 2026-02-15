@@ -2,9 +2,6 @@ import { IProducts } from '@/types';
 import { useMemo, useState } from 'react';
 
 export default function ProductCard({ product, onClick }: { product: IProducts; onClick: () => void }) {
-
-    console.log(product)
-
     const [hover, setHover] = useState(false);
 
     const formatPrice = (price: number, currency: string) =>
@@ -38,7 +35,7 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
             <div className="relative overflow-hidden rounded bg-background">
                 {hasEvent && eventDiscountPct > 0 && (
                     <span className="absolute top-2 left-2 z-10 rounded-full bg-red-500 px-3 py-1 text-[10px] font-bold text-primary-foreground uppercase shadow-sm">
-                        {(`${eventDiscountPct}%`)}
+                        {`${eventDiscountPct}%`}
                     </span>
                 )}
                 {/* Image */}
