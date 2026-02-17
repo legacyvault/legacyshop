@@ -600,6 +600,7 @@ class ProductController extends Controller
                                 'url'        => $url,
                                 'product_id' => $product->id,
                             ]);
+                            usleep(500000);
                         }
                     }
                 }
@@ -794,6 +795,7 @@ class ProductController extends Controller
                             'url' => $url,
                             'product_id' => $product->id
                         ]);
+                        usleep(500000);
                     }
                 }
             }
