@@ -257,6 +257,7 @@ export default function GroupProductForm() {
     const bulkDescriptionRef = useRef<HTMLTextAreaElement | null>(null);
     const descriptionRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
     const latestPreviewsRef = useRef<string[]>([]);
+    const dragItemRef = useRef<{ rowId: string; fromIndex: number; section: 'existing' | 'new' } | null>(null);
     const [defaultUnitId, setDefaultUnitId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [pricing, setPricing] = useState({
@@ -825,6 +826,35 @@ export default function GroupProductForm() {
         );
     };
 
+    const reorderExistingPictures = (rowId: string, fromIndex: number, toIndex: number) => {
+        if (fromIndex === toIndex) return;
+        setBulkRows((prev) =>
+            prev.map((row) => {
+                if (row.id !== rowId) return row;
+                const reordered = [...(row.existingPictures ?? [])];
+                const [moved] = reordered.splice(fromIndex, 1);
+                reordered.splice(toIndex, 0, moved);
+                return { ...row, existingPictures: reordered };
+            }),
+        );
+    };
+
+    const reorderNewPictures = (rowId: string, fromIndex: number, toIndex: number) => {
+        if (fromIndex === toIndex) return;
+        setBulkRows((prev) =>
+            prev.map((row) => {
+                if (row.id !== rowId) return row;
+                const reorderedImages = [...row.images];
+                const reorderedPreviews = [...row.previews];
+                const [movedImage] = reorderedImages.splice(fromIndex, 1);
+                const [movedPreview] = reorderedPreviews.splice(fromIndex, 1);
+                reorderedImages.splice(toIndex, 0, movedImage);
+                reorderedPreviews.splice(toIndex, 0, movedPreview);
+                return { ...row, images: reorderedImages, previews: reorderedPreviews };
+            }),
+        );
+    };
+
     const formatDescriptionPreview = (text: string): string => {
         return text
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -990,6 +1020,7 @@ export default function GroupProductForm() {
             fd.append(`products[${i}][description]`, row.description);
             row.tags.forEach((tag) => fd.append(`products[${i}][tags][]`, tag));
             row.removePictureIds?.forEach((picId) => fd.append(`products[${i}][remove_picture_ids][]`, picId));
+            (row.existingPictures ?? []).forEach((pic) => fd.append(`products[${i}][existing_picture_order][]`, pic.id));
             row.images.forEach((file, j) => fd.append(`products[${i}][pictures][${j}]`, file));
         });
 
@@ -1771,59 +1802,108 @@ export default function GroupProductForm() {
                                                             </span>
                                                         </div>
 
-                                                        {row.existingPictures && row.existingPictures.length > 0 && (
+                                                        {((row.existingPictures?.length ?? 0) > 0 || row.previews.length > 0) && (
                                                             <div className="space-y-2">
-                                                                <p className="text-xs font-medium text-muted-foreground">Current pictures</p>
-                                                                <div className="grid grid-cols-2 place-items-center gap-3 sm:grid-cols-3">
-                                                                    {row.existingPictures.map((pic) => (
+                                                                <p className="text-xs font-medium text-muted-foreground">
+                                                                    {(row.existingPictures?.length ?? 0) + row.previews.length > 1
+                                                                        ? 'Drag to reorder'
+                                                                        : 'Current pictures'}
+                                                                </p>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {(row.existingPictures ?? []).map((pic, index) => (
                                                                         <div
                                                                             key={pic.id}
-                                                                            className="relative aspect-[9/16] w-full max-w-xs overflow-hidden rounded-md border"
+                                                                            draggable
+                                                                            onDragStart={() => {
+                                                                                dragItemRef.current = {
+                                                                                    rowId: row.id,
+                                                                                    fromIndex: index,
+                                                                                    section: 'existing',
+                                                                                };
+                                                                            }}
+                                                                            onDragOver={(e) => e.preventDefault()}
+                                                                            onDrop={(e) => {
+                                                                                e.preventDefault();
+                                                                                if (
+                                                                                    dragItemRef.current?.rowId === row.id &&
+                                                                                    dragItemRef.current.section === 'existing'
+                                                                                ) {
+                                                                                    reorderExistingPictures(
+                                                                                        row.id,
+                                                                                        dragItemRef.current.fromIndex,
+                                                                                        index,
+                                                                                    );
+                                                                                }
+                                                                                dragItemRef.current = null;
+                                                                            }}
+                                                                            onDragEnd={() => {
+                                                                                dragItemRef.current = null;
+                                                                            }}
+                                                                            className="relative h-64 w-64 flex-shrink-0 cursor-grab rounded-md border select-none active:cursor-grabbing"
                                                                         >
                                                                             <img
                                                                                 src={pic.url}
                                                                                 alt={row.name || 'Existing product image'}
-                                                                                className="h-full w-full object-cover"
+                                                                                className="pointer-events-none h-full w-full object-cover"
+                                                                                draggable={false}
                                                                             />
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() => handleRemoveExistingPicture(row.id, pic.id)}
-                                                                                className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow hover:bg-red-600"
+                                                                                className="absolute -top-1.5 -right-1.5 rounded-full bg-red-500 p-0.5 text-white shadow hover:bg-red-600"
                                                                                 aria-label="Remove existing image"
                                                                             >
-                                                                                <X size={12} />
+                                                                                <X size={10} />
                                                                             </button>
                                                                         </div>
                                                                     ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {row.previews.length > 0 && (
-                                                            <div className="flex gap-3">
-                                                                {row.previews.map((preview, index) => (
-                                                                    <div
-                                                                        key={preview}
-                                                                        className="relative aspect-[3/4] w-64 max-w-xs rounded-md border"
-                                                                    >
-                                                                        <img
-                                                                            src={preview}
-                                                                            alt={row.images[index]?.name || `Preview ${index + 1}`}
-                                                                            className="h-full w-full object-cover"
-                                                                        />
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => removeRowImage(row.id, index)}
-                                                                            className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow hover:bg-red-600"
-                                                                            aria-label="Remove image"
+                                                                    {row.previews.map((preview, index) => (
+                                                                        <div
+                                                                            key={preview}
+                                                                            draggable
+                                                                            onDragStart={() => {
+                                                                                dragItemRef.current = {
+                                                                                    rowId: row.id,
+                                                                                    fromIndex: index,
+                                                                                    section: 'new',
+                                                                                };
+                                                                            }}
+                                                                            onDragOver={(e) => e.preventDefault()}
+                                                                            onDrop={(e) => {
+                                                                                e.preventDefault();
+                                                                                if (
+                                                                                    dragItemRef.current?.rowId === row.id &&
+                                                                                    dragItemRef.current.section === 'new'
+                                                                                ) {
+                                                                                    reorderNewPictures(row.id, dragItemRef.current.fromIndex, index);
+                                                                                }
+                                                                                dragItemRef.current = null;
+                                                                            }}
+                                                                            onDragEnd={() => {
+                                                                                dragItemRef.current = null;
+                                                                            }}
+                                                                            className="relative h-64 w-64 flex-shrink-0 cursor-grab rounded-md border select-none active:cursor-grabbing"
                                                                         >
-                                                                            <X size={12} />
-                                                                        </button>
-                                                                        <div className="mt-1 truncate text-center text-xs text-muted-foreground">
-                                                                            {row.images[index]?.name}
+                                                                            <img
+                                                                                src={preview}
+                                                                                alt={row.images[index]?.name || `Preview ${index + 1}`}
+                                                                                className="pointer-events-none h-full w-full object-cover"
+                                                                                draggable={false}
+                                                                            />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => removeRowImage(row.id, index)}
+                                                                                className="absolute -top-1.5 -right-1.5 rounded-full bg-red-500 p-0.5 text-white shadow hover:bg-red-600"
+                                                                                aria-label="Remove image"
+                                                                            >
+                                                                                <X size={10} />
+                                                                            </button>
+                                                                            <div className="absolute right-0 bottom-0 left-0 truncate bg-black/40 px-1 py-0.5 text-center text-[9px] text-white">
+                                                                                {row.images[index]?.name}
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                ))}
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         )}
 

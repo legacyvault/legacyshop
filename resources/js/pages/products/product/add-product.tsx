@@ -491,6 +491,7 @@ export default function AddProduct() {
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [errors, setErrors] = useState<FormErrors>({});
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
+    const dragItemRef = useRef<{ fromIndex: number; section: 'existing' | 'new' } | null>(null);
 
     // Prefill when editing
     usePrefillProduct(isEdit, selectedProd, setIsInitializing, setFormData);
@@ -711,6 +712,32 @@ export default function AddProduct() {
         setErrors((prev) => ({ ...prev, images: undefined }));
     };
 
+    const reorderExistingPictures = (fromIndex: number, toIndex: number) => {
+        if (fromIndex === toIndex) return;
+        setExistingPictures((prev) => {
+            const reordered = [...prev];
+            const [moved] = reordered.splice(fromIndex, 1);
+            reordered.splice(toIndex, 0, moved);
+            return reordered;
+        });
+    };
+
+    const reorderNewImages = (fromIndex: number, toIndex: number) => {
+        if (fromIndex === toIndex) return;
+        setFormData((prev) => {
+            const imgs = [...prev.images];
+            const [moved] = imgs.splice(fromIndex, 1);
+            imgs.splice(toIndex, 0, moved);
+            return { ...prev, images: imgs };
+        });
+        setImagePreviews((prev) => {
+            const previews = [...prev];
+            const [moved] = previews.splice(fromIndex, 1);
+            previews.splice(toIndex, 0, moved);
+            return previews;
+        });
+    };
+
     // Handle form input changes
     const handleInputChange = (field: keyof FormData, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -861,9 +888,14 @@ export default function AddProduct() {
         fd.append('description', formData.description);
         fd.append('product_weight', formData.product_weight);
         formData.tags.forEach((tagId) => fd.append('tag_id[]', tagId));
-        formData.images.forEach((file) => fd.append('pictures[]', file));
+        formData.images.forEach((file, i) => fd.append(`pictures[${i}]`, file));
         if (isEdit && removePictureIds.length > 0) {
             removePictureIds.forEach((picId) => fd.append('remove_picture_ids[]', picId));
+        }
+        if (isEdit && existingPictures.length > 0) {
+            existingPictures
+                .filter((p) => !removePictureIds.includes(p.id))
+                .forEach((pic) => fd.append('existing_picture_order[]', pic.id));
         }
 
         if (!isGrouped) {
@@ -971,33 +1003,58 @@ export default function AddProduct() {
                     <div className="mb-6">
                         <label className="mb-2 block text-sm font-medium">Existing Images</label>
                         {existingPictures.length > 0 ? (
-                            <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-                                {existingPictures.map((pic) => {
-                                    const marked = removePictureIds.includes(pic.id);
-                                    return (
-                                        <div
-                                            key={pic.id}
-                                            className={`group relative rounded-lg border ${marked ? 'opacity-60 ring-2 ring-red-400' : ''}`}
-                                        >
-                                            <img src={pic.url} alt={pic.id} className="h-24 w-24 rounded-lg object-cover" />
-                                            <button
-                                                type="button"
-                                                onClick={() => toggleRemoveExistingPicture(pic.id)}
-                                                className={`absolute -top-2 -right-2 rounded-full px-2 py-1 text-xs font-medium shadow ${
-                                                    marked ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-                                                }`}
+                            <>
+                                {existingPictures.length > 1 && (
+                                    <p className="mb-2 text-xs font-medium text-muted-foreground">Drag to reorder</p>
+                                )}
+                                <div className="mb-2 flex flex-wrap gap-2">
+                                    {existingPictures.map((pic, index) => {
+                                        const marked = removePictureIds.includes(pic.id);
+                                        return (
+                                            <div
+                                                key={pic.id}
+                                                draggable
+                                                onDragStart={() => {
+                                                    dragItemRef.current = { fromIndex: index, section: 'existing' };
+                                                }}
+                                                onDragOver={(e) => e.preventDefault()}
+                                                onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    if (dragItemRef.current?.section === 'existing') {
+                                                        reorderExistingPictures(dragItemRef.current.fromIndex, index);
+                                                    }
+                                                    dragItemRef.current = null;
+                                                }}
+                                                onDragEnd={() => {
+                                                    dragItemRef.current = null;
+                                                }}
+                                                className={`relative h-24 w-24 flex-shrink-0 cursor-grab select-none rounded-lg border active:cursor-grabbing ${marked ? 'opacity-60 ring-2 ring-red-400' : ''}`}
                                             >
-                                                {marked ? 'Undo' : 'Remove'}
-                                            </button>
-                                            {marked && (
-                                                <div className="absolute bottom-1 left-1 rounded bg-red-500 px-1 py-0.5 text-[10px] text-white">
-                                                    To remove
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                                <img
+                                                    src={pic.url}
+                                                    alt={pic.id}
+                                                    className="h-full w-full rounded-lg object-cover pointer-events-none"
+                                                    draggable={false}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleRemoveExistingPicture(pic.id)}
+                                                    className={`absolute -top-2 -right-2 rounded-full px-2 py-1 text-xs font-medium shadow ${
+                                                        marked ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                                                    }`}
+                                                >
+                                                    {marked ? 'Undo' : 'Remove'}
+                                                </button>
+                                                {marked && (
+                                                    <div className="absolute bottom-1 left-1 rounded bg-red-500 px-1 py-0.5 text-[10px] text-white">
+                                                        To remove
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
                         ) : (
                             <p className="text-sm text-gray-500">No existing images.</p>
                         )}
@@ -1025,10 +1082,33 @@ export default function AddProduct() {
 
                     {/* Image Previews */}
                     {imagePreviews.length > 0 && (
-                        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                        <div className="mb-4 flex flex-wrap gap-2">
                             {imagePreviews.map((preview, index) => (
-                                <div key={index} className="relative">
-                                    <img src={preview} alt={`Preview ${index + 1}`} className="h-24 w-24 rounded-lg border object-cover" />
+                                <div
+                                    key={preview}
+                                    draggable
+                                    onDragStart={() => {
+                                        dragItemRef.current = { fromIndex: index, section: 'new' };
+                                    }}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        if (dragItemRef.current?.section === 'new') {
+                                            reorderNewImages(dragItemRef.current.fromIndex, index);
+                                        }
+                                        dragItemRef.current = null;
+                                    }}
+                                    onDragEnd={() => {
+                                        dragItemRef.current = null;
+                                    }}
+                                    className="relative h-24 w-24 flex-shrink-0 cursor-grab select-none active:cursor-grabbing"
+                                >
+                                    <img
+                                        src={preview}
+                                        alt={`Preview ${index + 1}`}
+                                        className="h-full w-full rounded-lg border object-cover pointer-events-none"
+                                        draggable={false}
+                                    />
                                     <button
                                         type="button"
                                         onClick={() => removeImage(index)}
@@ -1036,7 +1116,9 @@ export default function AddProduct() {
                                     >
                                         <X size={12} />
                                     </button>
-                                    <div className="mt-1 truncate text-center text-xs text-gray-500">{formData.images[index]?.name}</div>
+                                    <div className="absolute bottom-0 left-0 right-0 truncate rounded-b-lg bg-black/40 px-1 py-0.5 text-center text-[9px] text-white">
+                                        {formData.images[index]?.name}
+                                    </div>
                                 </div>
                             ))}
                         </div>
