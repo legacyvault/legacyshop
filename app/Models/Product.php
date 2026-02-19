@@ -123,7 +123,7 @@ class Product extends Model
     public function pictures()
     {
         // Keep a consistent order so the first picture is the implicit thumbnail
-        return $this->hasMany(ProductPictures::class)->orderBy('created_at');
+        return $this->hasMany(ProductPictures::class)->orderBy('sort_order')->orderBy('created_at');
     }
     
     public function event_product()
