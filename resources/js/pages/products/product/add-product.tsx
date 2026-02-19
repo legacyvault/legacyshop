@@ -271,6 +271,9 @@ export default function AddProduct() {
 
     const selectedProd: IProducts = product as IProducts;
 
+    // Product belongs to a group — only name, description, weight, tags are editable
+    const isGrouped = isEdit && !!selectedProd?.product_group_id;
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: `${isEdit ? 'Edit' : 'Add'} Product`,
@@ -836,13 +839,17 @@ export default function AddProduct() {
         const newErrors: FormErrors = {};
 
         if (!formData.name.trim()) newErrors.name = 'Product name is required';
-        if (!formData.unit) newErrors.unit = 'Collection is required';
-        if (!formData.subunit) newErrors.subunit = 'Category is required';
-        if (!formData.use_unit_price && !formData.price) newErrors.price = 'Price is required';
-        if (!formData.use_unit_usd_price && !formData.product_usd_price) newErrors.product_usd_price = 'USD price is required';
-        if (!formData.use_unit_discount && formData.product_discount === '') newErrors.product_discount = 'Discount is required';
-        // Only require new images for create; allow empty on edit
-        if (!isEdit && formData.images.length === 0) newErrors.images = 'At least one image is required';
+        if (!formData.product_weight) newErrors.product_weight = 'Product weight is required';
+
+        if (!isGrouped) {
+            if (!formData.unit) newErrors.unit = 'Collection is required';
+            if (!formData.subunit) newErrors.subunit = 'Category is required';
+            if (!formData.use_unit_price && !formData.price) newErrors.price = 'Price is required';
+            if (!formData.use_unit_usd_price && !formData.product_usd_price) newErrors.product_usd_price = 'USD price is required';
+            if (!formData.use_unit_discount && formData.product_discount === '') newErrors.product_discount = 'Discount is required';
+            // Only require new images for create; allow empty on edit
+            if (!isEdit && formData.images.length === 0) newErrors.images = 'At least one image is required';
+        }
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
@@ -851,65 +858,67 @@ export default function AddProduct() {
 
         const fd = new FormData();
         fd.append('product_name', formData.name);
-        fd.append('product_price', String(effectiveProductPrice));
-        fd.append('product_discount', String(effectiveProductDiscount));
         fd.append('description', formData.description);
-        fd.append('unit_id', formData.unit);
-        fd.append('sub_unit_id', formData.subunit);
-        fd.append('use_unit_price', formData.use_unit_price ? '1' : '0');
-        fd.append('use_unit_usd_price', formData.use_unit_usd_price ? '1' : '0');
-        fd.append('use_unit_discount', formData.use_unit_discount ? '1' : '0');
-        fd.append('product_usd_price', String(effectiveProductUsdPrice));
         fd.append('product_weight', formData.product_weight);
-        fd.append('is_showcase_top', formData.is_showcase_top ? '1' : '0');
-        fd.append('is_showcase_bottom', formData.is_showcase_bottom ? '1' : '0');
-
+        formData.tags.forEach((tagId) => fd.append('tag_id[]', tagId));
         formData.images.forEach((file) => fd.append('pictures[]', file));
-        // Removing selected existing pictures on edit
         if (isEdit && removePictureIds.length > 0) {
-            removePictureIds.forEach((id) => fd.append('remove_picture_ids[]', id));
+            removePictureIds.forEach((picId) => fd.append('remove_picture_ids[]', picId));
         }
-        formData.tags.forEach((id) => fd.append('tag_id[]', id));
-        formData.category.forEach((id) => fd.append('categories[]', id));
 
-        formData.subcategory.forEach((id, i) => {
-            const d = formData.subcategoryDiscounts[id];
-            const useDefault = d && d.source !== 'manual';
-            fd.append(`sub_categories[${i}][id]`, id);
-            if (useDefault) {
-                fd.append(`sub_categories[${i}][use_subcategory_discount]`, '1');
-                fd.append(`sub_categories[${i}][manual_discount]`, '0');
-            } else {
-                fd.append(`sub_categories[${i}][use_subcategory_discount]`, '0');
-                fd.append(`sub_categories[${i}][manual_discount]`, String(Number(d?.value || 0)));
-            }
-        });
+        if (!isGrouped) {
+            fd.append('product_price', String(effectiveProductPrice));
+            fd.append('product_discount', String(effectiveProductDiscount));
+            fd.append('unit_id', formData.unit);
+            fd.append('sub_unit_id', formData.subunit);
+            fd.append('use_unit_price', formData.use_unit_price ? '1' : '0');
+            fd.append('use_unit_usd_price', formData.use_unit_usd_price ? '1' : '0');
+            fd.append('use_unit_discount', formData.use_unit_discount ? '1' : '0');
+            fd.append('product_usd_price', String(effectiveProductUsdPrice));
+            fd.append('is_showcase_top', formData.is_showcase_top ? '1' : '0');
+            fd.append('is_showcase_bottom', formData.is_showcase_bottom ? '1' : '0');
+            formData.category.forEach((catId) => fd.append('categories[]', catId));
 
-        formData.division.forEach((id, i) => {
-            const d = formData.divisionDiscounts[id];
-            const useDefault = d && d.source !== 'manual';
-            fd.append(`divisions[${i}][id]`, id);
-            if (useDefault) {
-                fd.append(`divisions[${i}][use_division_discount]`, '1');
-                fd.append(`divisions[${i}][manual_discount]`, '0');
-            } else {
-                fd.append(`divisions[${i}][use_division_discount]`, '0');
-                fd.append(`divisions[${i}][manual_discount]`, String(Number(d?.value || 0)));
-            }
-        });
+            formData.subcategory.forEach((subId, i) => {
+                const d = formData.subcategoryDiscounts[subId];
+                const useDefault = d && d.source !== 'manual';
+                fd.append(`sub_categories[${i}][id]`, subId);
+                if (useDefault) {
+                    fd.append(`sub_categories[${i}][use_subcategory_discount]`, '1');
+                    fd.append(`sub_categories[${i}][manual_discount]`, '0');
+                } else {
+                    fd.append(`sub_categories[${i}][use_subcategory_discount]`, '0');
+                    fd.append(`sub_categories[${i}][manual_discount]`, String(Number(d?.value || 0)));
+                }
+            });
 
-        formData.variant.forEach((id, i) => {
-            const d = formData.variantDiscounts[id];
-            const useDefault = d && d.source !== 'manual';
-            fd.append(`variants[${i}][id]`, id);
-            if (useDefault) {
-                fd.append(`variants[${i}][use_variant_discount]`, '1');
-                fd.append(`variants[${i}][manual_discount]`, '0');
-            } else {
-                fd.append(`variants[${i}][use_variant_discount]`, '0');
-                fd.append(`variants[${i}][manual_discount]`, String(Number(d?.value || 0)));
-            }
-        });
+            formData.division.forEach((divId, i) => {
+                const d = formData.divisionDiscounts[divId];
+                const useDefault = d && d.source !== 'manual';
+                fd.append(`divisions[${i}][id]`, divId);
+                if (useDefault) {
+                    fd.append(`divisions[${i}][use_division_discount]`, '1');
+                    fd.append(`divisions[${i}][manual_discount]`, '0');
+                } else {
+                    fd.append(`divisions[${i}][use_division_discount]`, '0');
+                    fd.append(`divisions[${i}][manual_discount]`, String(Number(d?.value || 0)));
+                }
+            });
+
+            formData.variant.forEach((varId, i) => {
+                const d = formData.variantDiscounts[varId];
+                const useDefault = d && d.source !== 'manual';
+                fd.append(`variants[${i}][id]`, varId);
+                if (useDefault) {
+                    fd.append(`variants[${i}][use_variant_discount]`, '1');
+                    fd.append(`variants[${i}][manual_discount]`, '0');
+                } else {
+                    fd.append(`variants[${i}][use_variant_discount]`, '0');
+                    fd.append(`variants[${i}][manual_discount]`, String(Number(d?.value || 0)));
+                }
+            });
+        }
+
         // Submit to create or update endpoint
         const targetRoute = isEdit ? route('product.edit-product', String(selectedProd?.id ?? '')) : route('product.add-product');
         router.post(targetRoute, fd, {
@@ -917,21 +926,23 @@ export default function AddProduct() {
             onError: (err) => {
                 const mapped: FormErrors = {};
                 if ((err as any).product_name) mapped.name = (err as any).product_name as string;
-                if ((err as any).product_price) mapped.price = (err as any).product_price as string;
-                if ((err as any).product_usd_price) mapped.product_usd_price = (err as any).product_usd_price as string;
-                if ((err as any).product_discount) mapped.product_discount = (err as any).product_discount as string;
-                if ((err as any).description) mapped.description = (err as any).description as string;
-                if ((err as any).unit_id) mapped.unit = (err as any).unit_id as string;
-                if ((err as any).sub_unit_id) mapped.subunit = (err as any).sub_unit_id as string;
-                if ((err as any).categories) mapped.category = (err as any).categories as string;
-                if ((err as any).tag_id) mapped.tags = (err as any).tag_id as string;
                 if ((err as any).product_weight) mapped.product_weight = (err as any).product_weight as string;
-                if ((err as any).is_showcase_top) mapped.is_showcase_top = (err as any).is_showcase_top as string;
-                if ((err as any).is_showcase_bottom) mapped.is_showcase_bottom = (err as any).is_showcase_bottom as string;
+                if ((err as any).description) mapped.description = (err as any).description as string;
+                if ((err as any).tag_id) mapped.tags = (err as any).tag_id as string;
                 if (Object.keys(err as any).some((k) => k.startsWith('pictures'))) mapped.images = 'Invalid pictures uploaded';
-                if (Object.keys(err as any).some((k) => k.startsWith('sub_categories'))) mapped.subcategory = 'Invalid subcategory selection';
-                if (Object.keys(err as any).some((k) => k.startsWith('divisions'))) mapped.division = 'Invalid division selection';
-                if (Object.keys(err as any).some((k) => k.startsWith('variants'))) mapped.variant = 'Invalid variant selection';
+                if (!isGrouped) {
+                    if ((err as any).product_price) mapped.price = (err as any).product_price as string;
+                    if ((err as any).product_usd_price) mapped.product_usd_price = (err as any).product_usd_price as string;
+                    if ((err as any).product_discount) mapped.product_discount = (err as any).product_discount as string;
+                    if ((err as any).unit_id) mapped.unit = (err as any).unit_id as string;
+                    if ((err as any).sub_unit_id) mapped.subunit = (err as any).sub_unit_id as string;
+                    if ((err as any).categories) mapped.category = (err as any).categories as string;
+                    if ((err as any).is_showcase_top) mapped.is_showcase_top = (err as any).is_showcase_top as string;
+                    if ((err as any).is_showcase_bottom) mapped.is_showcase_bottom = (err as any).is_showcase_bottom as string;
+                    if (Object.keys(err as any).some((k) => k.startsWith('sub_categories'))) mapped.subcategory = 'Invalid subcategory selection';
+                    if (Object.keys(err as any).some((k) => k.startsWith('divisions'))) mapped.division = 'Invalid division selection';
+                    if (Object.keys(err as any).some((k) => k.startsWith('variants'))) mapped.variant = 'Invalid variant selection';
+                }
                 setErrors(mapped);
             },
         });
@@ -948,6 +959,13 @@ export default function AddProduct() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={breadcrumbs[0].title} />
             <div className="p-6">
+                {/* Grouped product notice */}
+                {isGrouped && (
+                    <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        This product belongs to a product group. Only the name, description, weight, and tags can be edited here. To change pricing or classification, edit the group instead.
+                    </div>
+                )}
+
                 {/* Existing Images (Edit Mode) */}
                 {isEdit && (
                     <div className="mb-6">
@@ -1133,6 +1151,8 @@ export default function AddProduct() {
                     {errors.product_weight && <p className="mt-1 text-sm text-red-500">{errors.product_weight}</p>}
                 </div>
 
+                {/* Fields hidden for grouped products: collection, pricing, showcase, category hierarchy, discounts, price summary */}
+                {!isGrouped && (<>
                 {/* Unit Field */}
                 <div className="mb-6">
                     <label className="mb-2 block text-sm font-medium">Collection *</label>
@@ -1758,6 +1778,8 @@ export default function AddProduct() {
                         </div>
                     </div>
                 )}
+
+                </>)}
 
                 {/* Submit Button */}
                 <form onSubmit={handleSubmit} className="flex gap-4 pt-4">

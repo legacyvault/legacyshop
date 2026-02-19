@@ -43,6 +43,7 @@ type ProductGroupResponse = {
 type PageProps = SharedData & {
     events?: EventResponse[] | null;
     productGroups?: ProductGroupResponse[] | null;
+    ungroupedProducts?: (EventProductResponse | null)[] | null;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -89,35 +90,45 @@ const generateEventId = () => {
 };
 
 export default function Event() {
-    const { events: eventData, productGroups } = usePage<PageProps>().props;
+    const { events: eventData, productGroups, ungroupedProducts } = usePage<PageProps>().props;
 
     const normalizedGroups = useMemo<EventGroupOption[]>(() => {
-        if (!Array.isArray(productGroups)) return [];
-
         const groups: EventGroupOption[] = [];
 
-        productGroups.forEach((group) => {
-            const id = typeof group?.id === 'string' ? group.id : '';
-            if (!id) return;
+        if (Array.isArray(productGroups)) {
+            productGroups.forEach((group) => {
+                const id = typeof group?.id === 'string' ? group.id : '';
+                if (!id) return;
 
-            const name = typeof group?.name === 'string' ? group.name : 'Untitled group';
-            const products = Array.isArray(group?.products)
-                ? group.products
-                      .map((product) => normalizeProduct(product, name, id))
-                      .filter((product): product is EventProductOption => Boolean(product))
-                : [];
-            const productsCount = toNumber(group?.products_count) ?? products.length;
+                const name = typeof group?.name === 'string' ? group.name : 'Untitled group';
+                const products = Array.isArray(group?.products)
+                    ? group.products
+                          .map((product) => normalizeProduct(product, name, id))
+                          .filter((product): product is EventProductOption => Boolean(product))
+                    : [];
+                const productsCount = toNumber(group?.products_count) ?? products.length;
 
-            groups.push({
-                id,
-                name,
-                products,
-                productsCount,
+                groups.push({ id, name, products, productsCount });
             });
-        });
+        }
+
+        if (Array.isArray(ungroupedProducts) && ungroupedProducts.length) {
+            const products = ungroupedProducts
+                .map((product) => normalizeProduct(product))
+                .filter((product): product is EventProductOption => Boolean(product));
+
+            if (products.length) {
+                groups.push({
+                    id: '__ungrouped__',
+                    name: 'No Group',
+                    products,
+                    productsCount: products.length,
+                });
+            }
+        }
 
         return groups;
-    }, [productGroups]);
+    }, [productGroups, ungroupedProducts]);
 
     const fallbackProductLookup = useMemo<Record<string, EventProductOption>>(() => {
         const map: Record<string, EventProductOption> = {};
