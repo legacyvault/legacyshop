@@ -10,6 +10,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
 use App\Models\Carts;
 use App\Models\Unit;
+use App\Models\Product;
 use App\Models\ProductGroup;
 use Illuminate\Support\Facades\Auth;
 
@@ -638,9 +639,15 @@ class ViewController extends Controller
             ->orderBy('name')
             ->get();
 
+        $ungroupedProducts = Product::whereNull('product_group_id')
+            ->select(['id', 'product_name', 'product_sku', 'product_price', 'product_usd_price'])
+            ->orderBy('product_name')
+            ->get();
+
         return Inertia::render('misc/voucher', [
             'vouchers' => $vouchers,
             'productGroups' => $productGroups,
+            'ungroupedProducts' => $ungroupedProducts,
         ]);
     }
 
@@ -663,9 +670,15 @@ class ViewController extends Controller
             ->orderBy('name')
             ->get();
 
+        $ungroupedProducts = Product::whereNull('product_group_id')
+            ->select(['id', 'product_name', 'product_sku', 'product_price', 'product_usd_price'])
+            ->orderBy('product_name')
+            ->get();
+
         return Inertia::render('misc/event', [
             'events' => $events,
             'productGroups' => $productGroups,
+            'ungroupedProducts' => $ungroupedProducts,
         ]);
     }
 }

@@ -39,6 +39,7 @@ type ProductGroupResponse = {
 type PageProps = SharedData & {
     vouchers?: VoucherResponse[] | null;
     productGroups?: ProductGroupResponse[] | null;
+    ungroupedProducts?: (VoucherProductResponse | null)[] | null;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -81,35 +82,45 @@ const generateVoucherId = () => {
 };
 
 export default function Voucher() {
-    const { vouchers: voucherData, productGroups } = usePage<PageProps>().props;
+    const { vouchers: voucherData, productGroups, ungroupedProducts } = usePage<PageProps>().props;
 
     const normalizedGroups = useMemo<VoucherGroupOption[]>(() => {
-        if (!Array.isArray(productGroups)) return [];
-
         const groups: VoucherGroupOption[] = [];
 
-        productGroups.forEach((group) => {
-            const id = typeof group?.id === 'string' ? group.id : '';
-            if (!id) return;
+        if (Array.isArray(productGroups)) {
+            productGroups.forEach((group) => {
+                const id = typeof group?.id === 'string' ? group.id : '';
+                if (!id) return;
 
-            const name = typeof group?.name === 'string' ? group.name : 'Untitled group';
-            const products = Array.isArray(group?.products)
-                ? group.products
-                      .map((product) => normalizeProduct(product, name, id))
-                      .filter((product): product is VoucherProductOption => Boolean(product))
-                : [];
-            const productsCount = toNumber(group?.products_count) ?? products.length;
+                const name = typeof group?.name === 'string' ? group.name : 'Untitled group';
+                const products = Array.isArray(group?.products)
+                    ? group.products
+                          .map((product) => normalizeProduct(product, name, id))
+                          .filter((product): product is VoucherProductOption => Boolean(product))
+                    : [];
+                const productsCount = toNumber(group?.products_count) ?? products.length;
 
-            groups.push({
-                id,
-                name,
-                products,
-                productsCount,
+                groups.push({ id, name, products, productsCount });
             });
-        });
+        }
+
+        if (Array.isArray(ungroupedProducts) && ungroupedProducts.length) {
+            const products = ungroupedProducts
+                .map((product) => normalizeProduct(product))
+                .filter((product): product is VoucherProductOption => Boolean(product));
+
+            if (products.length) {
+                groups.push({
+                    id: '__ungrouped__',
+                    name: 'No Group',
+                    products,
+                    productsCount: products.length,
+                });
+            }
+        }
 
         return groups;
-    }, [productGroups]);
+    }, [productGroups, ungroupedProducts]);
 
     const fallbackProductLookup = useMemo<Record<string, VoucherProductOption>>(() => {
         const map: Record<string, VoucherProductOption> = {};
