@@ -422,12 +422,13 @@ class ProductController extends Controller
 
             // Upload pictures to S3
             if ($request->hasFile('pictures')) {
-                foreach ($request->file('pictures') as $file) {
+                foreach ($request->file('pictures') as $j => $file) {
                     $url = $this->uploadToS3($file, $product->id);
 
                     ProductPictures::create([
                         'url'        => $url,
                         'product_id' => $product->id,
+                        'sort_order' => $j,
                     ]);
                 }
             }
@@ -592,15 +593,15 @@ class ProductController extends Controller
                 // Expecting input names like: products[0][pictures][], products[1][pictures][]
                 $files = $request->file("products.$i.pictures");
                 if ($files && is_array($files)) {
-                    foreach ($files as $file) {
+                    foreach ($files as $j => $file) {
                         if ($file instanceof \Illuminate\Http\UploadedFile) {
                             $url = $this->uploadToS3($file, $product->id);
 
                             ProductPictures::create([
                                 'url'        => $url,
                                 'product_id' => $product->id,
+                                'sort_order' => $j,
                             ]);
-                            usleep(500000);
                         }
                     }
                 }
@@ -789,13 +790,14 @@ class ProductController extends Controller
                 // ADD NEW PICTURES
                 $files = $request->file("products.$i.pictures");
                 if ($files) {
-                    foreach ($files as $file) {
+                    $existingPicCount = ProductPictures::where('product_id', $product->id)->count();
+                    foreach ($files as $j => $file) {
                         $url = $this->uploadToS3($file, $product->id);
                         ProductPictures::create([
-                            'url' => $url,
-                            'product_id' => $product->id
+                            'url'        => $url,
+                            'product_id' => $product->id,
+                            'sort_order' => $existingPicCount + $j,
                         ]);
-                        usleep(500000);
                     }
                 }
             }
@@ -1181,11 +1183,13 @@ class ProductController extends Controller
             }
 
             if ($request->hasFile('pictures')) {
-                foreach ($request->file('pictures') as $file) {
+                $existingPicCount = ProductPictures::where('product_id', $product->id)->count();
+                foreach ($request->file('pictures') as $j => $file) {
                     $url = $this->uploadToS3($file, $product->id);
                     ProductPictures::create([
                         'url'        => $url,
                         'product_id' => $product->id,
+                        'sort_order' => $existingPicCount + $j,
                     ]);
                 }
             }
