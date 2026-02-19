@@ -356,8 +356,10 @@ class ProductController extends Controller
                 ? $unit->discount
                 : ($request->product_discount ?? 0);
 
+            $product_name = $request->product_name;
+
             $product = Product::create([
-                'product_name'     => $request->product_name,
+                'product_name'     => $product_name,
                 'product_price'    => $product_price,
                 'product_usd_price' => $product_usd_price,
                 'product_discount' => $product_discount,
@@ -366,7 +368,11 @@ class ProductController extends Controller
                 'unit_id'          => $request->unit_id,
                 'sub_unit_id'       => $request->sub_unit_id,
                 'is_showcase_top'          => $request->boolean('is_showcase_top'),
-                'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'),
+                'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'), 
+                'product_sku'        => Product::generateSku(new Product([
+                    'product_name' => $product_name,
+                    'sub_unit_id'  => $request->sub_unit_id
+                ])),
             ]);
             $product->product_sku = Product::generateSku($product);
             $product->save();
@@ -1047,22 +1053,91 @@ class ProductController extends Controller
 
     public function editProduct(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
-            'product_name'     => 'required|string|max:255',
-            'description'      => 'required|string',
+        $product = Product::findOrFail($id);
+        $isGrouped = !is_null($product->product_group_id);
 
-            'unit_id'          => 'required|exists:unit,id',
-            'sub_unit_id'       => 'required|exists:sub_unit,id',
-            'use_unit_price'       => 'boolean',
-            'use_unit_usd_price'   => 'boolean',
-            'use_unit_discount'    => 'boolean',
+        if ($isGrouped) {
+            // Grouped products: only name, description, weight, tags, and pictures can be changed
+            $validator = Validator::make($request->all(), [
+                'product_name'   => 'required|string|max:255',
+                'description'    => 'required|string',
+                'product_weight' => 'required|numeric|min:1',
+                'tag_id'         => 'nullable|array',
+                'tag_id.*'       => 'exists:tags,id',
+                'pictures'       => 'nullable|array',
+                'pictures.*'     => 'file|mimes:jpg,jpeg,png,webp|max:2048',
+                'remove_picture_ids'   => 'nullable|array',
+                'remove_picture_ids.*' => 'exists:product_pictures,id',
+            ]);
+
+            if ($validator->fails()) {
+                return redirect()->back()->withErrors($validator)->withInput();
+            }
+
+            try {
+                DB::beginTransaction();
+
+                $product->update([
+                    'product_name'   => $request->product_name,
+                    'description'    => $request->description,
+                    'product_weight' => $request->product_weight,
+                ]);
+
+                $product->tags()->sync($request->tag_id ?? []);
+
+                if ($request->filled('remove_picture_ids')) {
+                    $picturesToDelete = ProductPictures::whereIn('id', $request->remove_picture_ids)->get();
+                    foreach ($picturesToDelete as $pic) {
+                        $this->deleteFromS3($pic->url);
+                        $pic->delete();
+                    }
+                }
+
+                if ($request->hasFile('pictures')) {
+                    $existingPicCount = ProductPictures::where('product_id', $product->id)->count();
+                    foreach ($request->file('pictures') as $j => $file) {
+                        $url = $this->uploadToS3($file, $product->id);
+                        ProductPictures::create([
+                            'url'        => $url,
+                            'product_id' => $product->id,
+                            'sort_order' => $existingPicCount + $j,
+                        ]);
+                    }
+                }
+
+                DB::commit();
+                return redirect()->route('product')->with('alert', [
+                    'type' => 'success',
+                    'message' => 'Product updated successfully.',
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Failed to update grouped product: ' . $e->getMessage());
+                return redirect()->back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Failed to update product.',
+                ]);
+            }
+        }
+
+        // Standalone product: full edit allowed
+        $validator = Validator::make($request->all(), [
+            'product_name'       => 'required|string|max:255',
+            'description'        => 'required|string',
+            'product_weight'     => 'required|numeric|min:1',
+
+            'unit_id'            => 'required|exists:unit,id',
+            'sub_unit_id'        => 'required|exists:sub_unit,id',
+            'use_unit_price'     => 'boolean',
+            'use_unit_usd_price' => 'boolean',
+            'use_unit_discount'  => 'boolean',
 
             'product_price'    => 'required_if:use_unit_price,false|numeric|min:1000',
             'product_usd_price' => 'required_if:use_unit_usd_price,false|numeric|min:1',
             'product_discount' => 'nullable|numeric|required_if:use_unit_discount,false',
 
-            'is_showcase_top'          => 'nullable|boolean',
-            'is_showcase_bottom'          => 'nullable|boolean',
+            'is_showcase_top'    => 'nullable|boolean',
+            'is_showcase_bottom' => 'nullable|boolean',
 
             'pictures'   => 'nullable|array',
             'pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
@@ -1091,7 +1166,7 @@ class ProductController extends Controller
             'variants.*.use_variant_discount' => 'nullable',
             'variants.*.manual_discount' => 'nullable|numeric',
 
-            'remove_picture_ids' => 'nullable|array',
+            'remove_picture_ids'   => 'nullable|array',
             'remove_picture_ids.*' => 'exists:product_pictures,id',
         ]);
 
@@ -1102,7 +1177,6 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
-            $product = Product::findOrFail($id);
             $unit = Unit::findOrFail($request->unit_id);
 
             $product_price = $request->boolean('use_unit_price')
@@ -1118,15 +1192,16 @@ class ProductController extends Controller
                 : ($request->product_discount ?? 0);
 
             $product->update([
-                'product_name'     => $request->product_name,
-                'product_price'    => $product_price,
-                'product_usd_price' => $product_usd_price,
-                'product_discount' => $product_discount,
-                'description'      => $request->description,
-                'unit_id'          => $request->unit_id,
-                'sub_unit_id'       => $request->sub_unit_id,
-                'is_showcase_top'          => $request->boolean('is_showcase_top'),
-                'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'),
+                'product_name'       => $request->product_name,
+                'product_price'      => $product_price,
+                'product_usd_price'  => $product_usd_price,
+                'product_discount'   => $product_discount,
+                'description'        => $request->description,
+                'product_weight'     => $request->product_weight,
+                'unit_id'            => $request->unit_id,
+                'sub_unit_id'        => $request->sub_unit_id,
+                'is_showcase_top'    => $request->boolean('is_showcase_top'),
+                'is_showcase_bottom' => $request->boolean('is_showcase_bottom'),
             ]);
 
             // Sync tags

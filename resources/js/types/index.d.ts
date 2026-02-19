@@ -636,6 +636,7 @@ export interface IProducts {
     description: string;
     event?: IEvents | null;
     event_id?: string | null;
+    product_group_id?: string | null;
     product_sku: string;
     divisions: (IDivisions & { pivot: IPivotDivisionProd })[];
     id: string;
