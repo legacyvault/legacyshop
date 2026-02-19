@@ -672,8 +672,11 @@ class ProductController extends Controller
             'products.*.pictures' => 'nullable|array',
             'products.*.pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
 
-            'products.*.remove_picture_ids' => 'nullable|array',
-            'products.*.remove_picture_ids.*' => 'exists:product_pictures,id',
+            'products.*.remove_picture_ids'    => 'nullable|array',
+            'products.*.remove_picture_ids.*'  => 'exists:product_pictures,id',
+
+            'products.*.existing_picture_order'    => 'nullable|array',
+            'products.*.existing_picture_order.*'  => 'exists:product_pictures,id',
 
             'products.*.tags'   => 'nullable|array',
             'products.*.tags.*' => 'exists:tags,id',
@@ -793,10 +796,19 @@ class ProductController extends Controller
                     }
                 }
 
+                // UPDATE EXISTING PICTURE SORT ORDER
+                if (!empty($p['existing_picture_order']) && is_array($p['existing_picture_order'])) {
+                    foreach ($p['existing_picture_order'] as $order => $picId) {
+                        ProductPictures::where('id', $picId)
+                            ->where('product_id', $product->id)
+                            ->update(['sort_order' => $order]);
+                    }
+                }
+
                 // ADD NEW PICTURES
                 $files = $request->file("products.$i.pictures");
                 if ($files) {
-                    $existingPicCount = ProductPictures::where('product_id', $product->id)->count();
+                    $existingPicCount = count($p['existing_picture_order'] ?? []);
                     foreach ($files as $j => $file) {
                         $url = $this->uploadToS3($file, $product->id);
                         ProductPictures::create([
@@ -889,7 +901,7 @@ class ProductController extends Controller
                 'products.divisions:id,name,sub_category_id',
                 'products.variants:id,name,division_id',
                 'products.tags:id,name',
-                'products.pictures:id,url,product_id,created_at,updated_at',
+                'products.pictures' => fn($q) => $q->select(['id', 'url', 'product_id', 'sort_order', 'created_at', 'updated_at'])->orderBy('sort_order'),
             ]);
 
         if ($search) {
@@ -920,7 +932,7 @@ class ProductController extends Controller
             'products.tags',
             'products.unit',
             'products.subUnit',
-            'products.pictures',
+            'products.pictures' => fn($q) => $q->orderBy('sort_order'),
             'products.divisions',
             'products.subcategories',
             'products.variants',
@@ -1066,8 +1078,10 @@ class ProductController extends Controller
                 'tag_id.*'       => 'exists:tags,id',
                 'pictures'       => 'nullable|array',
                 'pictures.*'     => 'file|mimes:jpg,jpeg,png,webp|max:2048',
-                'remove_picture_ids'   => 'nullable|array',
-                'remove_picture_ids.*' => 'exists:product_pictures,id',
+                'remove_picture_ids'    => 'nullable|array',
+                'remove_picture_ids.*'  => 'exists:product_pictures,id',
+                'existing_picture_order'    => 'nullable|array',
+                'existing_picture_order.*'  => 'exists:product_pictures,id',
             ]);
 
             if ($validator->fails()) {
@@ -1093,8 +1107,16 @@ class ProductController extends Controller
                     }
                 }
 
+                if ($request->filled('existing_picture_order')) {
+                    foreach ($request->existing_picture_order as $order => $picId) {
+                        ProductPictures::where('id', $picId)
+                            ->where('product_id', $product->id)
+                            ->update(['sort_order' => $order]);
+                    }
+                }
+
                 if ($request->hasFile('pictures')) {
-                    $existingPicCount = ProductPictures::where('product_id', $product->id)->count();
+                    $existingPicCount = count($request->input('existing_picture_order', []));
                     foreach ($request->file('pictures') as $j => $file) {
                         $url = $this->uploadToS3($file, $product->id);
                         ProductPictures::create([
@@ -1166,8 +1188,10 @@ class ProductController extends Controller
             'variants.*.use_variant_discount' => 'nullable',
             'variants.*.manual_discount' => 'nullable|numeric',
 
-            'remove_picture_ids'   => 'nullable|array',
-            'remove_picture_ids.*' => 'exists:product_pictures,id',
+            'remove_picture_ids'    => 'nullable|array',
+            'remove_picture_ids.*'  => 'exists:product_pictures,id',
+            'existing_picture_order'    => 'nullable|array',
+            'existing_picture_order.*'  => 'exists:product_pictures,id',
         ]);
 
         if ($validator->fails()) {
@@ -1257,8 +1281,16 @@ class ProductController extends Controller
                 }
             }
 
+            if ($request->filled('existing_picture_order')) {
+                foreach ($request->existing_picture_order as $order => $picId) {
+                    ProductPictures::where('id', $picId)
+                        ->where('product_id', $product->id)
+                        ->update(['sort_order' => $order]);
+                }
+            }
+
             if ($request->hasFile('pictures')) {
-                $existingPicCount = ProductPictures::where('product_id', $product->id)->count();
+                $existingPicCount = count($request->input('existing_picture_order', []));
                 foreach ($request->file('pictures') as $j => $file) {
                     $url = $this->uploadToS3($file, $product->id);
                     ProductPictures::create([
@@ -1604,7 +1636,7 @@ class ProductController extends Controller
             'divisions',
             'variants',
             'tags',
-            'pictures',
+            'pictures' => fn($q) => $q->orderBy('sort_order'),
             'event',
         ])->find($id);
 
