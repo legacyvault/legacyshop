@@ -1654,9 +1654,7 @@ class ProductController extends Controller
     {
         // ---- Country detection ----
         $ip = request()->header('X-Forwarded-For') ?? request()->ip();
-
         if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-
         $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
         $isIndonesian = ($location['countryCode'] === 'ID');
 
@@ -1670,7 +1668,7 @@ class ProductController extends Controller
             'divisions',
             'variants',
             'tags',
-            'pictures',
+            'pictures' => fn($q) => $q->orderBy('sort_order'),
             'event',
         ])->where('id', '!=', $id)->orderBy('created_at', 'desc')->limit(5)->get();
 
@@ -1680,6 +1678,11 @@ class ProductController extends Controller
                 'message' => 'Cannot find product.',
             ]);
         };
+
+        // Apply mapping
+        $product->transform(function ($p) use ($isIndonesian) {
+            return $this->applyPriceMappingToProduct($p, $isIndonesian);
+        });
 
         return $product;
     }
