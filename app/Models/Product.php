@@ -55,22 +55,19 @@ class Product extends Model
             throw new \Exception("Sub unit not found for SKU generation.");
         }
 
-        $subInitial = strtoupper(substr($subUnit->name, 0, 1));
+        $subInitial  = strtoupper(substr($subUnit->name, 0, 1));
         $prodInitial = strtoupper(substr($product->product_name, 0, 1));
+        $prefix      = $subInitial . $prodInitial; // contoh: PA
 
-        $prefix = $subInitial . $prodInitial; // Example: PC
+        $prefixLength = strlen($prefix);
 
-        $last = self::where('product_sku', 'like', $prefix . '%')
-            ->orderBy('product_sku', 'desc')
-            ->first();
+        $lastNumber = self::where('product_sku', 'like', $prefix . '%')
+            ->selectRaw("MAX(CAST(SUBSTRING(product_sku, {$prefixLength} + 1) AS UNSIGNED)) as max_number")
+            ->value('max_number');
 
-        if ($last && preg_match('/(\d+)$/', $last->product_sku, $m)) {
-            $num = intval($m[1]) + 1;
-        } else {
-            $num = 1;
-        }
+        $nextNumber = $lastNumber ? $lastNumber + 1 : 1;
 
-        return $prefix . $num;
+        return $prefix . $nextNumber;
     }
 
     public function stocks()
@@ -125,7 +122,7 @@ class Product extends Model
         // Keep a consistent order so the first picture is the implicit thumbnail
         return $this->hasMany(ProductPictures::class)->orderBy('sort_order')->orderBy('created_at');
     }
-    
+
     public function event_product()
     {
         return $this->hasOne(EventProducts::class, 'product_id', 'id');
