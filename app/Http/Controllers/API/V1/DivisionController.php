@@ -16,7 +16,7 @@ class DivisionController extends Controller
     public function createDivision(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|unique:division,name',
+            'name' => 'required|string',
             'description' => 'string|nullable',
             'sub_category_id' => 'required|exists:sub_category,id',
             'price' => 'required|numeric',
@@ -147,7 +147,6 @@ class DivisionController extends Controller
             'name' => [
                 'required',
                 'string',
-                Rule::unique('division', 'name')->ignore($request->id),
             ],
             'sub_category_id' => 'required|exists:sub_category,id',
             'description' => 'string|nullable',
