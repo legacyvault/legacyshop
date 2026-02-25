@@ -10,6 +10,7 @@ import { IProducts, SharedData, type IDeliveryAddress, type IRatePricing, type I
 import { Link, router, usePage, useRemember } from '@inertiajs/react';
 import { Check, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 const CART_ITEMS_STORAGE_KEY = 'cart_session';
@@ -240,6 +241,19 @@ export default function Checkout() {
     const { profile, rates, warehouse, auth } = usePage<SharedData>().props;
     const isGuest = !auth?.user;
     const deliveryAddresses = profile?.delivery_address ?? [];
+
+    const initialOptionsPaypal = {
+        "clientId": "test",
+        "enable-funding": "venmo",
+        "disable-funding": "",
+        "buyer-country": "US",
+        currency: "USD",
+        "data-page-type": "product-details",
+        components: "buttons",
+        "data-sdk-integration-source": "developer-studio",
+    };
+
+    const [messagePaypal, setMessagePaypal] = useState("");
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
     const [countries, setCountries] = useState<Country[]>(() => [{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
 
@@ -2476,9 +2490,112 @@ export default function Checkout() {
                                         </p> */}
                                     </div>
                                 ) : null}
-                                {/* <p className="text-center text-xs leading-relaxed text-muted-foreground">
-                                    Dengan melanjutkan pembayaran, kamu menyetujui S&amp;K Asuransi Pengiriman &amp; Proteksi.
-                                </p> */}
+                                
+                            {/* PAYPAL HANDLING */}
+                            <PayPalScriptProvider options={initialOptionsPaypal}>
+                                <div className='w-full'>
+                                <PayPalButtons
+                                style={{
+                                        shape: "rect",
+                                        layout: "vertical",
+                                        color: "gold",
+                                        label: "paypal",
+                                        disableMaxWidth: true
+                                    }}
+                                createOrder={async () => {
+                                        try {
+                                            const response = await fetch("/api/orders", {
+                                                method: "POST",
+                                                headers: {
+                                                    "Content-Type": "application/json",
+                                                },
+                                                // use the "body" param to optionally pass additional order information
+                                                // like product ids and quantities
+                                                body: JSON.stringify({
+                                                    cart: [
+                                                        {
+                                                            id: "YOUR_PRODUCT_ID",
+                                                            quantity: "YOUR_PRODUCT_QUANTITY",
+                                                        },
+                                                    ],
+                                                }),
+                                            });
+
+                                            const orderData = await response.json();
+
+                                            if (orderData.id) {
+                                                return orderData.id;
+                                            } else {
+                                                const errorDetail = orderData?.details?.[0];
+                                                const errorMessage = errorDetail
+                                                    ? `${errorDetail.issue} ${errorDetail.description} (${orderData.debug_id})`
+                                                    : JSON.stringify(orderData);
+
+                                                throw new Error(errorMessage);
+                                            }
+                                        } catch (error) {
+                                            console.error(error);
+                                            setMessagePaypal(
+                                                `Could not initiate PayPal Checkout...${error}`
+                                            );
+                                        }
+                                    }}
+                                onApprove={async (data, actions) => {
+                                        try {
+                                            const response = await fetch(
+                                                `/api/orders/${data.orderID}/capture`,
+                                                {
+                                                    method: "POST",
+                                                    headers: {
+                                                        "Content-Type": "application/json",
+                                                    },
+                                                }
+                                            );
+
+                                            const orderData = await response.json();
+                                            // Three cases to handle:
+                                            //   (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
+                                            //   (2) Other non-recoverable errors -> Show a failure message
+                                            //   (3) Successful transaction -> Show confirmation or thank you message
+
+                                            const errorDetail = orderData?.details?.[0];
+
+                                            if (errorDetail?.issue === "INSTRUMENT_DECLINED") {
+                                                // (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
+                                                // recoverable state, per https://developer.paypal.com/docs/checkout/standard/customize/handle-funding-failures/
+                                                return actions.restart();
+                                            } else if (errorDetail) {
+                                                // (2) Other non-recoverable errors -> Show a failure message
+                                                throw new Error(
+                                                    `${errorDetail.description} (${orderData.debug_id})`
+                                                );
+                                            } else {
+                                                // (3) Successful transaction -> Show confirmation or thank you message
+                                                // Or go to another URL:  actions.redirect('thank_you.html');
+                                                const transaction =
+                                                    orderData.purchase_units[0].payments
+                                                        .captures[0];
+                                                setMessagePaypal(
+                                                    `Transaction ${transaction.status}: ${transaction.id}. See console for all available details`
+                                                );
+                                                console.log(
+                                                    "Capture result",
+                                                    orderData,
+                                                    JSON.stringify(orderData, null, 2)
+                                                );
+                                            }
+                                        } catch (error) {
+                                            console.error(error);
+                                            setMessagePaypal(
+                                                `Sorry, your transaction could not be processed...${error}`
+                                            );
+                                        }
+                                    }}
+                                />
+                                </div>
+
+                            </PayPalScriptProvider>
+                            <p className='text-sm'>{messagePaypal}</p>
                             </CardFooter>
                         </Card>
                     </div>
