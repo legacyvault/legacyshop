@@ -109,6 +109,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('profile', [UserController::class, 'getProfile'])->name('profile.edit-view');
     Route::post('create-delivery-address', [UserController::class, 'createDeliveryAddress'])->name('create.delivery-address');
     Route::post('update-delivery-address', [UserController::class, 'updateDeliveryAddress'])->name('update.delivery-address');
+    Route::post('delete-delivery-address', [UserController::class, ' deleteDeliveryAddress'])->name('delete.delivery-address');
+   
     Route::get('delivery-address', [UserController::class, 'getAllDeliveryAddress'])->name('all.delivery-address');
     Route::get('active-delivery-address', [UserController::class, 'getActiveDeliveryAddress'])->name('active.delivery-address');
     Route::get('biteship/destination/{destination_id}', [BiteshipController::class, 'getBiteshipDestinationID'])->name('destination.location');
@@ -161,6 +163,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Warehouse API
     Route::post('create-warehouse', [WarehouseController::class, 'createWarehouse'])->name('create.warehouse');
     Route::post('update-warehouse', [WarehouseController::class, 'updateWarehouse'])->name('update.warehouse');
+    Route::post('delete-warehouse', [WarehouseController::class, 'deleteWarehouse'])->name('delete.warehouse');
 
     //Voucher API
     Route::post('create-voucher', [MiscController::class, 'createVoucher'])->name('create.voucher');
@@ -182,6 +185,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::post('add-product-group', [ProductController::class, 'addProductGroup'])->name('product.add-product-group');
     Route::post('update-product/{id}', [ProductController::class, 'editProductGroup'])->name('product.edit-product-group');
     Route::post('add-product-group-stock', [ProductController::class, 'addStockGroup'])->name('product.add-stock-group');
+    Route::delete('delete-product-group/{id}', [ProductController::class, 'deleteProductGroup'])->name('product.delete-group');
 
     Route::post('add-product-stock', [ProductController::class, 'addStock'])->name('product.add-stock');
     Route::post('update-product-stock', [ProductController::class, 'updateLatestStock'])->name('product.update-stock');
@@ -202,10 +206,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Category API
     Route::post('create-category', [ProductController::class, 'createCategory'])->name('category.create');
     Route::post('update-category', [ProductController::class, 'updateCategory'])->name('category.update');
+    Route::delete('delete-category/{id}', [ProductController::class, 'deleteCategory'])->name('category.delete');
 
     //SubUnit API
     Route::post('create-subUnit', [ProductController::class, 'createSubUnit'])->name('subunit.create');
     Route::post('update-subUnit', [ProductController::class, 'updateSubUnit'])->name('subunit.update');
+    Route::delete('delete-subUnit/{id}', [ProductController::class, 'deleteSubUnit'])->name('subunit.delete');
 
     //Type API
     Route::post('create-type', [ProductController::class, 'createType'])->name('type.create');
@@ -214,9 +220,11 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Tags API
     Route::post('create-tag', [ProductController::class, 'createTag'])->name('tag.create');
     Route::post('update-tag', [ProductController::class, 'updateTag'])->name('tag.update');
+    Route::delete('delete-tag/{id}', [ProductController::class, 'deleteTag'])->name('tag.delete');
 
     Route::post('create-unit', [ProductController::class, 'createUnit'])->name('unit.create');
     Route::post('update-unit', [ProductController::class, 'updateUnit'])->name('unit.update');
+    Route::delete('delete-unit/{id}', [ProductController::class, 'deleteUnit'])->name('unit.delete');
 
     //Events
     Route::post('create-event', [MiscController::class, 'createEvent'])->name('event.create');
@@ -225,6 +233,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Subcat API
     Route::post('create-sub-category', [SubCategoryController::class, 'createSubCategory'])->name('subcat.create');
     Route::post('update-sub-category', [SubCategoryController::class, 'updateSubCategory'])->name('subcat.update');
+    Route::post('delete-sub-category/{id}', [SubCategoryController::class, 'deleteSubCategory'])->name('subcat.delete');
 
     Route::post('add-subcat-stock', [SubCategoryController::class, 'addStock'])->name('subcat.add-stock');
     Route::post('update-subcat-stock', [SubCategoryController::class, 'updateLatestStock'])->name('subcat.update-stock');
@@ -232,12 +241,14 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Division API
     Route::post('create-division', [DivisionController::class, 'createDivision'])->name('division.create');
     Route::post('update-division', [DivisionController::class, 'updateDivision'])->name('division.update');
+    Route::post('delete-division/{id}', [DivisionController::class, 'deleteDivision'])->name('division.delete');
     Route::post('add-division-stock', [DivisionController::class, 'addStock'])->name('division.add-stock');
     Route::post('update-division-stock', [DivisionController::class, 'updateLatestStock'])->name('division.update-stock');
 
     //Variant API
     Route::post('create-variant', [VariantController::class, 'createVariant'])->name('variant.create');
     Route::post('update-variant', [VariantController::class, 'updateVariant'])->name('variant.update');
+    Route::post('delete-variant', [VariantController::class, 'deleteVariant'])->name('variant.delete');
     Route::post('add-variant-stock', [VariantController::class, 'addStock'])->name('variant.add-stock');
     Route::post('update-variant-stock', [VariantController::class, 'updateLatestStock'])->name('variant.update-stock');
 

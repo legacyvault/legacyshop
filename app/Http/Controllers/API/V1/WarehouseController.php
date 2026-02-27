@@ -106,6 +106,30 @@ class WarehouseController extends Controller
         }
     }
 
+    public function deleteWarehouse($warehouseId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $warehouse = Warehouse::findOrFail($warehouseId);
+
+            if ($warehouse->is_active) {
+                throw new \Exception("Cannot delete warehouse '{$warehouse->name}' — it is currently active.");
+            }
+
+            $warehouse->delete();
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Warehouse '{$warehouse->name}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete warehouse: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete warehouse: ' . $e->getMessage());
+        }
+    }
+
     public function updateWarehouse(Request $request)
     {
         $validator = Validator::make($request->all(), [

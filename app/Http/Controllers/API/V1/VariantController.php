@@ -45,6 +45,34 @@ class VariantController extends Controller
         }
     }
 
+    public function deleteVariant($variantId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $variant = Variant::with('products', 'stocks')->findOrFail($variantId);
+
+            if ($variant->products()->exists()) {
+                throw new \Exception("Cannot delete variant '{$variant->name}' — it is used by products.");
+            }
+
+            foreach ($variant->stocks as $stock) {
+                $stock->delete();
+            }
+
+            $variant->delete();
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Variant '{$variant->name}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete variant: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete variant: ' . $e->getMessage());
+        }
+    }
+
     public function addStock(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -199,22 +227,26 @@ class VariantController extends Controller
     public function getVariantPaginated(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);
-        if ($perPage <= 0) { $perPage = 15; }
+        if ($perPage <= 0) {
+            $perPage = 15;
+        }
         $search   = $request->input('q');
         $sortBy   = $request->input('sort_by', 'name');
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSorts = ['id','name','description','price','usd_price','discount','total_stock','division_id','created_at'];
-        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
+        $allowedSorts = ['id', 'name', 'description', 'price', 'usd_price', 'discount', 'total_stock', 'division_id', 'created_at'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'name';
+        }
 
-        $query = Variant::query()->with(['stocks','division']);
+        $query = Variant::query()->with(['stocks', 'division']);
         if ($search) {
-            $query->where(function($q) use ($search){
-                $q->where('name','like',"%{$search}%")
-                  ->orWhere('description','like',"%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        return $query->orderBy($sortBy,$sortDir)->paginate($perPage)->appends($request->query());
+        return $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
     }
 
     public function getVariantById($id)

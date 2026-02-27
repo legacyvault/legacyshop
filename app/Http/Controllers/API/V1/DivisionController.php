@@ -43,6 +43,38 @@ class DivisionController extends Controller
         }
     }
 
+    public function deleteDivision($divisionId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $division = Division::with('products', 'variants', 'stocks')->findOrFail($divisionId);
+
+            if ($division->products()->exists()) {
+                throw new \Exception("Cannot delete division '{$division->name}' — it is used by products.");
+            }
+
+            if ($division->variants()->exists()) {
+                throw new \Exception("Cannot delete division '{$division->name}' — it has related variants.");
+            }
+
+            foreach ($division->stocks as $stock) {
+                $stock->delete();
+            }
+
+            $division->delete();
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Division '{$division->name}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete division: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete division: ' . $e->getMessage());
+        }
+    }
+
     public function addStock(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -184,7 +216,7 @@ class DivisionController extends Controller
 
     public function getAllDivision()
     {
-        $data = Division::orderBy('name', 'asc')->with(['stocks','variants', 'sub_category.category.sub_unit.unit'])->get();
+        $data = Division::orderBy('name', 'asc')->with(['stocks', 'variants', 'sub_category.category.sub_unit.unit'])->get();
 
         return $data;
     }
@@ -192,29 +224,33 @@ class DivisionController extends Controller
     public function getDivisionPaginated(Request $request)
     {
         $perPage = (int) $request->input('per_page', 15);
-        if ($perPage <= 0) { $perPage = 15; }
+        if ($perPage <= 0) {
+            $perPage = 15;
+        }
         $search   = $request->input('q');
         $sortBy   = $request->input('sort_by', 'name');
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSorts = ['id','name','description','price','usd_price','discount','total_stock','sub_category_id','created_at'];
-        if (!in_array($sortBy, $allowedSorts, true)) { $sortBy = 'name'; }
+        $allowedSorts = ['id', 'name', 'description', 'price', 'usd_price', 'discount', 'total_stock', 'sub_category_id', 'created_at'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'name';
+        }
 
-        $query = Division::query()->with(['stocks','variants','sub_category']);
+        $query = Division::query()->with(['stocks', 'variants', 'sub_category']);
         if ($search) {
-            $query->where(function($q) use ($search){
-                $q->where('name','like',"%{$search}%")
-                  ->orWhere('description','like',"%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        return $query->orderBy($sortBy,$sortDir)->paginate($perPage)->appends($request->query());
+        return $query->orderBy($sortBy, $sortDir)->paginate($perPage)->appends($request->query());
     }
 
     public function getDivisionById($id)
     {
-        $data = Division::with([            
+        $data = Division::with([
             'stocks' => function ($query) {
-            $query->orderBy('created_at', 'desc');
+                $query->orderBy('created_at', 'desc');
             },
             'sub_category'
         ])->find($id);
