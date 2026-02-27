@@ -55,9 +55,12 @@ class Product extends Model
             throw new \Exception("Sub unit not found for SKU generation.");
         }
 
-        $subInitial  = strtoupper(substr($subUnit->name, 0, 1));
-        $prodInitial = strtoupper(substr($product->product_name, 0, 1));
-        $prefix      = $subInitial . $prodInitial; // contoh: PA
+        $subInitial = strtoupper(substr(trim($subUnit->name), 0, 1));
+
+        $cleanName = preg_replace('/[^A-Za-z]/', '', trim($product->product_name));
+        $prodInitial = strtoupper(substr($cleanName, 0, 1));
+
+        $prefix = $subInitial . $prodInitial;
 
         $prefixLength = strlen($prefix);
 

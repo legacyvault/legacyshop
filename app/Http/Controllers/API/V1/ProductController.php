@@ -54,6 +54,34 @@ class ProductController extends Controller
         }
     }
 
+    public function deleteCategory($categoryId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $category = Category::with('products', 'sub_categories')->findOrFail($categoryId);
+
+            if ($category->products()->exists()) {
+                throw new \Exception("Cannot delete category '{$category->name}' — it is used by products.");
+            }
+
+            if ($category->sub_categories()->exists()) {
+                throw new \Exception("Cannot delete category '{$category->name}' — it has related sub-categories.");
+            }
+
+            $category->delete();
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Category '{$category->name}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete category: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete category: ' . $e->getMessage());
+        }
+    }
+
     public function createSubUnit(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -76,6 +104,30 @@ class ProductController extends Controller
             return redirect()->back()->with('success', 'Successfully create sub unit.');
         } else {
             return redirect()->back()->with('error', 'Failed to create sub unit.');
+        }
+    }
+
+    public function deleteSubUnit($subUnitId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $subUnit = SubUnit::findOrFail($subUnitId);
+
+            if (Category::where('sub_unit_id', $subUnit->id)->exists()) {
+                throw new \Exception("Cannot delete sub-unit '{$subUnit->name}' — it has related categories.");
+            }
+
+            $subUnit->delete();
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Sub-unit '{$subUnit->name}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete sub-unit: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete sub-unit: ' . $e->getMessage());
         }
     }
 
@@ -368,7 +420,7 @@ class ProductController extends Controller
                 'unit_id'          => $request->unit_id,
                 'sub_unit_id'       => $request->sub_unit_id,
                 'is_showcase_top'          => $request->boolean('is_showcase_top'),
-                'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'), 
+                'is_showcase_bottom'          => $request->boolean('is_showcase_bottom'),
                 'product_sku'        => Product::generateSku(new Product([
                     'product_name' => $product_name,
                     'sub_unit_id'  => $request->sub_unit_id
@@ -829,6 +881,59 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error($e);
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function deleteProductGroup($groupId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $group = ProductGroup::with('products')->findOrFail($groupId);
+
+            foreach ($group->products as $product) {
+
+                if (OrderItems::where('product_id', $product->id)->exists()) {
+                    throw new \Exception(
+                        "Product {$product->product_name} cannot be deleted — used in orders."
+                    );
+                }
+
+                $pictures = ProductPictures::where('product_id', $product->id)->get();
+
+                foreach ($pictures as $picture) {
+                    $this->deleteFromS3($picture->url);
+                    $picture->delete();
+                }
+
+                // 🔥 DETACH ALL PIVOTS
+                $product->tags()->detach();
+                $product->categories()->detach();
+                $product->subcategories()->detach();
+                $product->divisions()->detach();
+                $product->variants()->detach();
+
+                $product->delete();
+            }
+
+            $group->delete();
+
+            DB::commit();
+
+            return redirect()->route('product')->with('alert', [
+                'type' => 'success',
+                'message' => 'Product group deleted successfully.',
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            Log::error('Failed to delete product group: ' . $e->getMessage());
+
             return redirect()->back()->with('alert', [
                 'type' => 'error',
                 'message' => $e->getMessage(),
@@ -1864,6 +1969,30 @@ class ProductController extends Controller
         }
     }
 
+    public function deleteTag($tagId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $tag = Tags::with('products')->findOrFail($tagId);
+
+            if ($tag->products()->exists()) {
+                throw new \Exception("Cannot delete tag '{$tag->name}' — it is used by products.");
+            }
+
+            $tag->delete();
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Tag '{$tag->name}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete tag: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete tag: ' . $e->getMessage());
+        }
+    }
+
     public function updateTag(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -1990,6 +2119,34 @@ class ProductController extends Controller
             DB::rollBack();
             Log::error('[ERROR] Failed to create unit: ' . $e);
             return redirect()->back()->with('error', 'Failed to create unit: ' . $e);
+        }
+    }
+
+    public function deleteUnit($unitId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $unit = Unit::findOrFail($unitId);
+
+            if (SubUnit::where('unit_id', $unit->id)->exists()) {
+                throw new \Exception("Cannot delete unit '{$unit->name}' — it has related sub-units.");
+            }
+
+            if ($unit->picture_url) {
+                $this->deleteFromS3($unit->picture_url);
+            }
+
+            $unit->delete();
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Unit '{$unit->name}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete unit: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete unit: ' . $e->getMessage());
         }
     }
 

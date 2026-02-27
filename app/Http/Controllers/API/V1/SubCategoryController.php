@@ -49,6 +49,38 @@ class SubCategoryController extends Controller
         }
     }
 
+    public function deleteSubCategory($subCategoryId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $subCategory = SubCategory::with('products', 'divisions', 'stocks')->findOrFail($subCategoryId);
+
+            if ($subCategory->products()->exists()) {
+                throw new \Exception("Cannot delete sub-category '{$subCategory->name}' — it is used by products.");
+            }
+
+            if ($subCategory->divisions()->exists()) {
+                throw new \Exception("Cannot delete sub-category '{$subCategory->name}' — it has related divisions.");
+            }
+
+            foreach ($subCategory->stocks as $stock) {
+                $stock->delete();
+            }
+
+            $subCategory->delete();
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Sub-category '{$subCategory->name}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete sub-category: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete sub-category: ' . $e->getMessage());
+        }
+    }
+
     public function addStock(Request $request)
     {
         $validator = Validator::make($request->all(), [

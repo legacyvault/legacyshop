@@ -220,6 +220,46 @@ class UserController extends Controller
         }
     }
 
+    public function deleteDeliveryAddress($addressId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $address = DeliveryAddress::findOrFail($addressId);
+            $profileId = $address->profile_id;
+
+            $activeCount = DeliveryAddress::where('profile_id', $profileId)
+                ->where('is_active', true)
+                ->where('id', '!=', $address->id)
+                ->count();
+
+            if ($activeCount === 0) {
+                throw new \Exception("Cannot delete this address — there must be at least one active delivery address.");
+            }
+
+            $address->delete();
+
+            // Optional: hapus di Biteship
+            if ($address->biteship_destination_id) {
+                try {
+                    Http::withToken($this->apiKey)
+                        ->delete("https://api.biteship.com/v1/locations/{$address->biteship_destination_id}");
+                } catch (\Exception $e) {
+                    Log::warning("Failed to delete delivery address in Biteship: " . $e->getMessage());
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Delivery address '{$address->name}' deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete delivery address: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete delivery address: ' . $e->getMessage());
+        }
+    }
+
     public function updateDeliveryAddress(Request $request)
     {
         $profile = Profile::where('user_id', Auth::id())->first();
@@ -320,7 +360,8 @@ class UserController extends Controller
         return $data;
     }
 
-    public function getDeliveryAddressById($id){
+    public function getDeliveryAddressById($id)
+    {
         $data = DeliveryAddress::where('id', $id)->first();
 
         return $data;

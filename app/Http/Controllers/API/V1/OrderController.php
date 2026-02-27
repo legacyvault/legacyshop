@@ -931,4 +931,7 @@ class OrderController extends Controller
             return response()->json(['error' => 'Handle Confirm Order Failed'], 500);
         }
     }
+
+    //Paypal
+    public function createPaypalOrder($order) {}
 }
