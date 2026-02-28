@@ -143,6 +143,11 @@ class Product extends Model
         );
     }
 
+    public function vouchers()
+    {
+        return $this->belongsToMany(VoucherModel::class, 'voucher_product');
+    }
+
     public function getThumbnailUrlAttribute()
     {
         $pictures = $this->relationLoaded('pictures')

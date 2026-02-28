@@ -915,6 +915,18 @@ class ProductController extends Controller
                     );
                 }
 
+                if ($product->vouchers()->exists()) {
+                    throw new \Exception("Product {$product->product_name} cannot be deleted — used in voucher.");
+                }
+
+                if ($product->event_product()->exists()) {
+                    throw new \Exception(
+                        "Product {$product->product_name} cannot be deleted — attached to event."
+                    );
+                }
+
+                ProductStock::where('product_id', $product->id)->delete();
+
                 $pictures = ProductPictures::where('product_id', $product->id)->get();
 
                 foreach ($pictures as $picture) {
@@ -922,14 +934,18 @@ class ProductController extends Controller
                     $picture->delete();
                 }
 
-                // 🔥 DETACH ALL PIVOTS
                 $product->tags()->detach();
                 $product->categories()->detach();
                 $product->subcategories()->detach();
                 $product->divisions()->detach();
                 $product->variants()->detach();
+                $product->vouchers()->detach(); // 🔥 penting kalau ada relasi di model
 
                 $product->delete();
+            }
+
+            foreach ($group->stocks as $stock) {
+                $stock->delete();
             }
 
             $group->delete();
