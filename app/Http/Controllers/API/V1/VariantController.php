@@ -64,12 +64,18 @@ class VariantController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Variant '{$variant->name}' deleted successfully.");
+            return redirect()->route('variant')->with('alert', [
+                'type' => 'success',
+                'message' => "Successfully deleted selection '{$variant->name}'.",
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to delete variant: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Failed to delete variant: ' . $e->getMessage());
+            return redirect()->route('variant')->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete selection: ' . $e->getMessage(),
+            ]);
         }
     }
 

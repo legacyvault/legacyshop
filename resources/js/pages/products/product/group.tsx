@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IProductGroup, IRootProductGroups, SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const formatDate = (value: string) =>
@@ -156,6 +156,16 @@ export default function GroupProductList() {
                                                             <Button variant="outline" size="sm" asChild>
                                                                 <Link href={`/products/product/group/view/${group.id}`}>Open</Link>
                                                             </Button>
+                                                            <button
+                                                                type="button"
+                                                                className="transition text-destructive"
+                                                                onClick={() => {
+                                                                    if (!confirm(`Delete group "${group.name}"?`)) return;
+                                                                    router.delete(route('product.delete-group', { id: group.id }));
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>

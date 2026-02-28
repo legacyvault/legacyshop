@@ -121,12 +121,18 @@ class WarehouseController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Warehouse '{$warehouse->name}' deleted successfully.");
+            return redirect()->route('warehouse-admin.view')->with('alert', [
+                'type' => 'success',
+                'message' => "Successfully deleted warehouse '{$warehouse->name}'.",
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to delete warehouse: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Failed to delete warehouse: ' . $e->getMessage());
+            return redirect()->route('warehouse-admin.view')->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete warehouse: ' . $e->getMessage(),
+            ]);
         }
     }
 

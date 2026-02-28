@@ -153,6 +153,16 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
                                             <Link href={`/products/division/adddiv/${div.id}`}>
                                                 <DropdownMenuItem className="cursor-pointer px-3 py-1 hover:bg-gray-100">Edit</DropdownMenuItem>
                                             </Link>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-3 py-1 text-red-600 hover:bg-gray-100"
+                                                onClick={() => {
+                                                    if (confirm(`Are you sure you want to delete "${div.name}"?`)) {
+                                                        router.post(`/v1/delete-division/${div.id}`);
+                                                    }
+                                                }}
+                                            >
+                                                Delete
+                                            </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </td>

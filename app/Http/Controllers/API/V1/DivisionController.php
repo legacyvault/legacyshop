@@ -66,12 +66,18 @@ class DivisionController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Division '{$division->name}' deleted successfully.");
+            return redirect()->route('division')->with('alert', [
+                'type' => 'success',
+                'message' => "Successfully deleted option '{$division->name}'.",
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to delete division: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Failed to delete division: ' . $e->getMessage());
+            return redirect()->route('division')->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete option, it still has selection linked to it',
+            ]);
         }
     }
 

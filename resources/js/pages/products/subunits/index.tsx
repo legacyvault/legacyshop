@@ -197,7 +197,10 @@ function SubUnitsTable({ subunitsPaginated, units, filters }: PropsSubUnitTable)
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 className="cursor-pointer px-3 py-1 text-red-600 hover:bg-gray-100"
-                                                onClick={() => itemHandler('delete', cat)}
+                                                onClick={() => {
+                                                    if (!confirm(`Delete sub-unit "${cat.name}"?`)) return;
+                                                    router.delete(route('subunit.delete', { id: cat.id }));
+                                                }}
                                             >
                                                 Delete
                                             </DropdownMenuItem>

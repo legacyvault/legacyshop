@@ -155,7 +155,10 @@ function SubcategoriesTable({ subcatsPaginated, filters }: PropsSubcatTable) {
                                             </Link>
                                             <DropdownMenuItem
                                                 className="cursor-pointer px-3 py-1 text-red-600 hover:bg-gray-100"
-                                                // onClick={() => itemHandler('delete', cat)}
+                                                onClick={() => {
+                                                    if (!confirm(`Delete sub-category "${subcat.name}"?`)) return;
+                                                    router.post(route('subcat.delete', { id: subcat.id }), {});
+                                                }}
                                             >
                                                 Delete
                                             </DropdownMenuItem>

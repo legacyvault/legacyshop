@@ -175,6 +175,15 @@ function TagsTable({ tagsPaginated, filters }: PropsTagsTable) {
                                             >
                                                 Edit
                                             </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-3 py-1 text-red-600 hover:bg-gray-100"
+                                                onClick={() => {
+                                                    if (!confirm(`Delete tag "${tag.name}"?`)) return;
+                                                    router.delete(route('tag.delete', { id: tag.id }));
+                                                }}
+                                            >
+                                                Delete
+                                            </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </td>

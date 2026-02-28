@@ -232,7 +232,10 @@ function UnitsTable({ unitsPaginated, filters }: PropsUnitTable) {
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 className="cursor-pointer px-3 py-1 text-red-600 hover:bg-gray-100"
-                                                onClick={() => itemHandler('delete', unit)}
+                                                onClick={() => {
+                                                    if (!confirm(`Delete unit "${unit.name}"?`)) return;
+                                                    router.delete(route('unit.delete', { id: unit.id }));
+                                                }}
                                             >
                                                 Delete
                                             </DropdownMenuItem>

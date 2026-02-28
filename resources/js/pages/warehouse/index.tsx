@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IWarehouse, SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 
 export default function Warehouse() {
@@ -34,6 +34,11 @@ export default function Warehouse() {
 }
 
 function WarehouseTable({ warehouses }: { warehouses: IWarehouse[] }) {
+    const deleteWarehouseHandler = (warehouse: IWarehouse) => {
+        if (!confirm(`Delete warehouse "${warehouse.name}"?`)) return;
+        router.post(route('delete.warehouse'), { id: warehouse.id });
+    };
+
     const formatDateTime = (value?: string | null) => {
         if (!value) return '-';
         const date = new Date(value);
@@ -72,6 +77,12 @@ function WarehouseTable({ warehouses }: { warehouses: IWarehouse[] }) {
                                         <Link href={`/warehouse/add-warehouse/${warehouse.id}`}>
                                             <DropdownMenuItem className="cursor-pointer px-3 py-1 hover:bg-gray-100">Edit</DropdownMenuItem>
                                         </Link>
+                                        <DropdownMenuItem
+                                            className="cursor-pointer px-3 py-1 text-red-600 hover:bg-gray-100"
+                                            onClick={() => deleteWarehouseHandler(warehouse)}
+                                        >
+                                            Delete
+                                        </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </td>

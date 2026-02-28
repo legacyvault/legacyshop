@@ -2,7 +2,7 @@ import AddDeliveryAddressModal from '@/components/add-delivery-address-modal';
 import { Button } from '@/components/ui/button';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IDeliveryAddress, SharedData } from '@/types';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useCallback, useState } from 'react';
 
 export default function DeliveryAddress() {
@@ -32,6 +32,11 @@ export default function DeliveryAddress() {
         setIsModalOpen(true);
     };
 
+    const deleteAddressHandler = (addr: IDeliveryAddress) => {
+        if (!confirm(`Delete address "${addr.name}"?`)) return;
+        router.post(`/v1/delete-delivery-address/${addr.id}`, {});
+    };
+
     return (
         <FrontLayout auth={auth} locale={locale} translations={translations}>
             <Button onClick={() => setIsModalOpen(true)} className="mb-4">
@@ -59,6 +64,13 @@ export default function DeliveryAddress() {
                             </div>
                             <Button onClick={() => editAddressHandler(addr)} className="pl-0" variant={'link'}>
                                 Edit Address
+                            </Button>
+                            <Button
+                                className="text-red-600"
+                                variant={'link'}
+                                onClick={() => deleteAddressHandler(addr)}
+                            >
+                                Delete Address
                             </Button>
                         </div>
                     ))}

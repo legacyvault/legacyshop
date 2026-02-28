@@ -251,12 +251,18 @@ class UserController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Delivery address '{$address->name}' deleted successfully.");
+            return redirect()->back()->with('alert', [
+                'type' => 'success',
+                'message' => "Successfully deleted delivery address '{$address->name}'.",
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to delete delivery address: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Failed to delete delivery address: ' . $e->getMessage());
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete delivery address: ' . $e->getMessage(),
+            ]);
         }
     }
 
