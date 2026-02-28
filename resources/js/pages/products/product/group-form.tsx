@@ -987,6 +987,9 @@ export default function GroupProductForm() {
         if (unitId) fd.append('unit_id', unitId);
         if (subUnitId) fd.append('sub_unit_id', subUnitId);
         hierarchy.categoryIds.forEach((id) => fd.append('categories[]', id));
+        hierarchy.subcategoryIds.forEach((id) => fd.append('sub_categories[]', id));
+        hierarchy.divisionIds.forEach((id) => fd.append('divisions[]', id));
+        hierarchy.variantIds.forEach((id) => fd.append('variants[]', id));
 
         fd.append('use_unit_price', pricing.use_unit_price ? '1' : '0');
         fd.append('use_unit_usd_price', pricing.use_unit_usd_price ? '1' : '0');
