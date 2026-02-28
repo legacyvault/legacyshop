@@ -851,6 +851,36 @@ class ProductController extends Controller
                     $product->subcategories()->sync($sync);
                 }
 
+                // DIVISION pivot + discount/stock
+                if ($request->filled('divisions')) {
+                    $sync = [];
+                    foreach ($request->divisions as $d) {
+                        $sync[$d['id']] = [
+                            'use_division_discount' => $d['use_division_discount'] ?? true,
+                            'manual_discount'       => $d['manual_discount'] ?? 0,
+                            'stock'                 => $d['stock'] ?? null,
+                        ];
+                    }
+                    $product->divisions()->sync($sync);
+                } else {
+                    $product->divisions()->detach();
+                }
+
+                // VARIANT pivot + discount/stock
+                if ($request->filled('variants')) {
+                    $sync = [];
+                    foreach ($request->variants as $v) {
+                        $sync[$v['id']] = [
+                            'use_variant_discount' => $v['use_variant_discount'] ?? true,
+                            'manual_discount'      => $v['manual_discount'] ?? 0,
+                            'stock'                => $v['stock'] ?? null,
+                        ];
+                    }
+                    $product->variants()->sync($sync);
+                } else {
+                    $product->variants()->detach();
+                }
+
                 // REMOVE PICTURES
                 if (!empty($p['remove_picture_ids'])) {
                     $pics = ProductPictures::whereIn('id', $p['remove_picture_ids'])->get();
