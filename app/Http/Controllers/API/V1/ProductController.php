@@ -726,6 +726,21 @@ class ProductController extends Controller
 
             'sub_categories' => 'nullable|array',
             'sub_categories.*.id' => 'exists:sub_category,id',
+            'sub_categories.*.use_subcategory_discount' => 'nullable',
+            'sub_categories.*.stock' => 'nullable|integer',
+            'sub_categories.*.manual_discount' => 'nullable|numeric',
+
+            'divisions' => 'nullable|array',
+            'divisions.*.id' => 'exists:division,id',
+            'divisions.*.use_division_discount' => 'nullable',
+            'divisions.*.stock' => 'nullable|integer',
+            'divisions.*.manual_discount' => 'nullable|numeric',
+
+            'variants' => 'nullable|array',
+            'variants.*.id' => 'exists:variant,id',
+            'variants.*.use_variant_discount' => 'nullable',
+            'variants.*.stock' => 'nullable|integer',
+            'variants.*.manual_discount' => 'nullable|numeric',
 
             'products' => 'required|array|min:1',
             'products.*.id' => 'nullable|exists:products,id',
