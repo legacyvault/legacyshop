@@ -73,12 +73,18 @@ class ProductController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Category '{$category->name}' deleted successfully.");
+            return redirect()->back()->with('alert', [
+                'type' => 'success',
+                'message' => "Successfully deleted variant '{$category->name}'.",
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to delete category: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Failed to delete category: ' . $e->getMessage());
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete variant, it still has type linked to it ',
+            ]);
         }
     }
 
@@ -122,12 +128,18 @@ class ProductController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Sub-unit '{$subUnit->name}' deleted successfully.");
+            return redirect()->back()->with('alert', [
+                'type' => 'success',
+                'message' => "Successfully deleted category '{$subUnit->name}'.",
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to delete sub-unit: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Failed to delete sub-unit: ' . $e->getMessage());
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete category, it still has variant linked to it ',
+            ]);
         }
     }
 
@@ -1987,12 +1999,18 @@ class ProductController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Tag '{$tag->name}' deleted successfully.");
+            return redirect()->back()->with('alert', [
+                'type' => 'success',
+                'message' => "Successfully deleted tag '{$tag->name}'.",
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to delete tag: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Failed to delete tag: ' . $e->getMessage());
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete tag it still has product linked ',
+            ]);
         }
     }
 
@@ -2144,12 +2162,18 @@ class ProductController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Unit '{$unit->name}' deleted successfully.");
+            return redirect()->back()->with('alert', [
+                'type' => 'success',
+                'message' => "Successfully deleted collection '{$unit->name}'.",
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[ERROR] Failed to delete unit: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Failed to delete unit: ' . $e->getMessage());
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete collection, it still has category linked to it ' . $e->getMessage(),
+            ]);
         }
     }
 

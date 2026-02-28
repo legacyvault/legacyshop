@@ -153,6 +153,15 @@ function VariantsTable({ variantsPaginated, filters }: PropsVariantTable) {
                                             <Link href={`/products/variant/addvar/${variant.id}`}>
                                                 <DropdownMenuItem className="cursor-pointer px-3 py-1 hover:bg-gray-100">Edit</DropdownMenuItem>
                                             </Link>
+                                            <DropdownMenuItem
+                                                className="cursor-pointer px-3 py-1 text-red-600 hover:bg-gray-100"
+                                                onClick={() => {
+                                                    if (!confirm(`Delete variant "${variant.name}"?`)) return;
+                                                    router.delete(route('variant.delete', { id: variant.id }));
+                                                }}
+                                            >
+                                                Delete
+                                            </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </td>

@@ -72,12 +72,18 @@ class SubCategoryController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', "Sub-category '{$subCategory->name}' deleted successfully.");
+            return redirect()->route('subcategory')->with('alert', [
+                'type' => 'success',
+                'message' => "Successfully deleted type '{$subCategory->name}'.",
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('[ERROR] Failed to delete sub-category: ' . $e->getMessage());
+            Log::error('[ERROR] Failed to delete type: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Failed to delete sub-category: ' . $e->getMessage());
+            return redirect()->route('subcategory')->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete type, it still has option linked to it ',
+            ]);
         }
     }
 
