@@ -145,7 +145,12 @@ class Product extends Model
 
     public function vouchers()
     {
-        return $this->belongsToMany(VoucherModel::class, 'voucher_product');
+        return $this->belongsToMany(
+            VoucherModel::class, // model terkait
+            'voucher_product',   // pivot table
+            'product_id',        
+            'voucher_id'         
+        );
     }
 
     public function getThumbnailUrlAttribute()
