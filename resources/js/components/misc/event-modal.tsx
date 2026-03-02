@@ -1,5 +1,4 @@
 import { EventFormState, EventGroupOption } from '@/components/misc/event-types';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,12 +13,12 @@ type EventModalProps = {
     onOpenChange: (open: boolean) => void;
     event: EventFormState;
     productGroups: EventGroupOption[];
+    productGroupsLoading?: boolean;
     onFieldChange: (field: keyof EventFormState, value: string | boolean | File | null) => void;
     onToggleProduct: (productId: string, checked: boolean) => void;
     onToggleGroup: (groupId: string, next: CheckedState) => void;
     onSave?: () => void;
     saving?: boolean;
-    errorMessage?: string | null;
 };
 
 const matchesSearch = (term: string, value?: string | null) => {
@@ -34,14 +33,23 @@ export default function EventModal({
     onOpenChange,
     event,
     productGroups,
+    productGroupsLoading = false,
     onFieldChange,
     onToggleProduct,
     onToggleGroup,
     onSave,
     saving = false,
-    errorMessage,
 }: EventModalProps) {
     const renderGroups = () => {
+        if (productGroupsLoading) {
+            return (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed border-muted bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading products…
+                </div>
+            );
+        }
+
         if (!productGroups.length) {
             return (
                 <div className="rounded-lg border border-dashed border-muted bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
@@ -135,13 +143,6 @@ export default function EventModal({
                     </DialogDescription>
                     <div className="text-xs text-muted-foreground">{event.productIds.length} products selected.</div>
                 </DialogHeader>
-
-                {errorMessage && (
-                    <Alert variant="destructive">
-                        <AlertTitle>Unable to save this event</AlertTitle>
-                        <AlertDescription>{errorMessage}</AlertDescription>
-                    </Alert>
-                )}
 
                 <div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">

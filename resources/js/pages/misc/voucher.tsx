@@ -3,6 +3,7 @@ import VoucherModal from '@/components/misc/voucher-modal';
 import { VoucherFormState, VoucherGroupOption, VoucherProductOption } from '@/components/misc/voucher-types';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -38,8 +39,6 @@ type ProductGroupResponse = {
 
 type PageProps = SharedData & {
     vouchers?: VoucherResponse[] | null;
-    productGroups?: ProductGroupResponse[] | null;
-    ungroupedProducts?: (VoucherProductResponse | null)[] | null;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -82,45 +81,10 @@ const generateVoucherId = () => {
 };
 
 export default function Voucher() {
-    const { vouchers: voucherData, productGroups, ungroupedProducts } = usePage<PageProps>().props;
+    const { vouchers: voucherData } = usePage<PageProps>().props;
 
-    const normalizedGroups = useMemo<VoucherGroupOption[]>(() => {
-        const groups: VoucherGroupOption[] = [];
-
-        if (Array.isArray(productGroups)) {
-            productGroups.forEach((group) => {
-                const id = typeof group?.id === 'string' ? group.id : '';
-                if (!id) return;
-
-                const name = typeof group?.name === 'string' ? group.name : 'Untitled group';
-                const products = Array.isArray(group?.products)
-                    ? group.products
-                          .map((product) => normalizeProduct(product, name, id))
-                          .filter((product): product is VoucherProductOption => Boolean(product))
-                    : [];
-                const productsCount = toNumber(group?.products_count) ?? products.length;
-
-                groups.push({ id, name, products, productsCount });
-            });
-        }
-
-        if (Array.isArray(ungroupedProducts) && ungroupedProducts.length) {
-            const products = ungroupedProducts
-                .map((product) => normalizeProduct(product))
-                .filter((product): product is VoucherProductOption => Boolean(product));
-
-            if (products.length) {
-                groups.push({
-                    id: '__ungrouped__',
-                    name: 'No Group',
-                    products,
-                    productsCount: products.length,
-                });
-            }
-        }
-
-        return groups;
-    }, [productGroups, ungroupedProducts]);
+    const [pickerGroups, setPickerGroups] = useState<VoucherGroupOption[] | null>(null);
+    const [pickerLoading, setPickerLoading] = useState(false);
 
     const fallbackProductLookup = useMemo<Record<string, VoucherProductOption>>(() => {
         const map: Record<string, VoucherProductOption> = {};
@@ -143,7 +107,7 @@ export default function Voucher() {
     const productLookup = useMemo<Record<string, VoucherProductOption>>(() => {
         const map: Record<string, VoucherProductOption> = {};
 
-        normalizedGroups.forEach((group) => {
+        (pickerGroups ?? []).forEach((group) => {
             group.products.forEach((product) => {
                 map[product.id] = product;
             });
@@ -156,7 +120,7 @@ export default function Voucher() {
         });
 
         return map;
-    }, [normalizedGroups, fallbackProductLookup]);
+    }, [pickerGroups, fallbackProductLookup]);
 
     const serverVouchers = useMemo<VoucherFormState[]>(() => {
         if (!Array.isArray(voucherData)) return [];
@@ -206,6 +170,56 @@ export default function Voucher() {
     useEffect(() => {
         setFormError(null);
     }, [activeVoucherId]);
+
+    // Lazy-load product picker data the first time the modal opens
+    useEffect(() => {
+        if (!activeVoucherId || pickerGroups !== null) return;
+
+        setPickerLoading(true);
+
+        fetch(route('products.picker'))
+            .then((res) => res.json())
+            .then((json) => {
+                if (!json.status || !json.data) return;
+
+                const groups: VoucherGroupOption[] = [];
+
+                if (Array.isArray(json.data.productGroups)) {
+                    (json.data.productGroups as ProductGroupResponse[]).forEach((group) => {
+                        const id = typeof group?.id === 'string' ? group.id : '';
+                        if (!id) return;
+
+                        const name = typeof group?.name === 'string' ? group.name : 'Untitled group';
+                        const products = Array.isArray(group?.products)
+                            ? group.products
+                                  .map((p) => normalizeProduct(p, name, id))
+                                  .filter((p): p is VoucherProductOption => Boolean(p))
+                            : [];
+                        const productsCount = toNumber(group?.products_count) ?? products.length;
+
+                        groups.push({ id, name, products, productsCount });
+                    });
+                }
+
+                if (Array.isArray(json.data.ungroupedProducts) && json.data.ungroupedProducts.length) {
+                    const products = (json.data.ungroupedProducts as VoucherProductResponse[])
+                        .map((p) => normalizeProduct(p))
+                        .filter((p): p is VoucherProductOption => Boolean(p));
+
+                    if (products.length) {
+                        groups.push({ id: '__ungrouped__', name: 'No Group', products, productsCount: products.length });
+                    }
+                }
+
+                setPickerGroups(groups);
+            })
+            .catch(() => {
+                setPickerGroups([]);
+            })
+            .finally(() => {
+                setPickerLoading(false);
+            });
+    }, [activeVoucherId, pickerGroups]);
 
     const addVoucher = () => {
         const newVoucher: VoucherFormState = {
@@ -266,7 +280,7 @@ export default function Voucher() {
     };
 
     const toggleGroup = (voucherId: string, groupId: string, next: CheckedState) => {
-        const group = normalizedGroups.find((item) => item.id === groupId);
+        const group = (pickerGroups ?? []).find((item) => item.id === groupId);
         if (!group) return;
 
         const shouldSelect = next === true;
@@ -350,7 +364,7 @@ export default function Voucher() {
         const onSuccess = () => {
             setActiveVoucherId(null);
             setDraftVoucher(null);
-            router.reload({ only: ['vouchers', 'productGroups'] });
+            router.reload({ only: ['vouchers'] });
         };
         const onError = (errors: Record<string, string>) => {
             const firstError = Object.values(errors)[0];
@@ -439,15 +453,25 @@ export default function Voucher() {
                         }
                     }}
                     voucher={activeVoucher}
-                    productGroups={normalizedGroups}
+                    productGroups={pickerGroups ?? []}
+                    productGroupsLoading={pickerLoading}
                     onFieldChange={(field, value) => updateVoucherField(activeVoucher.id, field, value)}
                     onToggleProduct={(id, checked) => toggleProduct(activeVoucher.id, id, checked)}
                     onToggleGroup={(groupId, next) => toggleGroup(activeVoucher.id, groupId, next)}
                     onSave={() => handleSaveVoucher(activeVoucher.id)}
                     saving={savingVoucherId === activeVoucher.id}
-                    errorMessage={formError}
                 />
             )}
+
+            <Dialog open={Boolean(formError)} onOpenChange={(open) => { if (!open) setFormError(null); }}>
+                <DialogContent>
+                    <DialogTitle>Error</DialogTitle>
+                    <DialogDescription>{formError}</DialogDescription>
+                    <DialogClose asChild>
+                        <Button variant="outline" className="mt-2 w-full">Okay</Button>
+                    </DialogClose>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

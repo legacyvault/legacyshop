@@ -89,6 +89,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Product Group API
     Route::get('product-group/{id}', [ProductController::class, 'getProductGroupById'])->name('product-group.id');
     Route::get('product-group', [ProductController::class, 'getAllProductGroups'])->name('product-group');
+    Route::get('products/picker', [ProductController::class, 'getProductPickerOptions'])->name('products.picker');
 
     //Running Text API
     Route::get('running-text', [MiscController::class, 'getAllRunningText'])->name('running-text');

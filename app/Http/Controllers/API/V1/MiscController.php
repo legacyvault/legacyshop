@@ -219,7 +219,9 @@ class MiscController extends Controller
 
     public function getAllVoucher()
     {
-        $vouchers = VoucherModel::with('products')->get();
+        $vouchers = VoucherModel::with(['products' => function ($query) {
+            $query->select(['products.id', 'product_name', 'product_sku', 'product_group_id', 'product_price', 'product_usd_price']);
+        }])->get();
 
         return $vouchers;
     }
@@ -501,7 +503,13 @@ class MiscController extends Controller
 
     public function getAllEvents()
     {
-        $data = Events::orderBy('name', 'asc')->with('event_products.product')->get();
+        $data = Events::orderBy('name', 'asc')
+            ->with(['event_products' => function ($query) {
+                $query->with(['product' => function ($pq) {
+                    $pq->select(['id', 'product_name', 'product_sku', 'product_group_id', 'product_price', 'product_usd_price']);
+                }]);
+            }])
+            ->get();
         return $data;
     }
 

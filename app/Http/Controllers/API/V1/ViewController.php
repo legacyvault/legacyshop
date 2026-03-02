@@ -10,8 +10,6 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
 use App\Models\Carts;
 use App\Models\Unit;
-use App\Models\Product;
-use App\Models\ProductGroup;
 use Illuminate\Support\Facades\Auth;
 
 class ViewController extends Controller
@@ -623,62 +621,18 @@ class ViewController extends Controller
     public function voucherPage()
     {
         $vouchers = $this->miscController->getAllVoucher();
-        $productGroups = ProductGroup::with([
-            'products' => function ($query) {
-                $query->select([
-                    'id',
-                    'product_group_id',
-                    'product_name',
-                    'product_sku',
-                    'product_price',
-                    'product_usd_price',
-                ]);
-            }
-        ])
-            ->withCount('products')
-            ->orderBy('name')
-            ->get();
-
-        $ungroupedProducts = Product::whereNull('product_group_id')
-            ->select(['id', 'product_name', 'product_sku', 'product_price', 'product_usd_price'])
-            ->orderBy('product_name')
-            ->get();
 
         return Inertia::render('misc/voucher', [
             'vouchers' => $vouchers,
-            'productGroups' => $productGroups,
-            'ungroupedProducts' => $ungroupedProducts,
         ]);
     }
 
     public function eventPage()
     {
         $events = $this->miscController->getAllEvents();
-        $productGroups = ProductGroup::with([
-            'products' => function ($query) {
-                $query->select([
-                    'id',
-                    'product_group_id',
-                    'product_name',
-                    'product_sku',
-                    'product_price',
-                    'product_usd_price',
-                ]);
-            }
-        ])
-            ->withCount('products')
-            ->orderBy('name')
-            ->get();
-
-        $ungroupedProducts = Product::whereNull('product_group_id')
-            ->select(['id', 'product_name', 'product_sku', 'product_price', 'product_usd_price'])
-            ->orderBy('product_name')
-            ->get();
 
         return Inertia::render('misc/event', [
             'events' => $events,
-            'productGroups' => $productGroups,
-            'ungroupedProducts' => $ungroupedProducts,
         ]);
     }
 }
