@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
 use App\Models\Category;
+use App\Models\EventProducts;
 use App\Models\GroupStock;
 use App\Models\OrderItems;
 use App\Models\Product;
@@ -965,6 +966,14 @@ class ProductController extends Controller
                 }
 
                 if ($product->event_product()->exists()) {
+                    throw new \Exception(
+                        "Product {$product->product_name} cannot be deleted — attached to event."
+                    );
+                }
+
+                $checkProduct = EventProducts::where('product_id', $product->id)->first();
+
+                if ($checkProduct) {
                     throw new \Exception(
                         "Product {$product->product_name} cannot be deleted — attached to event."
                     );
