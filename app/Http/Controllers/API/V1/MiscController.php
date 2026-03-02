@@ -219,7 +219,9 @@ class MiscController extends Controller
 
     public function getAllVoucher()
     {
-        $vouchers = VoucherModel::with('products')->get();
+        $vouchers = VoucherModel::with(['products' => function ($query) {
+            $query->select(['products.id', 'product_name', 'product_sku', 'product_group_id', 'product_price', 'product_usd_price']);
+        }])->get();
 
         return $vouchers;
     }
