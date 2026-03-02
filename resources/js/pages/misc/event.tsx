@@ -3,6 +3,7 @@ import EventModal from '@/components/misc/event-modal';
 import { EventFormState, EventGroupOption, EventProductOption } from '@/components/misc/event-types';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -42,8 +43,6 @@ type ProductGroupResponse = {
 
 type PageProps = SharedData & {
     events?: EventResponse[] | null;
-    productGroups?: ProductGroupResponse[] | null;
-    ungroupedProducts?: (EventProductResponse | null)[] | null;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -90,45 +89,10 @@ const generateEventId = () => {
 };
 
 export default function Event() {
-    const { events: eventData, productGroups, ungroupedProducts } = usePage<PageProps>().props;
+    const { events: eventData } = usePage<PageProps>().props;
 
-    const normalizedGroups = useMemo<EventGroupOption[]>(() => {
-        const groups: EventGroupOption[] = [];
-
-        if (Array.isArray(productGroups)) {
-            productGroups.forEach((group) => {
-                const id = typeof group?.id === 'string' ? group.id : '';
-                if (!id) return;
-
-                const name = typeof group?.name === 'string' ? group.name : 'Untitled group';
-                const products = Array.isArray(group?.products)
-                    ? group.products
-                          .map((product) => normalizeProduct(product, name, id))
-                          .filter((product): product is EventProductOption => Boolean(product))
-                    : [];
-                const productsCount = toNumber(group?.products_count) ?? products.length;
-
-                groups.push({ id, name, products, productsCount });
-            });
-        }
-
-        if (Array.isArray(ungroupedProducts) && ungroupedProducts.length) {
-            const products = ungroupedProducts
-                .map((product) => normalizeProduct(product))
-                .filter((product): product is EventProductOption => Boolean(product));
-
-            if (products.length) {
-                groups.push({
-                    id: '__ungrouped__',
-                    name: 'No Group',
-                    products,
-                    productsCount: products.length,
-                });
-            }
-        }
-
-        return groups;
-    }, [productGroups, ungroupedProducts]);
+    const [pickerGroups, setPickerGroups] = useState<EventGroupOption[] | null>(null);
+    const [pickerLoading, setPickerLoading] = useState(false);
 
     const fallbackProductLookup = useMemo<Record<string, EventProductOption>>(() => {
         const map: Record<string, EventProductOption> = {};
@@ -151,7 +115,7 @@ export default function Event() {
     const productLookup = useMemo<Record<string, EventProductOption>>(() => {
         const map: Record<string, EventProductOption> = {};
 
-        normalizedGroups.forEach((group) => {
+        (pickerGroups ?? []).forEach((group) => {
             group.products.forEach((product) => {
                 map[product.id] = product;
             });
@@ -164,7 +128,7 @@ export default function Event() {
         });
 
         return map;
-    }, [normalizedGroups, fallbackProductLookup]);
+    }, [pickerGroups, fallbackProductLookup]);
 
     const serverEvents = useMemo<EventFormState[]>(() => {
         if (!Array.isArray(eventData)) return [];
@@ -215,6 +179,56 @@ export default function Event() {
     useEffect(() => {
         setFormError(null);
     }, [activeEventId]);
+
+    // Lazy-load product picker data the first time the modal opens
+    useEffect(() => {
+        if (!activeEventId || pickerGroups !== null) return;
+
+        setPickerLoading(true);
+
+        fetch(route('products.picker'))
+            .then((res) => res.json())
+            .then((json) => {
+                if (!json.status || !json.data) return;
+
+                const groups: EventGroupOption[] = [];
+
+                if (Array.isArray(json.data.productGroups)) {
+                    (json.data.productGroups as ProductGroupResponse[]).forEach((group) => {
+                        const id = typeof group?.id === 'string' ? group.id : '';
+                        if (!id) return;
+
+                        const name = typeof group?.name === 'string' ? group.name : 'Untitled group';
+                        const products = Array.isArray(group?.products)
+                            ? group.products
+                                  .map((p) => normalizeProduct(p, name, id))
+                                  .filter((p): p is EventProductOption => Boolean(p))
+                            : [];
+                        const productsCount = toNumber(group?.products_count) ?? products.length;
+
+                        groups.push({ id, name, products, productsCount });
+                    });
+                }
+
+                if (Array.isArray(json.data.ungroupedProducts) && json.data.ungroupedProducts.length) {
+                    const products = (json.data.ungroupedProducts as EventProductResponse[])
+                        .map((p) => normalizeProduct(p))
+                        .filter((p): p is EventProductOption => Boolean(p));
+
+                    if (products.length) {
+                        groups.push({ id: '__ungrouped__', name: 'No Group', products, productsCount: products.length });
+                    }
+                }
+
+                setPickerGroups(groups);
+            })
+            .catch(() => {
+                setPickerGroups([]);
+            })
+            .finally(() => {
+                setPickerLoading(false);
+            });
+    }, [activeEventId, pickerGroups]);
 
     const addEvent = () => {
         const newEvent: EventFormState = {
@@ -276,7 +290,7 @@ export default function Event() {
     };
 
     const toggleGroup = (eventId: string, groupId: string, next: CheckedState) => {
-        const group = normalizedGroups.find((item) => item.id === groupId);
+        const group = (pickerGroups ?? []).find((item) => item.id === groupId);
         if (!group) return;
 
         const shouldSelect = next === true;
@@ -353,7 +367,7 @@ export default function Event() {
         const onSuccess = () => {
             setActiveEventId(null);
             setDraftEvent(null);
-            router.reload({ only: ['events', 'productGroups'] });
+            router.reload({ only: ['events'] });
         };
         const onError = (errors: Record<string, string>) => {
             const firstError = Object.values(errors)[0];
@@ -433,15 +447,25 @@ export default function Event() {
                         }
                     }}
                     event={activeEvent}
-                    productGroups={normalizedGroups}
+                    productGroups={pickerGroups ?? []}
+                    productGroupsLoading={pickerLoading}
                     onFieldChange={(field, value) => updateEventField(activeEvent.id, field, value)}
                     onToggleProduct={(id, checked) => toggleProduct(activeEvent.id, id, checked)}
                     onToggleGroup={(groupId, next) => toggleGroup(activeEvent.id, groupId, next)}
                     onSave={() => handleSaveEvent(activeEvent.id)}
                     saving={savingEventId === activeEvent.id}
-                    errorMessage={formError}
                 />
             )}
+
+            <Dialog open={Boolean(formError)} onOpenChange={(open) => { if (!open) setFormError(null); }}>
+                <DialogContent>
+                    <DialogTitle>Error</DialogTitle>
+                    <DialogDescription>{formError}</DialogDescription>
+                    <DialogClose asChild>
+                        <Button variant="outline" className="mt-2 w-full">Okay</Button>
+                    </DialogClose>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

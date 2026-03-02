@@ -1036,6 +1036,53 @@ class ProductController extends Controller
         ]);
     }
 
+    public function getProductPickerOptions(Request $request)
+    {
+        $search = $request->input('q');
+
+        $groupQuery = ProductGroup::withCount('products')
+            ->with(['products' => function ($query) use ($search) {
+                $query->select(['id', 'product_group_id', 'product_name', 'product_sku', 'product_price', 'product_usd_price']);
+                if ($search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('product_name', 'like', "%{$search}%")
+                          ->orWhere('product_sku', 'like', "%{$search}%");
+                    });
+                }
+            }])
+            ->orderBy('name');
+
+        if ($search) {
+            $groupQuery->whereHas('products', function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%")
+                  ->orWhere('product_sku', 'like', "%{$search}%");
+            });
+        }
+
+        $productGroups = $groupQuery->get();
+
+        $ungroupedQuery = Product::whereNull('product_group_id')
+            ->select(['id', 'product_name', 'product_sku', 'product_price', 'product_usd_price'])
+            ->orderBy('product_name');
+
+        if ($search) {
+            $ungroupedQuery->where(function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%")
+                  ->orWhere('product_sku', 'like', "%{$search}%");
+            });
+        }
+
+        $ungroupedProducts = $ungroupedQuery->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'productGroups' => $productGroups,
+                'ungroupedProducts' => $ungroupedProducts,
+            ],
+        ]);
+    }
+
     public function getProductGroupsPaginated(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
