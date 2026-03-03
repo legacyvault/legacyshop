@@ -118,7 +118,6 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
     const basePrice = product.product_price;
     const displayCurrency = (product.default_currency ?? 'IDR').toUpperCase();
-    const isUsdCurrency = displayCurrency === 'USD';
     const displayBasePrice = Number(product.default_price ?? basePrice);
     const eventDiscountPct = Number(product.event?.discount ?? 0);
     const productDiscountPct = Number(product.product_discount ?? 0);
@@ -154,7 +153,6 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
 
     const disableButtonCart = useMemo(() => {
         if (productStockInsufficient) return true;
-        if (isUsdCurrency) return true;
         if (!selectedCat) return true;
 
         if (subcategories.length > 0) {
@@ -179,7 +177,6 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     }, [
         selectedCat,
         productStockInsufficient,
-        isUsdCurrency,
         subcatStockInsufficient,
         divisionStockInsufficient,
         variantStockInsufficient,
@@ -339,7 +336,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                         {appliedDiscountPct > 0 ? (
                             <>
                                 <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(displayFinalPrice, displayCurrency)}</div>
-                                <span className="text-sm text-destructive line-through">{formatPrice(displayBasePriceWithExtra, displayCurrency)}</span>
+                                <span className="text-sm text-destructive line-through">
+                                    {formatPrice(displayBasePriceWithExtra, displayCurrency)}
+                                </span>
                             </>
                         ) : (
                             <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(displayBasePriceWithExtra, displayCurrency)}</div>
@@ -357,7 +356,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                         <button
                                             key={v.id}
                                             onClick={() => setSelectedCat((prev) => (prev?.id === v.id ? undefined : v))}
-                                            className={`rounded-md border border-primary px-3 py-1.5 text-sm transition cursor-pointer ${
+                                            className={`cursor-pointer rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                 active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
                                             }`}
                                         >
@@ -383,7 +382,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                                 onClick={() => setSelectedSubcat((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                } ${optionOutOfStock ? 'cursor-not-allowed border-secondary text-secondary hover:border-secondary/60' : 'cursor-pointer'}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -410,7 +409,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                                 onClick={() => setSelectedDiv((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                } ${optionOutOfStock ? 'cursor-not-allowed border-secondary text-secondary hover:border-secondary/60' : 'cursor-pointer'}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -436,7 +435,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                                 onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
                                                 className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                     active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                                } ${optionOutOfStock ? 'border-secondary text-secondary hover:border-secondary/60 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                } ${optionOutOfStock ? 'cursor-not-allowed border-secondary text-secondary hover:border-secondary/60' : 'cursor-pointer'}`}
                                                 disabled={optionOutOfStock}
                                             >
                                                 {v.name}
@@ -464,7 +463,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                             onClick={() => setSelectedVar((prev) => (prev?.id === v.id ? undefined : v))}
                                             className={`rounded-md border border-primary px-3 py-1.5 text-sm transition ${
                                                 active ? 'bg-foreground text-background' : 'hover:border-foreground/60'
-                                            } ${disabled ? 'border-secondary text-secondary hover:border-secondary/60 cursor-not-allowed' : 'cursor-pointer'}`}
+                                            } ${disabled ? 'cursor-not-allowed border-secondary text-secondary hover:border-secondary/60' : 'cursor-pointer'}`}
                                             disabled={disabled}
                                             style={{ backgroundColor: color ?? '#e5e7eb' }}
                                         />
