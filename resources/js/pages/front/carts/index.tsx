@@ -230,7 +230,7 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
         };
     }
 
-    const productBase = toNumber(cart.product?.product_price);
+    const productBase = toNumber(cart.product?.default_price ?? cart.product?.product_price);
     const productDiscount = toNumber(cart.product?.product_discount);
     const eventDiscount = toNumber(cart.product?.event?.discount);
     const isEventActive = Boolean(cart.product?.event && cart.product.event.is_active === 1);
@@ -238,15 +238,15 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
     const appliedProductDiscount = appliedEventDiscount > 0 ? appliedEventDiscount : productDiscount;
 
     const subCategory = resolveSubCategory(cart);
-    const subBase = toNumber(subCategory?.price);
+    const subBase = toNumber(subCategory?.default_price ?? subCategory?.price);
     const subDiscount = resolveDiscountPercent(subCategory, 'use_subcategory_discount', 'discount');
 
     const division = resolveDivision(cart);
-    const divisionBase = toNumber(division?.price);
+    const divisionBase = toNumber(division?.default_price ?? division?.price);
     const divisionDiscount = resolveDiscountPercent(division, 'use_division_discount', 'discount');
 
     const variant = resolveVariant(cart);
-    const variantBase = toNumber(variant?.price);
+    const variantBase = toNumber(variant?.default_price ?? variant?.price);
     const variantDiscount = resolveDiscountPercent(variant, 'use_variant_discount', 'discount');
 
     const originalPrice = Math.max(0, Math.round(productBase + subBase + divisionBase + variantBase));
