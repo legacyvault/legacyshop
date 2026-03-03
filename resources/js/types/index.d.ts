@@ -284,6 +284,8 @@ export interface ISubcats {
     stocks: IStocks[];
     divisions: IDivisions[];
     usd_price: number;
+    default_price: number;
+    default_currency: string;
 }
 
 export interface IStocks {
@@ -307,6 +309,8 @@ export interface IDivisions {
     stocks: IStocks[];
     variants: IVariants[];
     usd_price: number;
+    default_price: number;
+    default_currency: string;
 }
 
 export interface IVariants {
@@ -322,6 +326,8 @@ export interface IVariants {
     total_stock: number;
     type: 'text' | 'color' | '';
     usd_price: number;
+    default_price: number;
+    default_currency: string;
 }
 
 export interface IArticle {
