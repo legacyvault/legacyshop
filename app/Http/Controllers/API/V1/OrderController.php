@@ -39,6 +39,7 @@ class OrderController extends Controller
     protected $clientKey;
     protected $apiUrl;
     private $baseUrlBiteship = "https://api.biteship.com/v1";
+    private $paypalBaseUrl = "https://api-m.sandbox.paypal.com";
     private $biteshipApiKey;
 
     public function __construct()
@@ -47,6 +48,326 @@ class OrderController extends Controller
         $this->clientKey = env('MIDTRANS_CLIENT_KEY');
         $this->apiUrl = 'https://api.sandbox.midtrans.com';
         $this->biteshipApiKey = env('BITESHIP_API_KEY');
+    }
+
+    public function checkoutPaypal(Request $request)
+    {
+        $request->validate([
+            'customer_type' => 'required|in:guest,user',
+            'is_manual_invoice' => 'sometimes|boolean',
+            'source' => 'nullable|string',
+            'payment_method' => 'required|string',
+            'bank_payment' => 'nullable',
+            'shipping_fee' => 'required|numeric',
+            'receiver_name' => 'required|string',
+            'receiver_phone' => 'required|string',
+            'receiver_address' => 'required|string',
+            'receiver_postal_code' => 'required|string',
+            'receiver_city' => 'required|string',
+            'receiver_province' => 'required|string',
+            'receiver_country' => 'nullable|string',
+            'voucher_code'            => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'nullable|uuid',
+            'items.*.product_name' => 'required|string',
+            'items.*.product_description' => 'nullable|string',
+            'items.*.product_sku' => 'required|string',
+            'items.*.product_image' => 'nullable|string',
+            'items.*.category_id' => 'nullable|uuid',
+            'items.*.category_name' => 'nullable|string',
+            'items.*.category_description' => 'nullable|string',
+            'items.*.sub_category_id' => 'nullable|uuid',
+            'items.*.sub_category_name' => 'nullable|string',
+            'items.*.sub_category_description' => 'nullable|string',
+            'items.*.division_id' => 'nullable|uuid',
+            'items.*.division_name' => 'nullable|string',
+            'items.*.division_description' => 'nullable|string',
+            'items.*.variant_id' => 'nullable|uuid',
+            'items.*.variant_name' => 'nullable|string',
+            'items.*.variant_description' => 'nullable|string',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
+
+            // Guest validation
+            'email' => 'required_if:customer_type,guest|email',
+            'contact_name' => 'required_if:customer_type,guest|string',
+            'contact_phone' => 'required_if:customer_type,guest|string',
+            'latitude' => 'required_if:customer_type,guest|numeric',
+            'longitude' => 'required_if:customer_type,guest|numeric',
+            'country' => 'required_if:customer_type,guest',
+            'province' => 'required_if:customer_type,guest',
+            'address' => 'required_if:customer_type,guest',
+            'city' => 'required_if:customer_type,guest',
+            'district' => 'nullable|string',
+            'village' => 'nullable|string',
+            'postal_code' => 'required_if:customer_type,guest',
+        ]);
+
+
+        DB::beginTransaction();
+
+        $isManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
+        $items = $request->items;
+
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        if (env('APP_ENV') == 'local') {
+            $ip = '36.84.152.11';
+        }
+
+        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
+        $location = $response->json();
+
+        if ($location['status'] == 'fail') {
+            return redirect()->back()->with('error', 'Failed to register');
+        }
+
+        $isIndonesian = ($location['countryCode'] === 'ID');
+
+        if ($isIndonesian) {
+            return response()->json([
+                'message' => 'Checkout failed. Invalid Region.'
+            ], 500);
+        }
+
+        $subtotal = 0;
+
+        foreach ($items as $item) {
+            $subtotal += $item['price'] * $item['quantity'];
+        }
+        $shippingFee = $request->shipping_fee;
+        $voucherDiscount = 0;
+        $eligibleProductIds = [];
+
+        if ($request->filled('voucher_code')) {
+            $voucher = VoucherModel::with('products')
+                ->where('voucher_code', $request->voucher_code)
+                ->lockForUpdate()
+                ->first();
+
+            if ($voucher && (!$voucher->is_limit || $voucher->limit > 0)) {
+
+                $voucherPercent = $voucher->discount;
+                $productIdsInCart = collect($items)->pluck('product_id')->filter()->toArray();
+
+                $eligibleProductIds = $voucher->products()
+                    ->whereIn('products.id', $productIdsInCart)
+                    ->pluck('products.id')
+                    ->toArray();
+
+                foreach ($items as &$item) {
+                    if (
+                        !empty($item['product_id']) &&
+                        in_array($item['product_id'], $eligibleProductIds)
+                    ) {
+                        $item['voucher_discount'] =
+                            ($item['price'] * $item['quantity'] * $voucherPercent) / 100;
+                    } else {
+                        $item['voucher_discount'] = 0;
+                    }
+                }
+                unset($item);
+
+                $voucherDiscount = collect($items)->sum('voucher_discount');
+            }
+        }
+
+        $subtotal = $subtotal - $voucherDiscount;
+
+        $grandTotal = max(
+            0,
+            $subtotal + $shippingFee
+        );
+
+        try {
+            $userId = null;
+            $guestId = null;
+
+            // Handle Guest or User
+            if ($request->customer_type === 'guest') {
+                $guest = Guest::create([
+                    'email' => $request->email,
+                    'contact_name' => $request->contact_name,
+                    'contact_phone' => $request->contact_phone,
+                    'biteship_destination_id' => $request->biteship_destination_id ?? null,
+                    'country' => $request->receiver_country ?? $request->country ?? 'Indonesia',
+                    'province' => $request->receiver_province ?? $request->province,
+                    'city' => $request->receiver_city ?? $request->city,
+                    'district' => $request->district ?? null,
+                    'village' => $request->village ?? null,
+                    'address' => $request->receiver_address ?? $request->address,
+                    'postal_code' => $request->receiver_postal_code ?? $request->postal_code,
+                    'latitude' => $request->latitude !== null ? (float) $request->latitude : 0,
+                    'longitude' => $request->longitude !== null ? (float) $request->longitude : 0,
+                ]);
+                $guestId = $guest->id;
+            } else {
+                $userId = $request->user()->id;
+            }
+
+            // Create Order
+            $data_order = [
+                'id' => Str::uuid(),
+                'user_id' => $userId,
+                'guest_id' => $guestId,
+                'subtotal' => $subtotal,
+                'shipping_fee' => $shippingFee,
+                'grand_total' => $grandTotal,
+                'payment_method' => $request->payment_method,
+                'payment_status' => $isManualInvoice ? 'payment_received' : 'awaiting_payment',
+                'status' => $isManualInvoice ? 'finished' : 'pending',
+                'paid_at' => $isManualInvoice ? now() : null,
+            ];
+
+            if ($request->filled('voucher_code')) {
+                $data['voucher_code'] = $voucher->voucher_code;
+            }
+
+            $order = Order::create($data_order);
+
+            if ($request->filled('voucher_code')) {
+                if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
+                    $voucher->decrement('limit', 1);
+                }
+            }
+
+            if ($isManualInvoice) {
+                $order->forceFill([
+                    'transaction_status' => 'settlement',
+                    'transaction_time' => now(),
+                    'transaction_expiry_time' => null,
+                    'snap_token' => null,
+                ])->save();
+            }
+
+            // Create Order Items
+            foreach ($items as $item) {
+                Log::info($item);
+                // $eventDiscountPerUnit =
+                //     ($item['event_discount'] ?? 0) / max(1, $item['quantity']);
+
+                if ($request->filled('voucher_code')) {
+                    $voucherDiscountPerUnit =
+                        ($item['voucher_discount'] ?? 0) / max(1, $item['quantity']);
+
+                    $finalPricePerUnit = max(
+                        0,
+                        $item['price'] - $voucherDiscountPerUnit
+                    );
+                } else {
+                    $finalPricePerUnit = max(
+                        0,
+                        $item['price']
+                    );
+                }
+
+                OrderItems::create([
+                    'id' => Str::uuid(),
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'] ?? null,
+                    'product_name' => $item['product_name'] ?? null,
+                    'product_description' => $item['product_description'] ?? null,
+                    'product_sku' => $item['product_sku'] ?? null,
+                    'product_image' => $item['product_image'] ?? null,
+                    'category_id' => $item['category_id'] ?? null,
+                    'category_name' => $item['category_name'] ?? null,
+                    'category_description' => $item['category_description'] ?? null,
+                    'sub_category_id' => $item['sub_category_id'] ?? null,
+                    'sub_category_name' => $item['sub_category_name'] ?? null,
+                    'sub_category_description' => $item['sub_category_description'] ?? null,
+                    'division_id' => $item['division_id'] ?? null,
+                    'division_name' => $item['division_name'] ?? null,
+                    'division_description' => $item['division_description'] ?? null,
+                    'variant_id' => $item['variant_id'] ?? null,
+                    'variant_name' => $item['variant_name'] ?? null,
+                    'variant_description' => $item['variant_description'] ?? null,
+                    'quantity' => $item['quantity'],
+                    'price' => round($finalPricePerUnit, 2),
+                    'total' => round($finalPricePerUnit * $item['quantity'], 2),
+                ]);
+            }
+
+            // Minus stock
+            try {
+                foreach ($items as $item) {
+                    if (!empty($item['variant_id'])) {
+                        $variant = Variant::find($item['variant_id']);
+                        if ($variant) {
+                            $newStock = max(0, $variant->total_stock - $item['quantity']);
+                            $variant->update(['total_stock' => $newStock]);
+                        }
+                    }
+                    if (!empty($item['division_id'])) {
+                        $division = Division::find($item['division_id']);
+                        if ($division) {
+                            $newStock = max(0, $division->total_stock - $item['quantity']);
+                            $division->update(['total_stock' => $newStock]);
+                        }
+                    }
+
+                    if (!empty($item['sub_category_id'])) {
+                        $subCategory = SubCategory::find($item['sub_category_id']);
+                        if ($subCategory) {
+                            $newStock = max(0, $subCategory->total_stock - $item['quantity']);
+                            $subCategory->update(['total_stock' => $newStock]);
+                        }
+                    }
+
+                    if (!empty($item['product_id'])) {
+                        $product = Product::find($item['product_id']);
+                        if ($product) {
+                            $newStock = max(0, $product->total_stock - $item['quantity']);
+                            $product->update(['total_stock' => $newStock]);
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                Log::error('Error Calculating Stock Checkout: ' . $e);
+                throw $e;
+            }
+
+            //Create Shipment
+            OrderShipments::create([
+                'id' => Str::uuid(),
+                'order_id' => $order->id,
+                'shipping_fee' => $shippingFee,
+                'receiver_name' => $request->receiver_name,
+                'receiver_phone' => $request->receiver_phone,
+                'receiver_address' => $request->receiver_address,
+                'receiver_postal_code' => $request->receiver_postal_code,
+                'receiver_city' => $request->receiver_city,
+                'receiver_province' => $request->receiver_province,
+            ]);
+
+            // Delete cart if user
+            if ($userId) {
+                $productIds = collect($items)->pluck('product_id')->filter()->toArray();
+                if (!empty($productIds)) {
+                    Carts::where('user_id', $userId)
+                        ->whereIn('product_id', $productIds)
+                        ->delete();
+                }
+            }
+
+            DB::commit();
+
+            if ($isManualInvoice) {
+                $order->load(['items', 'shipment', 'guest', 'user']);
+
+                return response()->json([
+                    'message' => 'Order created successfully without payment processing.',
+                    'order' => $order,
+                ], 201);
+            }
+
+            // Call payment gateway
+            return $this->createPaypalPayment($order);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Checkout failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function checkout(Request $request)
@@ -399,6 +720,100 @@ class OrderController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    private function createPaypalPayment($order)
+    {
+        $accessToken = $this->getPaypalAccessToken();
+
+        $response = Http::withToken($accessToken)
+            ->post($this->paypalBaseUrl . '/v2/checkout/orders', [
+                "intent" => "CAPTURE",
+                "purchase_units" => [
+                    [
+                        "reference_id" => $order->id,
+                        "amount" => [
+                            "currency_code" => "USD",
+                            "value" => number_format($order->grand_total, 2, '.', '')
+                        ]
+                    ]
+                ],
+                //Change to correct return URL/Cancel URL
+                "application_context" => [
+                    "return_url" => url('/payment/success'),
+                    "cancel_url" => url('/payment/cancel')
+                ]
+            ]);
+
+        if (!$response->successful()) {
+            throw new \Exception('Failed create PayPal order: ' . $response->body());
+        }
+
+        $paypalOrder = $response->json();
+
+        $order->update([
+            'transaction_id' => $paypalOrder['id'],
+            'transaction_status' => $paypalOrder['status'],
+        ]);
+
+        return response()->json([
+            'id' => $paypalOrder['id']
+        ]);
+    }
+
+    private function getPaypalAccessToken()
+    {
+        $response = Http::withBasicAuth(
+            env('PAYPAL_CLIENT_ID'),
+            env('PAYPAL_SECRET')
+        )->asForm()->post($this->paypalBaseUrl . '/v1/oauth2/token', [
+            'grant_type' => 'client_credentials'
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception('Failed to get PayPal access token');
+        }
+
+        return $response->json()['access_token'];
+    }
+
+    public function capturePaypal($orderId)
+    {
+        $accessToken = $this->getPaypalAccessToken();
+
+        $response = Http::withToken($accessToken)
+            ->post($this->paypalBaseUrl . "/v2/checkout/orders/{$orderId}/capture");
+
+        $data = $response->json();
+
+        if (!$response->successful()) {
+            return response()->json($data, 500);
+        }
+
+        $status = $data['status'];
+
+        $localOrder = Order::where('transaction_id', $orderId)->first();
+
+        if (!$localOrder) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        if ($status === 'COMPLETED') {
+            $localOrder->update([
+                'payment_status' => 'payment_received',
+                'status' => 'preparing_order',
+                'transaction_status' => 'settlement',
+                'transaction_time' => now(),
+            ]);
+        } else {
+            $localOrder->update([
+                'payment_status' => 'payment_failed',
+                'transaction_status' => $status,
+                'status' => 'order_failed'
+            ]);
+        }
+
+        return response()->json($data);
     }
 
     private function createBiteshipDraftOrder($order, $items, $request)
