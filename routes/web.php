@@ -42,6 +42,9 @@ Route::group(['prefix' => 'v1'], function () {
     //Checkout API
     Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
 
+    Route::post('checkout-paypal/order', [OrderController::class, 'checkoutPaypal'])->name('order.checkout-paypal');
+    Route::post('/orders/{orderId}/capture', [OrderController::class, 'capturePaypal'])->name('order.capture-paypal');
+
     Route::get('check-voucher', [MiscController::class, 'checkVoucher'])->name('check.voucher');
 });
 
@@ -111,7 +114,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::post('create-delivery-address', [UserController::class, 'createDeliveryAddress'])->name('create.delivery-address');
     Route::post('update-delivery-address', [UserController::class, 'updateDeliveryAddress'])->name('update.delivery-address');
     Route::post('delete-delivery-address', [UserController::class, ' deleteDeliveryAddress'])->name('delete.delivery-address');
-   
+
     Route::get('delivery-address', [UserController::class, 'getAllDeliveryAddress'])->name('all.delivery-address');
     Route::get('active-delivery-address', [UserController::class, 'getActiveDeliveryAddress'])->name('active.delivery-address');
     Route::get('biteship/destination/{destination_id}', [BiteshipController::class, 'getBiteshipDestinationID'])->name('destination.location');
