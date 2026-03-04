@@ -257,9 +257,8 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
     const discountedVariant = computeDiscountedPrice(variantBase, variantDiscount);
 
     const computedFinal = discountedBase + discountedSub + discountedDivision + discountedVariant;
-    const serverPrice = toNumber((cart as ICart)?.price_per_product);
 
-    const candidatePrices = [serverPrice, computedFinal, fallbackPrice].filter((price) => price > 0);
+    const candidatePrices = [computedFinal, fallbackPrice].filter((price) => price > 0);
     const finalPrice = candidatePrices.length ? Math.min(...candidatePrices) : 0;
 
     const discountPercent = originalPrice > 0 && finalPrice > 0 ? Math.max(0, Math.round(((originalPrice - finalPrice) / originalPrice) * 100)) : 0;
