@@ -44,7 +44,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
         const isEventActive = Boolean(product?.event && (product.event.is_active === 1 || product.event.is_active === true));
         const discountedBase = isEventActive && eventDiscount > 0 ? Math.max(0, Math.round(basePrice - (basePrice * eventDiscount) / 100)) : null;
 
-        const candidatePrices = [discountedBase, Number(item.price ?? 0)].filter(
+        const candidatePrices = [discountedBase, basePrice].filter(
             (price): price is number => typeof price === 'number' && Number.isFinite(price) && price > 0,
         );
         const finalPrice = candidatePrices.length ? Math.min(...candidatePrices) : 0;
