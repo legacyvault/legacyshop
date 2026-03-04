@@ -8,7 +8,6 @@ use App\Http\Controllers\InvoiceController as AppInvoiceController;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
-use App\Models\Carts;
 use App\Models\Unit;
 use Illuminate\Support\Facades\Auth;
 
@@ -338,24 +337,8 @@ class ViewController extends Controller
 
         $carts = null;
 
-        if (Auth::check()) {
-            if ((int) Auth::id() === (int) $id) {
-                $carts = Carts::with([
-                    'product',
-                    'product.unit',
-                    'product.categories',
-                    'product.subcategories',
-                    'product.divisions',
-                    'product.variants',
-                    'product.pictures',
-                    'category',
-                    'subCategory',
-                    'division',
-                    'variant',
-                ])
-                    ->where('user_id', $id)
-                    ->get();
-            }
+        if (Auth::check() && (int) Auth::id() === (int) $id) {
+            $carts = $this->cartController->getCartsForUser($request, $id);
         }
 
         return Inertia::render('front/carts/index', [

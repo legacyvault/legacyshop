@@ -90,6 +90,38 @@ class CartsController extends Controller
         }
     }
 
+    public function getCartsForUser(Request $request, $id)
+    {
+        $carts = Carts::with([
+            'product',
+            'product.unit',
+            'product.categories',
+            'product.subcategories',
+            'product.divisions',
+            'product.variants',
+            'product.pictures',
+            'category',
+            'subCategory',
+            'division',
+            'variant',
+        ])
+            ->where('user_id', $id)
+            ->get();
+
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $isIndonesian = ($location['countryCode'] ?? 'ID') === 'ID';
+
+        foreach ($carts as $cart) {
+            if ($cart->product) {
+                $this->applyPriceMappingToProduct($cart->product, $isIndonesian);
+            }
+        }
+
+        return $carts;
+    }
+
     public function getCart(Request $request, $id)
     {
         try {
@@ -106,33 +138,7 @@ class CartsController extends Controller
                 ]);
             }
 
-            $carts = Carts::with([
-                'product',
-                'category',
-                'subCategory',
-                'division',
-                'variant',
-                'product.unit',
-                'product.categories',
-                'product.subcategories',
-                'product.divisions',
-                'product.variants',
-                'product.pictures',
-            ])
-                ->where('user_id', $id)
-                ->get();
-
-            // Apply geo-based price mapping so default_price/default_currency are set
-            $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-            if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-            $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-            $isIndonesian = ($location['countryCode'] ?? 'ID') === 'ID';
-
-            foreach ($carts as $cart) {
-                if ($cart->product) {
-                    $this->applyPriceMappingToProduct($cart->product, $isIndonesian);
-                }
-            }
+            $carts = $this->getCartsForUser($request, $id);
 
             if ($request->expectsJson()) {
                 return response()->json([
