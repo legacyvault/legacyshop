@@ -53,6 +53,7 @@ type CheckoutItem = {
     variantId?: string | null;
     variantDescription?: string | null;
     variantColor?: string | null;
+    currency?: string | null;
     selectionSummary?: {
         unit?: string | null;
         category?: string | null;
@@ -179,10 +180,10 @@ function getRateId(rate: IRatePricing) {
     return `${rate.courier_code}-${rate.courier_service_code}`;
 }
 
-function formatCurrency(value: number) {
+function formatCurrency(value: number, currency = 'IDR') {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
-        currency: 'IDR',
+        currency,
         minimumFractionDigits: 0,
     }).format(value);
 }
@@ -230,6 +231,7 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
                 return null;
             })(),
             isEventActive: typeof item.isEventActive === 'boolean' ? item.isEventActive : null,
+            currency: typeof item.currency === 'string' && item.currency.length ? item.currency.toUpperCase() : 'IDR',
         }));
     } catch (error) {
         router.visit('/');
@@ -256,6 +258,8 @@ export default function Checkout() {
     const [messagePaypal, setMessagePaypal] = useState('');
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
     const [countries, setCountries] = useState<Country[]>(() => [{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
+
+    const displayCurrency = (checkoutItems[0]?.currency || 'IDR').toUpperCase();
 
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
     const [selectedAddress, setSelectedAddress] = useState<CheckoutAddress | null>(() => {
@@ -2270,7 +2274,7 @@ export default function Checkout() {
                                             {selectedRate.shipment_duration_unit ?? ''}
                                         </p>
                                     ) : null}
-                                    <p className="text-base font-semibold text-foreground">{formatCurrency(selectedRate.price)}</p>
+                                    <p className="text-base font-semibold text-foreground">{formatCurrency(selectedRate.price, displayCurrency)}</p>
                                     {selectedRate.available_for_insurance ? (
                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             <ShieldCheck className="h-4 w-4" />
@@ -2369,7 +2373,7 @@ export default function Checkout() {
                                                                 <ShieldCheck className="h-4 w-4" />
                                                                 {item.protectionLabel}
                                                                 <span className="font-normal text-muted-foreground">
-                                                                    ({formatCurrency(item.protectionPrice ?? 0)})
+                                                                    ({formatCurrency(item.protectionPrice ?? 0, displayCurrency)})
                                                                 </span>
                                                             </button>
                                                         ) : null}
@@ -2378,14 +2382,14 @@ export default function Checkout() {
                                                     <div className="flex flex-col items-end gap-2 text-right sm:min-w-[140px]">
                                                         <span className="text-sm text-muted-foreground">Qty: {item.quantity}</span>
                                                         <span className="text-lg font-semibold text-foreground">
-                                                            {formatCurrency(item.price * item.quantity)}
+                                                            {formatCurrency(item.price * item.quantity, displayCurrency)}
                                                         </span>
                                                         {hasEventDiscount ? (
                                                             <span className="text-xs text-muted-foreground line-through">
-                                                                {formatCurrency(originalTotal)}
+                                                                {formatCurrency(originalTotal, displayCurrency)}
                                                             </span>
                                                         ) : null}
-                                                        <span className="text-xs text-muted-foreground">({formatCurrency(item.price)} each)</span>
+                                                        <span className="text-xs text-muted-foreground">({formatCurrency(item.price, displayCurrency)} each)</span>
                                                         {hasEventDiscount ? (
                                                             <span className="text-[11px] font-semibold text-emerald-600 uppercase">
                                                                 Event {item.eventName ?? ''} • {item.eventDiscountPct}% OFF
@@ -2409,11 +2413,11 @@ export default function Checkout() {
                             <CardContent className="space-y-4 text-sm">
                                 <div className="flex items-center justify-between text-muted-foreground">
                                     <span>Subtotal</span>
-                                    <span className="font-medium text-foreground">{formatCurrency(subtotal)}</span>
+                                    <span className="font-medium text-foreground">{formatCurrency(subtotal, displayCurrency)}</span>
                                 </div>
                                 <div className="flex items-center justify-between text-muted-foreground">
                                     <span>Shipping Rates</span>
-                                    <span className="font-medium text-foreground">{selectedRate ? formatCurrency(shipping) : '—'}</span>
+                                    <span className="font-medium text-foreground">{selectedRate ? formatCurrency(shipping, displayCurrency) : '—'}</span>
                                 </div>
                                 {appliedVoucher && (voucherDiscount ?? 0) > 0 ? (
                                     <div className="flex items-center justify-between text-muted-foreground">
@@ -2423,7 +2427,7 @@ export default function Checkout() {
                                                 {appliedVoucher.code}
                                             </span>
                                         </span>
-                                        <span className="font-medium text-emerald-600">- {formatCurrency(voucherDiscount ?? 0)}</span>
+                                        <span className="font-medium text-emerald-600">- {formatCurrency(voucherDiscount ?? 0, displayCurrency)}</span>
                                     </div>
                                 ) : null}
                                 <div className="space-y-2">
@@ -2462,7 +2466,7 @@ export default function Checkout() {
                             <CardFooter className="flex flex-col gap-4 pb-6">
                                 <div className="flex w-full items-center justify-between text-base font-semibold text-foreground">
                                     <span>Total Transaction</span>
-                                    <span className="text-xl">{formatCurrency(total)}</span>
+                                    <span className="text-xl">{formatCurrency(total, displayCurrency)}</span>
                                 </div>
                                 <Button
                                     size="lg"

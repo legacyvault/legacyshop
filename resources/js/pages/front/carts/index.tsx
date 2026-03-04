@@ -45,10 +45,10 @@ interface DetailedCartItem {
 const FALLBACK_IMAGE = '/banner-example.jpg';
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 
-const formatCurrency = (value: number) =>
+const formatCurrency = (value: number, currency = 'IDR') =>
     new Intl.NumberFormat('id-ID', {
         style: 'currency',
-        currency: 'IDR',
+        currency,
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     }).format(Math.max(0, Math.round(value)));
@@ -364,6 +364,12 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
         });
     }, [carts, contextMap, contextItems]);
 
+    const displayCurrency = (
+        detailedItems[0]?.cart?.product?.default_currency ||
+        contextItems[0]?.meta?.product?.default_currency ||
+        'IDR'
+    ).toUpperCase();
+
     const hasInitializedSelectionRef = useRef(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -438,6 +444,7 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                 eventName: item.eventName ?? null,
                 eventDiscountPct: item.eventDiscount ?? null,
                 isEventActive: item.isEventActive ?? null,
+                currency: (item.cart?.product?.default_currency || 'IDR').toUpperCase(),
             };
         });
 
@@ -563,10 +570,10 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
 
                                             <div className="flex flex-col items-stretch gap-4 text-right sm:flex-row sm:items-center sm:gap-6">
                                                 <div className="min-w-[120px]">
-                                                    <div className="text-lg font-semibold text-foreground">{formatCurrency(item.finalPrice)}</div>
+                                                    <div className="text-lg font-semibold text-foreground">{formatCurrency(item.finalPrice, displayCurrency)}</div>
                                                     {item.discountPercent > 0 && (
                                                         <div className="text-sm text-muted-foreground line-through">
-                                                            {formatCurrency(item.originalPrice)}
+                                                            {formatCurrency(item.originalPrice, displayCurrency)}
                                                         </div>
                                                     )}
                                                     {item.isEventActive && item.eventDiscount ? (
@@ -627,17 +634,17 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
 
                         <div className="flex items-center justify-between text-sm text-muted-foreground">
                             <span>Subtotal</span>
-                            <span>{formatCurrency(totals.original)}</span>
+                            <span>{formatCurrency(totals.original, displayCurrency)}</span>
                         </div>
                         {savings > 0 && (
                             <div className="mt-2 flex items-center justify-between text-sm text-green-600">
                                 <span>Discount</span>
-                                <span>-{formatCurrency(savings)}</span>
+                                <span>-{formatCurrency(savings, displayCurrency)}</span>
                             </div>
                         )}
                         <div className="mt-4 flex items-center justify-between text-base font-semibold text-foreground">
                             <span>Total</span>
-                            <span>{formatCurrency(totals.subtotal)}</span>
+                            <span>{formatCurrency(totals.subtotal, displayCurrency)}</span>
                         </div>
                         <Link href={'/checkout'}>
                             <Button className="mt-6 w-full" size="lg" disabled={!selectedItems.length}>
