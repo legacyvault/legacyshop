@@ -69,6 +69,7 @@ export interface SharedData {
     events: IEvents[];
     event?: IEvents | null;
     isIndonesian: boolean;
+    internationalShipmentPrice: number | null;
 }
 
 export interface IEvents {

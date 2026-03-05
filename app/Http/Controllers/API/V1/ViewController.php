@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
 use App\Models\Unit;
+use App\Models\ZoneInternationalShipment;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 
@@ -434,7 +435,16 @@ class ViewController extends Controller
         $ip = trim(explode(',', $ip)[0]);
         if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
         $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $isIndonesian = ($location['countryCode'] ?? null) === 'ID';
+        $countryCode = $location['countryCode'] ?? null;
+        $isIndonesian = $countryCode === 'ID';
+
+        $internationalShipmentPrice = null;
+        if ($countryCode && !$isIndonesian) {
+            $zone = ZoneInternationalShipment::with('international_shipment')
+                ->where('country_code', $countryCode)
+                ->first();
+            $internationalShipmentPrice = $zone?->international_shipment?->usd_price;
+        }
 
         $warehouse = $this->warehouseController->getActiveWarehouse();
         $couriers = $this->biteshipController->getCourierList();
@@ -446,6 +456,7 @@ class ViewController extends Controller
             'warehouse' => $warehouse,
             'couriers' => $couriers,
             'isIndonesian' => $isIndonesian,
+            'internationalShipmentPrice' => $internationalShipmentPrice,
             'rates'             => fn () => session('rates', []),
             'flashMessage'      => fn () => session('message'),
         ]);
