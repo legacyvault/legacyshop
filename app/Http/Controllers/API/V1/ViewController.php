@@ -10,6 +10,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
 use App\Models\Unit;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class ViewController extends Controller
 {
@@ -428,15 +429,22 @@ class ViewController extends Controller
         ]);
     }
 
-    public function checkoutPage(){
+    public function checkoutPage(Request $request){
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $isIndonesian = ($location['countryCode'] ?? 'ID') === 'ID';
+
         $warehouse = $this->warehouseController->getActiveWarehouse();
         $couriers = $this->biteshipController->getCourierList();
         $profile = $this->userController->getProfile();
+
 
         return Inertia::render('front/checkout/index',[
             'profile' => $profile,
             'warehouse' => $warehouse,
             'couriers' => $couriers,
+            'isIndonesian' => $isIndonesian,
             'rates'             => fn () => session('rates', []),
             'flashMessage'      => fn () => session('message'),
         ]);

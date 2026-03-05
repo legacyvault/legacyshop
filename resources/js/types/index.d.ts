@@ -68,6 +68,7 @@ export interface SharedData {
     rec_prod: IProducts[];
     events: IEvents[];
     event?: IEvents | null;
+    isIndonesian: boolean;
 }
 
 export interface IEvents {
