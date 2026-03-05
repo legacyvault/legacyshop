@@ -39,7 +39,7 @@ class OrderController extends Controller
     protected $clientKey;
     protected $apiUrl;
     private $baseUrlBiteship = "https://api.biteship.com/v1";
-    private $paypalBaseUrl = "https://api-m.sandbox.paypal.com";
+    private $paypalBaseUrl;
     private $biteshipApiKey;
 
     public function __construct()
@@ -48,6 +48,9 @@ class OrderController extends Controller
         $this->clientKey = env('MIDTRANS_CLIENT_KEY');
         $this->apiUrl = 'https://api.sandbox.midtrans.com';
         $this->biteshipApiKey = env('BITESHIP_API_KEY');
+        $this->paypalBaseUrl = env('PAYPAL_MODE', 'sandbox') === 'live'
+            ? 'https://api-m.paypal.com'
+            : 'https://api-m.sandbox.paypal.com';
     }
 
     public function checkoutPaypal(Request $request)
