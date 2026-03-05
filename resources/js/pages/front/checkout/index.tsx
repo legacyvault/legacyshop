@@ -2515,8 +2515,9 @@ export default function Checkout() {
                                                         disableMaxWidth: true,
                                                     }}
                                                     createOrder={async () => {
+                                                        console.log('masuk sini harunysa');
                                                         console.log(selectedCheckoutAddress);
-                                                        console.log(usingGuestAddress);
+                                                        console.log(checkoutItems);
                                                         if (!selectedCheckoutAddress || !checkoutItems.length) {
                                                             if (!selectedCheckoutAddress && usingGuestAddress) {
                                                                 setHasAttemptedGuestCheckout(true);
@@ -2563,6 +2564,8 @@ export default function Checkout() {
                                                         }));
 
                                                         const payload = {
+                                                            is_manual_invoice: false,
+                                                            payment_method: 'manual',
                                                             voucher_code: appliedVoucher?.code ?? undefined,
                                                             receiver_name: selectedCheckoutAddress.contact_name,
                                                             receiver_phone: selectedCheckoutAddress.contact_phone,
