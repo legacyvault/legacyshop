@@ -1130,7 +1130,8 @@ export default function Checkout() {
 
         setHasRequestedInitialRates(true);
         setLastRequestedRateKey(rateKey);
-        requestRates();
+
+        if (isIndonesian) requestRates();
     }, [
         rateKey,
         warehouse,
@@ -2502,7 +2503,7 @@ export default function Checkout() {
                                 )}
 
                                 {/* PAYPAL HANDLING */}
-                                {isIndonesian && (
+                                {!isIndonesian && (
                                     <>
                                         <PayPalScriptProvider options={initialOptionsPaypal}>
                                             <div className="w-full">

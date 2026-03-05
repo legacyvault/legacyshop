@@ -431,9 +431,10 @@ class ViewController extends Controller
 
     public function checkoutPage(Request $request){
         $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        $ip = trim(explode(',', $ip)[0]);
         if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
         $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $isIndonesian = ($location['countryCode'] ?? 'ID') === 'ID';
+        $isIndonesian = ($location['countryCode'] ?? null) === 'ID';
 
         $warehouse = $this->warehouseController->getActiveWarehouse();
         $couriers = $this->biteshipController->getCourierList();
