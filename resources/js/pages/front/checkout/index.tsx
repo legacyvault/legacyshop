@@ -240,19 +240,17 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
 }
 
 export default function Checkout() {
-    const { profile, rates, warehouse, auth } = usePage<SharedData>().props;
+    const { profile, rates, warehouse, auth, isIndonesian } = usePage<SharedData>().props;
     const isGuest = !auth?.user;
     const deliveryAddresses = profile?.delivery_address ?? [];
 
+    console.log(isIndonesian);
+
     const initialOptionsPaypal = {
-        clientId: 'test',
-        'enable-funding': 'venmo',
-        'disable-funding': '',
-        'buyer-country': 'US',
+        clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID ?? 'test',
         currency: 'USD',
-        'data-page-type': 'product-details',
+        intent: 'capture',
         components: 'buttons',
-        'data-sdk-integration-source': 'developer-studio',
     };
 
     const [messagePaypal, setMessagePaypal] = useState('');
@@ -2225,83 +2223,87 @@ export default function Checkout() {
                             </CardContent>
                         </Card>
 
-                        <Card className="gap-4 border border-border/60 bg-background shadow-sm">
-                            <CardHeader className="flex-row items-start justify-between gap-4 py-0 pt-6">
-                                <div className="space-y-3">
-                                    <div className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Shipping Method</div>
-                                    {selectedRate ? (
-                                        <div className="space-y-1 text-sm">
-                                            <div className="font-semibold text-foreground">
-                                                {selectedRate.courier_name} • {selectedRate.courier_service_name}
+                        {isIndonesian && (
+                            <Card className="gap-4 border border-border/60 bg-background shadow-sm">
+                                <CardHeader className="flex-row items-start justify-between gap-4 py-0 pt-6">
+                                    <div className="space-y-3">
+                                        <div className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Shipping Method</div>
+                                        {selectedRate ? (
+                                            <div className="space-y-1 text-sm">
+                                                <div className="font-semibold text-foreground">
+                                                    {selectedRate.courier_name} • {selectedRate.courier_service_name}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {selectedRate.description ?? 'Layanan pengiriman tersedia untuk alamat kamu.'}
+                                                </p>
                                             </div>
-                                            <p className="text-xs text-muted-foreground">
-                                                {selectedRate.description ?? 'Layanan pengiriman tersedia untuk alamat kamu.'}
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-1 text-sm">
-                                            <p className="text-muted-foreground">Select the delivery service available for your address.</p>
-                                            {ratesError ? <p className="text-xs text-destructive">{ratesError}</p> : null}
-                                        </div>
-                                    )}
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleShippingButtonClick}
-                                    disabled={isRequestingRates || !warehouse || !hasCheckoutItems || (!isGuest && deliveryAddresses.length <= 0)}
-                                >
-                                    {isRequestingRates ? 'Loading...' : hasRates ? 'Change' : 'Load Rates'}
-                                </Button>
-                            </CardHeader>
-                            {selectedRate ? (
-                                <CardContent className="space-y-3 pt-0 text-sm">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {selectedRate.service_type ? (
-                                            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary uppercase">
-                                                {selectedRate.service_type}
-                                            </span>
-                                        ) : null}
-                                        {selectedRate.shipping_type ? (
-                                            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                                                {selectedRate.shipping_type}
-                                            </span>
-                                        ) : null}
+                                        ) : (
+                                            <div className="space-y-1 text-sm">
+                                                <p className="text-muted-foreground">Select the delivery service available for your address.</p>
+                                                {ratesError ? <p className="text-xs text-destructive">{ratesError}</p> : null}
+                                            </div>
+                                        )}
                                     </div>
-                                    {selectedRate.shipment_duration_range || selectedRate.duration ? (
-                                        <p className="text-xs text-muted-foreground">
-                                            Estimasi {selectedRate.shipment_duration_range ?? selectedRate.duration}{' '}
-                                            {selectedRate.shipment_duration_unit ?? ''}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleShippingButtonClick}
+                                        disabled={isRequestingRates || !warehouse || !hasCheckoutItems || (!isGuest && deliveryAddresses.length <= 0)}
+                                    >
+                                        {isRequestingRates ? 'Loading...' : hasRates ? 'Change' : 'Load Rates'}
+                                    </Button>
+                                </CardHeader>
+                                {selectedRate ? (
+                                    <CardContent className="space-y-3 pt-0 text-sm">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {selectedRate.service_type ? (
+                                                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary uppercase">
+                                                    {selectedRate.service_type}
+                                                </span>
+                                            ) : null}
+                                            {selectedRate.shipping_type ? (
+                                                <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                                                    {selectedRate.shipping_type}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        {selectedRate.shipment_duration_range || selectedRate.duration ? (
+                                            <p className="text-xs text-muted-foreground">
+                                                Estimasi {selectedRate.shipment_duration_range ?? selectedRate.duration}{' '}
+                                                {selectedRate.shipment_duration_unit ?? ''}
+                                            </p>
+                                        ) : null}
+                                        <p className="text-base font-semibold text-foreground">
+                                            {formatCurrency(selectedRate.price, displayCurrency)}
                                         </p>
-                                    ) : null}
-                                    <p className="text-base font-semibold text-foreground">{formatCurrency(selectedRate.price, displayCurrency)}</p>
-                                    {selectedRate.available_for_insurance ? (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <ShieldCheck className="h-4 w-4" />
-                                            Available for Insurance
-                                        </div>
-                                    ) : null}
-                                    {selectedRate.available_for_cash_on_delivery ? (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <CurrencyIcon className="h-4 w-4" />
-                                            Available for Cash on Delivery
-                                        </div>
-                                    ) : null}
-                                    {selectedRate.available_for_instant_waybill_id ? (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <ReceiptText className="h-4 w-4" />
-                                            Available for Instant Waybill
-                                        </div>
-                                    ) : null}
-                                    {selectedRate.available_for_proof_of_delivery ? (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <PackageCheck className="h-4 w-4" />
-                                            Available for Proof of Delivery
-                                        </div>
-                                    ) : null}
-                                </CardContent>
-                            ) : null}
-                        </Card>
+                                        {selectedRate.available_for_insurance ? (
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <ShieldCheck className="h-4 w-4" />
+                                                Available for Insurance
+                                            </div>
+                                        ) : null}
+                                        {selectedRate.available_for_cash_on_delivery ? (
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <CurrencyIcon className="h-4 w-4" />
+                                                Available for Cash on Delivery
+                                            </div>
+                                        ) : null}
+                                        {selectedRate.available_for_instant_waybill_id ? (
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <ReceiptText className="h-4 w-4" />
+                                                Available for Instant Waybill
+                                            </div>
+                                        ) : null}
+                                        {selectedRate.available_for_proof_of_delivery ? (
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <PackageCheck className="h-4 w-4" />
+                                                Available for Proof of Delivery
+                                            </div>
+                                        ) : null}
+                                    </CardContent>
+                                ) : null}
+                            </Card>
+                        )}
 
                         {!hasCheckoutItems ? (
                             <Card className="border border-border/60 bg-background shadow-sm">
@@ -2389,7 +2391,9 @@ export default function Checkout() {
                                                                 {formatCurrency(originalTotal, displayCurrency)}
                                                             </span>
                                                         ) : null}
-                                                        <span className="text-xs text-muted-foreground">({formatCurrency(item.price, displayCurrency)} each)</span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            ({formatCurrency(item.price, displayCurrency)} each)
+                                                        </span>
                                                         {hasEventDiscount ? (
                                                             <span className="text-[11px] font-semibold text-emerald-600 uppercase">
                                                                 Event {item.eventName ?? ''} • {item.eventDiscountPct}% OFF
@@ -2415,10 +2419,14 @@ export default function Checkout() {
                                     <span>Subtotal</span>
                                     <span className="font-medium text-foreground">{formatCurrency(subtotal, displayCurrency)}</span>
                                 </div>
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span>Shipping Rates</span>
-                                    <span className="font-medium text-foreground">{selectedRate ? formatCurrency(shipping, displayCurrency) : '—'}</span>
-                                </div>
+                                {isIndonesian && (
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                        <span>Shipping Rates</span>
+                                        <span className="font-medium text-foreground">
+                                            {selectedRate ? formatCurrency(shipping, displayCurrency) : '—'}
+                                        </span>
+                                    </div>
+                                )}
                                 {appliedVoucher && (voucherDiscount ?? 0) > 0 ? (
                                     <div className="flex items-center justify-between text-muted-foreground">
                                         <span className="flex items-center gap-2">
@@ -2427,7 +2435,9 @@ export default function Checkout() {
                                                 {appliedVoucher.code}
                                             </span>
                                         </span>
-                                        <span className="font-medium text-emerald-600">- {formatCurrency(voucherDiscount ?? 0, displayCurrency)}</span>
+                                        <span className="font-medium text-emerald-600">
+                                            - {formatCurrency(voucherDiscount ?? 0, displayCurrency)}
+                                        </span>
                                     </div>
                                 ) : null}
                                 <div className="space-y-2">
@@ -2468,117 +2478,186 @@ export default function Checkout() {
                                     <span>Total Transaction</span>
                                     <span className="text-xl">{formatCurrency(total, displayCurrency)}</span>
                                 </div>
-                                <Button
-                                    size="lg"
-                                    className="h-12 w-full text-base font-semibold"
-                                    disabled={!canSubmit || isSubmitting}
-                                    onClick={handlePayNow}
-                                >
-                                    {isSubmitting ? 'Processing...' : 'Pay Now'}
-                                </Button>
-                                {checkoutError ? <p className="text-center text-sm text-destructive">{checkoutError}</p> : null}
-                                {checkoutResult && !checkoutError ? (
-                                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                                        <p className="font-semibold">Checkout successful.</p>
-                                        {/* <p className="mt-1">
+                                {isIndonesian && (
+                                    <>
+                                        <Button
+                                            size="lg"
+                                            className="h-12 w-full text-base font-semibold"
+                                            disabled={!canSubmit || isSubmitting}
+                                            onClick={handlePayNow}
+                                        >
+                                            {isSubmitting ? 'Processing...' : 'Pay Now'}
+                                        </Button>
+                                        {checkoutError ? <p className="text-center text-sm text-destructive">{checkoutError}</p> : null}
+                                        {checkoutResult && !checkoutError ? (
+                                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                                                <p className="font-semibold">Checkout successful.</p>
+                                                {/* <p className="mt-1">
                                             {paymentExpiry
                                                 ? `Please scan the QR code and complete your payment before ${paymentExpiry}.`
                                                 : 'Follow the payment instructions to complete your order.'}{' '}
                                             You can refresh this page after payment is confirmed.
                                         </p> */}
-                                    </div>
-                                ) : null}
+                                            </div>
+                                        ) : null}
+                                    </>
+                                )}
 
                                 {/* PAYPAL HANDLING */}
-                                <PayPalScriptProvider options={initialOptionsPaypal}>
-                                    <div className="w-full">
-                                        <PayPalButtons
-                                            style={{
-                                                shape: 'rect',
-                                                layout: 'vertical',
-                                                color: 'gold',
-                                                label: 'paypal',
-                                                disableMaxWidth: true,
-                                            }}
-                                            createOrder={async () => {
-                                                try {
-                                                    const response = await fetch('/api/orders', {
-                                                        method: 'POST',
-                                                        headers: {
+                                {!isIndonesian && (
+                                    <>
+                                        <PayPalScriptProvider options={initialOptionsPaypal}>
+                                            <div className="w-full">
+                                                <PayPalButtons
+                                                    style={{
+                                                        shape: 'rect',
+                                                        layout: 'vertical',
+                                                        color: 'gold',
+                                                        label: 'paypal',
+                                                        disableMaxWidth: true,
+                                                    }}
+                                                    createOrder={async () => {
+                                                        if (!selectedCheckoutAddress || !checkoutItems.length || !selectedRate) {
+                                                            if (!selectedCheckoutAddress && usingGuestAddress) {
+                                                                setHasAttemptedGuestCheckout(true);
+                                                            }
+                                                            throw new Error('Missing required checkout information.');
+                                                        }
+
+                                                        const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+                                                        const headers: Record<string, string> = {
+                                                            Accept: 'application/json',
                                                             'Content-Type': 'application/json',
-                                                        },
-                                                        // use the "body" param to optionally pass additional order information
-                                                        // like product ids and quantities
-                                                        body: JSON.stringify({
-                                                            cart: [
-                                                                {
-                                                                    id: 'YOUR_PRODUCT_ID',
-                                                                    quantity: 'YOUR_PRODUCT_QUANTITY',
-                                                                },
-                                                            ],
-                                                        }),
-                                                    });
+                                                            'X-Requested-With': 'XMLHttpRequest',
+                                                        };
+                                                        if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
 
-                                                    const orderData = await response.json();
+                                                        const itemsPayload = checkoutItems.map((item) => ({
+                                                            cart_id: item.cartId ?? null,
+                                                            product_id: item.productId ?? null,
+                                                            unit_id: item.unitId ?? null,
+                                                            unit_name: item.selectionSummary?.unit ?? null,
+                                                            category_id: item.categoryId ?? null,
+                                                            category_name: item.selectionSummary?.category ?? null,
+                                                            category_description: item.categoryDescription ?? null,
+                                                            sub_category_id: item.subCategoryId ?? null,
+                                                            sub_category_name: item.selectionSummary?.subCategory ?? null,
+                                                            sub_category_description: item.subCategoryDescription ?? null,
+                                                            division_id: item.divisionId ?? null,
+                                                            division_name: item.selectionSummary?.division ?? null,
+                                                            division_description: item.divisionDescription ?? null,
+                                                            variant_id: item.variantId ?? null,
+                                                            variant_name: item.selectionSummary?.variant ?? null,
+                                                            variant_color: item.selectionSummary?.variantColor ?? item.variantColor ?? null,
+                                                            variant_description: item.variantDescription ?? null,
+                                                            product_name: item.name,
+                                                            product_description: item.variant ?? null,
+                                                            product_image: item.image ?? null,
+                                                            attributes: item.attributes?.join(', ') ?? null,
+                                                            quantity: item.quantity,
+                                                            price: item.price,
+                                                            source: item.source ?? null,
+                                                            product_sku: item.sku,
+                                                        }));
 
-                                                    if (orderData.id) {
-                                                        return orderData.id;
-                                                    } else {
-                                                        const errorDetail = orderData?.details?.[0];
-                                                        const errorMessage = errorDetail
-                                                            ? `${errorDetail.issue} ${errorDetail.description} (${orderData.debug_id})`
-                                                            : JSON.stringify(orderData);
+                                                        const payload = {
+                                                            payment_method: 'paypal',
+                                                            bank_payment: '',
+                                                            courier_code: selectedRate.courier_code,
+                                                            courier_name: selectedRate.courier_name,
+                                                            courier_service: selectedRate.courier_service_code,
+                                                            courier_service_name: selectedRate.courier_service_name,
+                                                            shipping_fee: Number(selectedRate.price ?? 0),
+                                                            shipping_duration_range: selectedRate.shipment_duration_range ?? selectedRate.duration ?? null,
+                                                            shipping_duration_unit: selectedRate.shipment_duration_unit ?? null,
+                                                            voucher_code: appliedVoucher?.code ?? undefined,
+                                                            receiver_name: selectedCheckoutAddress.contact_name,
+                                                            receiver_phone: selectedCheckoutAddress.contact_phone,
+                                                            receiver_address: selectedCheckoutAddress.address,
+                                                            receiver_postal_code: selectedCheckoutAddress.postal_code,
+                                                            receiver_city: selectedCheckoutAddress.city,
+                                                            receiver_province: selectedCheckoutAddress.province,
+                                                            items: itemsPayload,
+                                                            customer_type: usingGuestAddress ? 'guest' : 'user',
+                                                            ...(usingGuestAddress
+                                                                ? {
+                                                                      email: guestContact.email.trim(),
+                                                                      contact_name: guestContact.fullName.trim(),
+                                                                      contact_phone: guestContact.phone.trim(),
+                                                                      latitude: guestAddressForm.latitude,
+                                                                      longitude: guestAddressForm.longitude,
+                                                                      country: guestAddressForm.country,
+                                                                      province: guestAddressForm.province,
+                                                                      address: guestAddressForm.label.trim() || undefined,
+                                                                      city: guestAddressForm.city,
+                                                                      postal_code: guestAddressForm.postalCode,
+                                                                      district: guestAddressForm.district,
+                                                                      village: guestAddressForm.village,
+                                                                  }
+                                                                : {}),
+                                                        };
 
-                                                        throw new Error(errorMessage);
-                                                    }
-                                                } catch (error) {
-                                                    console.error(error);
-                                                    setMessagePaypal(`Could not initiate PayPal Checkout...${error}`);
-                                                }
-                                            }}
-                                            onApprove={async (data, actions) => {
-                                                try {
-                                                    const response = await fetch(`/api/orders/${data.orderID}/capture`, {
-                                                        method: 'POST',
-                                                        headers: {
-                                                            'Content-Type': 'application/json',
-                                                        },
-                                                    });
+                                                        const response = await fetch(route('order.checkout-paypal'), {
+                                                            method: 'POST',
+                                                            headers,
+                                                            credentials: 'include',
+                                                            body: JSON.stringify(payload),
+                                                        });
 
-                                                    const orderData = await response.json();
-                                                    // Three cases to handle:
-                                                    //   (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
-                                                    //   (2) Other non-recoverable errors -> Show a failure message
-                                                    //   (3) Successful transaction -> Show confirmation or thank you message
+                                                        const data = await response.json();
 
-                                                    const errorDetail = orderData?.details?.[0];
+                                                        if (!response.ok || !data.id) {
+                                                            const errorDetail = data?.details?.[0];
+                                                            const errorMessage = errorDetail
+                                                                ? `${errorDetail.issue} ${errorDetail.description} (${data.debug_id})`
+                                                                : (data?.message ?? JSON.stringify(data));
+                                                            setMessagePaypal(`Could not initiate PayPal Checkout: ${errorMessage}`);
+                                                            throw new Error(errorMessage);
+                                                        }
 
-                                                    if (errorDetail?.issue === 'INSTRUMENT_DECLINED') {
-                                                        // (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
-                                                        // recoverable state, per https://developer.paypal.com/docs/checkout/standard/customize/handle-funding-failures/
-                                                        return actions.restart();
-                                                    } else if (errorDetail) {
-                                                        // (2) Other non-recoverable errors -> Show a failure message
-                                                        throw new Error(`${errorDetail.description} (${orderData.debug_id})`);
-                                                    } else {
-                                                        // (3) Successful transaction -> Show confirmation or thank you message
-                                                        // Or go to another URL:  actions.redirect('thank_you.html');
-                                                        const transaction = orderData.purchase_units[0].payments.captures[0];
-                                                        setMessagePaypal(
-                                                            `Transaction ${transaction.status}: ${transaction.id}. See console for all available details`,
-                                                        );
-                                                        console.log('Capture result', orderData, JSON.stringify(orderData, null, 2));
-                                                    }
-                                                } catch (error) {
-                                                    console.error(error);
-                                                    setMessagePaypal(`Sorry, your transaction could not be processed...${error}`);
-                                                }
-                                            }}
-                                            fundingSource={FUNDING.PAYPAL}
-                                        />
-                                    </div>
-                                </PayPalScriptProvider>
-                                <p className="text-sm">{messagePaypal}</p>
+                                                        return data.id;
+                                                    }}
+                                                    onApprove={async (data, actions) => {
+                                                        try {
+                                                            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+                                                            const headers: Record<string, string> = {
+                                                                'Content-Type': 'application/json',
+                                                                'X-Requested-With': 'XMLHttpRequest',
+                                                            };
+                                                            if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
+
+                                                            const response = await fetch(route('order.capture-paypal', { orderId: data.orderID }), {
+                                                                method: 'POST',
+                                                                headers,
+                                                                credentials: 'include',
+                                                            });
+
+                                                            const orderData = await response.json();
+                                                            const errorDetail = orderData?.details?.[0];
+
+                                                            if (errorDetail?.issue === 'INSTRUMENT_DECLINED') {
+                                                                return actions.restart();
+                                                            } else if (errorDetail) {
+                                                                throw new Error(`${errorDetail.description} (${orderData.debug_id})`);
+                                                            } else if (!response.ok) {
+                                                                throw new Error(orderData?.message ?? 'Capture failed');
+                                                            } else {
+                                                                const transaction = orderData.purchase_units[0].payments.captures[0];
+                                                                setMessagePaypal(`Transaction ${transaction.status}: ${transaction.id}.`);
+                                                                clearCheckoutStorage();
+                                                            }
+                                                        } catch (error) {
+                                                            console.error(error);
+                                                            setMessagePaypal(`Sorry, your transaction could not be processed: ${error}`);
+                                                        }
+                                                    }}
+                                                    fundingSource={FUNDING.PAYPAL}
+                                                />
+                                            </div>
+                                        </PayPalScriptProvider>
+                                        <p className="text-sm">{messagePaypal}</p>
+                                    </>
+                                )}
                             </CardFooter>
                         </Card>
                     </div>
