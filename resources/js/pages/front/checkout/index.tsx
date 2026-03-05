@@ -1266,13 +1266,11 @@ export default function Checkout() {
     }, [checkoutItems, voucherCode]);
 
     const subtotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
-    const protection = checkoutItems.reduce((total, item) => total + (item.protectionPrice ?? 0), 0);
-    const shipping = selectedRate?.price ?? 0;
-    const insurance = 0;
+    const shipping = isIndonesian ? (selectedRate?.price ?? 0) : 0;
 
     const voucherDiscount = useMemo(() => appliedVoucher?.totalVoucherPrice, [appliedVoucher]);
 
-    const total = Math.max(0, subtotal + protection + shipping + insurance - (voucherDiscount ?? 0));
+    const total = Math.max(0, subtotal + shipping - (voucherDiscount ?? 0));
 
     useEffect(() => {
         if (!appliedVoucher) return;
@@ -2504,7 +2502,7 @@ export default function Checkout() {
                                 )}
 
                                 {/* PAYPAL HANDLING */}
-                                {!isIndonesian && (
+                                {isIndonesian && (
                                     <>
                                         <PayPalScriptProvider options={initialOptionsPaypal}>
                                             <div className="w-full">
@@ -2524,7 +2522,9 @@ export default function Checkout() {
                                                             throw new Error('Missing required checkout information.');
                                                         }
 
-                                                        const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+                                                        const csrfToken = (
+                                                            document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
+                                                        )?.content;
                                                         const headers: Record<string, string> = {
                                                             Accept: 'application/json',
                                                             'Content-Type': 'application/json',
@@ -2568,7 +2568,8 @@ export default function Checkout() {
                                                             courier_service: selectedRate.courier_service_code,
                                                             courier_service_name: selectedRate.courier_service_name,
                                                             shipping_fee: Number(selectedRate.price ?? 0),
-                                                            shipping_duration_range: selectedRate.shipment_duration_range ?? selectedRate.duration ?? null,
+                                                            shipping_duration_range:
+                                                                selectedRate.shipment_duration_range ?? selectedRate.duration ?? null,
                                                             shipping_duration_unit: selectedRate.shipment_duration_unit ?? null,
                                                             voucher_code: appliedVoucher?.code ?? undefined,
                                                             receiver_name: selectedCheckoutAddress.contact_name,
@@ -2619,7 +2620,9 @@ export default function Checkout() {
                                                     }}
                                                     onApprove={async (data, actions) => {
                                                         try {
-                                                            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+                                                            const csrfToken = (
+                                                                document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
+                                                            )?.content;
                                                             const headers: Record<string, string> = {
                                                                 'Content-Type': 'application/json',
                                                                 'X-Requested-With': 'XMLHttpRequest',
