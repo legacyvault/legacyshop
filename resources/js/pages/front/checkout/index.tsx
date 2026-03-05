@@ -249,7 +249,6 @@ export default function Checkout() {
     const initialOptionsPaypal = {
         clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID ?? 'test',
         currency: 'USD',
-        intent: 'capture',
         components: 'buttons',
     };
 

@@ -110,6 +110,7 @@ class OrderController extends Controller
         $items = $request->items;
 
         $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        $ip = trim(explode(',', $ip)[0]);
         if (env('APP_ENV') == 'local') {
             $ip = '36.84.152.11';
         }
@@ -117,11 +118,7 @@ class OrderController extends Controller
         $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
         $location = $response->json();
 
-        if ($location['status'] == 'fail') {
-            return redirect()->back()->with('error', 'Failed to register');
-        }
-
-        $isIndonesian = ($location['countryCode'] === 'ID');
+        $isIndonesian = ($location['countryCode'] ?? null) === 'ID';
 
         if ($isIndonesian) {
             return response()->json([
