@@ -2515,7 +2515,9 @@ export default function Checkout() {
                                                         disableMaxWidth: true,
                                                     }}
                                                     createOrder={async () => {
-                                                        if (!selectedCheckoutAddress || !checkoutItems.length || !selectedRate) {
+                                                        console.log(selectedCheckoutAddress);
+                                                        console.log(usingGuestAddress);
+                                                        if (!selectedCheckoutAddress || !checkoutItems.length) {
                                                             if (!selectedCheckoutAddress && usingGuestAddress) {
                                                                 setHasAttemptedGuestCheckout(true);
                                                             }
@@ -2561,16 +2563,6 @@ export default function Checkout() {
                                                         }));
 
                                                         const payload = {
-                                                            payment_method: 'paypal',
-                                                            bank_payment: '',
-                                                            courier_code: selectedRate.courier_code,
-                                                            courier_name: selectedRate.courier_name,
-                                                            courier_service: selectedRate.courier_service_code,
-                                                            courier_service_name: selectedRate.courier_service_name,
-                                                            shipping_fee: Number(selectedRate.price ?? 0),
-                                                            shipping_duration_range:
-                                                                selectedRate.shipment_duration_range ?? selectedRate.duration ?? null,
-                                                            shipping_duration_unit: selectedRate.shipment_duration_unit ?? null,
                                                             voucher_code: appliedVoucher?.code ?? undefined,
                                                             receiver_name: selectedCheckoutAddress.contact_name,
                                                             receiver_phone: selectedCheckoutAddress.contact_phone,
