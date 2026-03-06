@@ -17,7 +17,7 @@ class MidtransController extends Controller
     {
         $this->serverKey = env('MIDTRANS_SERVER_KEY');
         $this->clientKey = env('MIDTRANS_CLIENT_KEY');
-        $this->apiUrl = 'https://api.sandbox.midtrans.com';
+        $this->apiUrl = env('MIDTRANS_URL');
     }
 
     public function generateQRIS(Request $request)

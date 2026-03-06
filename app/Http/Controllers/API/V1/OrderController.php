@@ -45,7 +45,7 @@ class OrderController extends Controller
     {
         $this->serverKey = env('MIDTRANS_SERVER_KEY');
         $this->clientKey = env('MIDTRANS_CLIENT_KEY');
-        $this->apiUrl = 'https://api.sandbox.midtrans.com';
+        $this->apiUrl = env('MIDTRANS_URL');
         $this->biteshipApiKey = env('BITESHIP_API_KEY');
     }
 
@@ -674,7 +674,7 @@ class OrderController extends Controller
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ])
-                ->post('https://app.sandbox.midtrans.com/snap/v1/transactions', $payload);
+                ->post(env('MIDTRANS_URL') . '/snap/v1/transactions', $payload);
 
             $result = $response->json();
 
@@ -711,7 +711,7 @@ class OrderController extends Controller
             $statusData = $statusResponse->json();
             $transactionStatus = $statusData['transaction_status'] ?? null;
             if (isset($statusData['transaction_status']) && $statusData['transaction_status'] === 'pending') {
-                $redirectUrl = 'https://app.sandbox.midtrans.com/snap/v2/vtweb/' . $order->snap_token;
+                $redirectUrl = env('MIDTRANS_URL') . '/snap/v2/vtweb/' . $order->snap_token;
 
                 return response()->json([
                     'status' => 'pending',

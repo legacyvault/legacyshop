@@ -1325,7 +1325,7 @@ export default function Checkout() {
     const [pendingSnapToken, setPendingSnapToken] = useState<string | null>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const midtransClientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY ?? '';
-    const midtransSnapUrl = import.meta.env.VITE_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
+    const midtransSnapUrl = `${import.meta.env.VITE_MIDTRANS_URL}/snap/snap.js`;
     const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.embed));
 
     const canSubmit = Boolean(hasCheckoutItems && selectedRate && !isThankYou);

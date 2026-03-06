@@ -22,8 +22,8 @@
 
         <script
             type="text/javascript"
-            src="https://app.sandbox.midtrans.com/snap/snap.js"
-            data-client-key="{{ config('midtrans.client_key') }}">
+            src="{{ config('services.midtrans.snap_url') }}/snap/snap.js"
+            data-client-key="{{ config('services.midtrans.client_key') }}">
         </script>
 
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
