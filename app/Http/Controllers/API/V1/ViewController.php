@@ -483,13 +483,13 @@ class ViewController extends Controller
         ]);
     }
 
-    public function deliveryAddressProfilePage(){
+    public function deliveryAddressProfilePage(Request $request){
         $provinces = $this->locationController->getProvinceList();
-        $profile = $this->userController->getProfile();
+        $deliveryAddresses = $this->userController->getDeliveryAddresBasedCountryCode($request);
 
         return Inertia::render('settings/delivery-address/index', [
             'provinces' => $provinces,
-            'profile' => $profile,
+            'deliveryAddresses' => $deliveryAddresses,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')

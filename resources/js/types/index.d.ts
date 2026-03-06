@@ -71,6 +71,7 @@ export interface SharedData {
     isIndonesian: boolean;
     internationalShipmentPrice: number | null;
     countryCode: string | null;
+    deliveryAddresses: IDeliveryAddress[];
 }
 
 export interface IEvents {
