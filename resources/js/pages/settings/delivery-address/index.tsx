@@ -6,7 +6,7 @@ import { router, usePage } from '@inertiajs/react';
 import { useCallback, useState } from 'react';
 
 export default function DeliveryAddress() {
-    const { auth, locale, translations, deliveryAddresses } = usePage<SharedData>().props;
+    const { auth, locale, translations, deliveryAddresses, countryCode } = usePage<SharedData>().props;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -80,6 +80,7 @@ export default function DeliveryAddress() {
                 open={isModalOpen}
                 onOpenChange={handleModalChange}
                 deliveryAddress={selectedAddress}
+                countryCode={countryCode ?? 'ID'}
                 id={selectedId}
                 closeOnSuccess={false}
             />

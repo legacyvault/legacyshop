@@ -487,9 +487,16 @@ class ViewController extends Controller
         $provinces = $this->locationController->getProvinceList();
         $deliveryAddresses = $this->userController->getDeliveryAddresBasedCountryCode($request);
 
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        $ip = trim(explode(',', $ip)[0]);
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $countryCode = $location['countryCode'] ?? null;
+
         return Inertia::render('settings/delivery-address/index', [
             'provinces' => $provinces,
             'deliveryAddresses' => $deliveryAddresses,
+            'countryCode' => $countryCode,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')

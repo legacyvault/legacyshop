@@ -117,6 +117,7 @@ interface AddDeliveryAddressModalProps {
     onSuccess?: () => void;
     onCancel?: () => void;
     closeOnSuccess?: boolean;
+    countryCode: string;
 }
 
 export default function AddDeliveryAddressModal({
@@ -127,27 +128,14 @@ export default function AddDeliveryAddressModal({
     onSuccess,
     onCancel,
     closeOnSuccess = true,
+    countryCode,
 }: AddDeliveryAddressModalProps) {
     const isEdit = Boolean(id ?? deliveryAddress?.id);
 
     const { props } = usePage<SharedData>();
     const authCountryRaw = props.auth?.user?.country ?? '';
 
-    const baseCountry = useMemo(() => {
-        const deliveryCountry = normalizeCountryValue(deliveryAddress?.country);
-        if (deliveryCountry) {
-            return deliveryCountry;
-        }
-
-        const authCountry = normalizeCountryValue(authCountryRaw);
-        if (authCountry) {
-            return authCountry;
-        }
-
-        return 'ID';
-    }, [authCountryRaw, deliveryAddress?.country]);
-
-    const initialShouldUseIndonesianFields = useMemo(() => isIndonesiaCountry(baseCountry), [baseCountry]);
+    const initialShouldUseIndonesianFields = useMemo(() => isIndonesiaCountry(countryCode), [countryCode]);
 
     const initialFormData = useMemo<FormData>(() => {
         const provinceValue = initialShouldUseIndonesianFields ? (deliveryAddress?.province_code ?? '') : (deliveryAddress?.province ?? '');
@@ -160,7 +148,7 @@ export default function AddDeliveryAddressModal({
             name: deliveryAddress?.name ?? '',
             contact_name: deliveryAddress?.contact_name ?? '',
             contact_phone: deliveryAddress?.contact_phone ?? '',
-            country: baseCountry,
+            country: countryCode,
             province: provinceValue,
             city: cityValue,
             district: districtValue ?? '',
@@ -171,7 +159,7 @@ export default function AddDeliveryAddressModal({
             longitude: deliveryAddress?.longitude?.toString() ?? '',
             is_active: deliveryAddress?.is_active ?? true,
         };
-    }, [baseCountry, deliveryAddress, id, initialShouldUseIndonesianFields]);
+    }, [deliveryAddress, id, initialShouldUseIndonesianFields]);
 
     const formSyncKey = useMemo(
         () =>
@@ -226,9 +214,9 @@ export default function AddDeliveryAddressModal({
     const { data, setData, post, processing, errors } = useForm<FormData>(initialFormData);
 
     const selectedCountry = useMemo(() => {
-        const current = normalizeCountryValue(data.country || baseCountry);
-        return current || baseCountry;
-    }, [baseCountry, data.country]);
+        const current = normalizeCountryValue(data.country || countryCode);
+        return current || countryCode;
+    }, [countryCode, data.country]);
 
     const shouldUseIndonesianFields = useMemo(() => isIndonesiaCountry(selectedCountry), [selectedCountry]);
 
@@ -308,7 +296,7 @@ export default function AddDeliveryAddressModal({
             return;
         }
 
-        const current = data.country || baseCountry;
+        const current = data.country || countryCode;
         if (!current) {
             hasNormalizedCountryRef.current = true;
             return;
@@ -334,7 +322,7 @@ export default function AddDeliveryAddressModal({
         }
 
         hasNormalizedCountryRef.current = true;
-    }, [countries, data.country, baseCountry, setData]);
+    }, [countries, data.country, countryCode, setData]);
 
     const filteredProvinces = useMemo(() => {
         const term = provinceQuery.trim().toLowerCase();
@@ -1674,7 +1662,6 @@ export default function AddDeliveryAddressModal({
                                     onChange={(next) => handleLocationPick({ lat: next.lat, lng: next.lng })}
                                     className="h-[320px]"
                                 />
-
 
                                 {/* <div className="grid hidden gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
