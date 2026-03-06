@@ -456,6 +456,7 @@ class ViewController extends Controller
             'warehouse' => $warehouse,
             'couriers' => $couriers,
             'isIndonesian' => $isIndonesian,
+            'countryCode' => $countryCode,
             'internationalShipmentPrice' => $internationalShipmentPrice,
             'rates'             => fn () => session('rates', []),
             'flashMessage'      => fn () => session('message'),

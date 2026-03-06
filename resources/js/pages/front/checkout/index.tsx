@@ -180,6 +180,12 @@ function getRateId(rate: IRatePricing) {
     return `${rate.courier_code}-${rate.courier_service_code}`;
 }
 
+function isAddressValidForFlow(address: IDeliveryAddress, isIndonesian: boolean): boolean {
+    const country = address.country?.trim().toUpperCase();
+    const isAddressIndonesian = country === 'ID' || country === 'IDN';
+    return isIndonesian ? isAddressIndonesian : !isAddressIndonesian;
+}
+
 function formatCurrency(value: number, currency = 'IDR') {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -240,7 +246,7 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
 }
 
 export default function Checkout() {
-    const { profile, rates, warehouse, auth, isIndonesian, internationalShipmentPrice } = usePage<SharedData>().props;
+    const { profile, rates, warehouse, auth, isIndonesian, internationalShipmentPrice, countryCode } = usePage<SharedData>().props;
     const isGuest = !auth?.user;
     const deliveryAddresses = profile?.delivery_address ?? [];
 
@@ -259,9 +265,10 @@ export default function Checkout() {
     const displayCurrency = (checkoutItems[0]?.currency || 'IDR').toUpperCase();
 
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
+    const validAddresses = useMemo(() => addresses.filter((a) => isAddressValidForFlow(a, isIndonesian)), [addresses, isIndonesian]);
     const [selectedAddress, setSelectedAddress] = useState<CheckoutAddress | null>(() => {
-        if (!addresses.length) return null;
-        return addresses.find((address) => address.is_active) ?? addresses[0];
+        if (!validAddresses.length) return null;
+        return validAddresses.find((address) => address.is_active) ?? validAddresses[0];
     });
     const [isChangeAddressOpen, setIsChangeAddressOpen] = useState(false);
     const [guestContact, setGuestContact] = useState<GuestContact>(() => ({
@@ -301,19 +308,19 @@ export default function Checkout() {
     const lastProvinceCountryRef = useRef<string | null>(provinceOptions.length ? guestAddressForm.country : null);
 
     useEffect(() => {
-        if (!addresses.length) {
+        if (!validAddresses.length) {
             setSelectedAddress(null);
             return;
         }
 
         setSelectedAddress((prev) => {
-            if (prev && addresses.some((address) => address.id === prev.id)) {
+            if (prev && validAddresses.some((address) => address.id === prev.id)) {
                 return prev;
             }
 
-            return addresses.find((address) => address.is_active) ?? addresses[0];
+            return validAddresses.find((address) => address.is_active) ?? validAddresses[0];
         });
-    }, [addresses]);
+    }, [validAddresses]);
 
     const usingGuestAddress = isGuest;
     const isIndonesiaAddress = useMemo(() => {
@@ -1324,7 +1331,13 @@ export default function Checkout() {
     const midtransSnapUrl = import.meta.env.VITE_MIDTRANS_SNAP_URL ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
     const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.embed));
 
-    const canSubmit = Boolean(hasCheckoutItems && selectedRate && !isThankYou);
+    const selectedAddressValidForFlow = useMemo(() => {
+        if (usingGuestAddress) return true;
+        if (!selectedCheckoutAddress) return false;
+        return isAddressValidForFlow(selectedCheckoutAddress as IDeliveryAddress, isIndonesian);
+    }, [selectedCheckoutAddress, isIndonesian, usingGuestAddress]);
+
+    const canSubmit = Boolean(hasCheckoutItems && selectedRate && !isThankYou && selectedAddressValidForFlow);
 
     const isInteractionLocked = isThankYou;
 
@@ -1515,6 +1528,11 @@ export default function Checkout() {
             if (!selectedCheckoutAddress && usingGuestAddress) {
                 setHasAttemptedGuestCheckout(true);
             }
+            return;
+        }
+
+        if (!selectedAddressValidForFlow) {
+            setCheckoutError('Your selected address does not match your current region. Please choose a valid address.');
             return;
         }
 
@@ -1806,19 +1824,23 @@ export default function Checkout() {
                                                     {addresses.length ? (
                                                         addresses.map((address) => {
                                                             const isSelected = address.id === selectedAddress?.id;
+                                                            const isValidForFlow = isAddressValidForFlow(address, isIndonesian);
 
                                                             return (
                                                                 <div
                                                                     key={address.id}
                                                                     role="button"
                                                                     onClick={() => {
+                                                                        if (!isValidForFlow) return;
                                                                         setSelectedAddress(address);
                                                                         setIsChangeAddressOpen(false);
                                                                     }}
                                                                     className={`w-full rounded-lg border bg-background p-4 text-left transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
-                                                                        isSelected
-                                                                            ? 'border-primary bg-primary/5'
-                                                                            : 'border-border/60 hover:border-primary/40'
+                                                                        !isValidForFlow
+                                                                            ? 'cursor-not-allowed opacity-50'
+                                                                            : isSelected
+                                                                              ? 'border-primary bg-primary/5'
+                                                                              : 'border-border/60 hover:border-primary/40'
                                                                     }`}
                                                                 >
                                                                     <div className="flex items-start justify-between gap-3">
@@ -1836,13 +1858,19 @@ export default function Checkout() {
                                                                                 <p className="text-xs text-muted-foreground">
                                                                                     {address.contact_phone}
                                                                                 </p>
-                                                                                <Button
-                                                                                    onClick={() => editAddressHandler(address)}
-                                                                                    className="mt-4 pl-0"
-                                                                                    variant="link"
-                                                                                >
-                                                                                    Edit Address
-                                                                                </Button>
+                                                                                {!isValidForFlow ? (
+                                                                                    <p className="text-xs font-medium text-destructive">
+                                                                                        Not available for your region
+                                                                                    </p>
+                                                                                ) : (
+                                                                                    <Button
+                                                                                        onClick={() => editAddressHandler(address)}
+                                                                                        className="mt-4 pl-0"
+                                                                                        variant="link"
+                                                                                    >
+                                                                                        Edit Address
+                                                                                    </Button>
+                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                         {isSelected && (
@@ -2197,24 +2225,33 @@ export default function Checkout() {
                                         ) : null}
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-3 text-sm">
-                                        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                            <MapPin className="h-4 w-4" />
-                                        </span>
-                                        <div>
-                                            {selectedCheckoutAddress ? (
-                                                <>
-                                                    <div className="font-semibold text-foreground capitalize">
-                                                        {selectedCheckoutAddress.name} • {selectedCheckoutAddress.contact_name}
-                                                    </div>
-                                                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                                                        {selectedCheckoutAddress.address}
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-muted-foreground">{selectedCheckoutAddress.contact_phone}</p>
-                                                </>
-                                            ) : (
-                                                <p className="text-sm text-muted-foreground">There is no delivery address yet.</p>
-                                            )}
+                                    <div className="space-y-4">
+                                        {addresses.length > 0 && validAddresses.length === 0 && (
+                                            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                                                None of your saved addresses are valid for your current region (
+                                                {isIndonesian ? 'Indonesia' : 'international'}). Please add a new address that matches your
+                                                region.
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-3 text-sm">
+                                            <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                <MapPin className="h-4 w-4" />
+                                            </span>
+                                            <div>
+                                                {selectedCheckoutAddress ? (
+                                                    <>
+                                                        <div className="font-semibold text-foreground capitalize">
+                                                            {selectedCheckoutAddress.name} • {selectedCheckoutAddress.contact_name}
+                                                        </div>
+                                                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                                            {selectedCheckoutAddress.address}
+                                                        </p>
+                                                        <p className="mt-1 text-xs text-muted-foreground">{selectedCheckoutAddress.contact_phone}</p>
+                                                    </>
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground">There is no delivery address yet.</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -2478,6 +2515,11 @@ export default function Checkout() {
                                 </div>
                                 {isIndonesian && (
                                     <>
+                                        {!selectedAddressValidForFlow && selectedCheckoutAddress ? (
+                                            <p className="text-center text-sm text-destructive">
+                                                Your selected address is not valid for your region. Please add or select an Indonesian address.
+                                            </p>
+                                        ) : null}
                                         <Button
                                             size="lg"
                                             className="h-12 w-full text-base font-semibold"
@@ -2504,6 +2546,11 @@ export default function Checkout() {
                                 {/* PAYPAL HANDLING */}
                                 {!isIndonesian && (
                                     <>
+                                        {!selectedAddressValidForFlow && selectedCheckoutAddress ? (
+                                            <p className="text-center text-sm text-destructive">
+                                                Your selected address is not valid for your region. Please add or select an international address.
+                                            </p>
+                                        ) : null}
                                         {internationalShipmentPrice ? (
                                             <>
                                                 <PayPalScriptProvider options={initialOptionsPaypal}>
@@ -2525,6 +2572,10 @@ export default function Checkout() {
                                                                         setHasAttemptedGuestCheckout(true);
                                                                     }
                                                                     throw new Error('Missing required checkout information.');
+                                                                }
+
+                                                                if (!selectedAddressValidForFlow) {
+                                                                    throw new Error('Your selected address does not match your current region. Please choose a valid address.');
                                                                 }
 
                                                                 const csrfToken = (
