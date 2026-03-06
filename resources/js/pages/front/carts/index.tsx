@@ -45,10 +45,10 @@ interface DetailedCartItem {
 const FALLBACK_IMAGE = '/banner-example.jpg';
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 
-const formatCurrency = (value: number) =>
+const formatCurrency = (value: number, currency = 'IDR') =>
     new Intl.NumberFormat('id-ID', {
         style: 'currency',
-        currency: 'IDR',
+        currency,
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     }).format(Math.max(0, Math.round(value)));
@@ -230,7 +230,7 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
         };
     }
 
-    const productBase = toNumber(cart.product?.product_price);
+    const productBase = toNumber(cart.product?.default_price ?? cart.product?.product_price);
     const productDiscount = toNumber(cart.product?.product_discount);
     const eventDiscount = toNumber(cart.product?.event?.discount);
     const isEventActive = Boolean(cart.product?.event && cart.product.event.is_active === 1);
@@ -238,15 +238,15 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
     const appliedProductDiscount = appliedEventDiscount > 0 ? appliedEventDiscount : productDiscount;
 
     const subCategory = resolveSubCategory(cart);
-    const subBase = toNumber(subCategory?.price);
+    const subBase = toNumber(subCategory?.default_price ?? subCategory?.price);
     const subDiscount = resolveDiscountPercent(subCategory, 'use_subcategory_discount', 'discount');
 
     const division = resolveDivision(cart);
-    const divisionBase = toNumber(division?.price);
+    const divisionBase = toNumber(division?.default_price ?? division?.price);
     const divisionDiscount = resolveDiscountPercent(division, 'use_division_discount', 'discount');
 
     const variant = resolveVariant(cart);
-    const variantBase = toNumber(variant?.price);
+    const variantBase = toNumber(variant?.default_price ?? variant?.price);
     const variantDiscount = resolveDiscountPercent(variant, 'use_variant_discount', 'discount');
 
     const originalPrice = Math.max(0, Math.round(productBase + subBase + divisionBase + variantBase));
@@ -257,9 +257,8 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
     const discountedVariant = computeDiscountedPrice(variantBase, variantDiscount);
 
     const computedFinal = discountedBase + discountedSub + discountedDivision + discountedVariant;
-    const serverPrice = toNumber((cart as ICart)?.price_per_product);
 
-    const candidatePrices = [serverPrice, computedFinal, fallbackPrice].filter((price) => price > 0);
+    const candidatePrices = [computedFinal, fallbackPrice].filter((price) => price > 0);
     const finalPrice = candidatePrices.length ? Math.min(...candidatePrices) : 0;
 
     const discountPercent = originalPrice > 0 && finalPrice > 0 ? Math.max(0, Math.round(((originalPrice - finalPrice) / originalPrice) * 100)) : 0;
@@ -364,6 +363,12 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
         });
     }, [carts, contextMap, contextItems]);
 
+    const displayCurrency = (
+        detailedItems[0]?.cart?.product?.default_currency ||
+        contextItems[0]?.meta?.product?.default_currency ||
+        'IDR'
+    ).toUpperCase();
+
     const hasInitializedSelectionRef = useRef(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -438,6 +443,7 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
                 eventName: item.eventName ?? null,
                 eventDiscountPct: item.eventDiscount ?? null,
                 isEventActive: item.isEventActive ?? null,
+                currency: (item.cart?.product?.default_currency || 'IDR').toUpperCase(),
             };
         });
 
@@ -563,10 +569,10 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
 
                                             <div className="flex flex-col items-stretch gap-4 text-right sm:flex-row sm:items-center sm:gap-6">
                                                 <div className="min-w-[120px]">
-                                                    <div className="text-lg font-semibold text-foreground">{formatCurrency(item.finalPrice)}</div>
+                                                    <div className="text-lg font-semibold text-foreground">{formatCurrency(item.finalPrice, displayCurrency)}</div>
                                                     {item.discountPercent > 0 && (
                                                         <div className="text-sm text-muted-foreground line-through">
-                                                            {formatCurrency(item.originalPrice)}
+                                                            {formatCurrency(item.originalPrice, displayCurrency)}
                                                         </div>
                                                     )}
                                                     {item.isEventActive && item.eventDiscount ? (
@@ -627,17 +633,17 @@ function CartContent({ carts }: { carts: ICart[] | null }) {
 
                         <div className="flex items-center justify-between text-sm text-muted-foreground">
                             <span>Subtotal</span>
-                            <span>{formatCurrency(totals.original)}</span>
+                            <span>{formatCurrency(totals.original, displayCurrency)}</span>
                         </div>
                         {savings > 0 && (
                             <div className="mt-2 flex items-center justify-between text-sm text-green-600">
                                 <span>Discount</span>
-                                <span>-{formatCurrency(savings)}</span>
+                                <span>-{formatCurrency(savings, displayCurrency)}</span>
                             </div>
                         )}
                         <div className="mt-4 flex items-center justify-between text-base font-semibold text-foreground">
                             <span>Total</span>
-                            <span>{formatCurrency(totals.subtotal)}</span>
+                            <span>{formatCurrency(totals.subtotal, displayCurrency)}</span>
                         </div>
                         <Link href={'/checkout'}>
                             <Button className="mt-6 w-full" size="lg" disabled={!selectedItems.length}>

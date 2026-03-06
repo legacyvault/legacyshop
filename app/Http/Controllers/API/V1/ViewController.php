@@ -8,9 +8,10 @@ use App\Http\Controllers\InvoiceController as AppInvoiceController;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Lang;
-use App\Models\Carts;
 use App\Models\Unit;
+use App\Models\ZoneInternationalShipment;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class ViewController extends Controller
 {
@@ -338,24 +339,8 @@ class ViewController extends Controller
 
         $carts = null;
 
-        if (Auth::check()) {
-            if ((int) Auth::id() === (int) $id) {
-                $carts = Carts::with([
-                    'product',
-                    'product.unit',
-                    'product.categories',
-                    'product.subcategories',
-                    'product.divisions',
-                    'product.variants',
-                    'product.pictures',
-                    'category',
-                    'subCategory',
-                    'division',
-                    'variant',
-                ])
-                    ->where('user_id', $id)
-                    ->get();
-            }
+        if (Auth::check() && (int) Auth::id() === (int) $id) {
+            $carts = $this->cartController->getCartsForUser($request, $id);
         }
 
         return Inertia::render('front/carts/index', [
@@ -445,15 +430,34 @@ class ViewController extends Controller
         ]);
     }
 
-    public function checkoutPage(){
+    public function checkoutPage(Request $request){
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        $ip = trim(explode(',', $ip)[0]);
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $countryCode = $location['countryCode'] ?? null;
+        $isIndonesian = $countryCode === 'ID';
+
+        $internationalShipmentPrice = null;
+        if ($countryCode && !$isIndonesian) {
+            $zone = ZoneInternationalShipment::with('international_shipment')
+                ->where('country_code', $countryCode)
+                ->first();
+            $internationalShipmentPrice = $zone?->international_shipment?->usd_price;
+        }
+
         $warehouse = $this->warehouseController->getActiveWarehouse();
         $couriers = $this->biteshipController->getCourierList();
         $profile = $this->userController->getProfile();
+
 
         return Inertia::render('front/checkout/index',[
             'profile' => $profile,
             'warehouse' => $warehouse,
             'couriers' => $couriers,
+            'isIndonesian' => $isIndonesian,
+            'countryCode' => $countryCode,
+            'internationalShipmentPrice' => $internationalShipmentPrice,
             'rates'             => fn () => session('rates', []),
             'flashMessage'      => fn () => session('message'),
         ]);
@@ -479,13 +483,20 @@ class ViewController extends Controller
         ]);
     }
 
-    public function deliveryAddressProfilePage(){
+    public function deliveryAddressProfilePage(Request $request){
         $provinces = $this->locationController->getProvinceList();
-        $profile = $this->userController->getProfile();
+        $deliveryAddresses = $this->userController->getDeliveryAddresBasedCountryCode($request);
+
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        $ip = trim(explode(',', $ip)[0]);
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $countryCode = $location['countryCode'] ?? null;
 
         return Inertia::render('settings/delivery-address/index', [
             'provinces' => $provinces,
-            'profile' => $profile,
+            'deliveryAddresses' => $deliveryAddresses,
+            'countryCode' => $countryCode,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')

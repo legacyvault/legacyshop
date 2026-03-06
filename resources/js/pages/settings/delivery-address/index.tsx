@@ -6,11 +6,9 @@ import { router, usePage } from '@inertiajs/react';
 import { useCallback, useState } from 'react';
 
 export default function DeliveryAddress() {
-    const { auth, locale, translations, profile } = usePage<SharedData>().props;
+    const { auth, locale, translations, deliveryAddresses, countryCode } = usePage<SharedData>().props;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-
-    const deliveryAddresses = profile.delivery_address;
 
     const handleModalChange = useCallback(
         (nextOpen: boolean) => {
@@ -65,11 +63,7 @@ export default function DeliveryAddress() {
                             <Button onClick={() => editAddressHandler(addr)} className="pl-0" variant={'link'}>
                                 Edit Address
                             </Button>
-                            <Button
-                                className="text-red-600"
-                                variant={'link'}
-                                onClick={() => deleteAddressHandler(addr)}
-                            >
+                            <Button className="text-red-600" variant={'link'} onClick={() => deleteAddressHandler(addr)}>
                                 Delete Address
                             </Button>
                         </div>
@@ -86,6 +80,7 @@ export default function DeliveryAddress() {
                 open={isModalOpen}
                 onOpenChange={handleModalChange}
                 deliveryAddress={selectedAddress}
+                countryCode={countryCode ?? 'ID'}
                 id={selectedId}
                 closeOnSuccess={false}
             />

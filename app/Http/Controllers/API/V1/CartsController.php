@@ -7,6 +7,7 @@ use App\Models\Carts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -89,6 +90,38 @@ class CartsController extends Controller
         }
     }
 
+    public function getCartsForUser(Request $request, $id)
+    {
+        $carts = Carts::with([
+            'product',
+            'product.unit',
+            'product.categories',
+            'product.subcategories',
+            'product.divisions',
+            'product.variants',
+            'product.pictures',
+            'category',
+            'subCategory',
+            'division',
+            'variant',
+        ])
+            ->where('user_id', $id)
+            ->get();
+
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
+        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $isIndonesian = ($location['countryCode'] ?? 'ID') === 'ID';
+
+        foreach ($carts as $cart) {
+            if ($cart->product) {
+                $this->applyPriceMappingToProduct($cart->product, $isIndonesian);
+            }
+        }
+
+        return $carts;
+    }
+
     public function getCart(Request $request, $id)
     {
         try {
@@ -105,21 +138,7 @@ class CartsController extends Controller
                 ]);
             }
 
-            $carts = Carts::with([
-                'product',
-                'category',
-                'subCategory',
-                'division',
-                'variant',
-                'product.unit',
-                'product.categories',
-                'product.subcategories',
-                'product.divisions',
-                'product.variants',
-                'product.pictures',
-            ])
-                ->where('user_id', $id)
-                ->get();
+            $carts = $this->getCartsForUser($request, $id);
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -136,5 +155,49 @@ class CartsController extends Controller
                 ], 500);
             }
         }
+    }
+
+    private function mapPrice($model, $isIndonesian, $isProduct = false)
+    {
+        if (!$model) return null;
+
+        if ($isProduct) {
+            $model->default_price = $isIndonesian
+                ? ($model->product_price ?? null)
+                : ($model->product_usd_price ?? null);
+        } else {
+            $model->default_price = $isIndonesian
+                ? ($model->price ?? null)
+                : ($model->usd_price ?? null);
+        }
+
+        $model->default_currency = $isIndonesian ? 'IDR' : 'USD';
+
+        return $model;
+    }
+
+    private function applyPriceMappingToProduct($product, $isIndonesian)
+    {
+        if (!$product) return null;
+
+        $this->mapPrice($product, $isIndonesian, true);
+
+        foreach ($product->categories ?? [] as $cat) {
+            $this->mapPrice($cat, $isIndonesian);
+        }
+
+        foreach ($product->subcategories ?? [] as $sub) {
+            $this->mapPrice($sub, $isIndonesian);
+        }
+
+        foreach ($product->divisions ?? [] as $division) {
+            $this->mapPrice($division, $isIndonesian);
+        }
+
+        foreach ($product->variants ?? [] as $variant) {
+            $this->mapPrice($variant, $isIndonesian);
+        }
+
+        return $product;
     }
 }

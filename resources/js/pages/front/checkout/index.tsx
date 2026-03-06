@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { IProducts, SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
 import { Link, router, usePage, useRemember } from '@inertiajs/react';
+import { FUNDING, PayPalButtons, PayPalScriptProvider } from '@paypal/react-paypal-js';
 import { Check, CurrencyIcon, MapPin, PackageCheck, ReceiptText, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 const CART_ITEMS_STORAGE_KEY = 'cart_session';
@@ -53,6 +53,7 @@ type CheckoutItem = {
     variantId?: string | null;
     variantDescription?: string | null;
     variantColor?: string | null;
+    currency?: string | null;
     selectionSummary?: {
         unit?: string | null;
         category?: string | null;
@@ -179,10 +180,16 @@ function getRateId(rate: IRatePricing) {
     return `${rate.courier_code}-${rate.courier_service_code}`;
 }
 
-function formatCurrency(value: number) {
+function isAddressValidForFlow(address: IDeliveryAddress, isIndonesian: boolean): boolean {
+    const country = address.country?.trim().toUpperCase();
+    const isAddressIndonesian = country === 'ID' || country === 'IDN';
+    return isIndonesian ? isAddressIndonesian : !isAddressIndonesian;
+}
+
+function formatCurrency(value: number, currency = 'IDR') {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
-        currency: 'IDR',
+        currency,
         minimumFractionDigits: 0,
     }).format(value);
 }
@@ -230,6 +237,7 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
                 return null;
             })(),
             isEventActive: typeof item.isEventActive === 'boolean' ? item.isEventActive : null,
+            currency: typeof item.currency === 'string' && item.currency.length ? item.currency.toUpperCase() : 'IDR',
         }));
     } catch (error) {
         router.visit('/');
@@ -238,29 +246,29 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
 }
 
 export default function Checkout() {
-    const { profile, rates, warehouse, auth } = usePage<SharedData>().props;
+    const { profile, rates, warehouse, auth, isIndonesian, internationalShipmentPrice, countryCode } = usePage<SharedData>().props;
     const isGuest = !auth?.user;
     const deliveryAddresses = profile?.delivery_address ?? [];
 
+    console.log(isIndonesian);
+
     const initialOptionsPaypal = {
-        "clientId": "test",
-        "enable-funding": "venmo",
-        "disable-funding": "",
-        "buyer-country": "US",
-        currency: "USD",
-        "data-page-type": "product-details",
-        components: "buttons",
-        "data-sdk-integration-source": "developer-studio",
+        clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID ?? 'test',
+        currency: 'USD',
+        components: 'buttons',
     };
 
-    const [messagePaypal, setMessagePaypal] = useState("");
+    const [messagePaypal, setMessagePaypal] = useState('');
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
     const [countries, setCountries] = useState<Country[]>(() => [{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
 
+    const displayCurrency = (checkoutItems[0]?.currency || 'IDR').toUpperCase();
+
     const addresses = useMemo(() => (Array.isArray(deliveryAddresses) ? deliveryAddresses : []), [deliveryAddresses]);
+    const validAddresses = useMemo(() => addresses.filter((a) => isAddressValidForFlow(a, isIndonesian)), [addresses, isIndonesian]);
     const [selectedAddress, setSelectedAddress] = useState<CheckoutAddress | null>(() => {
-        if (!addresses.length) return null;
-        return addresses.find((address) => address.is_active) ?? addresses[0];
+        if (!validAddresses.length) return null;
+        return validAddresses.find((address) => address.is_active) ?? validAddresses[0];
     });
     const [isChangeAddressOpen, setIsChangeAddressOpen] = useState(false);
     const [guestContact, setGuestContact] = useState<GuestContact>(() => ({
@@ -300,19 +308,19 @@ export default function Checkout() {
     const lastProvinceCountryRef = useRef<string | null>(provinceOptions.length ? guestAddressForm.country : null);
 
     useEffect(() => {
-        if (!addresses.length) {
+        if (!validAddresses.length) {
             setSelectedAddress(null);
             return;
         }
 
         setSelectedAddress((prev) => {
-            if (prev && addresses.some((address) => address.id === prev.id)) {
+            if (prev && validAddresses.some((address) => address.id === prev.id)) {
                 return prev;
             }
 
-            return addresses.find((address) => address.is_active) ?? addresses[0];
+            return validAddresses.find((address) => address.is_active) ?? validAddresses[0];
         });
-    }, [addresses]);
+    }, [validAddresses]);
 
     const usingGuestAddress = isGuest;
     const isIndonesiaAddress = useMemo(() => {
@@ -1128,7 +1136,8 @@ export default function Checkout() {
 
         setHasRequestedInitialRates(true);
         setLastRequestedRateKey(rateKey);
-        requestRates();
+
+        if (isIndonesian) requestRates();
     }, [
         rateKey,
         warehouse,
@@ -1231,31 +1240,28 @@ export default function Checkout() {
 
             const eligibleProductIds = productsFromResponse.length ? productsFromResponse : productIds;
             const eligibleProductIdSet = new Set(eligibleProductIds.map((id) => String(id)));
-            const eligibleItems = checkoutItems.filter(
-                (item) => item.productId && eligibleProductIdSet.has(String(item.productId)),
-            );
+            const eligibleItems = checkoutItems.filter((item) => item.productId && eligibleProductIdSet.has(String(item.productId)));
 
             const totalVoucherPrice = voucherData
                 ? eligibleItems.reduce((sum: number, item) => {
-                      const eventDiscount = item.isEventActive ? item.eventDiscountPct ?? 0 : 0;
+                      const eventDiscount = item.isEventActive ? (item.eventDiscountPct ?? 0) : 0;
                       const basePrice = Number(item.originalPrice ?? item.price ?? 0);
                       const discountedPrice = basePrice * (1 - eventDiscount / 100);
                       const voucherPrice = discountedPrice * (1 - discountValue / 100);
 
-                      const finalPrice = discountedPrice - voucherPrice
+                      const finalPrice = discountedPrice - voucherPrice;
                       return sum + finalPrice * item.quantity;
                   }, 0)
                 : 0;
-
 
             setAppliedVoucher({
                 code: trimmedCode,
                 discount: Number.isFinite(discountValue) ? discountValue : 0,
                 totalVoucherPrice,
-                eligibleProductIds
+                eligibleProductIds,
             });
 
-            console.log(appliedVoucher)
+            console.log(appliedVoucher);
             setVoucherError(null);
         } catch (error) {
             const fallbackMessage = error instanceof Error ? error.message : 'Unable to apply voucher. Please try again.';
@@ -1267,14 +1273,12 @@ export default function Checkout() {
     }, [checkoutItems, voucherCode]);
 
     const subtotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
-    const protection = checkoutItems.reduce((total, item) => total + (item.protectionPrice ?? 0), 0);
-    const shipping = selectedRate?.price ?? 0;
-    const insurance = 0;
+    const shipping = isIndonesian ? (selectedRate?.price ?? 0) : 0;
 
-    const voucherDiscount = useMemo(() => (appliedVoucher?.totalVoucherPrice), [appliedVoucher]);
+    const voucherDiscount = useMemo(() => appliedVoucher?.totalVoucherPrice, [appliedVoucher]);
 
-    const total = Math.max(0, subtotal + protection + shipping + insurance - (voucherDiscount ?? 0));
-    
+    const total = Math.max(0, subtotal + shipping - (voucherDiscount ?? 0));
+
     useEffect(() => {
         if (!appliedVoucher) return;
 
@@ -1289,7 +1293,6 @@ export default function Checkout() {
             setVoucherError('Voucher removed because no eligible products remain.');
         }
     }, [appliedVoucher, checkoutItems]);
-
 
     const hasCheckoutItems = checkoutItems.length > 0;
     const groupedCheckoutItems = useMemo(() => {
@@ -1328,7 +1331,13 @@ export default function Checkout() {
     const midtransSnapUrl = `${import.meta.env.VITE_MIDTRANS_URL}/snap/snap.js`;
     const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.embed));
 
-    const canSubmit = Boolean(hasCheckoutItems && selectedRate && !isThankYou);
+    const selectedAddressValidForFlow = useMemo(() => {
+        if (usingGuestAddress) return true;
+        if (!selectedCheckoutAddress) return false;
+        return isAddressValidForFlow(selectedCheckoutAddress as IDeliveryAddress, isIndonesian);
+    }, [selectedCheckoutAddress, isIndonesian, usingGuestAddress]);
+
+    const canSubmit = Boolean(hasCheckoutItems && selectedRate && !isThankYou && selectedAddressValidForFlow);
 
     const isInteractionLocked = isThankYou;
 
@@ -1519,6 +1528,11 @@ export default function Checkout() {
             if (!selectedCheckoutAddress && usingGuestAddress) {
                 setHasAttemptedGuestCheckout(true);
             }
+            return;
+        }
+
+        if (!selectedAddressValidForFlow) {
+            setCheckoutError('Your selected address does not match your current region. Please choose a valid address.');
             return;
         }
 
@@ -1810,19 +1824,23 @@ export default function Checkout() {
                                                     {addresses.length ? (
                                                         addresses.map((address) => {
                                                             const isSelected = address.id === selectedAddress?.id;
+                                                            const isValidForFlow = isAddressValidForFlow(address, isIndonesian);
 
                                                             return (
                                                                 <div
                                                                     key={address.id}
                                                                     role="button"
                                                                     onClick={() => {
+                                                                        if (!isValidForFlow) return;
                                                                         setSelectedAddress(address);
                                                                         setIsChangeAddressOpen(false);
                                                                     }}
                                                                     className={`w-full rounded-lg border bg-background p-4 text-left transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
-                                                                        isSelected
-                                                                            ? 'border-primary bg-primary/5'
-                                                                            : 'border-border/60 hover:border-primary/40'
+                                                                        !isValidForFlow
+                                                                            ? 'cursor-not-allowed opacity-50'
+                                                                            : isSelected
+                                                                              ? 'border-primary bg-primary/5'
+                                                                              : 'border-border/60 hover:border-primary/40'
                                                                     }`}
                                                                 >
                                                                     <div className="flex items-start justify-between gap-3">
@@ -1840,13 +1858,19 @@ export default function Checkout() {
                                                                                 <p className="text-xs text-muted-foreground">
                                                                                     {address.contact_phone}
                                                                                 </p>
-                                                                                <Button
-                                                                                    onClick={() => editAddressHandler(address)}
-                                                                                    className="mt-4 pl-0"
-                                                                                    variant="link"
-                                                                                >
-                                                                                    Edit Address
-                                                                                </Button>
+                                                                                {!isValidForFlow ? (
+                                                                                    <p className="text-xs font-medium text-destructive">
+                                                                                        Not available for your region
+                                                                                    </p>
+                                                                                ) : (
+                                                                                    <Button
+                                                                                        onClick={() => editAddressHandler(address)}
+                                                                                        className="mt-4 pl-0"
+                                                                                        variant="link"
+                                                                                    >
+                                                                                        Edit Address
+                                                                                    </Button>
+                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                         {isSelected && (
@@ -2201,107 +2225,120 @@ export default function Checkout() {
                                         ) : null}
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-3 text-sm">
-                                        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                            <MapPin className="h-4 w-4" />
-                                        </span>
-                                        <div>
-                                            {selectedCheckoutAddress ? (
-                                                <>
-                                                    <div className="font-semibold text-foreground capitalize">
-                                                        {selectedCheckoutAddress.name} • {selectedCheckoutAddress.contact_name}
-                                                    </div>
-                                                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                                                        {selectedCheckoutAddress.address}
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-muted-foreground">{selectedCheckoutAddress.contact_phone}</p>
-                                                </>
-                                            ) : (
-                                                <p className="text-sm text-muted-foreground">There is no delivery address yet.</p>
-                                            )}
+                                    <div className="space-y-4">
+                                        {addresses.length > 0 && validAddresses.length === 0 && (
+                                            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                                                None of your saved addresses are valid for your current region (
+                                                {isIndonesian ? 'Indonesia' : 'international'}). Please add a new address that matches your
+                                                region.
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-3 text-sm">
+                                            <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                <MapPin className="h-4 w-4" />
+                                            </span>
+                                            <div>
+                                                {selectedCheckoutAddress ? (
+                                                    <>
+                                                        <div className="font-semibold text-foreground capitalize">
+                                                            {selectedCheckoutAddress.name} • {selectedCheckoutAddress.contact_name}
+                                                        </div>
+                                                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                                            {selectedCheckoutAddress.address}
+                                                        </p>
+                                                        <p className="mt-1 text-xs text-muted-foreground">{selectedCheckoutAddress.contact_phone}</p>
+                                                    </>
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground">There is no delivery address yet.</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
 
-                        <Card className="gap-4 border border-border/60 bg-background shadow-sm">
-                            <CardHeader className="flex-row items-start justify-between gap-4 py-0 pt-6">
-                                <div className="space-y-3">
-                                    <div className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Shipping Method</div>
-                                    {selectedRate ? (
-                                        <div className="space-y-1 text-sm">
-                                            <div className="font-semibold text-foreground">
-                                                {selectedRate.courier_name} • {selectedRate.courier_service_name}
+                        {isIndonesian && (
+                            <Card className="gap-4 border border-border/60 bg-background shadow-sm">
+                                <CardHeader className="flex-row items-start justify-between gap-4 py-0 pt-6">
+                                    <div className="space-y-3">
+                                        <div className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Shipping Method</div>
+                                        {selectedRate ? (
+                                            <div className="space-y-1 text-sm">
+                                                <div className="font-semibold text-foreground">
+                                                    {selectedRate.courier_name} • {selectedRate.courier_service_name}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {selectedRate.description ?? 'Layanan pengiriman tersedia untuk alamat kamu.'}
+                                                </p>
                                             </div>
-                                            <p className="text-xs text-muted-foreground">
-                                                {selectedRate.description ?? 'Layanan pengiriman tersedia untuk alamat kamu.'}
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-1 text-sm">
-                                            <p className="text-muted-foreground">Select the delivery service available for your address.</p>
-                                            {ratesError ? <p className="text-xs text-destructive">{ratesError}</p> : null}
-                                        </div>
-                                    )}
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleShippingButtonClick}
-                                    disabled={isRequestingRates || !warehouse || !hasCheckoutItems || (!isGuest && deliveryAddresses.length <= 0)}
-                                >
-                                    {isRequestingRates ? 'Loading...' : hasRates ? 'Change' : 'Load Rates'}
-                                </Button>
-                            </CardHeader>
-                            {selectedRate ? (
-                                <CardContent className="space-y-3 pt-0 text-sm">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {selectedRate.service_type ? (
-                                            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary uppercase">
-                                                {selectedRate.service_type}
-                                            </span>
-                                        ) : null}
-                                        {selectedRate.shipping_type ? (
-                                            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                                                {selectedRate.shipping_type}
-                                            </span>
-                                        ) : null}
+                                        ) : (
+                                            <div className="space-y-1 text-sm">
+                                                <p className="text-muted-foreground">Select the delivery service available for your address.</p>
+                                                {ratesError ? <p className="text-xs text-destructive">{ratesError}</p> : null}
+                                            </div>
+                                        )}
                                     </div>
-                                    {selectedRate.shipment_duration_range || selectedRate.duration ? (
-                                        <p className="text-xs text-muted-foreground">
-                                            Estimasi {selectedRate.shipment_duration_range ?? selectedRate.duration}{' '}
-                                            {selectedRate.shipment_duration_unit ?? ''}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleShippingButtonClick}
+                                        disabled={isRequestingRates || !warehouse || !hasCheckoutItems || (!isGuest && deliveryAddresses.length <= 0)}
+                                    >
+                                        {isRequestingRates ? 'Loading...' : hasRates ? 'Change' : 'Load Rates'}
+                                    </Button>
+                                </CardHeader>
+                                {selectedRate ? (
+                                    <CardContent className="space-y-3 pt-0 text-sm">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {selectedRate.service_type ? (
+                                                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary uppercase">
+                                                    {selectedRate.service_type}
+                                                </span>
+                                            ) : null}
+                                            {selectedRate.shipping_type ? (
+                                                <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                                                    {selectedRate.shipping_type}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        {selectedRate.shipment_duration_range || selectedRate.duration ? (
+                                            <p className="text-xs text-muted-foreground">
+                                                Estimasi {selectedRate.shipment_duration_range ?? selectedRate.duration}{' '}
+                                                {selectedRate.shipment_duration_unit ?? ''}
+                                            </p>
+                                        ) : null}
+                                        <p className="text-base font-semibold text-foreground">
+                                            {formatCurrency(selectedRate.price, displayCurrency)}
                                         </p>
-                                    ) : null}
-                                    <p className="text-base font-semibold text-foreground">{formatCurrency(selectedRate.price)}</p>
-                                    {selectedRate.available_for_insurance ? (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <ShieldCheck className="h-4 w-4" />
-                                            Available for Insurance
-                                        </div>
-                                    ) : null}
-                                    {selectedRate.available_for_cash_on_delivery ? (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <CurrencyIcon className="h-4 w-4" />
-                                            Available for Cash on Delivery
-                                        </div>
-                                    ) : null}
-                                    {selectedRate.available_for_instant_waybill_id ? (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <ReceiptText className="h-4 w-4" />
-                                            Available for Instant Waybill
-                                        </div>
-                                    ) : null}
-                                    {selectedRate.available_for_proof_of_delivery ? (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <PackageCheck className="h-4 w-4" />
-                                            Available for Proof of Delivery
-                                        </div>
-                                    ) : null}
-                                </CardContent>
-                            ) : null}
-                        </Card>
+                                        {selectedRate.available_for_insurance ? (
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <ShieldCheck className="h-4 w-4" />
+                                                Available for Insurance
+                                            </div>
+                                        ) : null}
+                                        {selectedRate.available_for_cash_on_delivery ? (
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <CurrencyIcon className="h-4 w-4" />
+                                                Available for Cash on Delivery
+                                            </div>
+                                        ) : null}
+                                        {selectedRate.available_for_instant_waybill_id ? (
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <ReceiptText className="h-4 w-4" />
+                                                Available for Instant Waybill
+                                            </div>
+                                        ) : null}
+                                        {selectedRate.available_for_proof_of_delivery ? (
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <PackageCheck className="h-4 w-4" />
+                                                Available for Proof of Delivery
+                                            </div>
+                                        ) : null}
+                                    </CardContent>
+                                ) : null}
+                            </Card>
+                        )}
 
                         {!hasCheckoutItems ? (
                             <Card className="border border-border/60 bg-background shadow-sm">
@@ -2373,7 +2410,7 @@ export default function Checkout() {
                                                                 <ShieldCheck className="h-4 w-4" />
                                                                 {item.protectionLabel}
                                                                 <span className="font-normal text-muted-foreground">
-                                                                    ({formatCurrency(item.protectionPrice ?? 0)})
+                                                                    ({formatCurrency(item.protectionPrice ?? 0, displayCurrency)})
                                                                 </span>
                                                             </button>
                                                         ) : null}
@@ -2382,18 +2419,18 @@ export default function Checkout() {
                                                     <div className="flex flex-col items-end gap-2 text-right sm:min-w-[140px]">
                                                         <span className="text-sm text-muted-foreground">Qty: {item.quantity}</span>
                                                         <span className="text-lg font-semibold text-foreground">
-                                                            {formatCurrency(item.price * item.quantity)}
+                                                            {formatCurrency(item.price * item.quantity, displayCurrency)}
                                                         </span>
                                                         {hasEventDiscount ? (
                                                             <span className="text-xs text-muted-foreground line-through">
-                                                                {formatCurrency(originalTotal)}
+                                                                {formatCurrency(originalTotal, displayCurrency)}
                                                             </span>
                                                         ) : null}
                                                         <span className="text-xs text-muted-foreground">
-                                                            ({formatCurrency(item.price)} each)
+                                                            ({formatCurrency(item.price, displayCurrency)} each)
                                                         </span>
                                                         {hasEventDiscount ? (
-                                                            <span className="text-[11px] font-semibold uppercase text-emerald-600">
+                                                            <span className="text-[11px] font-semibold text-emerald-600 uppercase">
                                                                 Event {item.eventName ?? ''} • {item.eventDiscountPct}% OFF
                                                             </span>
                                                         ) : null}
@@ -2415,12 +2452,16 @@ export default function Checkout() {
                             <CardContent className="space-y-4 text-sm">
                                 <div className="flex items-center justify-between text-muted-foreground">
                                     <span>Subtotal</span>
-                                    <span className="font-medium text-foreground">{formatCurrency(subtotal)}</span>
+                                    <span className="font-medium text-foreground">{formatCurrency(subtotal, displayCurrency)}</span>
                                 </div>
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span>Shipping Rates</span>
-                                    <span className="font-medium text-foreground">{selectedRate ? formatCurrency(shipping) : '—'}</span>
-                                </div>
+                                {isIndonesian && (
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                        <span>Shipping Rates</span>
+                                        <span className="font-medium text-foreground">
+                                            {selectedRate ? formatCurrency(shipping, displayCurrency) : '—'}
+                                        </span>
+                                    </div>
+                                )}
                                 {appliedVoucher && (voucherDiscount ?? 0) > 0 ? (
                                     <div className="flex items-center justify-between text-muted-foreground">
                                         <span className="flex items-center gap-2">
@@ -2429,7 +2470,9 @@ export default function Checkout() {
                                                 {appliedVoucher.code}
                                             </span>
                                         </span>
-                                        <span className="font-medium text-emerald-600">- {formatCurrency(voucherDiscount ?? 0)}</span>
+                                        <span className="font-medium text-emerald-600">
+                                            - {formatCurrency(voucherDiscount ?? 0, displayCurrency)}
+                                        </span>
                                     </div>
                                 ) : null}
                                 <div className="space-y-2">
@@ -2468,134 +2511,212 @@ export default function Checkout() {
                             <CardFooter className="flex flex-col gap-4 pb-6">
                                 <div className="flex w-full items-center justify-between text-base font-semibold text-foreground">
                                     <span>Total Transaction</span>
-                                    <span className="text-xl">{formatCurrency(total)}</span>
+                                    <span className="text-xl">{formatCurrency(total, displayCurrency)}</span>
                                 </div>
-                                <Button
-                                    size="lg"
-                                    className="h-12 w-full text-base font-semibold"
-                                    disabled={!canSubmit || isSubmitting}
-                                    onClick={handlePayNow}
-                                >
-                                    {isSubmitting ? 'Processing...' : 'Pay Now'}
-                                </Button>
-                                {checkoutError ? <p className="text-center text-sm text-destructive">{checkoutError}</p> : null}
-                                {checkoutResult && !checkoutError ? (
-                                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                                        <p className="font-semibold">Checkout successful.</p>
-                                        {/* <p className="mt-1">
+                                {isIndonesian && (
+                                    <>
+                                        {!selectedAddressValidForFlow && selectedCheckoutAddress ? (
+                                            <p className="text-center text-sm text-destructive">
+                                                Your selected address is not valid for your region. Please add or select an Indonesian address.
+                                            </p>
+                                        ) : null}
+                                        <Button
+                                            size="lg"
+                                            className="h-12 w-full text-base font-semibold"
+                                            disabled={!canSubmit || isSubmitting}
+                                            onClick={handlePayNow}
+                                        >
+                                            {isSubmitting ? 'Processing...' : 'Pay Now'}
+                                        </Button>
+                                        {checkoutError ? <p className="text-center text-sm text-destructive">{checkoutError}</p> : null}
+                                        {checkoutResult && !checkoutError ? (
+                                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                                                <p className="font-semibold">Checkout successful.</p>
+                                                {/* <p className="mt-1">
                                             {paymentExpiry
                                                 ? `Please scan the QR code and complete your payment before ${paymentExpiry}.`
                                                 : 'Follow the payment instructions to complete your order.'}{' '}
                                             You can refresh this page after payment is confirmed.
                                         </p> */}
-                                    </div>
-                                ) : null}
-                                
-                            {/* PAYPAL HANDLING */}
-                            <PayPalScriptProvider options={initialOptionsPaypal}>
-                                <div className='w-full'>
-                                <PayPalButtons
-                                style={{
-                                        shape: "rect",
-                                        layout: "vertical",
-                                        color: "gold",
-                                        label: "paypal",
-                                        disableMaxWidth: true
-                                    }}
-                                createOrder={async () => {
-                                        try {
-                                            const response = await fetch("/api/orders", {
-                                                method: "POST",
-                                                headers: {
-                                                    "Content-Type": "application/json",
-                                                },
-                                                // use the "body" param to optionally pass additional order information
-                                                // like product ids and quantities
-                                                body: JSON.stringify({
-                                                    cart: [
-                                                        {
-                                                            id: "YOUR_PRODUCT_ID",
-                                                            quantity: "YOUR_PRODUCT_QUANTITY",
-                                                        },
-                                                    ],
-                                                }),
-                                            });
+                                            </div>
+                                        ) : null}
+                                    </>
+                                )}
 
-                                            const orderData = await response.json();
+                                {/* PAYPAL HANDLING */}
+                                {!isIndonesian && (
+                                    <>
+                                        {!selectedAddressValidForFlow && selectedCheckoutAddress ? (
+                                            <p className="text-center text-sm text-destructive">
+                                                Your selected address is not valid for your region. Please add or select an international address.
+                                            </p>
+                                        ) : null}
+                                        {internationalShipmentPrice ? (
+                                            <>
+                                                <PayPalScriptProvider options={initialOptionsPaypal}>
+                                                    <div className="w-full">
+                                                        <PayPalButtons
+                                                            style={{
+                                                                shape: 'rect',
+                                                                layout: 'vertical',
+                                                                color: 'gold',
+                                                                label: 'paypal',
+                                                                disableMaxWidth: true,
+                                                            }}
+                                                            createOrder={async () => {
+                                                                console.log('masuk sini harunysa');
+                                                                console.log(selectedCheckoutAddress);
+                                                                console.log(checkoutItems);
+                                                                if (!selectedCheckoutAddress || !checkoutItems.length) {
+                                                                    if (!selectedCheckoutAddress && usingGuestAddress) {
+                                                                        setHasAttemptedGuestCheckout(true);
+                                                                    }
+                                                                    throw new Error('Missing required checkout information.');
+                                                                }
 
-                                            if (orderData.id) {
-                                                return orderData.id;
-                                            } else {
-                                                const errorDetail = orderData?.details?.[0];
-                                                const errorMessage = errorDetail
-                                                    ? `${errorDetail.issue} ${errorDetail.description} (${orderData.debug_id})`
-                                                    : JSON.stringify(orderData);
+                                                                if (!selectedAddressValidForFlow) {
+                                                                    throw new Error('Your selected address does not match your current region. Please choose a valid address.');
+                                                                }
 
-                                                throw new Error(errorMessage);
-                                            }
-                                        } catch (error) {
-                                            console.error(error);
-                                            setMessagePaypal(
-                                                `Could not initiate PayPal Checkout...${error}`
-                                            );
-                                        }
-                                    }}
-                                onApprove={async (data, actions) => {
-                                        try {
-                                            const response = await fetch(
-                                                `/api/orders/${data.orderID}/capture`,
-                                                {
-                                                    method: "POST",
-                                                    headers: {
-                                                        "Content-Type": "application/json",
-                                                    },
-                                                }
-                                            );
+                                                                const csrfToken = (
+                                                                    document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
+                                                                )?.content;
+                                                                const headers: Record<string, string> = {
+                                                                    Accept: 'application/json',
+                                                                    'Content-Type': 'application/json',
+                                                                    'X-Requested-With': 'XMLHttpRequest',
+                                                                };
+                                                                if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
 
-                                            const orderData = await response.json();
-                                            // Three cases to handle:
-                                            //   (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
-                                            //   (2) Other non-recoverable errors -> Show a failure message
-                                            //   (3) Successful transaction -> Show confirmation or thank you message
+                                                                const itemsPayload = checkoutItems.map((item) => ({
+                                                                    cart_id: item.cartId ?? null,
+                                                                    product_id: item.productId ?? null,
+                                                                    unit_id: item.unitId ?? null,
+                                                                    unit_name: item.selectionSummary?.unit ?? null,
+                                                                    category_id: item.categoryId ?? null,
+                                                                    category_name: item.selectionSummary?.category ?? null,
+                                                                    category_description: item.categoryDescription ?? null,
+                                                                    sub_category_id: item.subCategoryId ?? null,
+                                                                    sub_category_name: item.selectionSummary?.subCategory ?? null,
+                                                                    sub_category_description: item.subCategoryDescription ?? null,
+                                                                    division_id: item.divisionId ?? null,
+                                                                    division_name: item.selectionSummary?.division ?? null,
+                                                                    division_description: item.divisionDescription ?? null,
+                                                                    variant_id: item.variantId ?? null,
+                                                                    variant_name: item.selectionSummary?.variant ?? null,
+                                                                    variant_color: item.selectionSummary?.variantColor ?? item.variantColor ?? null,
+                                                                    variant_description: item.variantDescription ?? null,
+                                                                    product_name: item.name,
+                                                                    product_description: item.variant ?? null,
+                                                                    product_image: item.image ?? null,
+                                                                    attributes: item.attributes?.join(', ') ?? null,
+                                                                    quantity: item.quantity,
+                                                                    price: item.price,
+                                                                    source: item.source ?? null,
+                                                                    product_sku: item.sku,
+                                                                }));
 
-                                            const errorDetail = orderData?.details?.[0];
+                                                                const payload = {
+                                                                    is_manual_invoice: false,
+                                                                    payment_method: 'manual',
+                                                                    shipping_fee: internationalShipmentPrice,
+                                                                    voucher_code: appliedVoucher?.code ?? undefined,
+                                                                    receiver_name: selectedCheckoutAddress.contact_name,
+                                                                    receiver_phone: selectedCheckoutAddress.contact_phone,
+                                                                    receiver_address: selectedCheckoutAddress.address,
+                                                                    receiver_postal_code: selectedCheckoutAddress.postal_code,
+                                                                    receiver_city: selectedCheckoutAddress.city,
+                                                                    receiver_province: selectedCheckoutAddress.province,
+                                                                    items: itemsPayload,
+                                                                    customer_type: usingGuestAddress ? 'guest' : 'user',
+                                                                    ...(usingGuestAddress
+                                                                        ? {
+                                                                              email: guestContact.email.trim(),
+                                                                              contact_name: guestContact.fullName.trim(),
+                                                                              contact_phone: guestContact.phone.trim(),
+                                                                              latitude: guestAddressForm.latitude,
+                                                                              longitude: guestAddressForm.longitude,
+                                                                              country: guestAddressForm.country,
+                                                                              province: guestAddressForm.province,
+                                                                              address: guestAddressForm.label.trim() || undefined,
+                                                                              city: guestAddressForm.city,
+                                                                              postal_code: guestAddressForm.postalCode,
+                                                                              district: guestAddressForm.district,
+                                                                              village: guestAddressForm.village,
+                                                                          }
+                                                                        : {}),
+                                                                };
 
-                                            if (errorDetail?.issue === "INSTRUMENT_DECLINED") {
-                                                // (1) Recoverable INSTRUMENT_DECLINED -> call actions.restart()
-                                                // recoverable state, per https://developer.paypal.com/docs/checkout/standard/customize/handle-funding-failures/
-                                                return actions.restart();
-                                            } else if (errorDetail) {
-                                                // (2) Other non-recoverable errors -> Show a failure message
-                                                throw new Error(
-                                                    `${errorDetail.description} (${orderData.debug_id})`
-                                                );
-                                            } else {
-                                                // (3) Successful transaction -> Show confirmation or thank you message
-                                                // Or go to another URL:  actions.redirect('thank_you.html');
-                                                const transaction =
-                                                    orderData.purchase_units[0].payments
-                                                        .captures[0];
-                                                setMessagePaypal(
-                                                    `Transaction ${transaction.status}: ${transaction.id}. See console for all available details`
-                                                );
-                                                console.log(
-                                                    "Capture result",
-                                                    orderData,
-                                                    JSON.stringify(orderData, null, 2)
-                                                );
-                                            }
-                                        } catch (error) {
-                                            console.error(error);
-                                            setMessagePaypal(
-                                                `Sorry, your transaction could not be processed...${error}`
-                                            );
-                                        }
-                                    }}
-                                />
-                                </div>
+                                                                const response = await fetch(route('order.checkout-paypal'), {
+                                                                    method: 'POST',
+                                                                    headers,
+                                                                    credentials: 'include',
+                                                                    body: JSON.stringify(payload),
+                                                                });
 
-                            </PayPalScriptProvider>
-                            <p className='text-sm'>{messagePaypal}</p>
+                                                                const data = await response.json();
+
+                                                                if (!response.ok || !data.id) {
+                                                                    const errorDetail = data?.details?.[0];
+                                                                    const errorMessage = errorDetail
+                                                                        ? `${errorDetail.issue} ${errorDetail.description} (${data.debug_id})`
+                                                                        : (data?.message ?? JSON.stringify(data));
+                                                                    setMessagePaypal(`Could not initiate PayPal Checkout: ${errorMessage}`);
+                                                                    throw new Error(errorMessage);
+                                                                }
+
+                                                                return data.id;
+                                                            }}
+                                                            onApprove={async (data, actions) => {
+                                                                try {
+                                                                    const csrfToken = (
+                                                                        document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
+                                                                    )?.content;
+                                                                    const headers: Record<string, string> = {
+                                                                        'Content-Type': 'application/json',
+                                                                        'X-Requested-With': 'XMLHttpRequest',
+                                                                    };
+                                                                    if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
+
+                                                                    const response = await fetch(
+                                                                        route('order.capture-paypal', { orderId: data.orderID }),
+                                                                        {
+                                                                            method: 'POST',
+                                                                            headers,
+                                                                            credentials: 'include',
+                                                                        },
+                                                                    );
+
+                                                                    const orderData = await response.json();
+                                                                    const errorDetail = orderData?.details?.[0];
+
+                                                                    if (errorDetail?.issue === 'INSTRUMENT_DECLINED') {
+                                                                        return actions.restart();
+                                                                    } else if (errorDetail) {
+                                                                        throw new Error(`${errorDetail.description} (${orderData.debug_id})`);
+                                                                    } else if (!response.ok) {
+                                                                        throw new Error(orderData?.message ?? 'Capture failed');
+                                                                    } else {
+                                                                        const transaction = orderData.purchase_units[0].payments.captures[0];
+                                                                        setMessagePaypal(`Transaction ${transaction.status}: ${transaction.id}.`);
+                                                                        clearCheckoutStorage();
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error(error);
+                                                                    setMessagePaypal(`Sorry, your transaction could not be processed: ${error}`);
+                                                                }
+                                                            }}
+                                                            fundingSource={FUNDING.PAYPAL}
+                                                        />
+                                                    </div>
+                                                </PayPalScriptProvider>
+                                                <p className="text-sm">{messagePaypal}</p>
+                                            </>
+                                        ) : (
+                                            <p className="text-sm">Shipping not available for this country. Please contact directly on our DM</p>
+                                        )}
+                                    </>
+                                )}
                             </CardFooter>
                         </Card>
                     </div>

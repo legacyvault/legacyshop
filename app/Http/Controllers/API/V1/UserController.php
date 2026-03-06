@@ -372,4 +372,35 @@ class UserController extends Controller
 
         return $data;
     }
+
+    public function getDeliveryAddresBasedCountryCode(Request $request)
+    {
+        $user = Auth::user();
+        $profile = Profile::where('user_id', $user?->id)->first();
+
+        if (!$profile) {
+            return response()->json(['message' => 'Profile not found.'], 404);
+        }
+
+        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+        if (env('APP_ENV') == 'local') {
+            $ip = '36.84.152.11';
+        }
+
+        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode");
+        $location = $response->json();
+
+        if (!isset($location['status']) || $location['status'] === 'fail') {
+            return response()->json(['message' => 'Failed to fetch location from IP.'], 422);
+        }
+
+        $countryCode = strtoupper($location['countryCode']);
+
+        $data = DeliveryAddress::where('profile_id', $profile->id)
+            ->where('country', $countryCode)
+            ->orderBy('is_active', 'desc')
+            ->get();
+
+        return $data;
+    }
 }

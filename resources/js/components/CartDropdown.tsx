@@ -27,22 +27,24 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
         };
     }, []);
 
-    const formatPrice = (price: number) => {
+    const displayCurrency = (items[0]?.meta?.product?.default_currency || 'IDR').toUpperCase();
+
+    const formatPrice = (price: number, currency = 'IDR') => {
         return new Intl.NumberFormat('id-ID', {
             style: 'currency',
-            currency: 'IDR',
+            currency,
             minimumFractionDigits: 0,
         }).format(price);
     };
 
     const computePriceInfo = useCallback((item: (typeof items)[number]) => {
         const product = item.meta?.product as any;
-        const basePrice = Number(product?.product_price ?? item.price ?? 0);
+        const basePrice = Number(product?.default_price ?? product?.product_price ?? item.price ?? 0);
         const eventDiscount = Number(product?.event?.discount ?? 0);
         const isEventActive = Boolean(product?.event && (product.event.is_active === 1 || product.event.is_active === true));
         const discountedBase = isEventActive && eventDiscount > 0 ? Math.max(0, Math.round(basePrice - (basePrice * eventDiscount) / 100)) : null;
 
-        const candidatePrices = [discountedBase, Number(item.price ?? 0)].filter(
+        const candidatePrices = [discountedBase, basePrice].filter(
             (price): price is number => typeof price === 'number' && Number.isFinite(price) && price > 0,
         );
         const finalPrice = candidatePrices.length ? Math.min(...candidatePrices) : 0;
@@ -83,6 +85,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                 eventName: priceInfo.eventName ?? null,
                 eventDiscountPct: priceInfo.isEventActive ? (priceInfo.eventDiscount ?? null) : null,
                 isEventActive: priceInfo.isEventActive,
+                currency: (item.meta?.product?.default_currency || 'IDR').toUpperCase(),
                 selectionSummary: {
                     unit: item.meta?.product?.unit?.name ?? undefined,
                 },
@@ -151,12 +154,12 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                                                     <h4 className="truncate text-sm font-medium text-card-foreground">{item.name}</h4>
                                                     <div className="flex flex-col">
                                                         <span className="text-xs font-semibold text-card-foreground">
-                                                            {formatPrice(priceInfo.finalPrice)}
+                                                            {formatPrice(priceInfo.finalPrice, displayCurrency)}
                                                         </span>
                                                         {priceInfo.isEventActive && priceInfo.originalPrice > priceInfo.finalPrice ? (
                                                             <>
                                                                 <span className="text-[11px] text-muted-foreground line-through">
-                                                                    {formatPrice(priceInfo.originalPrice)}
+                                                                    {formatPrice(priceInfo.originalPrice, displayCurrency)}
                                                                 </span>
                                                                 <span className="text-[11px] font-semibold text-emerald-600 uppercase">
                                                                     Event {priceInfo.eventName ?? ''} • {priceInfo.eventDiscount}% OFF
