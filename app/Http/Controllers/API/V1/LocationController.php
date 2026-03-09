@@ -219,6 +219,9 @@ class LocationController extends Controller
         return $provinces;
     }
 
+    // Countries where the province itself serves as the city (no sub-city divisions)
+    private const PROVINCE_AS_CITY_COUNTRIES = ['SG', 'HK', 'MO', 'BN'];
+
     public function getPublicCityList(Request $request, string $country, string $province): JsonResponse
     {
         $country = strtoupper(trim($country));
@@ -226,6 +229,18 @@ class LocationController extends Controller
 
         if ($country === '') {
             return response()->json(['cities' => []]);
+        }
+
+        // City-states: return the province itself as the only city
+        if (in_array($country, self::PROVINCE_AS_CITY_COUNTRIES, true) && $province !== '') {
+            $provinceName = $request->query('province_name', $province);
+
+            return response()->json(['cities' => [[
+                'id'         => $province,
+                'name'       => $provinceName,
+                'code'       => $province,
+                'geoname_id' => $province,
+            ]]]);
         }
 
         if ($this->isIndonesiaCountry($country)) {

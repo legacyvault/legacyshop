@@ -462,7 +462,7 @@ export default function AddDeliveryAddressModal({
         }
     }, []);
 
-    const fetchCities = useCallback(async (provinceId: string, countryCode: string) => {
+    const fetchCities = useCallback(async (provinceId: string, countryCode: string, provinceName?: string) => {
         if (!provinceId || !countryCode) {
             setCities([]);
             return [];
@@ -472,7 +472,9 @@ export default function AddDeliveryAddressModal({
         setCityFetchError(null);
 
         try {
-            const response = await fetch(route('public.cities.list', [countryCode, provinceId]), {
+            const baseUrl = route('public.cities.list', [countryCode, provinceId]);
+            const url = provinceName ? `${baseUrl}?province_name=${encodeURIComponent(provinceName)}` : baseUrl;
+            const response = await fetch(url, {
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
@@ -777,8 +779,16 @@ export default function AddDeliveryAddressModal({
             return;
         }
 
-        void fetchCities(selectedProvinceId, selectedCountry);
-    }, [selectedProvinceId, selectedCountry, fetchCities]);
+        const provinceName = provinceOptions.find((p) => p.code === selectedProvinceId || p.id === selectedProvinceId)?.name;
+        void (async () => {
+            const result = await fetchCities(selectedProvinceId, selectedCountry, provinceName);
+            if (result.length === 1) {
+                const only = result[0];
+                setSelectedCityId(only.code ?? only.id);
+                setData('city', only.name);
+            }
+        })();
+    }, [selectedProvinceId, selectedCountry, fetchCities, provinceOptions, setData]);
 
     useEffect(() => {
         if (!data.city) {
@@ -1348,7 +1358,15 @@ export default function AddDeliveryAddressModal({
                                         onOpenChange={(selectOpen) => {
                                             if (selectOpen) {
                                                 if (selectedProvinceId && !isLoadingCities && cities.length === 0) {
-                                                    void fetchCities(selectedProvinceId, selectedCountry);
+                                                    const provinceName = provinceOptions.find((p) => p.code === selectedProvinceId || p.id === selectedProvinceId)?.name;
+                                                    void (async () => {
+                                                        const result = await fetchCities(selectedProvinceId, selectedCountry, provinceName);
+                                                        if (result.length === 1) {
+                                                            const only = result[0];
+                                                            setSelectedCityId(only.code ?? only.id);
+                                                            setData('city', only.name);
+                                                        }
+                                                    })();
                                                 }
                                             } else {
                                                 setCityQuery('');
