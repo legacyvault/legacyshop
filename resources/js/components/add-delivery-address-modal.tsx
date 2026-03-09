@@ -109,6 +109,9 @@ function isIndonesiaCountry(value: unknown): boolean {
     return normalized === 'ID';
 }
 
+// Countries with no postal code data in GeoNames — use free-text input instead of dropdown
+const COUNTRIES_WITHOUT_POSTAL_CODES = new Set(['VN', 'MM', 'KH', 'LA', 'BN', 'TL', 'SG', 'HK', 'MO']);
+
 interface AddDeliveryAddressModalProps {
     open: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -219,6 +222,7 @@ export default function AddDeliveryAddressModal({
     }, [countryCode, data.country]);
 
     const shouldUseIndonesianFields = useMemo(() => isIndonesiaCountry(selectedCountry), [selectedCountry]);
+    const usePostalInput = useMemo(() => COUNTRIES_WITHOUT_POSTAL_CODES.has(selectedCountry), [selectedCountry]);
 
     useEffect(() => {
         let isMounted = true;
@@ -1568,70 +1572,80 @@ export default function AddDeliveryAddressModal({
 
                             <div className="mb-4 space-y-2">
                                 <Label htmlFor="postal_code">Postal Code *</Label>
-                                <Select
-                                    value={data.postal_code || undefined}
-                                    onValueChange={(value) => setData('postal_code', value)}
-                                    disabled={
-                                        shouldUseIndonesianFields
-                                            ? !selectedVillageCode || isLoadingPostalCodes
-                                            : !selectedCityId || isLoadingPostalCodes
-                                    }
-                                    onOpenChange={(selectOpen) => {
-                                        if (!selectOpen) {
-                                            setPostalQuery('');
+                                {usePostalInput ? (
+                                    <Input
+                                        id="postal_code"
+                                        value={data.postal_code ?? ''}
+                                        onChange={(e) => setData('postal_code', e.target.value)}
+                                        placeholder="Enter postal code"
+                                        aria-invalid={errors.postal_code ? 'true' : undefined}
+                                    />
+                                ) : (
+                                    <Select
+                                        value={data.postal_code || undefined}
+                                        onValueChange={(value) => setData('postal_code', value)}
+                                        disabled={
+                                            shouldUseIndonesianFields
+                                                ? !selectedVillageCode || isLoadingPostalCodes
+                                                : !selectedCityId || isLoadingPostalCodes
                                         }
-                                    }}
-                                >
-                                    <SelectTrigger id="postal_code" aria-invalid={errors.postal_code ? 'true' : undefined}>
-                                        <SelectValue
-                                            placeholder={
-                                                (shouldUseIndonesianFields ? selectedVillageCode : selectedCityId)
-                                                    ? isLoadingPostalCodes
-                                                        ? 'Loading postal codes...'
-                                                        : 'Select a postal code'
-                                                    : shouldUseIndonesianFields
-                                                      ? 'Select a village first'
-                                                      : 'Select a city first'
+                                        onOpenChange={(selectOpen) => {
+                                            if (!selectOpen) {
+                                                setPostalQuery('');
                                             }
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {(shouldUseIndonesianFields ? selectedVillageCode : selectedCityId) ? (
-                                            isLoadingPostalCodes ? (
-                                                <div className="px-3 py-4 text-sm text-muted-foreground">Loading postal codes...</div>
-                                            ) : postalFetchError ? (
-                                                <div className="px-3 py-4 text-sm text-destructive">{postalFetchError}</div>
-                                            ) : filteredPostalCodes.length > 0 ? (
-                                                <>
-                                                    <div className="mb-1 px-1">
-                                                        <Input
-                                                            autoFocus
-                                                            value={postalQuery}
-                                                            onChange={(event) => setPostalQuery(event.target.value)}
-                                                            onKeyDown={(event) => event.stopPropagation()}
-                                                            onPointerDown={(event) => event.stopPropagation()}
-                                                            placeholder="Search postal code..."
-                                                            className="h-8"
-                                                        />
-                                                    </div>
-                                                    {filteredPostalCodes.map((postal) => (
-                                                        <SelectItem key={postal.code} value={postal.code}>
-                                                            {postal.code}
-                                                        </SelectItem>
-                                                    ))}
-                                                </>
+                                        }}
+                                    >
+                                        <SelectTrigger id="postal_code" aria-invalid={errors.postal_code ? 'true' : undefined}>
+                                            <SelectValue
+                                                placeholder={
+                                                    (shouldUseIndonesianFields ? selectedVillageCode : selectedCityId)
+                                                        ? isLoadingPostalCodes
+                                                            ? 'Loading postal codes...'
+                                                            : 'Select a postal code'
+                                                        : shouldUseIndonesianFields
+                                                          ? 'Select a village first'
+                                                          : 'Select a city first'
+                                                }
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {(shouldUseIndonesianFields ? selectedVillageCode : selectedCityId) ? (
+                                                isLoadingPostalCodes ? (
+                                                    <div className="px-3 py-4 text-sm text-muted-foreground">Loading postal codes...</div>
+                                                ) : postalFetchError ? (
+                                                    <div className="px-3 py-4 text-sm text-destructive">{postalFetchError}</div>
+                                                ) : filteredPostalCodes.length > 0 ? (
+                                                    <>
+                                                        <div className="mb-1 px-1">
+                                                            <Input
+                                                                autoFocus
+                                                                value={postalQuery}
+                                                                onChange={(event) => setPostalQuery(event.target.value)}
+                                                                onKeyDown={(event) => event.stopPropagation()}
+                                                                onPointerDown={(event) => event.stopPropagation()}
+                                                                placeholder="Search postal code..."
+                                                                className="h-8"
+                                                            />
+                                                        </div>
+                                                        {filteredPostalCodes.map((postal) => (
+                                                            <SelectItem key={postal.code} value={postal.code}>
+                                                                {postal.code}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </>
+                                                ) : (
+                                                    <div className="px-3 py-4 text-sm text-muted-foreground">No postal code found</div>
+                                                )
                                             ) : (
-                                                <div className="px-3 py-4 text-sm text-muted-foreground">No postal code found</div>
-                                            )
-                                        ) : (
-                                            <div className="px-3 py-4 text-sm text-muted-foreground">
-                                                {shouldUseIndonesianFields
-                                                    ? 'Select a village to see postal codes'
-                                                    : 'Select a city to see postal codes'}
-                                            </div>
-                                        )}
-                                    </SelectContent>
-                                </Select>
+                                                <div className="px-3 py-4 text-sm text-muted-foreground">
+                                                    {shouldUseIndonesianFields
+                                                        ? 'Select a village to see postal codes'
+                                                        : 'Select a city to see postal codes'}
+                                                </div>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                                 {errors.postal_code && <p className="text-sm text-destructive">{errors.postal_code}</p>}
                             </div>
 
