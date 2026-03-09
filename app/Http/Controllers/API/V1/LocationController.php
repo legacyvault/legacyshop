@@ -44,6 +44,9 @@ class LocationController extends Controller
         return str_contains(strtolower($country), 'indonesia');
     }
 
+    // City-states with no ADM1 divisions in GeoNames — go straight to ADM2
+    private const CITY_STATES = ['SG', 'HK', 'MO', 'VA', 'MC', 'LI', 'SM'];
+
     public function getProvincePublicList(Request $request, string $country): JsonResponse
     {
         $country = strtoupper(trim($country));
@@ -80,41 +83,51 @@ class LocationController extends Controller
             return response()->json([], 500);
         }
 
-        $response = Http::get('http://api.geonames.org/searchJSON', [
-            'country'    => $country,
-            'featureCode'=> 'ADM1',
-            'maxRows'    => 1000,
-            'username'   => $username,
-        ]);
+        $isCityState = in_array($country, self::CITY_STATES, true);
+        $featureCodes = $isCityState ? ['ADM2'] : ['ADM1', 'ADM2'];
 
-        if (!$response->successful()) {
-            Log::error('Failed to fetch provinces from GeoNames.', [
-                'country' => $country,
-                'status'  => $response->status(),
+        foreach ($featureCodes as $featureCode) {
+            $response = Http::get('http://api.geonames.org/searchJSON', [
+                'country'     => $country,
+                'featureCode' => $featureCode,
+                'maxRows'     => 1000,
+                'username'    => $username,
             ]);
 
-            return response()->json([], $response->status());
-        }
+            if (!$response->successful()) {
+                Log::error('Failed to fetch provinces from GeoNames.', [
+                    'country'     => $country,
+                    'featureCode' => $featureCode,
+                    'status'      => $response->status(),
+                ]);
 
-        $data = $response->json();
-        $items = collect($data['geonames'] ?? [])->map(function ($item) {
-            $geonameId = isset($item['geonameId']) ? (string) $item['geonameId'] : null;
-            $name = $item['name'] ?? $item['toponymName'] ?? null;
-
-            if (!$geonameId || !$name) {
-                return null;
+                return response()->json([], $response->status());
             }
 
-            return [
-                'id'         => $geonameId,
-                'name'       => $name,
-                'code'       => $geonameId,
-                'iso_code'   => $item['adminCodes1']['ISO3166_2'] ?? null,
-                'geoname_id' => $geonameId,
-            ];
-        })->filter()->values();
+            $data = $response->json();
+            $items = collect($data['geonames'] ?? [])->map(function ($item) {
+                $geonameId = isset($item['geonameId']) ? (string) $item['geonameId'] : null;
+                $name = $item['name'] ?? $item['toponymName'] ?? null;
 
-        return response()->json($items->all());
+                if (!$geonameId || !$name) {
+                    return null;
+                }
+
+                return [
+                    'id'         => $geonameId,
+                    'name'       => $name,
+                    'code'       => $geonameId,
+                    'iso_code'   => $item['adminCodes1']['ISO3166_2'] ?? null,
+                    'geoname_id' => $geonameId,
+                ];
+            })->filter()->values();
+
+            if ($items->isNotEmpty()) {
+                return response()->json($items->all());
+            }
+        }
+
+        return response()->json([]);
     }
 
     public function getProvinceList()

@@ -1750,6 +1750,7 @@ export default function Checkout() {
                 onOpenChange={handleModalChange}
                 deliveryAddress={selectedDeliveryAddress}
                 id={selectedId}
+                countryCode={countryCode ?? 'ID'}
                 closeOnSuccess={false}
             />
             <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -2229,8 +2230,7 @@ export default function Checkout() {
                                         {addresses.length > 0 && validAddresses.length === 0 && (
                                             <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                                                 None of your saved addresses are valid for your current region (
-                                                {isIndonesian ? 'Indonesia' : 'international'}). Please add a new address that matches your
-                                                region.
+                                                {isIndonesian ? 'Indonesia' : 'international'}). Please add a new address that matches your region.
                                             </div>
                                         )}
                                         <div className="flex items-center gap-3 text-sm">
@@ -2575,7 +2575,9 @@ export default function Checkout() {
                                                                 }
 
                                                                 if (!selectedAddressValidForFlow) {
-                                                                    throw new Error('Your selected address does not match your current region. Please choose a valid address.');
+                                                                    throw new Error(
+                                                                        'Your selected address does not match your current region. Please choose a valid address.',
+                                                                    );
                                                                 }
 
                                                                 const csrfToken = (
