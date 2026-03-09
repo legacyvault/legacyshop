@@ -44,9 +44,6 @@ class LocationController extends Controller
         return str_contains(strtolower($country), 'indonesia');
     }
 
-    // City-states with no ADM1 divisions in GeoNames — go straight to ADM2
-    private const CITY_STATES = ['SG', 'HK', 'MO', 'VA', 'MC', 'LI', 'SM'];
-
     public function getProvincePublicList(Request $request, string $country): JsonResponse
     {
         $country = strtoupper(trim($country));
@@ -83,10 +80,7 @@ class LocationController extends Controller
             return response()->json([], 500);
         }
 
-        $isCityState = in_array($country, self::CITY_STATES, true);
-        $featureCodes = $isCityState ? ['ADM2'] : ['ADM1', 'ADM2'];
-
-        foreach ($featureCodes as $featureCode) {
+        foreach (['ADM1', 'ADM2'] as $featureCode) {
             $response = Http::get('http://api.geonames.org/searchJSON', [
                 'country'     => $country,
                 'featureCode' => $featureCode,
@@ -127,7 +121,45 @@ class LocationController extends Controller
             }
         }
 
+        // GeoNames returned empty — fall back to dr5hn open dataset
+        $dr5hnItems = $this->fetchFromDr5hn($country);
+        if (!empty($dr5hnItems)) {
+            return response()->json($dr5hnItems);
+        }
+
         return response()->json([]);
+    }
+
+    private function fetchFromDr5hn(string $country): array
+    {
+        try {
+            $response = Http::timeout(5)->get(
+                'https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master/json/states.json'
+            );
+
+            if (!$response->successful()) {
+                return [];
+            }
+
+            return collect($response->json() ?? [])
+                ->filter(fn($item) => ($item['country_code'] ?? '') === $country)
+                ->map(fn($item) => [
+                    'id'         => $item['iso3166_2'] ?? $item['iso2'] ?? (string) $item['id'],
+                    'name'       => $item['name'],
+                    'code'       => $item['iso3166_2'] ?? $item['iso2'] ?? (string) $item['id'],
+                    'iso_code'   => $item['iso3166_2'] ?? null,
+                    'geoname_id' => (string) $item['id'],
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable $e) {
+            Log::warning('dr5hn province fallback failed.', [
+                'country' => $country,
+                'error'   => $e->getMessage(),
+            ]);
+
+            return [];
+        }
     }
 
     public function getProvinceList()
