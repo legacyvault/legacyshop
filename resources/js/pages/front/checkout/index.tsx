@@ -290,7 +290,7 @@ export default function Checkout() {
         postalCode: '',
         latitude: '',
         longitude: '',
-        country: 'ID',
+        country: countryCode ?? 'ID',
         notes: '',
     }));
     const [hasAttemptedGuestRates, setHasAttemptedGuestRates] = useState(false);
