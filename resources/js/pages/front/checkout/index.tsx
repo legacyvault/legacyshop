@@ -2181,6 +2181,7 @@ export default function Checkout() {
                                                                 };
                                                             })
                                                         }
+                                                        country={guestAddressForm.country || undefined}
                                                     />
                                                 </div>
                                                 <div className="hidden gap-4 md:grid-cols-2">

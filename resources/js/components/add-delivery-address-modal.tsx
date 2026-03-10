@@ -1693,6 +1693,7 @@ export default function AddDeliveryAddressModal({
                                     value={selectedLocation}
                                     onChange={(next) => handleLocationPick({ lat: next.lat, lng: next.lng })}
                                     className="h-[320px]"
+                                    country={data.country || undefined}
                                 />
 
                                 {/* <div className="grid hidden gap-4 md:grid-cols-2">
