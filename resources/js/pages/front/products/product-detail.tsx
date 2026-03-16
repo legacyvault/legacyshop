@@ -222,8 +222,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         return text
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/__(.*?)__/g, '<u>$1</u>')
-            .replace(/\n/g, '<br />');
+            .replace(/__(.*?)__/g, '<u>$1</u>');
     };
 
     const DESCRIPTION_PREVIEW_LIMIT = 350;
@@ -327,9 +326,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                         {appliedDiscountPct > 0 ? (
                             <>
                                 <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(finalPrice, displayCurrency)}</div>
-                                <span className="text-sm text-destructive line-through">
-                                    {formatPrice(basePriceWithExtra, displayCurrency)}
-                                </span>
+                                <span className="text-sm text-destructive line-through">{formatPrice(basePriceWithExtra, displayCurrency)}</span>
                             </>
                         ) : (
                             <div className="text-2xl font-extrabold md:text-3xl">{formatPrice(basePriceWithExtra, displayCurrency)}</div>
