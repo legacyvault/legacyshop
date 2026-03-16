@@ -1737,32 +1737,35 @@ class ProductController extends Controller
             }
 
             if ($search) {
-                $query->where(function ($searchQuery) use ($search) {
-                    $searchQuery->where('product_name', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%")
-                        ->orWhereHas('unit', function ($uq) use ($search) {
-                            $uq->where('name', 'like', "%{$search}%");
-                        })
-                        ->orWhereHas('subUnit', function ($uq) use ($search) {
-                            $uq->where('name', 'like', "%{$search}%");
-                        })
-                        ->orWhereHas('categories', function ($cq) use ($search) {
-                            $cq->where('name', 'like', "%{$search}%");
-                        })
-                        ->orWhereHas('subcategories', function ($sq) use ($search) {
-                            $sq->where('name', 'like', "%{$search}%");
-                        })
-                        ->orWhereHas('divisions', function ($dq) use ($search) {
-                            $dq->where('name', 'like', "%{$search}%");
-                        })
-                        ->orWhereHas('variants', function ($vq) use ($search) {
-                            $vq->where('name', 'like', "%{$search}%");
-                        })
-                        ->orWhereHas('tags', function ($tq) use ($search) {
-                            $tq->where('is_show', 1)
-                                ->where('name', 'like', "%{$search}%");
-                        });
-                });
+                $tokens = array_filter(array_map('trim', explode(' ', $search)));
+                foreach ($tokens as $token) {
+                    $query->where(function ($searchQuery) use ($token) {
+                        $searchQuery->where('product_name', 'like', "%{$token}%")
+                            ->orWhere('description', 'like', "%{$token}%")
+                            ->orWhereHas('unit', function ($uq) use ($token) {
+                                $uq->where('name', 'like', "%{$token}%");
+                            })
+                            ->orWhereHas('subUnit', function ($uq) use ($token) {
+                                $uq->where('name', 'like', "%{$token}%");
+                            })
+                            ->orWhereHas('categories', function ($cq) use ($token) {
+                                $cq->where('name', 'like', "%{$token}%");
+                            })
+                            ->orWhereHas('subcategories', function ($sq) use ($token) {
+                                $sq->where('name', 'like', "%{$token}%");
+                            })
+                            ->orWhereHas('divisions', function ($dq) use ($token) {
+                                $dq->where('name', 'like', "%{$token}%");
+                            })
+                            ->orWhereHas('variants', function ($vq) use ($token) {
+                                $vq->where('name', 'like', "%{$token}%");
+                            })
+                            ->orWhereHas('tags', function ($tq) use ($token) {
+                                $tq->where('is_show', 1)
+                                    ->where('name', 'like', "%{$token}%");
+                            });
+                    });
+                }
             }
 
             // Exact filters by IDs
