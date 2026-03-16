@@ -25,8 +25,7 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
                 <div className="mb-12 text-center">
                     <h2 className="mb-4 text-5xl font-bold text-primary">NEWS & ARTICLES</h2>
                     <p className="mx-auto max-w-6xl text-xl text-muted-foreground">
-                        Unlock everything. From game-breaking easter eggs and honest product reviews to what's trending in the world of pop culture
-                        and entertainment. Your quick, fun briefing on all things awesome.
+                        Get latest news from what’s happening in the world of Cards & Collectibles.
                     </p>
                     <Link href={'/articles'}>
                         <Button className="mt-4">Explore More</Button>
@@ -715,35 +714,37 @@ export default function Welcome() {
                             </div>
                         </section>
                     )}
-
-                    {/* HERO + SEQUENCE SECTION */}
-                    <section className="relative flex h-[200vh] w-full flex-col bg-primary">
-                        {/* Image sequence pinned behind */}
-                        <div className="h-screen w-full">
-                            <ImageSequence />
-                        </div>
-
-                        {/* Overlay text */}
-                        <div className="justifty-start absolute top-[32px] flex h-screen w-full flex-col items-center text-center text-white md:top-0 md:justify-center">
-                            <h1 ref={textRef1} className="mb-6 text-3xl font-black drop-shadow-lg md:text-7xl">
-                                {translations.home.welcome}
-                            </h1>
-                            <p ref={textRef2} className="text-md max-w-2xl px-4 md:text-xl">
-                                {translations.home.description1}
-                            </p>
-                        </div>
-
-                        {/* Scroll down to reveal more content */}
-                        <div ref={bottomRef} className="relative z-10 mt-auto py-12 text-center">
-                            <h2 className="text-md mx-auto mb-6 max-w-3xl font-bold text-background md:text-xl">{translations.home.description2}</h2>
-                            <p className="text-md mx-auto max-w-xl text-background md:text-lg">
-                                Discover more about our work, technology, and how we bring ideas to life.
-                            </p>
-                            <Button className="mt-8 bg-background text-foreground transition hover:scale-105" variant={'secondary'}>
-                                Get Started
-                            </Button>
-                        </div>
-                    </section>
+                    <div className="relative">
+                        {/* HERO + SEQUENCE SECTION */}
+                        <section className="relative z-50">
+                            <div className="flex w-full flex-col items-center justify-start bg-primary pt-24 text-center text-white md:justify-center">
+                                <h1 ref={textRef1} className="mb-6 text-3xl font-black drop-shadow-lg md:text-7xl">
+                                    {translations.home.welcome}
+                                </h1>
+                                <p ref={textRef2} className="text-md max-w-2xl px-4 md:text-xl">
+                                    {translations.home.description1}
+                                </p>
+                            </div>
+                        </section>
+                        <section className="relative -mt-40 flex h-[200vh] w-full flex-col bg-primary">
+                            {/* Image sequence pinned behind */}
+                            <div className="h-screen w-full">
+                                <ImageSequence />
+                            </div>
+                            {/* Scroll down to reveal more content */}
+                            <div ref={bottomRef} className="relative z-10 mt-auto py-12 text-center">
+                                <h2 className="text-md mx-auto mb-6 max-w-3xl font-bold text-background md:text-xl">
+                                    {translations.home.description2}
+                                </h2>
+                                <p className="text-md mx-auto max-w-xl text-background md:text-lg">
+                                    Discover more about our work, technology, and how we bring ideas to life.
+                                </p>
+                                <Button className="mt-8 bg-background text-foreground transition hover:scale-105" variant={'secondary'}>
+                                    Get Started
+                                </Button>
+                            </div>
+                        </section>
+                    </div>
 
                     {/* EVENT SHOWCASE PRODUCT SECTION */}
 
