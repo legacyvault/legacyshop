@@ -41,7 +41,7 @@ class Order extends Model
         parent::boot();
 
         static::creating(function ($order) {
-            $prefix = 'ORDERLEGACY-';
+            $prefix = 'ORDERTESTNEWASELOLENGONDEKHAHAA2-';
             $prefixLength = strlen($prefix);
 
             $latestOrder = self::where('order_number', 'LIKE', $prefix . '%')
