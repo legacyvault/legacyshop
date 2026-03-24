@@ -109,8 +109,6 @@ function isIndonesiaCountry(value: unknown): boolean {
     return normalized === 'ID';
 }
 
-// Countries with no postal code data in GeoNames — use free-text input instead of dropdown
-const COUNTRIES_WITHOUT_POSTAL_CODES = new Set(['VN', 'MM', 'KH', 'LA', 'BN', 'TL', 'SG', 'HK', 'MO']);
 
 interface AddDeliveryAddressModalProps {
     open: boolean;
@@ -222,7 +220,7 @@ export default function AddDeliveryAddressModal({
     }, [countryCode, data.country]);
 
     const shouldUseIndonesianFields = useMemo(() => isIndonesiaCountry(selectedCountry), [selectedCountry]);
-    const usePostalInput = useMemo(() => COUNTRIES_WITHOUT_POSTAL_CODES.has(selectedCountry), [selectedCountry]);
+    const usePostalInput = useMemo(() => !shouldUseIndonesianFields, [shouldUseIndonesianFields]);
 
     useEffect(() => {
         let isMounted = true;
@@ -1326,103 +1324,105 @@ export default function AddDeliveryAddressModal({
                             <div className="mb-4 grid gap-4 md:grid-cols-1">
                                 <div className="space-y-2">
                                     <Label htmlFor="city">City *</Label>
-                                    <Select
-                                        value={shouldUseIndonesianFields ? data.city || undefined : selectedCityId || undefined}
-                                        onValueChange={(value) => {
-                                            if (shouldUseIndonesianFields) {
+                                    {shouldUseIndonesianFields ? (
+                                        <Select
+                                            value={data.city || undefined}
+                                            onValueChange={(value) => {
                                                 setData('city', value);
                                                 setSelectedCityId(value);
-                                            } else {
-                                                const cityRecord = cities.find(
-                                                    (item) => item.code === value || item.id === value || item.name === value,
-                                                );
-                                                setSelectedCityId(value);
-                                                setData('city', cityRecord?.name ?? '');
-                                            }
 
-                                            setData('district', '');
-                                            setSelectedDistrictCode('');
-                                            setDistricts([]);
-                                            setDistrictQuery('');
-                                            setDistrictFetchError(null);
-                                            setIsLoadingDistricts(false);
-                                            setData('village', '');
-                                            setSelectedVillageCode('');
-                                            setVillages([]);
-                                            setVillageQuery('');
-                                            setVillageFetchError(null);
-                                            setIsLoadingVillages(false);
-                                            setData('postal_code', '');
-                                            setPostalQuery('');
-                                            setPostalCodes([]);
-                                            setPostalFetchError(null);
-                                            setIsLoadingPostalCodes(false);
-                                        }}
-                                        disabled={!selectedProvinceId || isLoadingCities}
-                                        onOpenChange={(selectOpen) => {
-                                            if (selectOpen) {
-                                                if (selectedProvinceId && !isLoadingCities && cities.length === 0) {
-                                                    const provinceName = provinceOptions.find((p) => p.code === selectedProvinceId || p.id === selectedProvinceId)?.name;
-                                                    void (async () => {
-                                                        const result = await fetchCities(selectedProvinceId, selectedCountry, provinceName);
-                                                        if (result.length === 1) {
-                                                            const only = result[0];
-                                                            setSelectedCityId(only.code ?? only.id);
-                                                            setData('city', only.name);
-                                                        }
-                                                    })();
+                                                setData('district', '');
+                                                setSelectedDistrictCode('');
+                                                setDistricts([]);
+                                                setDistrictQuery('');
+                                                setDistrictFetchError(null);
+                                                setIsLoadingDistricts(false);
+                                                setData('village', '');
+                                                setSelectedVillageCode('');
+                                                setVillages([]);
+                                                setVillageQuery('');
+                                                setVillageFetchError(null);
+                                                setIsLoadingVillages(false);
+                                                setData('postal_code', '');
+                                                setPostalQuery('');
+                                                setPostalCodes([]);
+                                                setPostalFetchError(null);
+                                                setIsLoadingPostalCodes(false);
+                                            }}
+                                            disabled={!selectedProvinceId || isLoadingCities}
+                                            onOpenChange={(selectOpen) => {
+                                                if (selectOpen) {
+                                                    if (selectedProvinceId && !isLoadingCities && cities.length === 0) {
+                                                        const provinceName = provinceOptions.find((p) => p.code === selectedProvinceId || p.id === selectedProvinceId)?.name;
+                                                        void (async () => {
+                                                            const result = await fetchCities(selectedProvinceId, selectedCountry, provinceName);
+                                                            if (result.length === 1) {
+                                                                const only = result[0];
+                                                                setSelectedCityId(only.code ?? only.id);
+                                                                setData('city', only.name);
+                                                            }
+                                                        })();
+                                                    }
+                                                } else {
+                                                    setCityQuery('');
                                                 }
-                                            } else {
-                                                setCityQuery('');
-                                            }
-                                        }}
-                                    >
-                                        <SelectTrigger id="city" aria-invalid={errors.city ? 'true' : undefined}>
-                                            <SelectValue
-                                                placeholder={
-                                                    selectedProvinceId
-                                                        ? isLoadingCities
-                                                            ? 'Loading cities...'
-                                                            : filteredCities.length > 0
-                                                              ? 'Select a city'
-                                                              : 'No city available'
-                                                        : 'Select a province first'
-                                                }
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {selectedProvinceId ? (
-                                                isLoadingCities ? (
-                                                    <div className="px-3 py-4 text-sm text-muted-foreground">Loading cities...</div>
-                                                ) : cityFetchError ? (
-                                                    <div className="px-3 py-4 text-sm text-destructive">{cityFetchError}</div>
-                                                ) : filteredCities.length > 0 ? (
-                                                    <>
-                                                        <div className="mb-1 px-1">
-                                                            <Input
-                                                                autoFocus
-                                                                value={cityQuery}
-                                                                onChange={(event) => setCityQuery(event.target.value)}
-                                                                onKeyDown={(event) => event.stopPropagation()}
-                                                                onPointerDown={(event) => event.stopPropagation()}
-                                                                placeholder="Search city..."
-                                                                className="h-8"
-                                                            />
-                                                        </div>
-                                                        {filteredCities.map((city) => (
-                                                            <SelectItem key={city.id} value={city.code ?? city.id}>
-                                                                {city.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </>
+                                            }}
+                                        >
+                                            <SelectTrigger id="city" aria-invalid={errors.city ? 'true' : undefined}>
+                                                <SelectValue
+                                                    placeholder={
+                                                        selectedProvinceId
+                                                            ? isLoadingCities
+                                                                ? 'Loading cities...'
+                                                                : filteredCities.length > 0
+                                                                  ? 'Select a city'
+                                                                  : 'No city available'
+                                                            : 'Select a province first'
+                                                    }
+                                                />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {selectedProvinceId ? (
+                                                    isLoadingCities ? (
+                                                        <div className="px-3 py-4 text-sm text-muted-foreground">Loading cities...</div>
+                                                    ) : cityFetchError ? (
+                                                        <div className="px-3 py-4 text-sm text-destructive">{cityFetchError}</div>
+                                                    ) : filteredCities.length > 0 ? (
+                                                        <>
+                                                            <div className="mb-1 px-1">
+                                                                <Input
+                                                                    autoFocus
+                                                                    value={cityQuery}
+                                                                    onChange={(event) => setCityQuery(event.target.value)}
+                                                                    onKeyDown={(event) => event.stopPropagation()}
+                                                                    onPointerDown={(event) => event.stopPropagation()}
+                                                                    placeholder="Search city..."
+                                                                    className="h-8"
+                                                                />
+                                                            </div>
+                                                            {filteredCities.map((city) => (
+                                                                <SelectItem key={city.id} value={city.code ?? city.id}>
+                                                                    {city.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </>
+                                                    ) : (
+                                                        <div className="px-3 py-4 text-sm text-muted-foreground">No city found</div>
+                                                    )
                                                 ) : (
-                                                    <div className="px-3 py-4 text-sm text-muted-foreground">No city found</div>
-                                                )
-                                            ) : (
-                                                <div className="px-3 py-4 text-sm text-muted-foreground">Select a province to see cities</div>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
+                                                    <div className="px-3 py-4 text-sm text-muted-foreground">Select a province to see cities</div>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Input
+                                            id="city"
+                                            value={data.city ?? ''}
+                                            onChange={(e) => setData('city', e.target.value)}
+                                            placeholder="Enter city"
+                                            aria-invalid={errors.city ? 'true' : undefined}
+                                        />
+                                    )}
                                     {errors.city && <p className="text-sm text-destructive">{errors.city}</p>}
                                 </div>
                             </div>
