@@ -156,29 +156,34 @@ class UserController extends Controller
                 ]);
             }
 
+            $biteshipDestinationId = null;
+
             // Create lokasi di Biteship
-            $response = Http::withToken($this->apiKey)
-                ->post('https://api.biteship.com/v1/locations', [
-                    'name'          => $request->name,
-                    'contact_name'  => $request->contact_name,
-                    'contact_phone' => $request->contact_phone,
-                    'address'       => $request->address,
-                    'note'          => null,
-                    'postal_code'   => $request->postal_code,
-                    'latitude'      => $request->latitude,
-                    'longitude'     => $request->longitude,
-                    'type'          => 'destination',
-                ]);
+            if ($isIndonesia) {
+                $response = Http::withToken($this->apiKey)
+                    ->post('https://api.biteship.com/v1/locations', [
+                        'name'          => $request->name,
+                        'contact_name'  => $request->contact_name,
+                        'contact_phone' => $request->contact_phone,
+                        'address'       => $request->address,
+                        'note'          => null,
+                        'postal_code'   => $request->postal_code,
+                        'latitude'      => $request->latitude,
+                        'longitude'     => $request->longitude,
+                        'type'          => 'destination',
+                    ]);
 
-            if (!$response->successful()) {
-                DB::rollBack();
-                return redirect()->back()->with('alert', [
-                    'type' => 'error',
-                    'message' => 'Gagal create lokasi di Biteship.'
-                ]);
+                if (!$response->successful()) {
+                    DB::rollBack();
+                    return redirect()->back()->with('alert', [
+                        'type' => 'error',
+                        'message' => 'Gagal create lokasi di Biteship.'
+                    ]);
+                }
+
+                $biteshipData = $response->json();
+                $biteshipDestinationId = $biteshipData['id'] ?? null;
             }
-
-            $biteshipData = $response->json();
 
             if ($hasAddress && $isActive) {
                 DeliveryAddress::where('profile_id', $profile->id)
@@ -189,7 +194,7 @@ class UserController extends Controller
                 'name'                    => $request->name,
                 'contact_name'            => $request->contact_name,
                 'contact_phone'           => $request->contact_phone,
-                'biteship_destination_id' => $biteshipData['id'],
+                'biteship_destination_id' => $biteshipDestinationId,
                 'profile_id'              => $profile->id,
                 'country'                 => $location['countryCode'] ?? null,
                 'province'                => $request->province,
