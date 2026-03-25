@@ -1273,7 +1273,7 @@ export default function Checkout() {
     }, [checkoutItems, voucherCode]);
 
     const subtotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
-    const shipping = isIndonesian ? (selectedRate?.price ?? 0) : 0;
+    const shipping = isIndonesian ? (selectedRate?.price ?? 0) : (internationalShipmentPrice ?? 0);
 
     const voucherDiscount = useMemo(() => appliedVoucher?.totalVoucherPrice, [appliedVoucher]);
 
@@ -2460,6 +2460,14 @@ export default function Checkout() {
                                         <span>Shipping Rates</span>
                                         <span className="font-medium text-foreground">
                                             {selectedRate ? formatCurrency(shipping, displayCurrency) : '—'}
+                                        </span>
+                                    </div>
+                                )}
+                                {!isIndonesian && internationalShipmentPrice != null && (
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                        <span>Shipping Fee</span>
+                                        <span className="font-medium text-foreground">
+                                            {formatCurrency(internationalShipmentPrice, 'USD')}
                                         </span>
                                     </div>
                                 )}
