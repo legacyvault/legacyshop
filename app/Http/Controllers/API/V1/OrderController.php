@@ -1151,6 +1151,94 @@ class OrderController extends Controller
         }
     }
 
+    public function reopenPaypalPayment($orderNumber): JsonResponse
+    {
+        try {
+            $order = Order::where('order_number', $orderNumber)->firstOrFail();
+
+            $accessToken = $this->getPaypalAccessToken();
+
+            // Try to fetch the existing PayPal order if we have a transaction_id
+            if ($order->transaction_id) {
+                $response = Http::withToken($accessToken)
+                    ->withHeaders(['Accept' => 'application/json'])
+                    ->get($this->paypalBaseUrl . '/v2/checkout/orders/' . $order->transaction_id);
+
+                if ($response->successful()) {
+                    $paypalOrder = $response->json();
+                    $paypalStatus = $paypalOrder['status'] ?? null;
+
+                    if (in_array($paypalStatus, ['CREATED', 'APPROVED'])) {
+                        $approvalUrl = collect($paypalOrder['links'] ?? [])
+                            ->firstWhere('rel', 'approve')['href'] ?? null;
+
+                        if ($approvalUrl) {
+                            return response()->json([
+                                'status' => 'pending',
+                                'approval_url' => $approvalUrl,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Existing order not found or expired — create a new PayPal order
+            $newOrder = Http::withToken($accessToken)
+                ->post($this->paypalBaseUrl . '/v2/checkout/orders', [
+                    'intent' => 'CAPTURE',
+                    'purchase_units' => [
+                        [
+                            'reference_id' => $order->id,
+                            'amount' => [
+                                'currency_code' => 'USD',
+                                'value' => number_format($order->grand_total, 2, '.', ''),
+                            ],
+                        ],
+                    ],
+                    'application_context' => [
+                        'return_url' => url('/payment/success'),
+                        'cancel_url' => url('/payment/cancel'),
+                    ],
+                ]);
+
+            if (!$newOrder->successful()) {
+                Log::error('PayPal reopen create error: ' . $newOrder->body());
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to create new PayPal order.',
+                ], 400);
+            }
+
+            $paypalOrder = $newOrder->json();
+
+            $order->update([
+                'transaction_id' => $paypalOrder['id'],
+                'transaction_status' => $paypalOrder['status'],
+            ]);
+
+            $approvalUrl = collect($paypalOrder['links'] ?? [])
+                ->firstWhere('rel', 'approve')['href'] ?? null;
+
+            if (!$approvalUrl) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'PayPal approval URL not found.',
+                ], 400);
+            }
+
+            return response()->json([
+                'status' => 'pending',
+                'approval_url' => $approvalUrl,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('PayPal reopen exception: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to re-open PayPal payment.',
+            ], 500);
+        }
+    }
+
     public function handleNotification(Request $request)
     {
         try {

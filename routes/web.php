@@ -70,6 +70,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Checkout API
     Route::get('transaction-status/{transaction_id}', [OrderController::class, 'getTransactionStatus'])->name('transaction.status');
     Route::get('reopen-snap/{order_number}', [OrderController::class, 'reopenSnapPayment'])->name('snap.reopen');
+    Route::get('reopen-paypal/{order_number}', [OrderController::class, 'reopenPaypalPayment'])->name('paypal.reopen');
     //Biteship API
     Route::get('all-warehouse', [WarehouseController::class, 'getAllWarehouse'])->name('warehouses');
     Route::get('active-warehouse', [WarehouseController::class, 'getActiveWarehouse'])->name('warehouse.active');
