@@ -36,8 +36,8 @@ return [
     ],
 
     'midtrans' => [
-        'snap_url' => env('MIDTRANS_URL', 'https://app.midtrans.com'),
-        'client_key' => env('MIDTRANS_CLIENT_KEY', 'Mid-client-0Pk0NUOq_gazkf6W')
+        'snap_url' => env('MIDTRANS_URL', 'https://app.sandbox.midtrans.com'),
+        'client_key' => env('MIDTRANS_CLIENT_KEY', 'Mid-client-ofkKGLkceJATxjZ1')
     ],
 
 ];

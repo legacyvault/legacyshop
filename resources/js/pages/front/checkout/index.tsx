@@ -290,7 +290,7 @@ export default function Checkout() {
         postalCode: '',
         latitude: '',
         longitude: '',
-        country: 'ID',
+        country: countryCode ?? 'ID',
         notes: '',
     }));
     const [hasAttemptedGuestRates, setHasAttemptedGuestRates] = useState(false);
@@ -1273,7 +1273,7 @@ export default function Checkout() {
     }, [checkoutItems, voucherCode]);
 
     const subtotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
-    const shipping = isIndonesian ? (selectedRate?.price ?? 0) : 0;
+    const shipping = isIndonesian ? (selectedRate?.price ?? 0) : (internationalShipmentPrice ?? 0);
 
     const voucherDiscount = useMemo(() => appliedVoucher?.totalVoucherPrice, [appliedVoucher]);
 
@@ -1750,6 +1750,7 @@ export default function Checkout() {
                 onOpenChange={handleModalChange}
                 deliveryAddress={selectedDeliveryAddress}
                 id={selectedId}
+                countryCode={countryCode ?? 'ID'}
                 closeOnSuccess={false}
             />
             <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -2180,6 +2181,7 @@ export default function Checkout() {
                                                                 };
                                                             })
                                                         }
+                                                        country={guestAddressForm.country || undefined}
                                                     />
                                                 </div>
                                                 <div className="hidden gap-4 md:grid-cols-2">
@@ -2229,8 +2231,7 @@ export default function Checkout() {
                                         {addresses.length > 0 && validAddresses.length === 0 && (
                                             <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                                                 None of your saved addresses are valid for your current region (
-                                                {isIndonesian ? 'Indonesia' : 'international'}). Please add a new address that matches your
-                                                region.
+                                                {isIndonesian ? 'Indonesia' : 'international'}). Please add a new address that matches your region.
                                             </div>
                                         )}
                                         <div className="flex items-center gap-3 text-sm">
@@ -2462,6 +2463,14 @@ export default function Checkout() {
                                         </span>
                                     </div>
                                 )}
+                                {!isIndonesian && internationalShipmentPrice != null && (
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                        <span>Shipping Fee</span>
+                                        <span className="font-medium text-foreground">
+                                            {formatCurrency(internationalShipmentPrice, 'USD')}
+                                        </span>
+                                    </div>
+                                )}
                                 {appliedVoucher && (voucherDiscount ?? 0) > 0 ? (
                                     <div className="flex items-center justify-between text-muted-foreground">
                                         <span className="flex items-center gap-2">
@@ -2575,7 +2584,9 @@ export default function Checkout() {
                                                                 }
 
                                                                 if (!selectedAddressValidForFlow) {
-                                                                    throw new Error('Your selected address does not match your current region. Please choose a valid address.');
+                                                                    throw new Error(
+                                                                        'Your selected address does not match your current region. Please choose a valid address.',
+                                                                    );
                                                                 }
 
                                                                 const csrfToken = (

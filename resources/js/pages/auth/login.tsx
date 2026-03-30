@@ -125,10 +125,10 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
                             Log in
                         </Button>
-                        <Button className="w-full" variant={'outline'} tabIndex={4} type="button" onClick={handleGoogleLogin}>
+                        {/* <Button className="w-full" variant={'outline'} tabIndex={4} type="button" onClick={handleGoogleLogin}>
                             <img src="./google-icon.png" className="h-4 w-4" />
                             Log in with Google
-                        </Button>
+                        </Button> */}
                     </div>
 
                     <div className="text-center text-sm text-muted-foreground">

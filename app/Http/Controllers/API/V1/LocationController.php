@@ -80,41 +80,86 @@ class LocationController extends Controller
             return response()->json([], 500);
         }
 
-        $response = Http::get('http://api.geonames.org/searchJSON', [
-            'country'    => $country,
-            'featureCode'=> 'ADM1',
-            'maxRows'    => 1000,
-            'username'   => $username,
-        ]);
-
-        if (!$response->successful()) {
-            Log::error('Failed to fetch provinces from GeoNames.', [
-                'country' => $country,
-                'status'  => $response->status(),
+        foreach (['ADM1', 'ADM2'] as $featureCode) {
+            $response = Http::get('http://api.geonames.org/searchJSON', [
+                'country'     => $country,
+                'featureCode' => $featureCode,
+                'maxRows'     => 1000,
+                'username'    => $username,
             ]);
 
-            return response()->json([], $response->status());
-        }
+            if (!$response->successful()) {
+                Log::error('Failed to fetch provinces from GeoNames.', [
+                    'country'     => $country,
+                    'featureCode' => $featureCode,
+                    'status'      => $response->status(),
+                ]);
 
-        $data = $response->json();
-        $items = collect($data['geonames'] ?? [])->map(function ($item) {
-            $geonameId = isset($item['geonameId']) ? (string) $item['geonameId'] : null;
-            $name = $item['name'] ?? $item['toponymName'] ?? null;
-
-            if (!$geonameId || !$name) {
-                return null;
+                return response()->json([], $response->status());
             }
 
-            return [
-                'id'         => $geonameId,
-                'name'       => $name,
-                'code'       => $geonameId,
-                'iso_code'   => $item['adminCodes1']['ISO3166_2'] ?? null,
-                'geoname_id' => $geonameId,
-            ];
-        })->filter()->values();
+            $data = $response->json();
+            $items = collect($data['geonames'] ?? [])->map(function ($item) {
+                $geonameId = isset($item['geonameId']) ? (string) $item['geonameId'] : null;
+                $name = $item['name'] ?? $item['toponymName'] ?? null;
 
-        return response()->json($items->all());
+                if (!$geonameId || !$name) {
+                    return null;
+                }
+
+                return [
+                    'id'         => $geonameId,
+                    'name'       => $name,
+                    'code'       => $geonameId,
+                    'iso_code'   => $item['adminCodes1']['ISO3166_2'] ?? null,
+                    'geoname_id' => $geonameId,
+                ];
+            })->filter()->values();
+
+            if ($items->isNotEmpty()) {
+                return response()->json($items->all());
+            }
+        }
+
+        // GeoNames returned empty — fall back to dr5hn open dataset
+        $dr5hnItems = $this->fetchFromDr5hn($country);
+        if (!empty($dr5hnItems)) {
+            return response()->json($dr5hnItems);
+        }
+
+        return response()->json([]);
+    }
+
+    private function fetchFromDr5hn(string $country): array
+    {
+        try {
+            $response = Http::timeout(5)->get(
+                'https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master/json/states.json'
+            );
+
+            if (!$response->successful()) {
+                return [];
+            }
+
+            return collect($response->json() ?? [])
+                ->filter(fn($item) => ($item['country_code'] ?? '') === $country)
+                ->map(fn($item) => [
+                    'id'         => $item['iso3166_2'] ?? $item['iso2'] ?? (string) $item['id'],
+                    'name'       => $item['name'],
+                    'code'       => $item['iso3166_2'] ?? $item['iso2'] ?? (string) $item['id'],
+                    'iso_code'   => $item['iso3166_2'] ?? null,
+                    'geoname_id' => (string) $item['id'],
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable $e) {
+            Log::warning('dr5hn province fallback failed.', [
+                'country' => $country,
+                'error'   => $e->getMessage(),
+            ]);
+
+            return [];
+        }
     }
 
     public function getProvinceList()
@@ -174,6 +219,9 @@ class LocationController extends Controller
         return $provinces;
     }
 
+    // Countries where the province itself serves as the city (no sub-city divisions)
+    private const PROVINCE_AS_CITY_COUNTRIES = ['SG', 'HK', 'MO', 'BN'];
+
     public function getPublicCityList(Request $request, string $country, string $province): JsonResponse
     {
         $country = strtoupper(trim($country));
@@ -181,6 +229,18 @@ class LocationController extends Controller
 
         if ($country === '') {
             return response()->json(['cities' => []]);
+        }
+
+        // City-states: return the province itself as the only city
+        if (in_array($country, self::PROVINCE_AS_CITY_COUNTRIES, true) && $province !== '') {
+            $provinceName = $request->query('province_name', $province);
+
+            return response()->json(['cities' => [[
+                'id'         => $province,
+                'name'       => $provinceName,
+                'code'       => $province,
+                'geoname_id' => $province,
+            ]]]);
         }
 
         if ($this->isIndonesiaCountry($country)) {

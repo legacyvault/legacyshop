@@ -131,7 +131,10 @@ class UserController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Your new address does not match with your account location.',
+            ]);
         }
 
         try {
@@ -294,7 +297,10 @@ class UserController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
+            return redirect()->back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Your new address does not match with your account location.',
+            ]);
         }
 
         try {
@@ -302,24 +308,28 @@ class UserController extends Controller
 
             $deliveryAddress = DeliveryAddress::findOrFail($request->id);
 
-            $response = Http::withToken($this->apiKey)
-                ->post("https://api.biteship.com/v1/locations/{$deliveryAddress->biteship_destination_id}", [
-                    'name'          => $request->name,
-                    'contact_name'  => $request->contact_name,
-                    'contact_phone' => $request->contact_phone,
-                    'address'       => $request->address,
-                    'note'          => null,
-                    'postal_code'   => $request->postal_code,
-                    'latitude'      => $request->latitude,
-                    'longitude'     => $request->longitude
-                ]);
+            if ($isIndonesia) {
 
-            if (!$response->successful()) {
-                return redirect()->back()->with('alert', [
-                    'type' => 'error',
-                    'message' => 'Gagal update lokasi di Biteship'
-                ]);
+                $response = Http::withToken($this->apiKey)
+                    ->post("https://api.biteship.com/v1/locations/{$deliveryAddress->biteship_destination_id}", [
+                        'name'          => $request->name,
+                        'contact_name'  => $request->contact_name,
+                        'contact_phone' => $request->contact_phone,
+                        'address'       => $request->address,
+                        'note'          => null,
+                        'postal_code'   => $request->postal_code,
+                        'latitude'      => $request->latitude,
+                        'longitude'     => $request->longitude
+                    ]);
+
+                if (!$response->successful()) {
+                    return redirect()->back()->with('alert', [
+                        'type' => 'error',
+                        'message' => 'Gagal update lokasi di Biteship'
+                    ]);
+                }
             }
+
 
             if ($request->has('is_active') && $request->is_active) {
                 DeliveryAddress::where('profile_id', $deliveryAddress->profile_id)

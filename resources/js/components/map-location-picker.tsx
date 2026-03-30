@@ -25,7 +25,7 @@ export default function MapLibreLocationPicker({
     initialCenter = { lat: -6.2, lng: 106.816666 },
     zoom = 18,
     className = 'relative min-h-[420px] w-full',
-    country = 'ID',
+    country = undefined,
     language = 'id',
 }: Props) {
     const key = import.meta.env.VITE_MAPTILER_KEY as string;
