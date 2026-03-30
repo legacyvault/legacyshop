@@ -2706,7 +2706,7 @@ export default function Checkout() {
                                                                         throw new Error(orderData?.message ?? 'Capture failed');
                                                                     } else {
                                                                         clearCheckoutStorage();
-                                                                        router.visit(isGuest ? '/' : route('user.order-history'));
+                                                                        router.visit(isGuest ? '/' : '/orders/order');
                                                                     }
                                                                 } catch (error) {
                                                                     console.error(error);
