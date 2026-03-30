@@ -2573,9 +2573,6 @@ export default function Checkout() {
                                                                 disableMaxWidth: true,
                                                             }}
                                                             createOrder={async () => {
-                                                                console.log('masuk sini harunysa');
-                                                                console.log(selectedCheckoutAddress);
-                                                                console.log(checkoutItems);
                                                                 if (!selectedCheckoutAddress || !checkoutItems.length) {
                                                                     if (!selectedCheckoutAddress && usingGuestAddress) {
                                                                         setHasAttemptedGuestCheckout(true);
@@ -2708,9 +2705,8 @@ export default function Checkout() {
                                                                     } else if (!response.ok) {
                                                                         throw new Error(orderData?.message ?? 'Capture failed');
                                                                     } else {
-                                                                        const transaction = orderData.purchase_units[0].payments.captures[0];
-                                                                        setMessagePaypal(`Transaction ${transaction.status}: ${transaction.id}.`);
                                                                         clearCheckoutStorage();
+                                                                        router.visit(isGuest ? '/' : route('user.order-history'));
                                                                     }
                                                                 } catch (error) {
                                                                     console.error(error);
