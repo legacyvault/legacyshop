@@ -25,9 +25,9 @@ export default function MapLibreLocationPicker({
     initialCenter = { lat: -6.2, lng: 106.816666 },
     zoom = 18,
     className = 'relative min-h-[420px] w-full',
-    country = undefined,
     language = 'id',
 }: Props) {
+
     const key = import.meta.env.VITE_MAPTILER_KEY as string;
     const [coords, setCoords] = useState<LatLng>(value ?? initialCenter);
     const [address, setAddress] = useState<string>(value?.address ?? '');
@@ -76,11 +76,7 @@ export default function MapLibreLocationPicker({
             url.searchParams.set('key', key);
             url.searchParams.set('limit', '5');
             url.searchParams.set('language', language);
-            if (Array.isArray(country)) {
-                url.searchParams.set('country', country.join(','));
-            } else if (country) {
-                url.searchParams.set('country', country);
-            }
+            url.searchParams.set('proximity', `${coords.lng},${coords.lat}`);
 
             const res = await fetch(url.toString());
             const data = await res.json();
@@ -98,7 +94,7 @@ export default function MapLibreLocationPicker({
                 .filter((x: any) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
             return list as { id: string; label: string; lat: number; lng: number }[];
         },
-        [key, language, country],
+        [key, language, coords],
     );
 
     const reverseGeocode = useCallback(

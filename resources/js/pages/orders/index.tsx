@@ -1,6 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IOrdersPaginated, IRootHistoryOrders, SharedData } from '@/types';
@@ -34,12 +36,25 @@ const getCsrfToken = (): string | undefined => {
     return undefined;
 };
 
-const formatCurrency = (value?: string | number | null) => {
-    const numeric = typeof value === 'string' ? parseFloat(value) : (value ?? 0);
+const formatCurrency = (method?: string, value?: string | number | null) => {
+    const numeric = typeof value === 'string' ? parseFloat(value) : Number(value ?? 0);
     if (!Number.isFinite(numeric)) {
-        return '-';
+        return method === 'snap' ? 'Rp 0' : '$ 0';
     }
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(numeric);
+    
+    if (method === 'paypal') {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+        }).format(numeric);
+    }
+
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+    }).format(numeric);
 };
 
 const parseAmount = (value?: string | number | null) => {
@@ -157,6 +172,9 @@ function OrdersTable({
     const [processingOrder, setProcessingOrder] = useState<string | null>(null);
     const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
     const [confirmingOrder, setConfirmingOrder] = useState<string | null>(null);
+    const [waybillDialogOpen, setWaybillDialogOpen] = useState(false);
+    const [waybillOrderId, setWaybillOrderId] = useState<string | null>(null);
+    const [waybillInput, setWaybillInput] = useState('');
     const [invoiceFeedback, setInvoiceFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -726,6 +744,80 @@ function OrdersTable({
         [confirmingOrder, refreshOrders],
     );
 
+    const handleConfirmOrderOverseas = useCallback(
+        async (orderId: string, waybillNumber: string) => {
+            if (confirmingOrder) return;
+
+            setConfirmingOrder(orderId);
+            setLoading(true);
+            try {
+                const csrfToken = getCsrfToken();
+                const response = await fetch(`/v1/overseas/confirm-order/${orderId}`, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/pdf, application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ waybill_number: waybillNumber }),
+                });
+
+                const contentType = response.headers.get('content-type') ?? '';
+                const normalizedContentType = contentType.toLowerCase();
+
+                if (response.ok && normalizedContentType.includes('application/pdf')) {
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const pdfWindow = window.open(blobUrl, '_blank');
+
+                    if (!pdfWindow) {
+                        const tempLink = document.createElement('a');
+                        tempLink.href = blobUrl;
+                        tempLink.target = '_blank';
+                        tempLink.rel = 'noopener';
+                        tempLink.click();
+                    }
+
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+                    refreshOrders();
+                    return;
+                }
+
+                let payload: unknown = null;
+
+                if (normalizedContentType.includes('application/json')) {
+                    try {
+                        payload = await response.json();
+                    } catch {
+                        payload = null;
+                    }
+                } else {
+                    payload = await response.text();
+                }
+
+                if (!response.ok) {
+                    const message =
+                        typeof payload === 'string'
+                            ? payload || 'Failed to confirm order.'
+                            : ((payload as { message?: string; error?: string })?.message ??
+                              (payload as { error?: string })?.error ??
+                              'Failed to confirm order.');
+                    throw new Error(message);
+                }
+
+                refreshOrders();
+            } catch (error) {
+                console.error('Confirm overseas order failed:', error);
+            } finally {
+                setConfirmingOrder(null);
+                setLoading(false);
+            }
+        },
+        [confirmingOrder, refreshOrders],
+    );
+
     return (
         <>
             {loading && (
@@ -901,6 +993,7 @@ function OrdersTable({
                                     const customerName = order.shipment?.receiver_name ?? order.user?.name ?? '—';
                                     const customerMeta = order.shipment?.receiver_city ?? order.user?.email ?? '';
                                     const isPreparingOrder = (order.status ?? '').toLowerCase() === 'preparing_order';
+                                    const method = order.payment_method;
 
                                     return (
                                         <tr key={order.id} className="hover:bg-muted/40">
@@ -919,7 +1012,7 @@ function OrdersTable({
                                                 <div className="font-medium">{totalQuantity} items</div>
                                                 <div className="text-xs text-muted-foreground">{order.items?.length ?? 0} product lines</div>
                                             </td>
-                                            <td className="border border-popover px-4 py-3">{formatCurrency(order.grand_total)}</td>
+                                            <td className="border border-popover px-4 py-3">{formatCurrency(order.payment_method, order.grand_total)}</td>
                                             <td className="border border-popover px-4 py-3">
                                                 <Badge variant={paymentStatusVariant(order.payment_status)}>{titleCase(order.payment_status)}</Badge>
                                             </td>
@@ -949,7 +1042,15 @@ function OrdersTable({
                                                             <DropdownMenuItem
                                                                 className="cursor-pointer gap-2"
                                                                 disabled={confirmingOrder === order.id}
-                                                                onClick={() => handleConfirmOrder(order.id)}
+                                                                onClick={() => {
+                                                                    if (method === 'paypal') {
+                                                                        setWaybillOrderId(order.id);
+                                                                        setWaybillInput('');
+                                                                        setWaybillDialogOpen(true);
+                                                                    } else {
+                                                                        handleConfirmOrder(order.id);
+                                                                    }
+                                                                }}
                                                             >
                                                                 {confirmingOrder === order.id && (
                                                                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -1041,6 +1142,47 @@ function OrdersTable({
                 isSnapReady={isSnapReady}
                 processingOrder={processingOrder}
             />
+
+            <Dialog open={waybillDialogOpen} onOpenChange={setWaybillDialogOpen}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Enter Waybill Number</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 pt-2">
+                        <div className="space-y-1">
+                            <Label htmlFor="waybill-input">Waybill / Tracking Number</Label>
+                            <Input
+                                id="waybill-input"
+                                placeholder="e.g. JD014600006251234567"
+                                value={waybillInput}
+                                onChange={(e) => setWaybillInput(e.target.value.replace(/\s/g, ''))}
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setWaybillDialogOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                disabled={!waybillInput.trim() || confirmingOrder === waybillOrderId}
+                                onClick={() => {
+                                    if (waybillOrderId) {
+                                        setWaybillDialogOpen(false);
+                                        handleConfirmOrderOverseas(waybillOrderId, waybillInput.trim());
+                                    }
+                                }}
+                            >
+                                {confirmingOrder === waybillOrderId && (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )}
+                                Confirm Order
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
@@ -1181,8 +1323,8 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                                     </td>
                                                     <td className="px-4 py-2">{item.product_sku}</td>
                                                     <td className="px-4 py-2">{item.quantity}</td>
-                                                    <td className="px-4 py-2">{formatCurrency(item.price)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatCurrency(item.total)}</td>
+                                                    <td className="px-4 py-2">{formatCurrency(order.payment_method, item.price)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatCurrency(order.payment_method, item.total)}</td>
                                                 </tr>
                                             ))
                                         ) : (
@@ -1198,15 +1340,15 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                             <div className="flex flex-col gap-2 border-t border-popover px-4 py-3 text-sm">
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Subtotal</span>
-                                    <span className="font-medium">{formatCurrency(order.subtotal)}</span>
+                                    <span className="font-medium">{formatCurrency(order.payment_method, order.subtotal)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Shipping Fee</span>
-                                    <span className="font-medium">{formatCurrency(order.shipping_fee)}</span>
+                                    <span className="font-medium">{formatCurrency(order.payment_method, order.shipping_fee)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="font-semibold">Grand Total</span>
-                                    <span className="text-lg font-semibold">{formatCurrency(order.grand_total)}</span>
+                                    <span className="text-lg font-semibold">{formatCurrency(order.payment_method, order.grand_total)}</span>
                                 </div>
                             </div>
                         </div>

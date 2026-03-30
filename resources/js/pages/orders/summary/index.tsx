@@ -23,12 +23,25 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Summary', href: SUMMARY_ROUTE },
 ];
 
-const formatCurrency = (value?: string | number | null) => {
-    const numeric = typeof value === 'string' ? parseFloat(value) : (value ?? 0);
+const formatCurrency = (method?: string, value?: string | number | null) => {
+    const numeric = typeof value === 'string' ? parseFloat(value) : Number(value ?? 0);
     if (!Number.isFinite(numeric)) {
-        return '-';
+        return method === 'snap' ? 'Rp 0' : '$ 0';
     }
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(numeric);
+    
+    if (method === 'paypal') {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+        }).format(numeric);
+    }
+
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+    }).format(numeric);
 };
 
 const formatDateTime = (value?: string | null) => {
@@ -298,7 +311,7 @@ export default function OrdersSummaryPage() {
                                             <td className="border border-popover px-4 py-3">{item.product_sku ?? '—'}</td>
                                             <td className="border border-popover px-4 py-3">{buyer}</td>
                                             <td className="border border-popover px-4 py-3 text-right font-semibold">{item.quantity}</td>
-                                            <td className="border border-popover px-4 py-3 text-right font-semibold">{formatCurrency(item.total)}</td>
+                                            <td className="border border-popover px-4 py-3 text-right font-semibold">{formatCurrency( item.order?.payment_method,item.total)}</td>
                                         </tr>
                                     );
                                 })

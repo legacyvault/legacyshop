@@ -1098,7 +1098,7 @@ export default function Checkout() {
                 origin_longitude: Number(warehouse.longitude),
                 destination_latitude: Number(selectedCheckoutAddress.latitude),
                 destination_longitude: Number(selectedCheckoutAddress.longitude),
-                couriers: 'gojek,grab,deliveree,jne,tiki,ninja,lion,rara,sicepat,jnt,idexpress,rpx,jdl,wahana,pos,anteraja,sap,paxel,borzo,lalamove',
+                couriers: 'jne,sicepat,jnt,anteraja',
                 items: rateItemsPayload,
             };
 
@@ -2573,9 +2573,6 @@ export default function Checkout() {
                                                                 disableMaxWidth: true,
                                                             }}
                                                             createOrder={async () => {
-                                                                console.log('masuk sini harunysa');
-                                                                console.log(selectedCheckoutAddress);
-                                                                console.log(checkoutItems);
                                                                 if (!selectedCheckoutAddress || !checkoutItems.length) {
                                                                     if (!selectedCheckoutAddress && usingGuestAddress) {
                                                                         setHasAttemptedGuestCheckout(true);
@@ -2629,7 +2626,7 @@ export default function Checkout() {
 
                                                                 const payload = {
                                                                     is_manual_invoice: false,
-                                                                    payment_method: 'manual',
+                                                                    payment_method: 'paypal',
                                                                     shipping_fee: internationalShipmentPrice,
                                                                     voucher_code: appliedVoucher?.code ?? undefined,
                                                                     receiver_name: selectedCheckoutAddress.contact_name,
@@ -2708,9 +2705,8 @@ export default function Checkout() {
                                                                     } else if (!response.ok) {
                                                                         throw new Error(orderData?.message ?? 'Capture failed');
                                                                     } else {
-                                                                        const transaction = orderData.purchase_units[0].payments.captures[0];
-                                                                        setMessagePaypal(`Transaction ${transaction.status}: ${transaction.id}.`);
                                                                         clearCheckoutStorage();
+                                                                        router.visit(isGuest ? '/' : '/orders/order');
                                                                     }
                                                                 } catch (error) {
                                                                     console.error(error);

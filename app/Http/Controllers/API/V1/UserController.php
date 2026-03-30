@@ -106,7 +106,12 @@ class UserController extends Controller
     {
         $user = Auth::user();
         $profile = Profile::where('user_id', $user?->id)->first();
-        $isIndonesia = $this->isIndonesiaCountry($profile?->country);
+        
+        //check location based on profile
+        // $isIndonesia = $this->isIndonesiaCountry($profile?->country);
+
+        //check location by ip address
+        $isIndonesia = $this->isIndonesiaCountry($request->country ?? $profile?->country);
 
         if (!$profile) {
             return redirect()->back()->with('alert', [

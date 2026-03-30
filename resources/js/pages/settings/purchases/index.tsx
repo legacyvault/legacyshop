@@ -105,6 +105,8 @@ export default function Purchases() {
         });
     }, []);
 
+    console.log(orders);
+
     return (
         <FrontLayout auth={auth} locale={locale} translations={translations}>
             <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 lg:px-0">
@@ -171,6 +173,7 @@ function TransactionList({
     isSnapReady: boolean;
 }) {
     const [processingOrder, setProcessingOrder] = useState<string | null>(null);
+    const [paypalError, setPaypalError] = useState<string | null>(null);
 
     const transactions = useMemo(() => {
         return orders.map((order) => {
@@ -182,7 +185,7 @@ function TransactionList({
             const description = additionalItems > 0 ? `${additionalItems} more item${additionalItems > 1 ? 's' : ''}` : null;
             const picture = firstItem?.product_image;
             const reference = order.transaction_id || order.order_number;
-            const statusLabel = order.transaction_status || order.status;
+            const statusLabel = order.status;
             const badgeStyle = getStatusBadgeStyle(statusLabel);
             const date = formatDate(order.created_at);
             const order_number = order.order_number;
@@ -203,7 +206,7 @@ function TransactionList({
                 merchant,
                 description,
                 subtext: subtextParts.join(' • '),
-                totalValue: formatCurrency(order.grand_total),
+                totalValue: formatCurrency(order.payment_method, order.grand_total),
                 picture,
                 order_number,
             };
@@ -242,6 +245,36 @@ function TransactionList({
         } catch (error) {
             console.error('Error fetching transaction:', error);
             throw error;
+        }
+    };
+
+    const handleGeneratePaypalPayment = async (order_number: string) => {
+        if (processingOrder) return;
+
+        setProcessingOrder(order_number);
+
+        try {
+            const response = await fetch(`/v1/reopen-paypal/${order_number}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'include',
+            });
+
+            const payload = await parseJsonResponse(response);
+
+            if (!response.ok || !(payload as { approval_url?: string })?.approval_url) {
+                setPaypalError((payload as { message?: string })?.message ?? 'Failed to generate PayPal payment.');
+                return;
+            }
+
+            window.location.href = (payload as { approval_url: string }).approval_url;
+            onRefreshOrders();
+        } catch {
+            setPaypalError('Failed to generate PayPal payment.');
+        } finally {
+            setProcessingOrder(null);
         }
     };
 
@@ -288,6 +321,22 @@ function TransactionList({
     }
 
     return (
+        <>
+        {paypalError && (
+            <Dialog open={!!paypalError} onOpenChange={() => setPaypalError(null)}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Payment Failed</DialogTitle>
+                        <DialogDescription>{paypalError}</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button type="button" onClick={() => setPaypalError(null)}>
+                            Close
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        )}
         <div className="space-y-4">
             {transactions.map((transaction) => {
                 return (
@@ -302,7 +351,7 @@ function TransactionList({
                                             <span>{transaction.date}</span>
                                             <Badge
                                                 className={cn(
-                                                    'border-0 px-2.5 py-1 text-xs font-semibold',
+                                                    'border-0 px-2.5 py-1 text-xs font-semibold uppercase',
                                                     transaction.badgeBg,
                                                     transaction.badgeColor,
                                                 )}
@@ -332,21 +381,34 @@ function TransactionList({
                                 <Button variant="outline" type="button" onClick={() => onViewDetail(transaction.order)}>
                                     View Transaction Detail
                                 </Button>
-                                <div>
-                                    <Button
-                                        onClick={() => handleGeneratePayment(transaction.order_number)}
-                                        variant={'link'}
-                                        disabled={!isSnapReady || processingOrder === transaction.order_number}
-                                    >
-                                        Generate Payment
-                                    </Button>
-                                </div>
+                                {transaction.badgeBg !== 'bg-emerald-100' && (
+                                    <div>
+                                        {transaction.order.payment_method === 'paypal' ? (
+                                            <Button
+                                                onClick={() => handleGeneratePaypalPayment(transaction.order_number)}
+                                                variant={'link'}
+                                                disabled={processingOrder === transaction.order_number}
+                                            >
+                                                Pay with PayPal
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                onClick={() => handleGeneratePayment(transaction.order_number)}
+                                                variant={'link'}
+                                                disabled={!isSnapReady || processingOrder === transaction.order_number}
+                                            >
+                                                Generate Payment
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </Card>
                 );
             })}
         </div>
+        </>
     );
 }
 
@@ -359,10 +421,18 @@ const titleCase = (value?: string | null) => {
         .join(' ');
 };
 
-const formatCurrency = (value?: string | number | null) => {
+const formatCurrency = (method?: string,value?: string | number | null) => {
     const numeric = typeof value === 'string' ? parseFloat(value) : Number(value ?? 0);
     if (!Number.isFinite(numeric)) {
-        return 'Rp 0';
+        return method === 'snap' ? 'Rp 0' : '$ 0';
+    }
+    
+    if (method === 'paypal') {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+        }).format(numeric);
     }
 
     return new Intl.NumberFormat('id-ID', {
@@ -389,7 +459,7 @@ const formatDate = (value?: string | null) => {
 const getStatusBadgeStyle = (status?: string | null): { background: string; color: string; label: string } => {
     const normalized = (status ?? '').toLowerCase();
 
-    if (['completed', 'success', 'settlement', 'delivered', 'paid'].includes(normalized)) {
+    if (['completed', 'success', 'settlement', 'delivered', 'paid', 'order_confirmed'].includes(normalized)) {
         return { background: 'bg-emerald-100', color: 'text-emerald-700', label: titleCase(status) || 'Completed' };
     }
 
@@ -415,9 +485,9 @@ function TransactionDetailDialog({
 }) {
     const items = order?.items ?? [];
     const totals = {
-        subtotal: formatCurrency(order?.subtotal),
-        shipping: formatCurrency(order?.shipping_fee),
-        grandTotal: formatCurrency(order?.grand_total),
+        subtotal: formatCurrency(order?.payment_method, order?.subtotal),
+        shipping: formatCurrency(order?.payment_method, order?.shipping_fee),
+        grandTotal: formatCurrency(order?.payment_method, order?.grand_total),
     };
 
     return (
@@ -460,8 +530,8 @@ function TransactionDetailDialog({
                                     </div>
                                     <div className="text-right text-sm">
                                         <p className="text-muted-foreground">Qty: {item.quantity}</p>
-                                        <p className="text-muted-foreground">Price: {formatCurrency(item.price)}</p>
-                                        <p className="font-semibold text-foreground">{formatCurrency(item.total)}</p>
+                                        <p className="text-muted-foreground">Price: {formatCurrency(order?.payment_method, item.price)}</p>
+                                        <p className="font-semibold text-foreground">{formatCurrency(order?.payment_method, item.total)}</p>
                                     </div>
                                 </div>
                             ))

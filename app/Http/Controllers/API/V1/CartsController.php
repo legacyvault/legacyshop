@@ -117,6 +117,15 @@ class CartsController extends Controller
             if ($cart->product) {
                 $this->applyPriceMappingToProduct($cart->product, $isIndonesian);
             }
+            if ($cart->subCategory) {
+                $this->mapPrice($cart->subCategory, $isIndonesian);
+            }
+            if ($cart->division) {
+                $this->mapPrice($cart->division, $isIndonesian);
+            }
+            if ($cart->variant) {
+                $this->mapPrice($cart->variant, $isIndonesian);
+            }
         }
 
         return $carts;

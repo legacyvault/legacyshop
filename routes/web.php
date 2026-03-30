@@ -70,6 +70,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Checkout API
     Route::get('transaction-status/{transaction_id}', [OrderController::class, 'getTransactionStatus'])->name('transaction.status');
     Route::get('reopen-snap/{order_number}', [OrderController::class, 'reopenSnapPayment'])->name('snap.reopen');
+    Route::get('reopen-paypal/{order_number}', [OrderController::class, 'reopenPaypalPayment'])->name('paypal.reopen');
     //Biteship API
     Route::get('all-warehouse', [WarehouseController::class, 'getAllWarehouse'])->name('warehouses');
     Route::get('active-warehouse', [WarehouseController::class, 'getActiveWarehouse'])->name('warehouse.active');
@@ -157,6 +158,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], function () {
 
     Route::post('confirm-order/{id}', [OrderController::class, 'confirmOrder'])->name('confirm.order');
+    Route::post('overseas/confirm-order/{id}', [OrderController::class, 'confirmOrderOverseas'])->name('confirm.order.overseas');
 
     //Notification API
     Route::get('notifications/low-stock', [NotificationController::class, 'lowStock'])->name('notifications.low-stock');

@@ -217,7 +217,7 @@ const buildAttributeList = (summary: SelectionSummary) => {
     return Array.from(new Set(attributes));
 };
 
-const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, contextItem?: CartItem) => {
+const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, contextItem?: CartItem, isIndonesian = true) => {
     const fallbackPrice = toNumber(contextItem?.price);
     if (!cart) {
         return {
@@ -230,7 +230,7 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
         };
     }
 
-    const productBase = toNumber(cart.product?.default_price ?? cart.product?.product_price);
+    const productBase = toNumber(cart.product?.default_price ?? (isIndonesian ? cart.product?.product_price : cart.product?.product_usd_price));
     const productDiscount = toNumber(cart.product?.product_discount);
     const eventDiscount = toNumber(cart.product?.event?.discount);
     const isEventActive = Boolean(cart.product?.event && cart.product.event.is_active === 1);
@@ -238,15 +238,15 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
     const appliedProductDiscount = appliedEventDiscount > 0 ? appliedEventDiscount : productDiscount;
 
     const subCategory = resolveSubCategory(cart);
-    const subBase = toNumber(subCategory?.default_price ?? subCategory?.price);
+    const subBase = toNumber(subCategory?.default_price ?? (isIndonesian ? subCategory?.price : subCategory?.usd_price));
     const subDiscount = resolveDiscountPercent(subCategory, 'use_subcategory_discount', 'discount');
 
     const division = resolveDivision(cart);
-    const divisionBase = toNumber(division?.default_price ?? division?.price);
+    const divisionBase = toNumber(division?.default_price ?? (isIndonesian ? division?.price : division?.usd_price));
     const divisionDiscount = resolveDiscountPercent(division, 'use_division_discount', 'discount');
 
     const variant = resolveVariant(cart);
-    const variantBase = toNumber(variant?.default_price ?? variant?.price);
+    const variantBase = toNumber(variant?.default_price ?? (isIndonesian ? variant?.price : variant?.usd_price));
     const variantDiscount = resolveDiscountPercent(variant, 'use_variant_discount', 'discount');
 
     const originalPrice = Math.max(0, Math.round(productBase + subBase + divisionBase + variantBase));
@@ -274,20 +274,22 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
 };
 
 export default function Carts() {
-    const { auth, translations, locale, carts, filters } = usePage<PageProps>().props;
+    const { auth, translations, locale, carts, filters, isIndonesian } = usePage<PageProps>().props;
     const [search, setSearch] = useState(String((filters as any)?.q || ''));
+
+    console.log(carts)
 
     return (
         <>
             <Head title="Cart" />
             <FrontLayout auth={auth} translations={translations} locale={locale} searchValue={search} onSearchChange={setSearch}>
-                <CartContent carts={carts} />
+                <CartContent carts={carts} isIndonesian={isIndonesian} />
             </FrontLayout>
         </>
     );
 }
 
-function CartContent({ carts }: { carts: ICart[] | null }) {
+function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndonesian: boolean }) {
     const { items: contextItems, updateQuantity, removeItem } = useCart();
     const contextMap = useMemo(() => {
         const map = new Map<string, CartItem>();

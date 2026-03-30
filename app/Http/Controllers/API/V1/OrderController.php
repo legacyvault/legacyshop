@@ -782,6 +782,7 @@ class OrderController extends Controller
         $accessToken = $this->getPaypalAccessToken();
 
         $response = Http::withToken($accessToken)
+            ->withBody('{}', 'application/json')
             ->post($this->paypalBaseUrl . "/v2/checkout/orders/{$orderId}/capture");
 
         $data = $response->json();
@@ -1150,6 +1151,94 @@ class OrderController extends Controller
         }
     }
 
+    public function reopenPaypalPayment($orderNumber): JsonResponse
+    {
+        try {
+            $order = Order::where('order_number', $orderNumber)->firstOrFail();
+
+            $accessToken = $this->getPaypalAccessToken();
+
+            // Try to fetch the existing PayPal order if we have a transaction_id
+            if ($order->transaction_id) {
+                $response = Http::withToken($accessToken)
+                    ->withHeaders(['Accept' => 'application/json'])
+                    ->get($this->paypalBaseUrl . '/v2/checkout/orders/' . $order->transaction_id);
+
+                if ($response->successful()) {
+                    $paypalOrder = $response->json();
+                    $paypalStatus = $paypalOrder['status'] ?? null;
+
+                    if (in_array($paypalStatus, ['CREATED', 'APPROVED'])) {
+                        $approvalUrl = collect($paypalOrder['links'] ?? [])
+                            ->firstWhere('rel', 'approve')['href'] ?? null;
+
+                        if ($approvalUrl) {
+                            return response()->json([
+                                'status' => 'pending',
+                                'approval_url' => $approvalUrl,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Existing order not found or expired — create a new PayPal order
+            $newOrder = Http::withToken($accessToken)
+                ->post($this->paypalBaseUrl . '/v2/checkout/orders', [
+                    'intent' => 'CAPTURE',
+                    'purchase_units' => [
+                        [
+                            'reference_id' => $order->id,
+                            'amount' => [
+                                'currency_code' => 'USD',
+                                'value' => number_format($order->grand_total, 2, '.', ''),
+                            ],
+                        ],
+                    ],
+                    'application_context' => [
+                        'return_url' => url('/payment/success'),
+                        'cancel_url' => url('/payment/cancel'),
+                    ],
+                ]);
+
+            if (!$newOrder->successful()) {
+                Log::error('PayPal reopen create error: ' . $newOrder->body());
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to create new PayPal order.',
+                ], 400);
+            }
+
+            $paypalOrder = $newOrder->json();
+
+            $order->update([
+                'transaction_id' => $paypalOrder['id'],
+                'transaction_status' => $paypalOrder['status'],
+            ]);
+
+            $approvalUrl = collect($paypalOrder['links'] ?? [])
+                ->firstWhere('rel', 'approve')['href'] ?? null;
+
+            if (!$approvalUrl) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'PayPal approval URL not found.',
+                ], 400);
+            }
+
+            return response()->json([
+                'status' => 'pending',
+                'approval_url' => $approvalUrl,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('PayPal reopen exception: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to re-open PayPal payment.',
+            ], 500);
+        }
+    }
+
     public function handleNotification(Request $request)
     {
         try {
@@ -1333,6 +1422,87 @@ class OrderController extends Controller
             $orderShipment->shipping_label_url = $s3Url;
             $orderShipment->tracking_url = $biteshipData['courier']['link'];
             $orderShipment->waybill_number = $biteshipData['courier']['waybill_id'];
+            $orderShipment->save();
+
+            $order->status = 'order_confirmed';
+            $order->save();
+
+            return $pdf->stream($fileName);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Order not found.'], 404);
+        } catch (Exception $e) {
+            Log::error('[SECURITY AUDIT] Error Handle Confirm Order: ' . $e);
+            return response()->json(['error' => 'Handle Confirm Order Failed'], 500);
+        }
+    }
+
+    public function confirmOrderOverseas(Request $request, $id)
+    {
+        try {
+            $waybill_number = $request->waybill_number;
+            if ($waybill_number == '' || $waybill_number == null) {
+                return response()->json(['error' => 'Waybill number is missing for this order.'], 422);
+            }
+
+            $order = Order::with(['user.profile', 'guest', 'items.product', 'shipment'])->findOrFail($id);
+            $orderShipment = $order->shipment;
+
+            if (!$orderShipment) {
+                return response()->json(['error' => 'Shipment data is missing for this order.'], 422);
+            }
+
+            $logoPath = public_path('logo.png');
+            $logoBase64 = null;
+
+            if (is_readable($logoPath)) {
+                $logoBase64 = 'data:image/' . pathinfo($logoPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($logoPath));
+            }
+
+            $items = collect($order->items ?? []);
+            $awbNumber = $waybill_number;
+            $shippingFeeValue = $order->shipping_fee ?? $orderShipment->shipping_fee ?? 0;
+            $totalWeight = (int) round($items->sum(function ($item) {
+                $weight = $item->product->product_weight ?? 0;
+                $quantity = (int) ($item->quantity ?? 0);
+
+                return (float) $weight * $quantity;
+            }));
+
+            if (!empty($awbNumber)) {
+                $barcodeStoragePath = storage_path('app/barcodes/');
+
+                if (!File::isDirectory($barcodeStoragePath)) {
+                    File::makeDirectory($barcodeStoragePath, 0755, true);
+                }
+
+                $barcodeGenerator = new DNS1D();
+                $barcodeGenerator->setStorPath($barcodeStoragePath);
+                $awbBarcode = $barcodeGenerator->getBarcodePNG($awbNumber, 'C128', 2, 70);
+            }
+
+            $pdf = Pdf::loadView('pdf.shipping-label', [
+                'order' => $order,
+                'shipment' => $orderShipment,
+                'items' => $items,
+                'customer' => $order->user ?? $order->guest,
+                'logoBase64' => $logoBase64,
+                'awbNumber' => $awbNumber,
+                'awbBarcode' => $awbBarcode,
+                'shippingFeeValue' => $shippingFeeValue,
+                'totalWeight' => $totalWeight,
+                'confirmedAt' => now(),
+            ])->setPaper('a5', 'portrait');
+
+            $fileName = 'shipping-label-' . $order->order_number . '.pdf';
+            $pdfContent = $pdf->output();
+            $pathPrefix = "shipping-labels/" . date('Y/m/d');
+            $fullPath = "{$pathPrefix}/{$fileName}";
+
+            // Upload ke S3
+            $s3Url = $this->uploadPdfToS3($pdfContent, $fullPath);
+
+            $orderShipment->shipping_label_url = $s3Url;
+            $orderShipment->waybill_number = $awbNumber;
             $orderShipment->save();
 
             $order->status = 'order_confirmed';
