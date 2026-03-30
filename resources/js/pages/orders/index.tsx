@@ -1,6 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IOrdersPaginated, IRootHistoryOrders, SharedData } from '@/types';
@@ -157,6 +159,9 @@ function OrdersTable({
     const [processingOrder, setProcessingOrder] = useState<string | null>(null);
     const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
     const [confirmingOrder, setConfirmingOrder] = useState<string | null>(null);
+    const [waybillDialogOpen, setWaybillDialogOpen] = useState(false);
+    const [waybillOrderId, setWaybillOrderId] = useState<string | null>(null);
+    const [waybillInput, setWaybillInput] = useState('');
     const [invoiceFeedback, setInvoiceFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -901,6 +906,7 @@ function OrdersTable({
                                     const customerName = order.shipment?.receiver_name ?? order.user?.name ?? '—';
                                     const customerMeta = order.shipment?.receiver_city ?? order.user?.email ?? '';
                                     const isPreparingOrder = (order.status ?? '').toLowerCase() === 'preparing_order';
+                                    const method = order.payment_method;
 
                                     return (
                                         <tr key={order.id} className="hover:bg-muted/40">
@@ -949,7 +955,15 @@ function OrdersTable({
                                                             <DropdownMenuItem
                                                                 className="cursor-pointer gap-2"
                                                                 disabled={confirmingOrder === order.id}
-                                                                onClick={() => handleConfirmOrder(order.id)}
+                                                                onClick={() => {
+                                                                    if (method === 'paypal') {
+                                                                        setWaybillOrderId(order.id);
+                                                                        setWaybillInput('');
+                                                                        setWaybillDialogOpen(true);
+                                                                    } else {
+                                                                        handleConfirmOrder(order.id);
+                                                                    }
+                                                                }}
                                                             >
                                                                 {confirmingOrder === order.id && (
                                                                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -1041,6 +1055,47 @@ function OrdersTable({
                 isSnapReady={isSnapReady}
                 processingOrder={processingOrder}
             />
+
+            <Dialog open={waybillDialogOpen} onOpenChange={setWaybillDialogOpen}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Enter Waybill Number</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 pt-2">
+                        <div className="space-y-1">
+                            <Label htmlFor="waybill-input">Waybill / Tracking Number</Label>
+                            <Input
+                                id="waybill-input"
+                                placeholder="e.g. JD014600006251234567"
+                                value={waybillInput}
+                                onChange={(e) => setWaybillInput(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setWaybillDialogOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                disabled={!waybillInput.trim() || confirmingOrder === waybillOrderId}
+                                onClick={() => {
+                                    if (waybillOrderId) {
+                                        setWaybillDialogOpen(false);
+                                        handleConfirmOrder(waybillOrderId);
+                                    }
+                                }}
+                            >
+                                {confirmingOrder === waybillOrderId && (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )}
+                                Confirm Order
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
