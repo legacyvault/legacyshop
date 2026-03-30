@@ -782,6 +782,7 @@ class OrderController extends Controller
         $accessToken = $this->getPaypalAccessToken();
 
         $response = Http::withToken($accessToken)
+            ->withBody('{}', 'application/json')
             ->post($this->paypalBaseUrl . "/v2/checkout/orders/{$orderId}/capture");
 
         $data = $response->json();
