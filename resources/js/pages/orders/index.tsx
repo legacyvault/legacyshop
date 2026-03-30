@@ -731,6 +731,80 @@ function OrdersTable({
         [confirmingOrder, refreshOrders],
     );
 
+    const handleConfirmOrderOverseas = useCallback(
+        async (orderId: string, waybillNumber: string) => {
+            if (confirmingOrder) return;
+
+            setConfirmingOrder(orderId);
+            setLoading(true);
+            try {
+                const csrfToken = getCsrfToken();
+                const response = await fetch(`/v1/overseas/confirm-order/${orderId}`, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/pdf, application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ waybill_number: waybillNumber }),
+                });
+
+                const contentType = response.headers.get('content-type') ?? '';
+                const normalizedContentType = contentType.toLowerCase();
+
+                if (response.ok && normalizedContentType.includes('application/pdf')) {
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const pdfWindow = window.open(blobUrl, '_blank');
+
+                    if (!pdfWindow) {
+                        const tempLink = document.createElement('a');
+                        tempLink.href = blobUrl;
+                        tempLink.target = '_blank';
+                        tempLink.rel = 'noopener';
+                        tempLink.click();
+                    }
+
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+                    refreshOrders();
+                    return;
+                }
+
+                let payload: unknown = null;
+
+                if (normalizedContentType.includes('application/json')) {
+                    try {
+                        payload = await response.json();
+                    } catch {
+                        payload = null;
+                    }
+                } else {
+                    payload = await response.text();
+                }
+
+                if (!response.ok) {
+                    const message =
+                        typeof payload === 'string'
+                            ? payload || 'Failed to confirm order.'
+                            : ((payload as { message?: string; error?: string })?.message ??
+                              (payload as { error?: string })?.error ??
+                              'Failed to confirm order.');
+                    throw new Error(message);
+                }
+
+                refreshOrders();
+            } catch (error) {
+                console.error('Confirm overseas order failed:', error);
+            } finally {
+                setConfirmingOrder(null);
+                setLoading(false);
+            }
+        },
+        [confirmingOrder, refreshOrders],
+    );
+
     return (
         <>
             {loading && (
@@ -1068,7 +1142,7 @@ function OrdersTable({
                                 id="waybill-input"
                                 placeholder="e.g. JD014600006251234567"
                                 value={waybillInput}
-                                onChange={(e) => setWaybillInput(e.target.value)}
+                                onChange={(e) => setWaybillInput(e.target.value.replace(/\s/g, ''))}
                             />
                         </div>
                         <div className="flex justify-end gap-2">
@@ -1083,7 +1157,7 @@ function OrdersTable({
                                 onClick={() => {
                                     if (waybillOrderId) {
                                         setWaybillDialogOpen(false);
-                                        handleConfirmOrder(waybillOrderId);
+                                        handleConfirmOrderOverseas(waybillOrderId, waybillInput.trim());
                                     }
                                 }}
                             >
