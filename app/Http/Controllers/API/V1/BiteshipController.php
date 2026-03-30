@@ -182,7 +182,7 @@ class BiteshipController extends Controller
                 "origin_longitude" => $request->origin_lng,
                 "destination_latitude" => $request->destination_lat,
                 "destination_longitude" => $request->destination_lng,
-                "couriers" => "jne,jnt,sicepat",
+                "couriers" => "jne,sicepat,jnt,anteraja",
                 "items" => $request->items
             ]);
 

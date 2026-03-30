@@ -1098,7 +1098,7 @@ export default function Checkout() {
                 origin_longitude: Number(warehouse.longitude),
                 destination_latitude: Number(selectedCheckoutAddress.latitude),
                 destination_longitude: Number(selectedCheckoutAddress.longitude),
-                couriers: 'gojek,grab,deliveree,jne,tiki,ninja,lion,rara,sicepat,jnt,idexpress,rpx,jdl,wahana,pos,anteraja,sap,paxel,borzo,lalamove',
+                couriers: 'jne,sicepat,jnt,anteraja',
                 items: rateItemsPayload,
             };
 
