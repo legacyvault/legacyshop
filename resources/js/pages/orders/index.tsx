@@ -36,12 +36,25 @@ const getCsrfToken = (): string | undefined => {
     return undefined;
 };
 
-const formatCurrency = (value?: string | number | null) => {
-    const numeric = typeof value === 'string' ? parseFloat(value) : (value ?? 0);
+const formatCurrency = (method?: string, value?: string | number | null) => {
+    const numeric = typeof value === 'string' ? parseFloat(value) : Number(value ?? 0);
     if (!Number.isFinite(numeric)) {
-        return '-';
+        return method === 'snap' ? 'Rp 0' : '$ 0';
     }
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(numeric);
+    
+    if (method === 'paypal') {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+        }).format(numeric);
+    }
+
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+    }).format(numeric);
 };
 
 const parseAmount = (value?: string | number | null) => {
@@ -999,7 +1012,7 @@ function OrdersTable({
                                                 <div className="font-medium">{totalQuantity} items</div>
                                                 <div className="text-xs text-muted-foreground">{order.items?.length ?? 0} product lines</div>
                                             </td>
-                                            <td className="border border-popover px-4 py-3">{formatCurrency(order.grand_total)}</td>
+                                            <td className="border border-popover px-4 py-3">{formatCurrency(order.payment_method, order.grand_total)}</td>
                                             <td className="border border-popover px-4 py-3">
                                                 <Badge variant={paymentStatusVariant(order.payment_status)}>{titleCase(order.payment_status)}</Badge>
                                             </td>
@@ -1310,8 +1323,8 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                                     </td>
                                                     <td className="px-4 py-2">{item.product_sku}</td>
                                                     <td className="px-4 py-2">{item.quantity}</td>
-                                                    <td className="px-4 py-2">{formatCurrency(item.price)}</td>
-                                                    <td className="px-4 py-2 text-right">{formatCurrency(item.total)}</td>
+                                                    <td className="px-4 py-2">{formatCurrency(order.payment_method, item.price)}</td>
+                                                    <td className="px-4 py-2 text-right">{formatCurrency(order.payment_method, item.total)}</td>
                                                 </tr>
                                             ))
                                         ) : (
@@ -1327,15 +1340,15 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                             <div className="flex flex-col gap-2 border-t border-popover px-4 py-3 text-sm">
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Subtotal</span>
-                                    <span className="font-medium">{formatCurrency(order.subtotal)}</span>
+                                    <span className="font-medium">{formatCurrency(order.payment_method, order.subtotal)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Shipping Fee</span>
-                                    <span className="font-medium">{formatCurrency(order.shipping_fee)}</span>
+                                    <span className="font-medium">{formatCurrency(order.payment_method, order.shipping_fee)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="font-semibold">Grand Total</span>
-                                    <span className="text-lg font-semibold">{formatCurrency(order.grand_total)}</span>
+                                    <span className="text-lg font-semibold">{formatCurrency(order.payment_method, order.grand_total)}</span>
                                 </div>
                             </div>
                         </div>
