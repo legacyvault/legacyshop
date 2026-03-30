@@ -203,7 +203,7 @@ function TransactionList({
                 merchant,
                 description,
                 subtext: subtextParts.join(' • '),
-                totalValue: formatCurrency(order.grand_total),
+                totalValue: formatCurrency(order.payment_method, order.grand_total),
                 picture,
                 order_number,
             };
@@ -359,10 +359,18 @@ const titleCase = (value?: string | null) => {
         .join(' ');
 };
 
-const formatCurrency = (value?: string | number | null) => {
+const formatCurrency = (method?: string,value?: string | number | null) => {
     const numeric = typeof value === 'string' ? parseFloat(value) : Number(value ?? 0);
     if (!Number.isFinite(numeric)) {
-        return 'Rp 0';
+        return method === 'snap' ? 'Rp 0' : '$ 0';
+    }
+    
+    if (method === 'paypal') {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+        }).format(numeric);
     }
 
     return new Intl.NumberFormat('id-ID', {
@@ -415,9 +423,9 @@ function TransactionDetailDialog({
 }) {
     const items = order?.items ?? [];
     const totals = {
-        subtotal: formatCurrency(order?.subtotal),
-        shipping: formatCurrency(order?.shipping_fee),
-        grandTotal: formatCurrency(order?.grand_total),
+        subtotal: formatCurrency(order?.payment_method, order?.subtotal),
+        shipping: formatCurrency(order?.payment_method, order?.shipping_fee),
+        grandTotal: formatCurrency(order?.payment_method, order?.grand_total),
     };
 
     return (
@@ -460,8 +468,8 @@ function TransactionDetailDialog({
                                     </div>
                                     <div className="text-right text-sm">
                                         <p className="text-muted-foreground">Qty: {item.quantity}</p>
-                                        <p className="text-muted-foreground">Price: {formatCurrency(item.price)}</p>
-                                        <p className="font-semibold text-foreground">{formatCurrency(item.total)}</p>
+                                        <p className="text-muted-foreground">Price: {formatCurrency(order?.payment_method, item.price)}</p>
+                                        <p className="font-semibold text-foreground">{formatCurrency(order?.payment_method, item.total)}</p>
                                     </div>
                                 </div>
                             ))

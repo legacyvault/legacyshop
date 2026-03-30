@@ -2626,7 +2626,7 @@ export default function Checkout() {
 
                                                                 const payload = {
                                                                     is_manual_invoice: false,
-                                                                    payment_method: 'manual',
+                                                                    payment_method: 'paypal',
                                                                     shipping_fee: internationalShipmentPrice,
                                                                     voucher_code: appliedVoucher?.code ?? undefined,
                                                                     receiver_name: selectedCheckoutAddress.contact_name,
