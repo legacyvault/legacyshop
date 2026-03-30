@@ -1348,6 +1348,87 @@ class OrderController extends Controller
         }
     }
 
+    public function confirmOrderOverseas(Request $request, $id)
+    {
+        try {
+            $waybill_number = $request->waybill_number;
+            if ($waybill_number == '' || $waybill_number == null) {
+                return response()->json(['error' => 'Waybill number is missing for this order.'], 422);
+            }
+
+            $order = Order::with(['user.profile', 'guest', 'items.product', 'shipment'])->findOrFail($id);
+            $orderShipment = $order->shipment;
+
+            if (!$orderShipment) {
+                return response()->json(['error' => 'Shipment data is missing for this order.'], 422);
+            }
+
+            $logoPath = public_path('logo.png');
+            $logoBase64 = null;
+
+            if (is_readable($logoPath)) {
+                $logoBase64 = 'data:image/' . pathinfo($logoPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($logoPath));
+            }
+
+            $items = collect($order->items ?? []);
+            $awbNumber = $waybill_number;
+            $shippingFeeValue = $order->shipping_fee ?? $orderShipment->shipping_fee ?? 0;
+            $totalWeight = (int) round($items->sum(function ($item) {
+                $weight = $item->product->product_weight ?? 0;
+                $quantity = (int) ($item->quantity ?? 0);
+
+                return (float) $weight * $quantity;
+            }));
+
+            if (!empty($awbNumber)) {
+                $barcodeStoragePath = storage_path('app/barcodes/');
+
+                if (!File::isDirectory($barcodeStoragePath)) {
+                    File::makeDirectory($barcodeStoragePath, 0755, true);
+                }
+
+                $barcodeGenerator = new DNS1D();
+                $barcodeGenerator->setStorPath($barcodeStoragePath);
+                $awbBarcode = $barcodeGenerator->getBarcodePNG($awbNumber, 'C128', 2, 70);
+            }
+
+            $pdf = Pdf::loadView('pdf.shipping-label', [
+                'order' => $order,
+                'shipment' => $orderShipment,
+                'items' => $items,
+                'customer' => $order->user ?? $order->guest,
+                'logoBase64' => $logoBase64,
+                'awbNumber' => $awbNumber,
+                'awbBarcode' => $awbBarcode,
+                'shippingFeeValue' => $shippingFeeValue,
+                'totalWeight' => $totalWeight,
+                'confirmedAt' => now(),
+            ])->setPaper('a5', 'portrait');
+
+            $fileName = 'shipping-label-' . $order->order_number . '.pdf';
+            $pdfContent = $pdf->output();
+            $pathPrefix = "shipping-labels/" . date('Y/m/d');
+            $fullPath = "{$pathPrefix}/{$fileName}";
+
+            // Upload ke S3
+            $s3Url = $this->uploadPdfToS3($pdfContent, $fullPath);
+
+            $orderShipment->shipping_label_url = $s3Url;
+            $orderShipment->waybill_number = $awbNumber;
+            $orderShipment->save();
+
+            $order->status = 'order_confirmed';
+            $order->save();
+
+            return $pdf->stream($fileName);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Order not found.'], 404);
+        } catch (Exception $e) {
+            Log::error('[SECURITY AUDIT] Error Handle Confirm Order: ' . $e);
+            return response()->json(['error' => 'Handle Confirm Order Failed'], 500);
+        }
+    }
+
     //Paypal
     public function createPaypalOrder($order) {}
 }

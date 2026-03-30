@@ -157,6 +157,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
 Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], function () {
 
     Route::post('confirm-order/{id}', [OrderController::class, 'confirmOrder'])->name('confirm.order');
+    Route::post('overseas/confirm-order/{id}', [OrderController::class, 'confirmOrderOverseas'])->name('confirm.order.overseas');
 
     //Notification API
     Route::get('notifications/low-stock', [NotificationController::class, 'lowStock'])->name('notifications.low-stock');
