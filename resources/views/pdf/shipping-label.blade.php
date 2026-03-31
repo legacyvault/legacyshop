@@ -140,9 +140,12 @@
 @php
     $itemsCollection = $items instanceof \Illuminate\Support\Collection ? $items : collect($items);
 
-    $formatCurrency = function ($value) {
+    $isUsd = in_array($order->payment_method ?? '', ['paypal', 'manual_international'], true);
+    $formatCurrency = function ($value) use ($isUsd) {
         $numeric = is_numeric($value) ? (float) $value : 0;
-        return 'Rp ' . number_format($numeric, 0, ',', '.');
+        return $isUsd
+            ? '$ ' . number_format($numeric, 2, '.', ',')
+            : 'Rp ' . number_format($numeric, 0, ',', '.');
     };
 
     $orderCode = $order->order_number ?? '-';

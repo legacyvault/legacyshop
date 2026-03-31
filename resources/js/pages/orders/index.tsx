@@ -36,13 +36,15 @@ const getCsrfToken = (): string | undefined => {
     return undefined;
 };
 
+const isUsdMethod = (method?: string) => method === 'paypal' || method === 'manual_international';
+
 const formatCurrency = (method?: string, value?: string | number | null) => {
     const numeric = typeof value === 'string' ? parseFloat(value) : Number(value ?? 0);
     if (!Number.isFinite(numeric)) {
-        return method === 'snap' ? 'Rp 0' : '$ 0';
+        return isUsdMethod(method) ? '$ 0' : 'Rp 0';
     }
-    
-    if (method === 'paypal' || method === 'manual_international') {
+
+    if (isUsdMethod(method)) {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'USD',
@@ -427,8 +429,7 @@ function OrdersTable({
 
             const invoiceNumber = order.order_number ? order.order_number.replace(/^ORD/i, 'INV') : undefined;
             const nowIso = new Date().toISOString();
-            const paymentMethod = (order.payment_method ?? '').toLowerCase();
-            const currency = paymentMethod === 'paypal' || paymentMethod === 'manual_international' ? 'USD' : 'IDR';
+            const currency = isUsdMethod(order.payment_method) ? 'USD' : 'IDR';
 
             const payload = {
                 currency,

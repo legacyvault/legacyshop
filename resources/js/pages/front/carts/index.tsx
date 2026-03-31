@@ -514,7 +514,7 @@ function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndones
                             <p className="text-lg font-semibold text-foreground">Your cart still empty</p>
                             <p className="mt-2 max-w-sm text-sm">Come discover our latest collection and add your favorite products to your cart.</p>
                             <Button asChild className="mt-6">
-                                <Link href={route('products')}>Start Explore</Link>
+                                <Link href={'/list-products'}>Start Explore</Link>
                             </Button>
                         </div>
                     ) : (
