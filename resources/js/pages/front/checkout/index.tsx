@@ -250,8 +250,6 @@ export default function Checkout() {
     const isGuest = !auth?.user;
     const deliveryAddresses = profile?.delivery_address ?? [];
 
-    console.log(isIndonesian);
-
     const initialOptionsPaypal = {
         clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID ?? 'test',
         currency: 'USD',
@@ -881,6 +879,10 @@ export default function Checkout() {
     }, [fetchPostalCodes, guestAddressForm.country, guestAddressForm.villageCode, isIndonesiaAddress]);
 
     useEffect(() => {
+        if (!isIndonesian) {
+            return;
+        }
+
         if (!guestAddressForm.postalCode) {
             return;
         }
@@ -891,7 +893,7 @@ export default function Checkout() {
                 postalCode: '',
             }));
         }
-    }, [guestAddressForm.postalCode, postalCodeOptions]);
+    }, [guestAddressForm.postalCode, isIndonesian, postalCodeOptions]);
 
     // Fetch countries on component mount
     useEffect(() => {
@@ -1986,7 +1988,7 @@ export default function Checkout() {
                                                     <select
                                                         id="guest-country"
                                                         value={guestAddressForm.country}
-                                                        onChange={(event) => handleCountryChange(event.target.value)}
+                                                        disabled
                                                         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <option value="">Select Country</option>
@@ -2023,35 +2025,53 @@ export default function Checkout() {
                                                         <p className="text-xs text-destructive">Select the province or state.</p>
                                                     ) : null}
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="guest-city">City *</Label>
-                                                    <select
-                                                        id="guest-city"
-                                                        value={guestAddressForm.cityCode}
-                                                        onChange={(event) => handleCityChange(event.target.value)}
-                                                        aria-invalid={showGuestFormError && guestFieldStatus.cityMissing ? 'true' : undefined}
-                                                        disabled={isLoadingCities || !guestAddressForm.provinceCode}
-                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                                                    >
-                                                        <option value="">
-                                                            {guestAddressForm.provinceCode ? 'Select City' : 'Select a province first'}
-                                                        </option>
-                                                        {cityOptions.map((city) => (
-                                                            <option key={city.value} value={city.value}>
-                                                                {city.label}
+                                                {isIndonesian ? (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="guest-city">City *</Label>
+                                                        <select
+                                                            id="guest-city"
+                                                            value={guestAddressForm.cityCode}
+                                                            onChange={(event) => handleCityChange(event.target.value)}
+                                                            aria-invalid={showGuestFormError && guestFieldStatus.cityMissing ? 'true' : undefined}
+                                                            disabled={isLoadingCities || !guestAddressForm.provinceCode}
+                                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <option value="">
+                                                                {guestAddressForm.provinceCode ? 'Select City' : 'Select a province first'}
                                                             </option>
-                                                        ))}
-                                                    </select>
-                                                    {isLoadingCities ? (
-                                                        <p className="text-xs text-muted-foreground">Loading cities...</p>
-                                                    ) : guestAddressForm.provinceCode && !cityOptions.length ? (
-                                                        <p className="text-xs text-muted-foreground">No city found for this province.</p>
-                                                    ) : null}
-                                                    {showGuestFormError && guestFieldStatus.cityMissing ? (
-                                                        <p className="text-xs text-destructive">Select the destination city.</p>
-                                                    ) : null}
-                                                </div>
-                                                {isIndonesiaAddress ? (
+                                                            {cityOptions.map((city) => (
+                                                                <option key={city.value} value={city.value}>
+                                                                    {city.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        {isLoadingCities ? (
+                                                            <p className="text-xs text-muted-foreground">Loading cities...</p>
+                                                        ) : guestAddressForm.provinceCode && !cityOptions.length ? (
+                                                            <p className="text-xs text-muted-foreground">No city found for this province.</p>
+                                                        ) : null}
+                                                        {showGuestFormError && guestFieldStatus.cityMissing ? (
+                                                            <p className="text-xs text-destructive">Select the destination city.</p>
+                                                        ) : null}
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="guest-city">City *</Label>
+                                                        <Input
+                                                            id="guest-city"
+                                                            value={guestAddressForm.city}
+                                                            onChange={(event) =>
+                                                                setGuestAddressForm((prev) => ({ ...prev, city: event.target.value, cityCode: '' }))
+                                                            }
+                                                            placeholder="Enter city"
+                                                            aria-invalid={showGuestFormError && guestFieldStatus.cityMissing ? 'true' : undefined}
+                                                        />
+                                                        {showGuestFormError && guestFieldStatus.cityMissing ? (
+                                                            <p className="text-xs text-destructive">Enter the destination city.</p>
+                                                        ) : null}
+                                                    </div>
+                                                )}
+                                                {isIndonesian ? (
                                                     <div className="space-y-2">
                                                         <Label htmlFor="guest-district">Kecamatan *</Label>
                                                         <select
@@ -2081,7 +2101,7 @@ export default function Checkout() {
                                                         ) : null}
                                                     </div>
                                                 ) : null}
-                                                {isIndonesiaAddress ? (
+                                                {isIndonesian ? (
                                                     <div className="space-y-2">
                                                         <Label htmlFor="guest-village">Kelurahan *</Label>
                                                         <select
@@ -2111,43 +2131,55 @@ export default function Checkout() {
                                                         ) : null}
                                                     </div>
                                                 ) : null}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="guest-postal-code">Postal Code *</Label>
-                                                    <select
-                                                        id="guest-postal-code"
-                                                        value={guestAddressForm.postalCode}
-                                                        onChange={(event) => handlePostalCodeChange(event.target.value)}
-                                                        aria-invalid={showGuestFormError && guestFieldStatus.postalCodeMissing ? 'true' : undefined}
-                                                        disabled={isLoadingPostalCodes || (!postalCodeOptions.length && !guestAddressForm.postalCode)}
-                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                                                    >
-                                                        <option value="">
-                                                            {isIndonesiaAddress
-                                                                ? guestAddressForm.villageCode || guestAddressForm.districtCode
+                                                {isIndonesian ? (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="guest-postal-code">Postal Code *</Label>
+                                                        <select
+                                                            id="guest-postal-code"
+                                                            value={guestAddressForm.postalCode}
+                                                            onChange={(event) => handlePostalCodeChange(event.target.value)}
+                                                            aria-invalid={showGuestFormError && guestFieldStatus.postalCodeMissing ? 'true' : undefined}
+                                                            disabled={isLoadingPostalCodes || (!postalCodeOptions.length && !guestAddressForm.postalCode)}
+                                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <option value="">
+                                                                {guestAddressForm.villageCode || guestAddressForm.districtCode
                                                                     ? 'Select Postal Code'
-                                                                    : 'Select a village first'
-                                                                : guestAddressForm.cityCode
-                                                                  ? 'Select Postal Code'
-                                                                  : 'Select a city first'}
-                                                        </option>
-                                                        {postalCodeOptions.map((code) => (
-                                                            <option key={code} value={code}>
-                                                                {code}
+                                                                    : 'Select a village first'}
                                                             </option>
-                                                        ))}
-                                                    </select>
-                                                    {isLoadingPostalCodes ? (
-                                                        <p className="text-xs text-muted-foreground">Loading postal codes...</p>
-                                                    ) : postalCodeOptions.length === 0 &&
-                                                      (isIndonesiaAddress
-                                                          ? Boolean(guestAddressForm.villageCode || guestAddressForm.districtCode)
-                                                          : Boolean(guestAddressForm.cityCode)) ? (
-                                                        <p className="text-xs text-muted-foreground">No postal code found for the selected area.</p>
-                                                    ) : null}
-                                                    {showGuestFormError && guestFieldStatus.postalCodeMissing ? (
-                                                        <p className="text-xs text-destructive">Select the postal code.</p>
-                                                    ) : null}
-                                                </div>
+                                                            {postalCodeOptions.map((code) => (
+                                                                <option key={code} value={code}>
+                                                                    {code}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        {isLoadingPostalCodes ? (
+                                                            <p className="text-xs text-muted-foreground">Loading postal codes...</p>
+                                                        ) : postalCodeOptions.length === 0 &&
+                                                          Boolean(guestAddressForm.villageCode || guestAddressForm.districtCode) ? (
+                                                            <p className="text-xs text-muted-foreground">No postal code found for the selected area.</p>
+                                                        ) : null}
+                                                        {showGuestFormError && guestFieldStatus.postalCodeMissing ? (
+                                                            <p className="text-xs text-destructive">Select the postal code.</p>
+                                                        ) : null}
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="guest-postal-code">Postal Code *</Label>
+                                                        <Input
+                                                            id="guest-postal-code"
+                                                            value={guestAddressForm.postalCode}
+                                                            onChange={(event) =>
+                                                                setGuestAddressForm((prev) => ({ ...prev, postalCode: event.target.value }))
+                                                            }
+                                                            placeholder="Enter postal code"
+                                                            aria-invalid={showGuestFormError && guestFieldStatus.postalCodeMissing ? 'true' : undefined}
+                                                        />
+                                                        {showGuestFormError && guestFieldStatus.postalCodeMissing ? (
+                                                            <p className="text-xs text-destructive">Enter the postal code.</p>
+                                                        ) : null}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="guest-notes">Delivery Notes (optional)</Label>
