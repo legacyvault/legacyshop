@@ -39,5 +39,8 @@ return [
         'snap_url' => env('MIDTRANS_URL', 'https://app.sandbox.midtrans.com'),
         'client_key' => env('MIDTRANS_CLIENT_KEY', 'Mid-client-ofkKGLkceJATxjZ1')
     ],
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID', ''),
+    ],
 
 ];
