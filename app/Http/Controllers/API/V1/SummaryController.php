@@ -7,10 +7,15 @@ use App\Models\Order;
 use App\Models\OrderItems;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 
 class SummaryController extends Controller
 {
+    private const INDONESIA_METHODS = ['snap', 'manual_local'];
+    private const INTERNATIONAL_METHODS = ['paypal', 'manual_international'];
+
     /**
      * Render the dashboard view with aggregated sales data.
      */
@@ -24,7 +29,7 @@ class SummaryController extends Controller
     }
 
     /**
-     * Build headline KPI metrics and sales trend data.
+     * Build segmented KPI metrics and sales trend data.
      */
     protected function buildSalesSummary(): array
     {
@@ -32,10 +37,31 @@ class SummaryController extends Controller
         $today = $now->copy()->startOfDay();
         $trendStart = $now->copy()->subDays(6)->startOfDay();
         $trendEnd = $now->copy()->endOfDay();
-        $previousTrendStart = $trendStart->copy()->subDays(7);
-        $previousTrendEnd = $trendStart->copy()->subSecond();
 
-        $paidOrders = $this->paidOrdersQuery();
+        $indonesia = $this->buildSegmentData(self::INDONESIA_METHODS, $trendStart, $trendEnd, $today);
+        $international = $this->buildSegmentData(self::INTERNATIONAL_METHODS, $trendStart, $trendEnd, $today);
+
+        $usdToIdr = $this->getUsdToIdrRate();
+
+        $all = $usdToIdr !== null
+            ? $this->buildAllSegment($usdToIdr, $trendStart, $trendEnd, $today)
+            : null;
+
+        return [
+            'indonesia' => $indonesia,
+            'international' => $international,
+            'all' => $all,
+            'exchangeRateAvailable' => $usdToIdr !== null,
+            'exchangeRate' => $usdToIdr,
+        ];
+    }
+
+    /**
+     * Build KPIs, trend and product hierarchy for a specific set of payment methods.
+     */
+    protected function buildSegmentData(array $paymentMethods, Carbon $trendStart, Carbon $trendEnd, Carbon $today): array
+    {
+        $paidOrders = $this->paidOrdersQuery($paymentMethods);
 
         $totalRevenue = (float) (clone $paidOrders)->sum('grand_total');
         $paidOrdersCount = (clone $paidOrders)->count();
@@ -47,6 +73,9 @@ class SummaryController extends Controller
         $todayOrders = (clone $paidOrders)
             ->whereBetween('created_at', [$today, $today->copy()->endOfDay()])
             ->count();
+
+        $previousTrendStart = $trendStart->copy()->subDays(7);
+        $previousTrendEnd = $trendStart->copy()->subSecond();
 
         $currentPeriodRevenue = (float) (clone $paidOrders)
             ->whereBetween('created_at', [$trendStart, $trendEnd])
@@ -60,13 +89,13 @@ class SummaryController extends Controller
             ? (($currentPeriodRevenue - $previousPeriodRevenue) / $previousPeriodRevenue) * 100
             : null;
 
-        $trend = $this->buildSalesTrend($trendStart, $trendEnd);
-        $productHierarchy = $this->buildProductHierarchySummary();
+        $trend = $this->buildSalesTrend($trendStart, $trendEnd, $paymentMethods);
+        $productHierarchy = $this->buildProductHierarchySummary($paymentMethods);
 
         return [
             'kpis' => [
                 'totalRevenue' => $totalRevenue,
-                'totalOrders' => Order::count(),
+                'totalOrders' => Order::where('status', 'order_confirmed')->whereIn('payment_method', $paymentMethods)->count(),
                 'averageOrderValue' => $paidOrdersCount > 0 ? $totalRevenue / $paidOrdersCount : 0,
                 'todayRevenue' => $todayRevenue,
                 'todayOrders' => $todayOrders,
@@ -78,12 +107,74 @@ class SummaryController extends Controller
     }
 
     /**
-     * Build daily revenue totals for the provided period.
+     * Build the combined "All" segment with international amounts converted to IDR.
      */
-    protected function buildSalesTrend(Carbon $startDate, Carbon $endDate): array
+    protected function buildAllSegment(float $usdToIdr, Carbon $trendStart, Carbon $trendEnd, Carbon $today): array
     {
-        /** @var Collection<string, float> $raw */
-        $raw = $this->paidOrdersQuery()
+        $allMethods = array_merge(self::INDONESIA_METHODS, self::INTERNATIONAL_METHODS);
+        $intlMethods = self::INTERNATIONAL_METHODS;
+
+        $baseQuery = fn() => Order::query()
+            ->where('status', 'order_confirmed')
+            ->whereIn('payment_method', $allMethods);
+
+        $revenueExpr = "SUM(CASE WHEN payment_method IN ('" . implode("','", $intlMethods) . "') THEN grand_total * {$usdToIdr} ELSE grand_total END)";
+
+        $totalRevenue = (float) (clone $baseQuery())
+            ->selectRaw("{$revenueExpr} as converted_total")
+            ->value('converted_total');
+
+        $paidOrdersCount = (clone $baseQuery())->count();
+
+        $todayRevenue = (float) (clone $baseQuery())
+            ->whereBetween('created_at', [$today, $today->copy()->endOfDay()])
+            ->selectRaw("{$revenueExpr} as converted_total")
+            ->value('converted_total');
+
+        $todayOrders = (clone $baseQuery())
+            ->whereBetween('created_at', [$today, $today->copy()->endOfDay()])
+            ->count();
+
+        $previousTrendStart = $trendStart->copy()->subDays(7);
+        $previousTrendEnd = $trendStart->copy()->subSecond();
+
+        $currentPeriodRevenue = (float) (clone $baseQuery())
+            ->whereBetween('created_at', [$trendStart, $trendEnd])
+            ->selectRaw("{$revenueExpr} as converted_total")
+            ->value('converted_total');
+
+        $previousPeriodRevenue = (float) (clone $baseQuery())
+            ->whereBetween('created_at', [$previousTrendStart, $previousTrendEnd])
+            ->selectRaw("{$revenueExpr} as converted_total")
+            ->value('converted_total');
+
+        $revenueGrowth = $previousPeriodRevenue > 0
+            ? (($currentPeriodRevenue - $previousPeriodRevenue) / $previousPeriodRevenue) * 100
+            : null;
+
+        $trend = $this->buildAllSalesTrend($usdToIdr, $trendStart, $trendEnd);
+        $productHierarchy = $this->buildProductHierarchySummary($allMethods);
+
+        return [
+            'kpis' => [
+                'totalRevenue' => $totalRevenue,
+                'totalOrders' => Order::where('status', 'order_confirmed')->whereIn('payment_method', $allMethods)->count(),
+                'averageOrderValue' => $paidOrdersCount > 0 ? $totalRevenue / $paidOrdersCount : 0,
+                'todayRevenue' => $todayRevenue,
+                'todayOrders' => $todayOrders,
+                'revenueGrowthPercentage' => $revenueGrowth,
+            ],
+            'trend' => $trend,
+            'productHierarchy' => $productHierarchy,
+        ];
+    }
+
+    /**
+     * Build daily revenue totals for the provided period (with payment method filter).
+     */
+    protected function buildSalesTrend(Carbon $startDate, Carbon $endDate, array $paymentMethods = []): array
+    {
+        $raw = $this->paidOrdersQuery($paymentMethods)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->selectRaw('DATE(created_at) as day, SUM(grand_total) as total')
             ->groupBy('day')
@@ -109,18 +200,60 @@ class SummaryController extends Controller
     }
 
     /**
-     * Build aggregated hierarchy-level order tracking data.
+     * Build daily revenue trend for "All" tab with USD→IDR conversion per row.
      */
-    protected function buildProductHierarchySummary(): array
+    protected function buildAllSalesTrend(float $usdToIdr, Carbon $startDate, Carbon $endDate): array
+    {
+        $allMethods = array_merge(self::INDONESIA_METHODS, self::INTERNATIONAL_METHODS);
+        $intlMethods = self::INTERNATIONAL_METHODS;
+
+        $revenueExpr = "SUM(CASE WHEN payment_method IN ('" . implode("','", $intlMethods) . "') THEN grand_total * {$usdToIdr} ELSE grand_total END)";
+
+        $raw = Order::query()
+            ->where('status', 'order_confirmed')
+            ->whereIn('payment_method', $allMethods)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw("DATE(created_at) as day, {$revenueExpr} as total")
+            ->groupBy('day')
+            ->orderBy('day')
+            ->pluck('total', 'day')
+            ->map(fn($value) => (float) $value);
+
+        $labels = [];
+        $totals = [];
+
+        $cursor = $startDate->copy();
+        while ($cursor->lte($endDate)) {
+            $dayKey = $cursor->format('Y-m-d');
+            $labels[] = $cursor->translatedFormat('d M');
+            $totals[] = $raw->get($dayKey, 0.0);
+            $cursor->addDay();
+        }
+
+        return [
+            'labels' => $labels,
+            'totals' => $totals,
+        ];
+    }
+
+    /**
+     * Build aggregated hierarchy-level order tracking data (with optional payment method filter).
+     */
+    protected function buildProductHierarchySummary(array $paymentMethods = []): array
     {
         $rangeStart = Carbon::now()->subDays(29)->startOfDay();
         $rangeEnd = Carbon::now()->endOfDay();
 
-        $items = OrderItems::query()
+        $query = OrderItems::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->where('orders.payment_status', 'payment_received')
-            ->whereBetween('orders.created_at', [$rangeStart, $rangeEnd])
-            ->selectRaw('
+            ->where('orders.status', 'order_confirmed')
+            ->whereBetween('orders.created_at', [$rangeStart, $rangeEnd]);
+
+        if (!empty($paymentMethods)) {
+            $query->whereIn('orders.payment_method', $paymentMethods);
+        }
+
+        $items = $query->selectRaw('
             order_items.product_id,
             order_items.product_name,
             order_items.category_id,
@@ -170,10 +303,34 @@ class SummaryController extends Controller
     }
 
     /**
-     * Limit queries to orders that have completed their payment.
+     * Fetch USD→IDR exchange rate, cached for 24 hours.
+     * Returns null if the API is unavailable.
      */
-    protected function paidOrdersQuery(): Builder
+    protected function getUsdToIdrRate(): ?float
     {
-        return Order::query()->where('payment_status', 'payment_received');
+        return Cache::remember('exchange_rate_usd_idr', 86400, function () {
+            try {
+                $response = Http::timeout(5)->get('https://open.er-api.com/v6/latest/USD');
+                if ($response->successful()) {
+                    $rate = $response->json('rates.IDR');
+                    return $rate ? (float) $rate : null;
+                }
+            } catch (\Exception) {
+                // Network error or timeout
+            }
+            return null;
+        });
+    }
+
+    /**
+     * Limit queries to paid orders, optionally filtered by payment method.
+     */
+    protected function paidOrdersQuery(array $paymentMethods = []): Builder
+    {
+        $query = Order::query()->where('status', 'order_confirmed');
+        if (!empty($paymentMethods)) {
+            $query->whereIn('payment_method', $paymentMethods);
+        }
+        return $query;
     }
 }

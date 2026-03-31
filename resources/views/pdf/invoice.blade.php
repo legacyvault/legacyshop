@@ -79,7 +79,10 @@
     @php
         $issuedAt = optional($invoice->issued_at)->format('d M Y H:i');
         $dueAt = optional($invoice->due_at)->format('d M Y H:i');
-        $formatCurrency = static fn ($value) => 'Rp ' . number_format((float) $value, 2, ',', '.');
+        $invoiceCurrency = $currency ?? 'IDR';
+        $formatCurrency = $invoiceCurrency === 'USD'
+            ? static fn ($value) => '$ ' . number_format((float) $value, 2, '.', ',')
+            : static fn ($value) => 'Rp ' . number_format((float) $value, 2, ',', '.');
     @endphp
 
     <header style="margin-bottom: 24px;">

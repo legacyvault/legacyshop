@@ -482,7 +482,7 @@ export interface IInvoicesPaginated {
     data: IInvoice[];
 }
 
-export interface IDashboardSummary {
+export interface IDashboardSegment {
     kpis: {
         totalRevenue: number;
         totalOrders: number;
@@ -496,6 +496,14 @@ export interface IDashboardSummary {
         totals: number[];
     };
     productHierarchy: IProductHierarchySummary[];
+}
+
+export interface IDashboardSummary {
+    indonesia: IDashboardSegment;
+    international: IDashboardSegment;
+    all: IDashboardSegment | null;
+    exchangeRateAvailable: boolean;
+    exchangeRate: number | null;
 }
 
 export interface IProductHierarchySummary {

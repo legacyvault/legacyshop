@@ -102,7 +102,8 @@ class InvoiceController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse|Response
     {
         $validated = $this->validateInvoice($request);
-        [$items, $subtotal] = $this->prepareItems($validated['items']);
+        $currency = $validated['currency'] ?? 'IDR';
+        [$items, $subtotal] = $this->prepareItems($validated['items'], $currency);
 
         $discount = $this->toAmount($validated['discount_total'] ?? 0);
         $tax      = $this->toAmount($validated['tax_total'] ?? 0);
@@ -140,7 +141,8 @@ class InvoiceController extends Controller
             $invoicePreview->setRelation('items', $previewItems);
 
             $pdf = Pdf::loadView('pdf.invoice', [
-                'invoice' => $invoicePreview,
+                'invoice'  => $invoicePreview,
+                'currency' => $validated['currency'] ?? 'IDR',
             ]);
 
             $filename = sprintf(
@@ -239,7 +241,7 @@ class InvoiceController extends Controller
             $items    = null;
 
             if ($itemsInput !== null) {
-                [$items, $subtotal] = $this->prepareItems($itemsInput);
+                [$items, $subtotal] = $this->prepareItems($itemsInput, $validated['currency'] ?? 'IDR');
 
                 $invoice->items()->delete();
                 $invoice->items()->createMany($items);
@@ -483,6 +485,7 @@ class InvoiceController extends Controller
                 Rule::unique('invoices', 'invoice_number')->ignore($invoice?->id),
             ],
             'status'           => 'nullable|in:draft,issued,void',
+            'currency'         => 'nullable|string|in:IDR,USD',
             'issued_at'        => 'nullable|date',
             'due_at'           => 'nullable|date|after_or_equal:issued_at',
             'discount_total'   => 'nullable|numeric|min:0',
@@ -527,7 +530,7 @@ class InvoiceController extends Controller
      *
      * @throws ValidationException
      */
-    protected function prepareItems(array $items): array
+    protected function prepareItems(array $items, string $currency = 'IDR'): array
     {
         $productIds = collect($items)
             ->pluck('product_id')
@@ -633,7 +636,7 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            $price = $this->calculateProductItemPrice($product, $subCategory, $division, $variant);
+            $price = $this->calculateProductItemPrice($product, $subCategory, $division, $variant, $currency);
             $lineTotal = round($quantity * $price, 2);
             $subtotal += $lineTotal;
 
@@ -672,13 +675,24 @@ class InvoiceController extends Controller
         ?SubCategory $subCategory = null,
         ?Division $division = null,
         ?Variant $variant = null,
+        string $currency = 'IDR',
     ): float {
-        $basePrice = (float) ($product->product_price ?? 0);
+        $isUsd = $currency === 'USD';
+
+        $basePrice = $isUsd
+            ? (float) ($product->product_usd_price ?? 0)
+            : (float) ($product->product_price ?? 0);
         $productDiscount = (float) ($product->product_discount ?? 0);
 
-        $subCategoryPrice = (float) ($subCategory->price ?? 0);
-        $divisionPrice = (float) ($division->price ?? 0);
-        $variantPrice = (float) ($variant->price ?? 0);
+        $subCategoryPrice = $isUsd
+            ? (float) ($subCategory->usd_price ?? 0)
+            : (float) ($subCategory->price ?? 0);
+        $divisionPrice = $isUsd
+            ? (float) ($division->usd_price ?? 0)
+            : (float) ($division->price ?? 0);
+        $variantPrice = $isUsd
+            ? (float) ($variant->usd_price ?? 0)
+            : (float) ($variant->price ?? 0);
 
         $subCategoryDiscount = $subCategory
             ? (float) (
