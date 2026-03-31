@@ -26,7 +26,7 @@
             data-client-key="{{ config('services.midtrans.client_key') }}">
         </script>
 
-        <script src="https://www.paypal.com/sdk/js?client-id=AS2ZQnTGuYRBfF0XNiX1QgER8uUAZ8SY4y-29n9MUwo7XQ3QCakFLLpSEIGZD6TwzG5Qs9JHuGNZuQcz"></script>
+        <script src="https://www.paypal.com/sdk/js?client-id={{ config('services.paypal.client_id') }}"></script>
 
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
