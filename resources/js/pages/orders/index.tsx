@@ -42,7 +42,7 @@ const formatCurrency = (method?: string, value?: string | number | null) => {
         return method === 'snap' ? 'Rp 0' : '$ 0';
     }
     
-    if (method === 'paypal') {
+    if (method === 'paypal' || method === 'manual_international') {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'USD',
@@ -427,8 +427,11 @@ function OrdersTable({
 
             const invoiceNumber = order.order_number ? order.order_number.replace(/^ORD/i, 'INV') : undefined;
             const nowIso = new Date().toISOString();
+            const paymentMethod = (order.payment_method ?? '').toLowerCase();
+            const currency = paymentMethod === 'paypal' || paymentMethod === 'manual_international' ? 'USD' : 'IDR';
 
             const payload = {
+                currency,
                 invoice_number: invoiceNumber,
                 status: invoiceStatus,
                 issued_at: nowIso,
