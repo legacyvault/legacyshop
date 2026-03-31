@@ -1341,6 +1341,94 @@ class OrderController extends Controller
         }
     }
 
+    public function handlePaypalExpire(Request $request)
+    {
+        try {
+            $notification = $request->input('resource');
+            $transaction_id = $notification['id'];
+
+            $transaction_status = 'expire';
+
+            if (!$transaction_id) {
+                return response()->json(['error' => 'Missing order_id'], 400);
+            }
+
+            $order = Order::where('transaction_id', $transaction_id)->first();
+
+            if (!$order) {
+                return response()->json(['error' => 'Order not found'], 404);
+            }
+
+            if ($transaction_status == 'expire') {
+
+                $orderItems = $order->items()->get();
+
+                foreach ($orderItems as $item) {
+                    try {
+                        if (!empty($item->variant_id)) {
+                            $variant = Variant::find($item->variant_id);
+                            if ($variant) {
+                                $variant->update([
+                                    'total_stock' => $variant->total_stock + $item->quantity
+                                ]);
+                            }
+                        }
+
+                        if (!empty($item->division_id)) {
+                            $division = Division::find($item->division_id);
+                            if ($division) {
+                                $division->update([
+                                    'total_stock' => $division->total_stock + $item->quantity
+                                ]);
+                            }
+                        }
+
+                        if (!empty($item->sub_category_id)) {
+                            $subCategory = SubCategory::find($item->sub_category_id);
+                            if ($subCategory) {
+                                $subCategory->update([
+                                    'total_stock' => $subCategory->total_stock + $item->quantity
+                                ]);
+                            }
+                        }
+                        if (!empty($item->product_id)) {
+                            $product = Product::find($item->product_id);
+                            if ($product) {
+                                $product->update([
+                                    'total_stock' => $product->total_stock + $item->quantity
+                                ]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Failed to restore stock for item {$item->id}: " . $e->getMessage());
+                    }
+                }
+
+                // Restore voucher limit
+                if ($order->voucher_code) {
+                    $voucher = VoucherModel::where('voucher_code', $order->voucher_code)->first();
+
+                    if ($voucher && $voucher->is_limit) {
+                        $voucher->increment('limit', 1);
+                    }
+                }
+
+                $order->update([
+                    'transaction_status' => $transaction_status,
+                    'payment_status' => 'payment_failed',
+                    'status' => 'order_failed',
+                ]);
+
+                Log::info("Transaction ID {$transaction_id} expired — stock restored and order updated.");
+            }
+
+            return response()->json(['message' => 'OK'], 200);
+        } catch (Exception $e) {
+            Log::error('[SECURITY AUDIT] Error handle notification: ' . $e);
+            return response()->json(['error' => 'Handle notification failed'], 500);
+        }
+    }
+
     public function confirmOrder($id)
     {
         try {
