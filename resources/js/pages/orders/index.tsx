@@ -1206,7 +1206,6 @@ function OrderDetailsDialog({
     isSnapReady: boolean;
     processingOrder: string | null;
 }) {
-    console.log(order);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1216,7 +1215,7 @@ function OrderDetailsDialog({
                 </DialogHeader>
 
                 {order ? (
-                    <div className="space-y-6 text-sm">
+                    <div className="max-h-[75vh] overflow-y-auto space-y-6 text-sm pr-1">
                         <div className="grid gap-4 md:grid-cols-3">
                             <div className="rounded-lg border border-popover p-3">
                                 <div className="text-xs text-muted-foreground uppercase">Payment</div>

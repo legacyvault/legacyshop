@@ -76,7 +76,7 @@ const titleCase = (value?: string | null) => {
 
 export default function OrdersSummaryPage() {
     const { orderItemsPaginated, filters } = usePage<SharedData & { filters?: Filters; orderItemsPaginated?: IOrderItemSummaryPaginated }>().props;
-
+    
     const items = orderItemsPaginated?.data ?? [];
     const currentPage = orderItemsPaginated?.current_page ?? Number(filters?.page ?? 1);
     const perPage = orderItemsPaginated?.per_page ?? Number(filters?.per_page ?? 15);
@@ -311,7 +311,7 @@ export default function OrdersSummaryPage() {
                                             <td className="border border-popover px-4 py-3">{item.product_sku ?? '—'}</td>
                                             <td className="border border-popover px-4 py-3">{buyer}</td>
                                             <td className="border border-popover px-4 py-3 text-right font-semibold">{item.quantity}</td>
-                                            <td className="border border-popover px-4 py-3 text-right font-semibold">{formatCurrency( item.order?.payment_method,item.total)}</td>
+                                            <td className="border border-popover px-4 py-3 text-right font-semibold">{formatCurrency( item.order?.payment_method,item.order?.grand_total)}</td>
                                         </tr>
                                     );
                                 })

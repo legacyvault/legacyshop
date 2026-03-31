@@ -1303,12 +1303,7 @@ export default function AddDeliveryAddressModal({
                                                     </div>
                                                     {filteredProvinces.map((province) => (
                                                         <SelectItem key={province.id} value={province.code ?? province.id}>
-                                                            <span className="flex flex-col">
-                                                                <span>{province.name}</span>
-                                                                {!shouldUseIndonesianFields && province.code ? (
-                                                                    <span className="text-xs text-muted-foreground">{province.code}</span>
-                                                                ) : null}
-                                                            </span>
+                                                            <span>{province.name}</span>
                                                         </SelectItem>
                                                     ))}
                                                 </>
