@@ -1343,6 +1343,7 @@ class OrderController extends Controller
 
     public function handlePaypalExpire(Request $request)
     {
+        Log::info('handlePaypalExpire payload', $request->all());
         try {
             $notification = $request->input('resource');
             $transaction_id = $notification['id'];
