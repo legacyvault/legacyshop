@@ -14,6 +14,8 @@ interface CourierListModalProps {
     error?: string | null;
 }
 
+const HIDDEN_COURIER_SERVICE_CODES = ['jtr'];
+
 function getRateId(rate: IRatePricing) {
     return `${rate.courier_code}-${rate.courier_service_code}`;
 }
@@ -27,8 +29,8 @@ function formatCurrency(value: number) {
 }
 
 export default function CourierListModal({ open, onOpenChange, rates, selectedRateId, onSelect, isLoading = false }: CourierListModalProps) {
-    const hasRates = rates.length > 0;
-
+    const filteredRates = rates.filter((r) => !HIDDEN_COURIER_SERVICE_CODES.includes(r.courier_service_code));
+    const hasRates = filteredRates.length > 0;
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-xl">
@@ -41,7 +43,7 @@ export default function CourierListModal({ open, onOpenChange, rates, selectedRa
                         <p className="text-sm text-muted-foreground">Loading shipping options…</p>
                     ) : hasRates ? (
                         <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
-                            {rates.map((rate) => {
+                            {filteredRates.map((rate) => {
                                 const rateId = getRateId(rate);
                                 const isSelected = rateId === selectedRateId;
                                 const priceValue = Number(rate.price);
