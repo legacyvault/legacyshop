@@ -10,4 +10,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 
-Schedule::job(new ExpirePendingOrdersJob)->everyMinute();
+Schedule::job(new ExpirePendingOrdersJob)->everyFifteenMinutes();
