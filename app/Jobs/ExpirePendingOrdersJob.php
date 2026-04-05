@@ -33,7 +33,10 @@ class ExpirePendingOrdersJob implements ShouldQueue
     {
         $expiredOrders = Order::where('payment_status', 'awaiting_payment')
             ->where('status', 'pending')
-            ->where('transaction_status', '!=', 'expire')
+            ->where(function ($query) {
+                $query->where('transaction_status', '!=', 'expire')
+                    ->orWhereNull('transaction_status');
+            })
             ->where('created_at', '<=', Carbon::now()->subHours(3))
             ->get();
 
