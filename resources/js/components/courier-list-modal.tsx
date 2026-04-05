@@ -14,7 +14,7 @@ interface CourierListModalProps {
     error?: string | null;
 }
 
-const HIDDEN_COURIER_SERVICE_CODES = ['jtr'];
+export const HIDDEN_COURIER_SERVICE_CODES = ['jtr'];
 
 function getRateId(rate: IRatePricing) {
     return `${rate.courier_code}-${rate.courier_service_code}`;
