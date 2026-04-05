@@ -1,5 +1,5 @@
 import AddDeliveryAddressModal from '@/components/add-delivery-address-modal';
-import CourierListModal from '@/components/courier-list-modal';
+import CourierListModal, { HIDDEN_COURIER_SERVICE_CODES } from '@/components/courier-list-modal';
 import MapLocationPicker from '@/components/map-location-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -974,7 +974,8 @@ export default function Checkout() {
                 return prev;
             }
 
-            return getRateId(ratesPricing[0]);
+            const defaultRate = ratesPricing.find((rate) => !HIDDEN_COURIER_SERVICE_CODES.includes(rate.courier_service_code)) ?? ratesPricing[0];
+            return getRateId(defaultRate);
         });
     }, [ratesPricing]);
 
@@ -1604,7 +1605,7 @@ export default function Checkout() {
                       longitude: guestAddressForm.longitude,
                       country: guestAddressForm.country,
                       province: guestAddressForm.province,
-                      address: guestAddressForm.label.trim() || undefined,
+                      address: guestAddressForm.address.trim() || undefined,
                       city: guestAddressForm.city,
                       postal_code: guestAddressForm.postalCode,
                       district: guestAddressForm.district,
@@ -2678,7 +2679,7 @@ export default function Checkout() {
                                                                               longitude: guestAddressForm.longitude,
                                                                               country: guestAddressForm.country,
                                                                               province: guestAddressForm.province,
-                                                                              address: guestAddressForm.label.trim() || undefined,
+                                                                              address: guestAddressForm.address.trim() || undefined,
                                                                               city: guestAddressForm.city,
                                                                               postal_code: guestAddressForm.postalCode,
                                                                               district: guestAddressForm.district,
