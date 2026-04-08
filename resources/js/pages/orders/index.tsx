@@ -992,11 +992,13 @@ function OrdersTable({
                         <tbody>
                             {orders.length ? (
                                 orders.map((order, index) => {
+                                    console.log(order)
                                     const rowNumber = (currentPage - 1) * perPage + index + 1;
                                     const totalQuantity = order.items?.reduce((acc, item) => acc + (item.quantity ?? 0), 0) ?? 0;
                                     const customerName = order.shipment?.receiver_name ?? order.user?.name ?? '—';
                                     const customerMeta = order.shipment?.receiver_city ?? order.user?.email ?? '';
                                     const isPreparingOrder = (order.status ?? '').toLowerCase() === 'preparing_order';
+                                    const isPaymentReceived = (order.payment_status ?? '').toLowerCase() === 'payment_received';
                                     const method = order.payment_method;
 
                                     return (
@@ -1060,6 +1062,13 @@ function OrdersTable({
                                                                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                                                 )}
                                                                 Confirm Order
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        {isPaymentReceived && (
+                                                            <DropdownMenuItem
+                                                                className="cursor-pointer gap-2"
+                                                            >
+                                                                Cancel Order
                                                             </DropdownMenuItem>
                                                         )}
                                                         <DropdownMenuItem
