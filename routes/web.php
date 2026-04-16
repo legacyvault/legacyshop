@@ -39,12 +39,6 @@ Route::group(['prefix' => 'v1'], function () {
     Route::get('active-banner', [MiscController::class, 'getActiveBanner'])->name('active.banner');
     Route::post('delivery-rates', [BiteshipController::class, 'getDeliveryRates'])->name('delivery.rates');
 
-    //Checkout API
-    Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
-
-    Route::post('checkout-paypal/order', [OrderController::class, 'checkoutPaypal'])->name('order.checkout-paypal');
-    Route::post('/orders/{orderId}/capture', [OrderController::class, 'capturePaypal'])->name('order.capture-paypal');
-
     Route::get('check-voucher', [MiscController::class, 'checkVoucher'])->name('check.voucher');
 });
 
@@ -67,10 +61,6 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //History
     Route::get('order-history', [OrderHistoryController::class, 'getUserOrderHistory'])->name('user.order-history');
 
-    //Checkout API
-    Route::get('transaction-status/{transaction_id}', [OrderController::class, 'getTransactionStatus'])->name('transaction.status');
-    Route::get('reopen-snap/{order_number}', [OrderController::class, 'reopenSnapPayment'])->name('snap.reopen');
-    Route::get('reopen-paypal/{order_number}', [OrderController::class, 'reopenPaypalPayment'])->name('paypal.reopen');
     //Biteship API
     Route::get('all-warehouse', [WarehouseController::class, 'getAllWarehouse'])->name('warehouses');
     Route::get('active-warehouse', [WarehouseController::class, 'getActiveWarehouse'])->name('warehouse.active');

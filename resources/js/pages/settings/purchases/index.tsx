@@ -223,7 +223,7 @@ function TransactionList({
     }
 
     const fetchTransaction = async (order_number: string) => {
-        const url = `/v1/reopen-snap/${order_number}`;
+        const url = `/api/v1/reopen-snap/${order_number}`;
 
         try {
             const response = await fetch(url, {
@@ -254,7 +254,7 @@ function TransactionList({
         setProcessingOrder(order_number);
 
         try {
-            const response = await fetch(`/v1/reopen-paypal/${order_number}`, {
+            const response = await fetch(`/api/v1/reopen-paypal/${order_number}`, {
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
