@@ -17,6 +17,7 @@ class DivisionController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
+            'sku' => 'nullable|string',
             'description' => 'string|nullable',
             'sub_category_id' => 'required|exists:sub_category,id',
             'price' => 'required|numeric',
@@ -186,6 +187,7 @@ class DivisionController extends Controller
                 'required',
                 'string',
             ],
+            'sku' => 'nullable|string',
             'sub_category_id' => 'required|exists:sub_category,id',
             'description' => 'string|nullable',
             'price' => 'required|numeric',
@@ -207,6 +209,7 @@ class DivisionController extends Controller
         }
 
         $data->name = $request->name;
+        $data->sku = $request->sku;
         $data->sub_category_id = $request->sub_category_id;
         $data->description = $request->description;
         $data->price = $request->price;
@@ -236,7 +239,18 @@ class DivisionController extends Controller
         $search   = $request->input('q');
         $sortBy   = $request->input('sort_by', 'name');
         $sortDir  = strtolower($request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSorts = ['id', 'name', 'description', 'price', 'usd_price', 'discount', 'total_stock', 'sub_category_id', 'created_at'];
+        $allowedSorts = [
+            'id',
+            'name',
+            'description',
+            'price',
+            'usd_price',
+            'discount',
+            'total_stock',
+            'sub_category_id',
+            'created_at',
+            'sku'
+        ];
         if (!in_array($sortBy, $allowedSorts, true)) {
             $sortBy = 'name';
         }
@@ -245,7 +259,8 @@ class DivisionController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 

@@ -676,7 +676,26 @@ class ProductController extends Controller
                         }
                     }
                 }
+
+                $initialStock = 100;
+
+                // Create stock record
+                ProductStock::create([
+                    'product_id' => $product->id,
+                    'quantity'   => $initialStock,
+                    'remarks'    => 'Initial stock (auto)',
+                ]);
+
+                // Update total stock
+                $product->total_stock = $initialStock;
+                $product->save();
             }
+
+            GroupStock::create([
+                'group_id' => $group->id,
+                'quantity' => 100,
+                'remarks'  => 'Initial stock (auto)',
+            ]);
 
             DB::commit();
             return redirect()->route('product')->with('alert', [
@@ -1055,7 +1074,7 @@ class ProductController extends Controller
                 if ($search) {
                     $query->where(function ($q) use ($search) {
                         $q->where('product_name', 'like', "%{$search}%")
-                          ->orWhere('product_sku', 'like', "%{$search}%");
+                            ->orWhere('product_sku', 'like', "%{$search}%");
                     });
                 }
             }])
@@ -1064,7 +1083,7 @@ class ProductController extends Controller
         if ($search) {
             $groupQuery->whereHas('products', function ($q) use ($search) {
                 $q->where('product_name', 'like', "%{$search}%")
-                  ->orWhere('product_sku', 'like', "%{$search}%");
+                    ->orWhere('product_sku', 'like', "%{$search}%");
             });
         }
 
@@ -1077,7 +1096,7 @@ class ProductController extends Controller
         if ($search) {
             $ungroupedQuery->where(function ($q) use ($search) {
                 $q->where('product_name', 'like', "%{$search}%")
-                  ->orWhere('product_sku', 'like', "%{$search}%");
+                    ->orWhere('product_sku', 'like', "%{$search}%");
             });
         }
 
