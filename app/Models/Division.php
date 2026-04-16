@@ -19,7 +19,8 @@ class Division extends Model
         'price',
         'usd_price',
         'discount',
-        'total_stock'
+        'total_stock',
+        'sku'
     ];
 
     public function stocks()
