@@ -306,6 +306,7 @@ export interface IDivisions {
     discount: number;
     id: string;
     name: string;
+    sku: string | null;
     price: number;
     sub_category: ISubcats;
     sub_category_id: string;

@@ -7,6 +7,7 @@ import React from 'react';
 interface FormData {
     id: string | null;
     name: string;
+    sku: string | null;
     description: string;
     price: number;
     usd_price: number;
@@ -31,6 +32,7 @@ export default function AddDivision() {
     const { data, setData, post, errors } = useForm<Required<FormData>>({
         id: isEdit ? selectedDivision.id : null,
         name: isEdit ? selectedDivision.name : '',
+        sku: isEdit ? selectedDivision.sku : null,
         description: isEdit ? selectedDivision.description : '',
         sub_category_id: isEdit ? selectedDivision.sub_category_id : '',
         price: isEdit ? selectedDivision.price : 0,
@@ -88,6 +90,18 @@ export default function AddDivision() {
                         placeholder="Enter name"
                     />
                     {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+                </div>
+
+                {/* SKU Field */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">SKU</label>
+                    <input
+                        type="text"
+                        value={data.sku ?? ''}
+                        onChange={(e) => setData('sku', e.target.value || null)}
+                        className="w-full rounded-md border border-gray-200 px-3 py-2 shadow-sm focus:border-primary focus:ring-primary focus:outline-none"
+                        placeholder="Enter SKU (optional)"
+                    />
                 </div>
 
                 {/* Description Field */}

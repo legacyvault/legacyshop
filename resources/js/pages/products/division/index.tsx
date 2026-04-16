@@ -97,6 +97,7 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
                         >
                             Name {filters?.sort_by === 'name' ? (filters?.sort_dir === 'asc' ? '▲' : '▼') : ''}
                         </th>
+                        <th className="border border-popover px-4 py-3 text-left font-medium text-primary-foreground">SKU</th>
                         <th
                             className="cursor-pointer border border-popover px-4 py-3 text-left font-medium text-primary-foreground"
                             onClick={() => toggleSort('description')}
@@ -137,6 +138,7 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
                             <tr key={div.id} className="hover:bg-gray-50">
                                 <td className="border border-popover px-4 py-3">{(currentPage - 1) * perPage + i + 1}</td>
                                 <td className="border border-popover px-4 py-3">{div.name}</td>
+                                <td className="border border-popover px-4 py-3">{div.sku ?? '-'}</td>
                                 <td className="border border-popover px-4 py-3">{div.description}</td>
                                 <td className="border border-popover px-4 py-3">{div.sub_category.name}</td>
                                 <td className="border border-popover px-4 py-3">Rp. {formatRupiah(div.price.toString())}</td>
@@ -170,7 +172,7 @@ function DivisionsTable({ divisionsPaginated, filters }: PropsDivisionTable) {
                         ))
                     ) : (
                         <tr>
-                            <td colSpan={9} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
+                            <td colSpan={10} className="border border-popover px-4 py-6 text-center text-sm text-muted-foreground">
                                 No divisions found. Try adjusting your search.
                             </td>
                         </tr>
