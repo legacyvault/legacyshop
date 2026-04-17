@@ -99,23 +99,24 @@ class OrderHistoryController extends Controller
                 'guest'
             ]);
 
-        if ($search) {
-            $ordersQuery->where(function ($query) use ($search) {
-                $query->where('order_number', 'like', "%{$search}%")
-                    ->orWhere('transaction_id', 'like', "%{$search}%")
-                    ->orWhereHas('user', function ($userQuery) use ($search) {
-                        $userQuery->where('email', 'like', "%{$search}%")
-                            ->orWhereHas('profile', function ($profileQuery) use ($search) {
-                                $profileQuery->where('name', 'like', "%{$search}%");
+        if ($search && mb_strlen($search) >= 2) {
+            $like = "%{$search}%";
+            $ordersQuery->where(function ($query) use ($like) {
+                $query->where('orders.order_number', 'like', $like)
+                    ->orWhere('orders.transaction_id', 'like', $like)
+                    ->orWhereHas('user', function ($q) use ($like) {
+                        $q->where('email', 'like', $like)
+                            ->orWhereHas('profile', function ($q2) use ($like) {
+                                $q2->where('profile.name', 'like', $like);
                             });
                     })
-                    ->orWhereHas('guest', function ($guestQuery) use ($search) {
-                        $guestQuery->where('email', 'like', "%{$search}%")
-                            ->orWhere('name', 'like', "%{$search}%");
+                    ->orWhereHas('guest', function ($q) use ($like) {
+                        $q->where('email', 'like', $like)
+                            ->orWhere('contact_name', 'like', $like);
                     })
-                    ->orWhereHas('shipment', function ($shipmentQuery) use ($search) {
-                        $shipmentQuery->where('receiver_name', 'like', "%{$search}%")
-                            ->orWhere('receiver_phone', 'like', "%{$search}%");
+                    ->orWhereHas('shipment', function ($q) use ($like) {
+                        $q->where('receiver_name', 'like', $like)
+                            ->orWhere('receiver_phone', 'like', $like);
                     });
             });
         }
