@@ -549,7 +549,13 @@ class OrderController extends Controller
                 ]);
                 $guestId = $guest->id;
             } else {
-                $userId = $request->user()->id;
+                $user = $request->user();
+
+                if (!$user) {
+                    throw new \Exception('User not authenticated');
+                }
+
+                $userId = $user->id;
             }
 
             // Create Order
@@ -571,6 +577,8 @@ class OrderController extends Controller
             }
 
             $order = Order::create($data_order);
+
+            Log::info('Order before Midtrans', ['order' => $order]);
 
             if ($request->filled('voucher_code')) {
                 if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
