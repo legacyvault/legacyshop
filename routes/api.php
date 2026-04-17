@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
+Route::group(['prefix' => 'v1'], function () {
     Route::post('notification', [OrderController::class, 'handleNotification']);
     Route::post('paypal/notification', [OrderController::class, 'handlePaypalExpire']);
 
