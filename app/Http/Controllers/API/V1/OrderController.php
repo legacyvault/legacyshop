@@ -9,6 +9,8 @@ use App\Models\OrderShipments;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
+use App\Mail\OrderConfirmedMail;
+use App\Mail\OrderShippedMail;
 use App\Models\DeliveryAddress;
 use App\Models\Division;
 use App\Models\Events;
@@ -29,6 +31,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
 use Milon\Barcode\DNS1D;
 
 class OrderController extends Controller
@@ -806,6 +809,25 @@ class OrderController extends Controller
                 'transaction_status' => 'settlement',
                 'transaction_time' => now(),
             ]);
+
+            $email = null;
+            if ($localOrder->user) {
+                $email = $localOrder->user->email;
+            } elseif ($localOrder->guest) {
+                $email = $localOrder->guest->email;
+            }
+
+            if ($email) {
+                try {
+                    Mail::to($email)->send(
+                        new OrderConfirmedMail($localOrder->order_number)
+                    );
+
+                    Log::info("Email sent to {$email} for order {$orderId}");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send email for order {$orderId}: " . $e->getMessage());
+                }
+            }
         } else {
             $localOrder->update([
                 'payment_status' => 'payment_failed',
@@ -1328,6 +1350,25 @@ class OrderController extends Controller
                     'payment_status' => 'payment_received',
                     'status' => 'preparing_order',
                 ]);
+
+                $email = null;
+                if ($order->user) {
+                    $email = $order->user->email;
+                } elseif ($order->guest) {
+                    $email = $order->guest->email;
+                }
+
+                if ($email) {
+                    try {
+                        Mail::to($email)->send(
+                            new OrderConfirmedMail($order->order_number)
+                        );
+
+                        Log::info("Email sent to {$email} for order {$orderId}");
+                    } catch (\Exception $e) {
+                        Log::error("Failed to send email for order {$orderId}: " . $e->getMessage());
+                    }
+                }
             } else if ($transaction_status == 'pending') {
                 $order->update([
                     'transaction_status' => $transaction_status,
@@ -1516,6 +1557,34 @@ class OrderController extends Controller
             $order->status = 'order_confirmed';
             $order->save();
 
+            $email = null;
+
+            if ($order->user) {
+                $email = $order->user->email;
+            } elseif ($order->guest) {
+                $email = $order->guest->email;
+            }
+
+            if ($email) {
+                try {
+                    Mail::to($email)->send(
+                        new OrderShippedMail(
+                            $order->order_number,
+                            $orderShipment->waybill_number,
+                            $pdfContent,
+                            $fileName,
+                            $orderShipment->tracking_url
+                        )
+                    );
+
+                    Log::info("Shipping email sent to {$email} for order {$order->order_number}");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send shipping email for order {$order->order_number}: " . $e->getMessage());
+                }
+            } else {
+                Log::warning("No email found for order {$order->order_number}");
+            }
+
             return $pdf->stream($fileName);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Order not found.'], 404);
@@ -1596,6 +1665,35 @@ class OrderController extends Controller
 
             $order->status = 'order_confirmed';
             $order->save();
+
+
+            $email = null;
+
+            if ($order->user) {
+                $email = $order->user->email;
+            } elseif ($order->guest) {
+                $email = $order->guest->email;
+            }
+
+            if ($email) {
+                try {
+                    Mail::to($email)->send(
+                        new OrderShippedMail(
+                            $order->order_number,
+                            $orderShipment->waybill_number,
+                            $pdfContent,
+                            $fileName,
+                            $orderShipment->tracking_url
+                        )
+                    );
+
+                    Log::info("Shipping email sent to {$email} for order {$order->order_number}");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send shipping email for order {$order->order_number}: " . $e->getMessage());
+                }
+            } else {
+                Log::warning("No email found for order {$order->order_number}");
+            }
 
             return $pdf->stream($fileName);
         } catch (ModelNotFoundException $e) {
