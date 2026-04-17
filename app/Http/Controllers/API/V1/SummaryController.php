@@ -95,7 +95,7 @@ class SummaryController extends Controller
         return [
             'kpis' => [
                 'totalRevenue' => $totalRevenue,
-                'totalOrders' => Order::where('status', 'order_confirmed')->whereIn('payment_method', $paymentMethods)->count(),
+                'totalOrders' => Order::where('payment_status', 'payment_received')->whereIn('payment_method', $paymentMethods)->count(),
                 'averageOrderValue' => $paidOrdersCount > 0 ? $totalRevenue / $paidOrdersCount : 0,
                 'todayRevenue' => $todayRevenue,
                 'todayOrders' => $todayOrders,
@@ -115,7 +115,7 @@ class SummaryController extends Controller
         $intlMethods = self::INTERNATIONAL_METHODS;
 
         $baseQuery = fn() => Order::query()
-            ->where('status', 'order_confirmed')
+            ->where('payment_status', 'payment_received')
             ->whereIn('payment_method', $allMethods);
 
         $revenueExpr = "SUM(CASE WHEN payment_method IN ('" . implode("','", $intlMethods) . "') THEN grand_total * {$usdToIdr} ELSE grand_total END)";
@@ -158,7 +158,7 @@ class SummaryController extends Controller
         return [
             'kpis' => [
                 'totalRevenue' => $totalRevenue,
-                'totalOrders' => Order::where('status', 'order_confirmed')->whereIn('payment_method', $allMethods)->count(),
+                'totalOrders' => Order::where('payment_status', 'payment_received')->whereIn('payment_method', $allMethods)->count(),
                 'averageOrderValue' => $paidOrdersCount > 0 ? $totalRevenue / $paidOrdersCount : 0,
                 'todayRevenue' => $todayRevenue,
                 'todayOrders' => $todayOrders,
@@ -210,7 +210,7 @@ class SummaryController extends Controller
         $revenueExpr = "SUM(CASE WHEN payment_method IN ('" . implode("','", $intlMethods) . "') THEN grand_total * {$usdToIdr} ELSE grand_total END)";
 
         $raw = Order::query()
-            ->where('status', 'order_confirmed')
+            ->where('payment_status', 'payment_received')
             ->whereIn('payment_method', $allMethods)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->selectRaw("DATE(created_at) as day, {$revenueExpr} as total")
@@ -246,7 +246,7 @@ class SummaryController extends Controller
 
         $query = OrderItems::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->where('orders.status', 'order_confirmed')
+            ->where('orders.payment_status', 'payment_received')
             ->whereBetween('orders.created_at', [$rangeStart, $rangeEnd]);
 
         if (!empty($paymentMethods)) {
@@ -327,7 +327,7 @@ class SummaryController extends Controller
      */
     protected function paidOrdersQuery(array $paymentMethods = []): Builder
     {
-        $query = Order::query()->where('status', 'order_confirmed');
+        $query = Order::query()->where('payment_status', 'payment_received');
         if (!empty($paymentMethods)) {
             $query->whereIn('payment_method', $paymentMethods);
         }
