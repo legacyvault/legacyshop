@@ -47,7 +47,7 @@ class OrderShippedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Order Shipped Mail',
+            subject: 'YOUR ORDER IS ON ITS WAY - #LV-' . $this->orderId,
         );
     }
 
