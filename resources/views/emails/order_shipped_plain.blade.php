@@ -1,4 +1,3 @@
-YOUR ORDER IS ON ITS WAY - #LV-{{ $orderId }}
 
 We appreciate your support. Your item has been packed and scheduled for handed off to the carrier.
 
