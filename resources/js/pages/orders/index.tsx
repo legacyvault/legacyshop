@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, IOrdersPaginated, IRootHistoryOrders, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -1012,6 +1013,7 @@ function OrdersTable({
                                     const customerName = order.shipment?.receiver_name ?? order.user?.name ?? '—';
                                     const customerMeta = order.shipment?.receiver_city ?? order.user?.email ?? '';
                                     const isPreparingOrder = (order.status ?? '').toLowerCase() === 'preparing_order';
+                                    const isPaymentReceived = (order.payment_status ?? '').toLowerCase() === 'payment_received';
                                     const method = order.payment_method;
 
                                     return (
@@ -1075,6 +1077,13 @@ function OrdersTable({
                                                                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                                                 )}
                                                                 Confirm Order
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        {isPaymentReceived && (
+                                                            <DropdownMenuItem
+                                                                className="cursor-pointer gap-2"
+                                                            >
+                                                                Cancel Order
                                                             </DropdownMenuItem>
                                                         )}
                                                         <DropdownMenuItem
@@ -1221,6 +1230,7 @@ function OrderDetailsDialog({
     isSnapReady: boolean;
     processingOrder: string | null;
 }) {
+    const [gsheetView, setGsheetView] = useState(false);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1308,7 +1318,63 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                         </div>
 
                         <div className="rounded-lg border border-popover">
-                            <div className="border-b border-popover px-4 py-3 text-sm font-semibold">Items ({order.items?.length ?? 0})</div>
+                            <div className="border-b border-popover px-4 py-3 flex items-center justify-between">
+                                <span className="text-sm font-semibold">Items ({order.items?.length ?? 0})</span>
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                    <span className="text-xs text-muted-foreground">GSheet View</span>
+                                    <Switch checked={gsheetView} onCheckedChange={setGsheetView} />
+                                </label>
+                            </div>
+                            {gsheetView ? (
+                                <table className="min-w-full divide-y divide-popover text-sm">
+                                    <thead className="bg-muted/50">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left font-medium">Order Number</th>
+                                            <th className="px-4 py-2 text-left font-medium">SKU</th>
+                                            <th className="px-4 py-2 text-left font-medium">Qty</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {order.items?.length ? (
+                                            order.items.map((item) =>
+                                                item.division.sku ? (
+                                                    <>
+                                                        <tr key={item.id} className="border-t border-popover">
+                                                            <td className="px-4 py-2">
+                                                                {order?.order_number}
+                                                            </td>
+                                                            <td className="px-4 py-2">{item.product_sku}</td>
+                                                            <td className="px-4 py-2">{item.quantity}</td>
+                                                        </tr>
+                                                        <tr key={item.id} className="border-t border-popover">
+                                                            <td className="px-4 py-2">
+                                                                {order?.order_number}
+                                                            </td>
+                                                            <td className="px-4 py-2">{item.division.sku}{item.product_sku}</td>
+                                                            <td className="px-4 py-2">{item.quantity}</td>
+                                                        </tr>
+                                                    </>
+
+                                                ) : (
+                                                    <tr key={item.id} className="border-t border-popover">
+                                                        <td className="px-4 py-2">
+                                                            {order?.order_number}
+                                                        </td>
+                                                        <td className="px-4 py-2">{item.product_sku}</td>
+                                                        <td className="px-4 py-2">{item.quantity}</td>
+                                                    </tr>
+                                                )
+                                            )
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="px-4 py-4 text-center text-sm text-muted-foreground">
+                                                    No items found for this order.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            ) : (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-popover text-sm">
                                     <thead className="bg-muted/50">
@@ -1355,6 +1421,7 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                     </tbody>
                                 </table>
                             </div>
+                            )}
                             <div className="flex flex-col gap-2 border-t border-popover px-4 py-3 text-sm">
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Subtotal</span>

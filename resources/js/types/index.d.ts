@@ -306,6 +306,7 @@ export interface IDivisions {
     discount: number;
     id: string;
     name: string;
+    sku: string | null;
     price: number;
     sub_category: ISubcats;
     sub_category_id: string;
@@ -805,6 +806,10 @@ export interface IItemHistoryOrders {
     total: string;
     created_at: string;
     updated_at: string;
+    division: {
+        id: string;
+        sku: string | null;
+    };
 }
 
 // ORDER TYPE

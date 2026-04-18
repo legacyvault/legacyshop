@@ -92,10 +92,10 @@ class OrderHistoryController extends Controller
         $ordersQuery = Order::with(
             [
                 'items' => function($query) {
-                    $query->orderBy('product_name', 'asc');
-                }, 
-                'shipment', 
-                'user.profile', 
+                    $query->with('division:id,sku')->orderBy('product_name', 'asc');
+                },
+                'shipment',
+                'user.profile',
                 'guest'
             ]);
 

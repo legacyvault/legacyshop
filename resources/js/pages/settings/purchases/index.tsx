@@ -174,6 +174,7 @@ function TransactionList({
 }) {
     const [processingOrder, setProcessingOrder] = useState<string | null>(null);
     const [paypalError, setPaypalError] = useState<string | null>(null);
+    const [contactAdminOrder, setContactAdminOrder] = useState<string | null>(null);
 
     const transactions = useMemo(() => {
         return orders.map((order) => {
@@ -193,6 +194,8 @@ function TransactionList({
             if (itemsCount > 0) {
                 subtextParts.push(`${itemsCount} item${itemsCount > 1 ? 's' : ''} in total`);
             }
+
+            console.log(order)
 
             return {
                 order,
@@ -225,27 +228,17 @@ function TransactionList({
     const fetchTransaction = async (order_number: string) => {
         const url = `/v1/reopen-snap/${order_number}`;
 
-        try {
-            const response = await fetch(url, {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'include',
-            });
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'include',
+        });
 
-            const payload = await parseJsonResponse(response);
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch transaction');
-            }
-
-            console.log('Reopen transaction response:', payload);
-            return payload;
-        } catch (error) {
-            console.error('Error fetching transaction:', error);
-            throw error;
-        }
+        const contentType = response.headers.get('content-type') ?? '';
+        const payload = contentType.includes('application/json') ? await response.json() : {};
+        return { payload };
     };
 
     const handleGeneratePaypalPayment = async (order_number: string) => {
@@ -284,9 +277,14 @@ function TransactionList({
         setProcessingOrder(order_number);
 
         try {
-            const payload = await fetchTransaction(order_number);
+            const { payload } = await fetchTransaction(order_number);
             const status = (payload as { status?: string })?.status;
             const snapToken = (payload as { snap_token?: string })?.snap_token;
+
+            if (status === 'contact_admin') {
+                setContactAdminOrder(order_number);
+                return;
+            }
 
             if (snapToken && ['requires_payment', 'pending'].includes(status ?? '') && window.snap?.pay) {
                 window.snap.pay(snapToken, {
@@ -301,9 +299,8 @@ function TransactionList({
             } else {
                 onRefreshOrders();
             }
-        } catch (error) {
-            console.error('Generate payment failed:', error);
-            onRefreshOrders();
+        } catch {
+            setContactAdminOrder(order_number);
         } finally {
             setProcessingOrder(null);
         }
@@ -332,6 +329,45 @@ function TransactionList({
                     <DialogFooter>
                         <Button type="button" onClick={() => setPaypalError(null)}>
                             Close
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        )}
+        {contactAdminOrder && (
+            <Dialog open={!!contactAdminOrder} onOpenChange={() => setContactAdminOrder(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Unable to Generate Payment</DialogTitle>
+                        <DialogDescription className="space-y-3 pt-1 text-left">
+                            <span className="block">
+                                We weren't able to create a payment link for this order. This can happen if the previous payment session
+                                is still being processed by our payment provider.
+                            </span>
+                            <span className="block">
+                                Please contact our support team and provide your order ID:
+                            </span>
+                            <span className="block rounded-md bg-muted px-3 py-2 font-mono text-sm font-semibold text-foreground">
+                                {contactAdminOrder}
+                            </span>
+                            <span className="block text-sm">
+                                Our team will assist you in completing the payment as soon as possible.
+                            </span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setContactAdminOrder(null)}>
+                            Close
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                const subject = encodeURIComponent(`Payment Issue - Order ${contactAdminOrder}`);
+                                const body = encodeURIComponent(`Hi, I'm having trouble generating payment for my order.\n\nOrder ID: ${contactAdminOrder}\n\nPlease assist.`);
+                                window.open(`mailto:support@legacyvault.com?subject=${subject}&body=${body}`, '_blank');
+                            }}
+                        >
+                            Contact Support
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -381,7 +417,9 @@ function TransactionList({
                                 <Button variant="outline" type="button" onClick={() => onViewDetail(transaction.order)}>
                                     View Transaction Detail
                                 </Button>
-                                {transaction.badgeBg !== 'bg-emerald-100' && (
+
+                                
+                                {transaction.badgeBg === 'bg-amber-100' && (
                                     <div>
                                         {transaction.order.payment_method === 'paypal' ? (
                                             <Button
@@ -459,7 +497,7 @@ const formatDate = (value?: string | null) => {
 const getStatusBadgeStyle = (status?: string | null): { background: string; color: string; label: string } => {
     const normalized = (status ?? '').toLowerCase();
 
-    if (['completed', 'success', 'settlement', 'delivered', 'paid', 'order_confirmed'].includes(normalized)) {
+    if (['completed', 'success', 'settlement', 'delivered', 'paid', 'order_confirmed', 'preparing_order'].includes(normalized)) {
         return { background: 'bg-emerald-100', color: 'text-emerald-700', label: titleCase(status) || 'Completed' };
     }
 
@@ -467,7 +505,7 @@ const getStatusBadgeStyle = (status?: string | null): { background: string; colo
         return { background: 'bg-amber-100', color: 'text-amber-700', label: titleCase(status) || 'Pending' };
     }
 
-    if (['canceled', 'cancelled', 'failed', 'expire', 'expired', 'deny'].includes(normalized)) {
+    if (['canceled', 'cancelled', 'failed', 'expire', 'expired', 'deny', 'order_failed'].includes(normalized)) {
         return { background: 'bg-rose-100', color: 'text-rose-700', label: titleCase(status) || 'Failed' };
     }
 

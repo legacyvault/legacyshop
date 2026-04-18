@@ -9,6 +9,8 @@ use App\Models\OrderShipments;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
+use App\Mail\OrderConfirmedMail;
+use App\Mail\OrderShippedMail;
 use App\Models\DeliveryAddress;
 use App\Models\Division;
 use App\Models\Events;
@@ -29,6 +31,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
 use Milon\Barcode\DNS1D;
 
 class OrderController extends Controller
@@ -546,7 +549,13 @@ class OrderController extends Controller
                 ]);
                 $guestId = $guest->id;
             } else {
-                $userId = $request->user()->id;
+                $user = $request->user();
+
+                if (!$user) {
+                    throw new \Exception('User not authenticated');
+                }
+
+                $userId = $user->id;
             }
 
             // Create Order
@@ -568,6 +577,8 @@ class OrderController extends Controller
             }
 
             $order = Order::create($data_order);
+
+            Log::info('Order before Midtrans', ['order' => $order]);
 
             if ($request->filled('voucher_code')) {
                 if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
@@ -806,6 +817,25 @@ class OrderController extends Controller
                 'transaction_status' => 'settlement',
                 'transaction_time' => now(),
             ]);
+
+            $email = null;
+            if ($localOrder->user) {
+                $email = $localOrder->user->email;
+            } elseif ($localOrder->guest) {
+                $email = $localOrder->guest->email;
+            }
+
+            if ($email) {
+                try {
+                    Mail::to($email)->send(
+                        new OrderConfirmedMail($localOrder->order_number)
+                    );
+
+                    Log::info("Email sent to {$email} for order {$orderId}");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send email for order {$orderId}: " . $e->getMessage());
+                }
+            }
         } else {
             $localOrder->update([
                 'payment_status' => 'payment_failed',
@@ -1118,30 +1148,63 @@ class OrderController extends Controller
             $order = Order::where('order_number', $orderNumber)->firstOrFail();
 
             $statusResponse = Http::withBasicAuth($this->serverKey, '')
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                ])
+                ->withHeaders(['Accept' => 'application/json'])
                 ->get($this->apiUrl . '/v2/' . $order->order_number . '/status');
-
 
             $statusData = $statusResponse->json();
             $transactionStatus = $statusData['transaction_status'] ?? null;
-            if (isset($statusData['transaction_status']) && $statusData['transaction_status'] === 'pending') {
-                $redirectUrl = env('MIDTRANS_URL') . '/snap/v2/vtweb/' . $order->snap_token;
 
+            // Case 1: Midtrans knows it's pending — use existing snap_token
+            if ($transactionStatus === 'pending') {
                 return response()->json([
-                    'status' => 'pending',
-                    'snap_token' => $order->snap_token,
-                    'order_id' => $order->order_number,
-                    'redirect_url' => $redirectUrl,
-                    'message' => 'Transaction still pending, using existing Snap token.'
+                    'status'       => 'pending',
+                    'snap_token'   => $order->snap_token,
+                    'order_id'     => $order->order_number,
+                    'redirect_url' => env('MIDTRANS_URL') . '/snap/v2/vtweb/' . $order->snap_token,
+                    'message'      => 'Transaction still pending, using existing Snap token.',
                 ]);
             }
 
+            // Case 2: Midtrans doesn't know the transaction yet (404 or no status)
+            $midtransStatusCode = $statusData['status_code'] ?? null;
+            $notOnMidtrans = $midtransStatusCode === '404' || $transactionStatus === null;
+
+            if ($notOnMidtrans) {
+                // 2a: DB already has a snap_token — return it directly
+                if (!empty($order->snap_token)) {
+                    return response()->json([
+                        'status'       => 'pending',
+                        'snap_token'   => $order->snap_token,
+                        'order_id'     => $order->order_number,
+                        'redirect_url' => env('MIDTRANS_URL') . '/snap/v2/vtweb/' . $order->snap_token,
+                        'message'      => 'Using existing Snap token from database.',
+                    ]);
+                }
+
+                // 2b: No snap_token in DB — create a new Snap transaction
+                $result = $this->createMidtransSnapPayment($order);
+
+                if (is_array($result) && !empty($result['token'])) {
+                    return response()->json([
+                        'status'       => 'pending',
+                        'snap_token'   => $result['token'],
+                        'order_id'     => $order->order_number,
+                        'redirect_url' => env('MIDTRANS_URL') . '/snap/v2/vtweb/' . $result['token'],
+                        'message'      => 'New Snap transaction created.',
+                    ]);
+                }
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Failed to create new Snap payment.',
+                ], 500);
+            }
+
+            // Case 3: transaction exists but expired/failed — cannot reopen
             return response()->json([
-                'status' => $transactionStatus ?? 'unknown',
+                'status'   => $transactionStatus,
                 'order_id' => $order->order_number,
-                'message' => 'Transaction cannot be reopened in the current state.',
+                'message'  => 'Transaction cannot be reopened in the current state.',
             ], 400);
         } catch (\Exception $e) {
             return response()->json([
@@ -1328,6 +1391,25 @@ class OrderController extends Controller
                     'payment_status' => 'payment_received',
                     'status' => 'preparing_order',
                 ]);
+
+                $email = null;
+                if ($order->user) {
+                    $email = $order->user->email;
+                } elseif ($order->guest) {
+                    $email = $order->guest->email;
+                }
+
+                if ($email) {
+                    try {
+                        Mail::to($email)->send(
+                            new OrderConfirmedMail($order->order_number)
+                        );
+
+                        Log::info("Email sent to {$email} for order {$orderId}");
+                    } catch (\Exception $e) {
+                        Log::error("Failed to send email for order {$orderId}: " . $e->getMessage());
+                    }
+                }
             } else if ($transaction_status == 'pending') {
                 $order->update([
                     'transaction_status' => $transaction_status,
@@ -1516,6 +1598,34 @@ class OrderController extends Controller
             $order->status = 'order_confirmed';
             $order->save();
 
+            $email = null;
+
+            if ($order->user) {
+                $email = $order->user->email;
+            } elseif ($order->guest) {
+                $email = $order->guest->email;
+            }
+
+            if ($email) {
+                try {
+                    Mail::to($email)->send(
+                        new OrderShippedMail(
+                            $order->order_number,
+                            $orderShipment->waybill_number,
+                            $pdfContent,
+                            $fileName,
+                            $orderShipment->tracking_url
+                        )
+                    );
+
+                    Log::info("Shipping email sent to {$email} for order {$order->order_number}");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send shipping email for order {$order->order_number}: " . $e->getMessage());
+                }
+            } else {
+                Log::warning("No email found for order {$order->order_number}");
+            }
+
             return $pdf->stream($fileName);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Order not found.'], 404);
@@ -1596,6 +1706,35 @@ class OrderController extends Controller
 
             $order->status = 'order_confirmed';
             $order->save();
+
+
+            $email = null;
+
+            if ($order->user) {
+                $email = $order->user->email;
+            } elseif ($order->guest) {
+                $email = $order->guest->email;
+            }
+
+            if ($email) {
+                try {
+                    Mail::to($email)->send(
+                        new OrderShippedMail(
+                            $order->order_number,
+                            $orderShipment->waybill_number,
+                            $pdfContent,
+                            $fileName,
+                            $orderShipment->tracking_url
+                        )
+                    );
+
+                    Log::info("Shipping email sent to {$email} for order {$order->order_number}");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send shipping email for order {$order->order_number}: " . $e->getMessage());
+                }
+            } else {
+                Log::warning("No email found for order {$order->order_number}");
+            }
 
             return $pdf->stream($fileName);
         } catch (ModelNotFoundException $e) {

@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
 Route::group(['prefix' => 'v1'], function () {
     Route::post('notification', [OrderController::class, 'handleNotification']);
     Route::post('paypal/notification', [OrderController::class, 'handlePaypalExpire']);
+
 });
