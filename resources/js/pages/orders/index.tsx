@@ -10,6 +10,15 @@ import { BreadcrumbItem, IOrdersPaginated, IRootHistoryOrders, SharedData } from
 import { Head, router, usePage } from '@inertiajs/react';
 import { Calendar as CalendarIcon, Loader2, MoreHorizontal, Search } from 'lucide-react';
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+function useDebounce<T>(value: T, delay: number): T {
+    const [debounced, setDebounced] = useState(value);
+    useEffect(() => {
+        const id = setTimeout(() => setDebounced(value), delay);
+        return () => clearTimeout(id);
+    }, [value, delay]);
+    return debounced;
+}
 import { DateRange, DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 
@@ -283,10 +292,16 @@ function OrdersTable({
         [filters],
     );
 
+    const debouncedSearch = useDebounce(searchValue, 400);
+
+    useEffect(() => {
+        if (debouncedSearch === normalizedSearchFilter) return;
+        updateFilters({ q: debouncedSearch, page: 1 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearch]);
+
     const handleSearch = (event: ChangeEvent<HTMLInputElement>) => {
-        const value = event.target.value;
-        setSearchValue(value);
-        updateFilters({ q: value, page: 1 });
+        setSearchValue(event.target.value);
     };
 
     const handleSort = (column: SortableColumn) => {
