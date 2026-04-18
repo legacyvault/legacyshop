@@ -21,6 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        $middleware->validateCsrfTokens(except: [
+            'v1/checkout/order',
+            'v1/checkout-paypal/order',
+            'v1/orders/*/capture'
+        ]);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

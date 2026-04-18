@@ -1148,30 +1148,63 @@ class OrderController extends Controller
             $order = Order::where('order_number', $orderNumber)->firstOrFail();
 
             $statusResponse = Http::withBasicAuth($this->serverKey, '')
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                ])
+                ->withHeaders(['Accept' => 'application/json'])
                 ->get($this->apiUrl . '/v2/' . $order->order_number . '/status');
-
 
             $statusData = $statusResponse->json();
             $transactionStatus = $statusData['transaction_status'] ?? null;
-            if (isset($statusData['transaction_status']) && $statusData['transaction_status'] === 'pending') {
-                $redirectUrl = env('MIDTRANS_URL') . '/snap/v2/vtweb/' . $order->snap_token;
 
+            // Case 1: Midtrans knows it's pending — use existing snap_token
+            if ($transactionStatus === 'pending') {
                 return response()->json([
-                    'status' => 'pending',
-                    'snap_token' => $order->snap_token,
-                    'order_id' => $order->order_number,
-                    'redirect_url' => $redirectUrl,
-                    'message' => 'Transaction still pending, using existing Snap token.'
+                    'status'       => 'pending',
+                    'snap_token'   => $order->snap_token,
+                    'order_id'     => $order->order_number,
+                    'redirect_url' => env('MIDTRANS_URL') . '/snap/v2/vtweb/' . $order->snap_token,
+                    'message'      => 'Transaction still pending, using existing Snap token.',
                 ]);
             }
 
+            // Case 2: Midtrans doesn't know the transaction yet (404 or no status)
+            $midtransStatusCode = $statusData['status_code'] ?? null;
+            $notOnMidtrans = $midtransStatusCode === '404' || $transactionStatus === null;
+
+            if ($notOnMidtrans) {
+                // 2a: DB already has a snap_token — return it directly
+                if (!empty($order->snap_token)) {
+                    return response()->json([
+                        'status'       => 'pending',
+                        'snap_token'   => $order->snap_token,
+                        'order_id'     => $order->order_number,
+                        'redirect_url' => env('MIDTRANS_URL') . '/snap/v2/vtweb/' . $order->snap_token,
+                        'message'      => 'Using existing Snap token from database.',
+                    ]);
+                }
+
+                // 2b: No snap_token in DB — create a new Snap transaction
+                $result = $this->createMidtransSnapPayment($order);
+
+                if (is_array($result) && !empty($result['token'])) {
+                    return response()->json([
+                        'status'       => 'pending',
+                        'snap_token'   => $result['token'],
+                        'order_id'     => $order->order_number,
+                        'redirect_url' => env('MIDTRANS_URL') . '/snap/v2/vtweb/' . $result['token'],
+                        'message'      => 'New Snap transaction created.',
+                    ]);
+                }
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Failed to create new Snap payment.',
+                ], 500);
+            }
+
+            // Case 3: transaction exists but expired/failed — cannot reopen
             return response()->json([
-                'status' => $transactionStatus ?? 'unknown',
+                'status'   => $transactionStatus,
                 'order_id' => $order->order_number,
-                'message' => 'Transaction cannot be reopened in the current state.',
+                'message'  => 'Transaction cannot be reopened in the current state.',
             ], 400);
         } catch (\Exception $e) {
             return response()->json([

@@ -1539,11 +1539,13 @@ export default function Checkout() {
             return;
         }
 
+        const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
         const headers: Record<string, string> = {
             Accept: 'application/json',
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
         };
+        if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
 
         const itemsPayload = checkoutItems.map((item) => ({
             cart_id: item.cartId ?? null,

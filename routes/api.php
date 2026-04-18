@@ -19,14 +19,4 @@ Route::group(['prefix' => 'v1'], function () {
     Route::post('notification', [OrderController::class, 'handleNotification']);
     Route::post('paypal/notification', [OrderController::class, 'handlePaypalExpire']);
 
-    //Checkout API
-    Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
-
-    Route::post('checkout-paypal/order', [OrderController::class, 'checkoutPaypal'])->name('order.checkout-paypal');
-    Route::post('/orders/{orderId}/capture', [OrderController::class, 'capturePaypal'])->name('order.capture-paypal');
-
-    //Checkout API
-    Route::get('transaction-status/{transaction_id}', [OrderController::class, 'getTransactionStatus'])->name('transaction.status');
-    Route::get('reopen-snap/{order_number}', [OrderController::class, 'reopenSnapPayment'])->name('snap.reopen');
-    Route::get('reopen-paypal/{order_number}', [OrderController::class, 'reopenPaypalPayment'])->name('paypal.reopen');
 });

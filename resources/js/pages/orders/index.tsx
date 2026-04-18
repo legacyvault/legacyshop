@@ -635,7 +635,7 @@ function OrdersTable({
             setDetailsOpen(false);
 
             try {
-                const response = await fetch(`/api/v1/reopen-snap/${orderNumber}`, {
+                const response = await fetch(`/v1/reopen-snap/${orderNumber}`, {
                     headers: {
                         Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
