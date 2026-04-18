@@ -46,7 +46,7 @@ class OrderConfirmedMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'view.name',
+            text: 'emails.order_confirmed_plain',
         );
     }
 
