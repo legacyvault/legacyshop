@@ -36,7 +36,7 @@ class OrderConfirmedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Order Confirmed Mail',
+            subject: 'ORDER CONFIRMED - #LV-' . $this->orderId,
         );
     }
 
