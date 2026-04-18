@@ -52,4 +52,9 @@ class OrderItems extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function division()
+    {
+        return $this->belongsTo(Division::class);
+    }
 }

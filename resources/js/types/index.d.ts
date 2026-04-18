@@ -806,6 +806,10 @@ export interface IItemHistoryOrders {
     total: string;
     created_at: string;
     updated_at: string;
+    division: {
+        id: string;
+        sku: string | null;
+    };
 }
 
 // ORDER TYPE

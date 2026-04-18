@@ -993,7 +993,6 @@ function OrdersTable({
                         <tbody>
                             {orders.length ? (
                                 orders.map((order, index) => {
-                                    console.log(order)
                                     const rowNumber = (currentPage - 1) * perPage + index + 1;
                                     const totalQuantity = order.items?.reduce((acc, item) => acc + (item.quantity ?? 0), 0) ?? 0;
                                     const customerName = order.shipment?.receiver_name ?? order.user?.name ?? '—';
@@ -1322,15 +1321,35 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                     </thead>
                                     <tbody>
                                         {order.items?.length ? (
-                                            order.items.map((item) => (
-                                                <tr key={item.id} className="border-t border-popover">
-                                                    <td className="px-4 py-2">
-                                                        {order?.order_number}
-                                                    </td>
-                                                    <td className="px-4 py-2">{item.product_sku}</td>
-                                                    <td className="px-4 py-2">{item.quantity}</td>
-                                                </tr>
-                                            ))
+                                            order.items.map((item) =>
+                                                item.division.sku ? (
+                                                    <>
+                                                        <tr key={item.id} className="border-t border-popover">
+                                                            <td className="px-4 py-2">
+                                                                {order?.order_number}
+                                                            </td>
+                                                            <td className="px-4 py-2">{item.product_sku}</td>
+                                                            <td className="px-4 py-2">{item.quantity}</td>
+                                                        </tr>
+                                                        <tr key={item.id} className="border-t border-popover">
+                                                            <td className="px-4 py-2">
+                                                                {order?.order_number}
+                                                            </td>
+                                                            <td className="px-4 py-2">{item.division.sku}{item.product_sku}</td>
+                                                            <td className="px-4 py-2">{item.quantity}</td>
+                                                        </tr>
+                                                    </>
+
+                                                ) : (
+                                                    <tr key={item.id} className="border-t border-popover">
+                                                        <td className="px-4 py-2">
+                                                            {order?.order_number}
+                                                        </td>
+                                                        <td className="px-4 py-2">{item.product_sku}</td>
+                                                        <td className="px-4 py-2">{item.quantity}</td>
+                                                    </tr>
+                                                )
+                                            )
                                         ) : (
                                             <tr>
                                                 <td colSpan={5} className="px-4 py-4 text-center text-sm text-muted-foreground">
