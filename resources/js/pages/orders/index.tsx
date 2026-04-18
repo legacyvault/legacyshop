@@ -1337,7 +1337,7 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                     <tbody>
                                         {order.items?.length ? (
                                             order.items.map((item) =>
-                                                item.division.sku ? (
+                                                item.division?.sku ? (
                                                     <>
                                                         <tr key={item.id} className="border-t border-popover">
                                                             <td className="px-4 py-2">

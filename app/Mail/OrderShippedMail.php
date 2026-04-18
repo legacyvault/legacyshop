@@ -57,7 +57,7 @@ class OrderShippedMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'view.name',
+            text: 'emails.order_shipped_plain',
         );
     }
 
