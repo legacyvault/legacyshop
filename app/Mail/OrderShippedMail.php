@@ -35,7 +35,7 @@ class OrderShippedMail extends Mailable
     public function build()
     {
         return $this->subject("YOUR ORDER IS ON ITS WAY - #LV-{$this->orderId}")
-            ->text('emails.order_shipped_plain')
+            ->view('emails.order_shipped_plain')
             ->attachData($this->pdfContent, $this->fileName, [
                 'mime' => 'application/pdf',
             ]);
@@ -57,7 +57,7 @@ class OrderShippedMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            text: 'emails.order_shipped_plain',
+            view: 'emails.order_shipped_plain',
         );
     }
 
