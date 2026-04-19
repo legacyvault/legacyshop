@@ -1330,6 +1330,7 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                     <thead className="bg-muted/50">
                                         <tr>
                                             <th className="px-4 py-2 text-left font-medium">Order Number</th>
+                                            <th className="px-4 py-2 text-left font-medium">Variant</th>
                                             <th className="px-4 py-2 text-left font-medium">SKU</th>
                                             <th className="px-4 py-2 text-left font-medium">Qty</th>
                                         </tr>
@@ -1343,6 +1344,7 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                                             <td className="px-4 py-2">
                                                                 {order?.order_number}
                                                             </td>
+                                                            <td className="px-4 py-2">{item.category_name}</td>
                                                             <td className="px-4 py-2">{item.product_sku}</td>
                                                             <td className="px-4 py-2">{item.quantity}</td>
                                                         </tr>
@@ -1350,7 +1352,8 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                                             <td className="px-4 py-2">
                                                                 {order?.order_number}
                                                             </td>
-                                                            <td className="px-4 py-2">{item.division.sku}{item.product_sku}</td>
+                                                            <td className="px-4 py-2">{item.category_name}</td>
+                                                            <td className="px-4 py-2">{item.division.sku}</td>
                                                             <td className="px-4 py-2">{item.quantity}</td>
                                                         </tr>
                                                     </>
@@ -1360,6 +1363,7 @@ ${order.shipment.receiver_city}, ${order.shipment.receiver_province} ${order.shi
                                                         <td className="px-4 py-2">
                                                             {order?.order_number}
                                                         </td>
+                                                        <td className="px-4 py-2">{item.category_name}</td>
                                                         <td className="px-4 py-2">{item.product_sku}</td>
                                                         <td className="px-4 py-2">{item.quantity}</td>
                                                     </tr>
