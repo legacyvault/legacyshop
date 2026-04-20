@@ -138,7 +138,7 @@ class UserController extends Controller
         if ($validator->fails()) {
             return redirect()->back()->with('alert', [
                 'type' => 'error',
-                'message' => 'Your new address does not match with your account location.',
+                'message' => $validator->errors()->first(),
             ]);
         }
 
@@ -304,7 +304,7 @@ class UserController extends Controller
         if ($validator->fails()) {
             return redirect()->back()->with('alert', [
                 'type' => 'error',
-                'message' => 'Your new address does not match with your account location.',
+                'message' => $validator->errors()->first(),
             ]);
         }
 
