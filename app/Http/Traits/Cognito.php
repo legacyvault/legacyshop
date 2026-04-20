@@ -214,4 +214,34 @@ trait Cognito
             return false;
         }
     }
+
+    public function refreshToken(string $refreshToken, string $username): array
+    {
+        $client = $this->getAWSCognitoClient();
+        $secretHash = base64_encode(
+            hash_hmac('sha256', $username . env('AWS_COGNITO_CLIENT_ID'), env('AWS_COGNITO_CLIENT_SECRET'), true)
+        );
+
+        try {
+            $result = $client->initiateAuth([
+                'ClientId'       => env('AWS_COGNITO_CLIENT_ID'),
+                'AuthFlow'       => 'REFRESH_TOKEN_AUTH',
+                'AuthParameters' => [
+                    'REFRESH_TOKEN' => $refreshToken,
+                    'SECRET_HASH'   => $secretHash,
+                ],
+            ]);
+
+            if (!empty($result['AuthenticationResult']['AccessToken'])) {
+                return [
+                    'status'       => 'SUCCESS',
+                    'access_token' => $result['AuthenticationResult']['AccessToken'],
+                ];
+            }
+            return ['status' => 'FAILED'];
+        } catch (\Aws\Exception\AwsException $e) {
+            Log::error('Token refresh failed: ' . $e->getMessage());
+            return ['status' => 'FAILED'];
+        }
+    }
 }
