@@ -252,6 +252,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::post('delete-division/{id}', [DivisionController::class, 'deleteDivision'])->name('division.delete');
     Route::post('add-division-stock', [DivisionController::class, 'addStock'])->name('division.add-stock');
     Route::post('update-division-stock', [DivisionController::class, 'updateLatestStock'])->name('division.update-stock');
+    Route::post('delete-division-stock', [DivisionController::class, 'deleteLatestStock'])->name('division.delete-stock');
 
     //Variant API
     Route::post('create-variant', [VariantController::class, 'createVariant'])->name('variant.create');

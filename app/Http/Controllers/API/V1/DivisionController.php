@@ -179,6 +179,59 @@ class DivisionController extends Controller
         }
     }
 
+    public function deleteLatestStock(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id' => 'required|exists:division_stock,id',
+            'division_id' => 'required|string|exists:division,id',
+            'remarks' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+            $division = Division::where('id', $request->division_id)->first();
+
+            if (!$division) {
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Cannot find division.',
+                ]);
+            }
+
+            $latest_division_stock = DivisionStock::where('id', $request->id)->first();
+
+            if (!$latest_division_stock) {
+                return back()->with('alert', [
+                    'type' => 'error',
+                    'message' => 'Stock not found.',
+                ]);
+            }
+
+            $division->total_stock = max(0, $division->total_stock - $latest_division_stock->quantity);
+            $division->save();
+
+            $latest_division_stock->delete();
+
+            DB::commit();
+
+            return back()->with('alert', [
+                'type' => 'success',
+                'message' => 'Successfully delete division stock.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::info('Failed to delete stock on division: ' . $e);
+            return back()->with('alert', [
+                'type' => 'error',
+                'message' => 'Failed to delete division stock.',
+            ]);
+        }
+    }
+
     public function updateDivision(Request $request)
     {
         $validator = Validator::make($request->all(), [
