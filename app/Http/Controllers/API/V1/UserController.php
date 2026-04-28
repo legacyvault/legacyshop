@@ -12,13 +12,15 @@ use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
+use App\Http\Traits\GeoIpTrait;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Lang;
 
 class UserController extends Controller
 {
+    use GeoIpTrait;
+
     protected $user;
 
     private $apiKey;
@@ -53,58 +55,6 @@ class UserController extends Controller
         }
 
         return str_contains(strtolower($country), 'indonesia');
-    }
-
-    /**
-     * Return the real client IP.
-     *
-     * SECURITY: Never read X-Forwarded-For directly from the request — it is a
-     * user-controlled header and trivially spoofable. Use Laravel's trusted-proxy
-     * resolution ($request->ip()), which only honours proxy headers when the
-     * request originates from a configured trusted proxy address.
-     *
-     * If you run behind a load-balancer / CDN, configure its IP(s) in
-     * config/trustedproxies.php (or via TRUSTED_PROXIES in .env) instead of
-     * reading the header manually.
-     */
-    protected function getClientIp(Request $request): string
-    {
-        // In local dev we use a fixed Indonesian IP so tests are reproducible.
-        if (env('APP_ENV') === 'local') {
-            return '36.84.152.11';
-        }
-
-        // $request->ip() already honours X-Forwarded-For only for trusted proxies.
-        return $request->ip();
-    }
-
-    /**
-     * Resolve the ISO country code for the current request via IP geo-lookup.
-     * Returns null when the lookup fails rather than blocking the caller.
-     */
-    protected function resolveCountryCodeFromIp(Request $request): ?string
-    {
-        $ip = $this->getClientIp($request);
-
-        // Cache each unique IP for 24 hours so repeated requests (including
-        // bot-traffic flooding from spoofed IPs) don't hammer ip-api.com's
-        // free-plan quota and cause HTTP 429s that block real users.
-        return Cache::remember("geo_ip:{$ip}", now()->addHours(24), function () use ($ip) {
-            try {
-                $response = Http::timeout(5)->get("http://ip-api.com/json/{$ip}?fields=status,countryCode");
-                $data = $response->json();
-
-                if (isset($data['status']) && $data['status'] !== 'fail') {
-                    return strtoupper($data['countryCode'] ?? '') ?: null;
-                }
-            } catch (\Exception $e) {
-                Log::warning("IP geo-lookup failed for {$ip}: " . $e->getMessage());
-            }
-
-            // Return null on failure. Cache::remember stores this null so we
-            // won't retry a failing IP every request within the TTL window.
-            return null;
-        });
     }
 
     public function getProfile()

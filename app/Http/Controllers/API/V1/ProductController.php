@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
+use App\Http\Traits\GeoIpTrait;
 use App\Models\Category;
 use App\Models\EventProducts;
 use App\Models\GroupStock;
@@ -28,7 +29,7 @@ use Inertia\Inertia;
 
 class ProductController extends Controller
 {
-    use AwsS3;
+    use AwsS3, GeoIpTrait;
 
     public function createCategory(Request $request)
     {
@@ -1687,19 +1688,7 @@ class ProductController extends Controller
     public function getAllProduct(Request $request, $unitId = null)
     {
         try {
-            $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-            if (env('APP_ENV') == 'local') {
-                $ip = '36.84.152.11';
-            }
-
-            $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
-            $location = $response->json();
-
-            if ($location['status'] == 'fail') {
-                return redirect()->back()->with('error', 'Failed to register');
-            }
-
-            $isIndonesian = ($location['countryCode'] === 'ID');
+            $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
 
             $perPage = (int) $request->input('per_page', 15);
             $search  = $request->input('q');
@@ -1820,10 +1809,7 @@ class ProductController extends Controller
     public function getAllShowcaseTopProduct()
     {
         // ---- Country detection ----
-        $ip = request()->header('X-Forwarded-For') ?? request()->ip();
-        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $isIndonesian = ($location['countryCode'] === 'ID');
+        $isIndonesian = $this->resolveCountryCodeFromIp(request()) === 'ID';
 
         $data = Product::with([
             'product_group',
@@ -1849,10 +1835,7 @@ class ProductController extends Controller
     public function getAllShowcaseBottomProduct()
     {
         // ---- Country detection ----
-        $ip = request()->header('X-Forwarded-For') ?? request()->ip();
-        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $isIndonesian = ($location['countryCode'] === 'ID');
+        $isIndonesian = $this->resolveCountryCodeFromIp(request()) === 'ID';
 
         $data = Product::with([
             'product_group',
@@ -1878,10 +1861,7 @@ class ProductController extends Controller
     public function getProductByID($id)
     {
         // ---- Country detection ----
-        $ip = request()->header('X-Forwarded-For') ?? request()->ip();
-        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $isIndonesian = ($location['countryCode'] === 'ID');
+        $isIndonesian = $this->resolveCountryCodeFromIp(request()) === 'ID';
 
         $product = Product::with([
             'stocks',
@@ -1909,10 +1889,7 @@ class ProductController extends Controller
     public function getRecommendationProduct($id)
     {
         // ---- Country detection ----
-        $ip = request()->header('X-Forwarded-For') ?? request()->ip();
-        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $isIndonesian = ($location['countryCode'] === 'ID');
+        $isIndonesian = $this->resolveCountryCodeFromIp(request()) === 'ID';
 
 
         $product = Product::with([

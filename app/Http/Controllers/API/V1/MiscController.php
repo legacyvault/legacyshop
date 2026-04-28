@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
+use App\Http\Traits\GeoIpTrait;
 use App\Models\Banner;
 use App\Models\EventProducts;
 use App\Models\Events;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Validator;
 
 class MiscController extends Controller
 {
-    use AwsS3;
+    use AwsS3, GeoIpTrait;
 
     public function createRunningText(Request $request)
     {
@@ -516,21 +517,7 @@ class MiscController extends Controller
     public function getAllActiveEvents(Request $request)
     {
         try {
-            // Detect IP
-            $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-            if (env('APP_ENV') === 'local') {
-                $ip = '36.84.152.11';
-            }
-
-            // Get location
-            $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode");
-            $location = $response->json();
-
-            if (($location['status'] ?? 'fail') === 'fail') {
-                throw new \Exception('Failed to detect location');
-            }
-
-            $isIndonesian = ($location['countryCode'] === 'ID');
+            $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
 
             // Load events with products
             $events = Events::orderBy('name', 'asc')

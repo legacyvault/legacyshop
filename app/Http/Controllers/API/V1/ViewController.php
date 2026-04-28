@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OrderHistoryController;
+use App\Http\Traits\GeoIpTrait;
 use App\Http\Controllers\InvoiceController as AppInvoiceController;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Http;
 
 class ViewController extends Controller
 {
+    use GeoIpTrait;
 
     protected $productController;
     protected $userController;
@@ -431,11 +433,7 @@ class ViewController extends Controller
     }
 
     public function checkoutPage(Request $request){
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        $ip = trim(explode(',', $ip)[0]);
-        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $countryCode = $location['countryCode'] ?? null;
+        $countryCode = $this->resolveCountryCodeFromIp($request);
         $isIndonesian = $countryCode === 'ID';
 
         $internationalShipmentPrice = null;
@@ -487,11 +485,7 @@ class ViewController extends Controller
         $provinces = $this->locationController->getProvinceList();
         $deliveryAddresses = $this->userController->getDeliveryAddresBasedCountryCode($request);
 
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        $ip = trim(explode(',', $ip)[0]);
-        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $countryCode = $location['countryCode'] ?? null;
+        $countryCode = $this->resolveCountryCodeFromIp($request);
 
         return Inertia::render('settings/delivery-address/index', [
             'provinces' => $provinces,

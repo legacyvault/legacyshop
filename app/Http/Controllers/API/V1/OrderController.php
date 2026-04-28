@@ -9,6 +9,7 @@ use App\Models\OrderShipments;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
+use App\Http\Traits\GeoIpTrait;
 use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderShippedMail;
 use App\Models\DeliveryAddress;
@@ -36,7 +37,7 @@ use Milon\Barcode\DNS1D;
 
 class OrderController extends Controller
 {
-    use AwsS3;
+    use AwsS3, GeoIpTrait;
 
     protected $serverKey;
     protected $clientKey;
@@ -115,16 +116,7 @@ class OrderController extends Controller
         $isManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
         $items = $request->items;
 
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        $ip = trim(explode(',', $ip)[0]);
-        if (env('APP_ENV') == 'local') {
-            $ip = '36.84.152.11';
-        }
-
-        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
-        $location = $response->json();
-
-        $isIndonesian = ($location['countryCode'] ?? null) === 'ID';
+        $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
 
         if ($isIndonesian) {
             return response()->json([
