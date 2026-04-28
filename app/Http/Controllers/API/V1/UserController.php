@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Lang;
@@ -52,6 +53,58 @@ class UserController extends Controller
         }
 
         return str_contains(strtolower($country), 'indonesia');
+    }
+
+    /**
+     * Return the real client IP.
+     *
+     * SECURITY: Never read X-Forwarded-For directly from the request — it is a
+     * user-controlled header and trivially spoofable. Use Laravel's trusted-proxy
+     * resolution ($request->ip()), which only honours proxy headers when the
+     * request originates from a configured trusted proxy address.
+     *
+     * If you run behind a load-balancer / CDN, configure its IP(s) in
+     * config/trustedproxies.php (or via TRUSTED_PROXIES in .env) instead of
+     * reading the header manually.
+     */
+    protected function getClientIp(Request $request): string
+    {
+        // In local dev we use a fixed Indonesian IP so tests are reproducible.
+        if (env('APP_ENV') === 'local') {
+            return '36.84.152.11';
+        }
+
+        // $request->ip() already honours X-Forwarded-For only for trusted proxies.
+        return $request->ip();
+    }
+
+    /**
+     * Resolve the ISO country code for the current request via IP geo-lookup.
+     * Returns null when the lookup fails rather than blocking the caller.
+     */
+    protected function resolveCountryCodeFromIp(Request $request): ?string
+    {
+        $ip = $this->getClientIp($request);
+
+        // Cache each unique IP for 24 hours so repeated requests (including
+        // bot-traffic flooding from spoofed IPs) don't hammer ip-api.com's
+        // free-plan quota and cause HTTP 429s that block real users.
+        return Cache::remember("geo_ip:{$ip}", now()->addHours(24), function () use ($ip) {
+            try {
+                $response = Http::timeout(5)->get("http://ip-api.com/json/{$ip}?fields=status,countryCode");
+                $data = $response->json();
+
+                if (isset($data['status']) && $data['status'] !== 'fail') {
+                    return strtoupper($data['countryCode'] ?? '') ?: null;
+                }
+            } catch (\Exception $e) {
+                Log::warning("IP geo-lookup failed for {$ip}: " . $e->getMessage());
+            }
+
+            // Return null on failure. Cache::remember stores this null so we
+            // won't retry a failing IP every request within the TTL window.
+            return null;
+        });
     }
 
     public function getProfile()
@@ -106,12 +159,6 @@ class UserController extends Controller
     {
         $user = Auth::user();
         $profile = Profile::where('user_id', $user?->id)->first();
-        
-        //check location based on profile
-        // $isIndonesia = $this->isIndonesiaCountry($profile?->country);
-
-        //check location by ip address
-        $isIndonesia = $this->isIndonesiaCountry($request->country ?? $profile?->country);
 
         if (!$profile) {
             return redirect()->back()->with('alert', [
@@ -119,6 +166,21 @@ class UserController extends Controller
                 'message' => 'Profile not found.',
             ]);
         }
+
+        // SECURITY: Resolve country from the server-side IP lookup — never from the
+        // user-submitted form field. A user can freely forge $request->country to
+        // skip Biteship registration or bypass district/village validation.
+        // resolveCountryCodeFromIp() uses $request->ip() (trusted-proxy-aware) and
+        // falls back gracefully to null rather than blocking the save.
+        $resolvedCountryCode = $this->resolveCountryCodeFromIp($request);
+
+        // If the IP lookup cannot determine the country, fall back to the profile's
+        // known country as a secondary signal (also server-side, not user-controlled).
+        if (!$resolvedCountryCode && $profile->country) {
+            $resolvedCountryCode = strtoupper($profile->country);
+        }
+
+        $isIndonesia = $this->isIndonesiaCountry($resolvedCountryCode);
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
@@ -147,22 +209,6 @@ class UserController extends Controller
 
             $hasAddress = DeliveryAddress::where('profile_id', $profile->id)->exists();
             $isActive = (bool) ($request->is_active ?? false);
-
-            // Ambil lokasi IP user
-            $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-            if (env('APP_ENV') == 'local') {
-                $ip = '36.84.152.11';
-            }
-
-            $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
-            $location = $response->json();
-
-            if (!isset($location['status']) || $location['status'] === 'fail') {
-                return redirect()->back()->with('alert', [
-                    'type' => 'error',
-                    'message' => 'Failed to fetch location from IP.'
-                ]);
-            }
 
             $biteshipDestinationId = null;
 
@@ -204,7 +250,7 @@ class UserController extends Controller
                 'contact_phone'           => $request->contact_phone,
                 'biteship_destination_id' => $biteshipDestinationId,
                 'profile_id'              => $profile->id,
-                'country'                 => $location['countryCode'] ?? null,
+                'country'                 => $resolvedCountryCode ?: null,
                 'province'                => $request->province,
                 'address'                 => $request->address,
                 'city'                    => $request->city,
@@ -241,13 +287,17 @@ class UserController extends Controller
             $address = DeliveryAddress::findOrFail($addressId);
             $profileId = $address->profile_id;
 
-            $activeCount = DeliveryAddress::where('profile_id', $profileId)
-                ->where('is_active', true)
-                ->where('id', '!=', $address->id)
-                ->count();
+            // Only block deletion if the address being removed is the last active one.
+            // Inactive addresses can always be deleted freely.
+            if ($address->is_active) {
+                $otherActiveCount = DeliveryAddress::where('profile_id', $profileId)
+                    ->where('is_active', true)
+                    ->where('id', '!=', $address->id)
+                    ->count();
 
-            if ($activeCount === 0) {
-                throw new \Exception("Cannot delete this address — there must be at least one active delivery address.");
+                if ($otherActiveCount === 0) {
+                    throw new \Exception("Cannot delete this address — there must be at least one active delivery address.");
+                }
             }
 
             $address->delete();
@@ -281,8 +331,10 @@ class UserController extends Controller
 
     public function updateDeliveryAddress(Request $request)
     {
-        $profile = Profile::where('user_id', Auth::id())->first();
-        $isIndonesia = $this->isIndonesiaCountry($profile?->country);
+        // Use the address's own country (not the profile country) so validation
+        // and Biteship sync are correct when users have addresses in multiple countries.
+        $existingAddress = DeliveryAddress::find($request->id);
+        $isIndonesia = $this->isIndonesiaCountry($existingAddress?->getRawAttributeValue('country') ?? $request->country);
 
         $validator = Validator::make($request->all(), [
             'id'            => 'required|exists:delivery_address,id',
@@ -328,6 +380,7 @@ class UserController extends Controller
                     ]);
 
                 if (!$response->successful()) {
+                    DB::rollBack();
                     return redirect()->back()->with('alert', [
                         'type' => 'error',
                         'message' => 'Gagal update lokasi di Biteship'
@@ -372,14 +425,21 @@ class UserController extends Controller
 
     public function getAllDeliveryAddress()
     {
-        $data = DeliveryAddress::orderBy('is_active', 'desc')->get();
+        $profile = Profile::where('user_id', Auth::id())->first();
+
+        $data = DeliveryAddress::where('profile_id', $profile?->id)
+            ->orderBy('is_active', 'desc')
+            ->get();
 
         return $data;
     }
 
     public function getActiveDeliveryAddress()
     {
-        $data = DeliveryAddress::where('is_active', true)
+        $profile = Profile::where('user_id', Auth::id())->first();
+
+        $data = DeliveryAddress::where('profile_id', $profile?->id)
+            ->where('is_active', true)
             ->orderBy('name', 'asc')
             ->first();
 
@@ -402,19 +462,12 @@ class UserController extends Controller
             return response()->json(['message' => 'Profile not found.'], 404);
         }
 
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        if (env('APP_ENV') == 'local') {
-            $ip = '36.84.152.11';
-        }
+        // SECURITY: Use trusted-proxy-aware IP resolution instead of raw X-Forwarded-For.
+        $countryCode = $this->resolveCountryCodeFromIp($request);
 
-        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode");
-        $location = $response->json();
-
-        if (!isset($location['status']) || $location['status'] === 'fail') {
+        if (!$countryCode) {
             return response()->json(['message' => 'Failed to fetch location from IP.'], 422);
         }
-
-        $countryCode = strtoupper($location['countryCode']);
 
         $data = DeliveryAddress::where('profile_id', $profile->id)
             ->where('country', $countryCode)

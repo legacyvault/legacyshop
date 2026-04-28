@@ -25,33 +25,52 @@ export default function MapLibreLocationPicker({
     initialCenter = { lat: -6.2, lng: 106.816666 },
     zoom = 18,
     className = 'relative min-h-[420px] w-full',
+    country,
     language = 'id',
 }: Props) {
+    const key = import.meta.env.VITE_MAPTILER_KEY as string | undefined;
 
-    const key = import.meta.env.VITE_MAPTILER_KEY as string;
+    // Bug fix: guard against missing API key — show a clear error instead of a
+    // broken blank map with silent 401 failures everywhere.
+    if (!key) {
+        return (
+            <div className={cn('flex items-center justify-center rounded-lg border border-red-200 bg-red-50 text-sm text-red-600', className)}>
+                Map API key is not configured. Please set <code className="mx-1 font-mono">VITE_MAPTILER_KEY</code> in your environment.
+            </div>
+        );
+    }
+
     const [coords, setCoords] = useState<LatLng>(value ?? initialCenter);
     const [address, setAddress] = useState<string>(value?.address ?? '');
     const [featureId, setFeatureId] = useState<string | undefined>(value?.featureId);
     const [query, setQuery] = useState<string>('');
     const [openList, setOpenList] = useState(false);
     const [suggestions, setSuggestions] = useState<{ id: string; label: string; lat: number; lng: number }[]>([]);
+    const [geoError, setGeoError] = useState<string | null>(null);
 
     const mapRef = useRef<MapRef | null>(null);
     const searchContainerRef = useRef<HTMLDivElement | null>(null);
+
+    // Browser-side cache for reverse geocode results keyed by "lat4,lng4"
+    // (4 decimal places ≈ 11 m precision — good enough to avoid duplicate API
+    // calls when the user barely moves the pin).
+    // NOTE: Using a plain Record instead of Map to avoid a name collision with the
+    // react-map-gl/maplibre default export which is also called "Map".
+    const geocodeCache = useRef<Record<string, { address: string; featureId?: string }>>({});
 
     const flyTo = useCallback((ll: { lat: number; lng: number }, z = 18) => {
         mapRef.current?.getMap().flyTo({
             center: [ll.lng, ll.lat],
             zoom: z,
             essential: true,
-            duration: 800, // ms
+            duration: 800,
         });
     }, []);
 
     // emit up
     const emit = useCallback((v: Picked) => onChange?.(v), [onChange]);
 
-    // Map style from MapTiler (no card needed)
+    // Map style from MapTiler
     const mapStyle = useMemo(() => `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`, [key]);
 
     useEffect(() => {
@@ -78,6 +97,13 @@ export default function MapLibreLocationPicker({
             url.searchParams.set('language', language);
             url.searchParams.set('proximity', `${coords.lng},${coords.lat}`);
 
+            // Bug fix: restrict search results to the user's country when provided,
+            // so Indonesian users don't get results from other countries.
+            if (country) {
+                const countryList = Array.isArray(country) ? country.join(',') : country;
+                url.searchParams.set('country', countryList.toLowerCase());
+            }
+
             const res = await fetch(url.toString());
             const data = await res.json();
             const list = (data?.features ?? [])
@@ -94,23 +120,85 @@ export default function MapLibreLocationPicker({
                 .filter((x: any) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
             return list as { id: string; label: string; lat: number; lng: number }[];
         },
-        [key, language, coords],
+        [key, language, coords, country],
     );
 
+    // Nominatim reverse geocode — used only as a silent fallback when MapTiler
+    // fails (rate limit / quota exhausted). We do NOT use Nominatim for
+    // autocomplete/search because their usage policy forbids it and the
+    // single-request-per-second global limit would cause queue pile-ups.
+    const nominatimReverseGeocode = useCallback(async ({ lat, lng }: LatLng): Promise<string> => {
+        const url = new URL('https://nominatim.openstreetmap.org/reverse');
+        url.searchParams.set('lat', String(lat));
+        url.searchParams.set('lon', String(lng));
+        url.searchParams.set('format', 'jsonv2');
+        if (language) url.searchParams.set('accept-language', language);
+
+        const res = await fetch(url.toString(), {
+            headers: {
+                // Nominatim policy requires a descriptive User-Agent with contact info.
+                'User-Agent': 'MapLocationPicker/1.0 (fallback; contact: admin)',
+            },
+        });
+        if (!res.ok) throw new Error(`Nominatim returned ${res.status}`);
+        const data = await res.json();
+        return (data?.display_name as string) ?? '';
+    }, [language]);
+
+    // reverseGeocode checks the browser cache first, then calls MapTiler, and
+    // falls back to Nominatim if MapTiler fails (quota / network error). Coords
+    // are always emitted so the form is never left with empty lat/lng.
     const reverseGeocode = useCallback(
         async ({ lat, lng }: LatLng) => {
-            const url = new URL(`https://api.maptiler.com/geocoding/${lng},${lat}.json`);
-            url.searchParams.set('key', key);
-            url.searchParams.set('language', language);
-            const res = await fetch(url.toString());
-            const data = await res.json();
-            const top = data?.features?.[0];
-            const label = top?.place_name ?? top?.properties?.label ?? '';
+            // Cache key at 4 dp ≈ 11 m — tight enough to be useful, loose enough
+            // that tiny jitter from dragging doesn't always bypass the cache.
+            const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+            const cached = geocodeCache.current[cacheKey];
+
+            if (cached) {
+                setAddress(cached.address);
+                setFeatureId(cached.featureId);
+                emit({ lat, lng, address: cached.address, featureId: cached.featureId });
+                return;
+            }
+
+            let label = '';
+            let fid: string | undefined;
+
+            try {
+                const url = new URL(`https://api.maptiler.com/geocoding/${lng},${lat}.json`);
+                url.searchParams.set('key', key);
+                url.searchParams.set('language', language);
+                const res = await fetch(url.toString());
+
+                if (!res.ok) {
+                    throw new Error(`MapTiler geocoding returned ${res.status}`);
+                }
+
+                const data = await res.json();
+                const top = data?.features?.[0];
+                label = top?.place_name ?? top?.properties?.label ?? '';
+                fid = top?.id ?? top?.properties?.id;
+            } catch (mapTilerErr) {
+                console.warn('[MapLocationPicker] MapTiler reverseGeocode failed, trying Nominatim fallback:', mapTilerErr);
+
+                try {
+                    label = await nominatimReverseGeocode({ lat, lng });
+                } catch (nominatimErr) {
+                    // Both providers failed — coords still saved, address left blank.
+                    console.warn('[MapLocationPicker] Nominatim fallback also failed:', nominatimErr);
+                }
+            }
+
+            // Store result (even empty string) so we don't call the API twice
+            // for the same spot during the same session.
+            geocodeCache.current[cacheKey] = { address: label, featureId: fid };
+
             setAddress(label);
-            setFeatureId(top?.id ?? top?.properties?.id);
-            emit({ lat, lng, address: label, featureId: top?.id ?? top?.properties?.id });
+            setFeatureId(fid);
+            emit({ lat, lng, address: label, featureId: fid });
         },
-        [key, language, emit],
+        [key, language, emit, nominatimReverseGeocode],
     );
 
     // --- Autocomplete (debounced) ---
@@ -155,7 +243,7 @@ export default function MapLibreLocationPicker({
         setQuery(s.label);
         setOpenList(false);
         emit({ ...ll, address: s.label, featureId: s.id });
-        flyTo(ll); // 👈 animate camera
+        flyTo(ll);
     };
 
     // Map interactions
@@ -170,17 +258,34 @@ export default function MapLibreLocationPicker({
         const ll = { lat: e.lngLat.lat, lng: e.lngLat.lng };
         setCoords(ll);
         reverseGeocode(ll);
-        // flyTo(ll); // optional
     };
 
+    // Bug fix: added error callback to getCurrentPosition. Previously, if the user
+    // denied geolocation permission or the browser timed out, nothing happened at all —
+    // no feedback, the button appeared broken. Now shows an inline error message.
     const useMyLocation = () => {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition((pos) => {
-            const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            setCoords(ll);
-            reverseGeocode(ll);
-            flyTo(ll); // 👈 move the map too
-        });
+        if (!navigator.geolocation) {
+            setGeoError('Geolocation is not supported by your browser.');
+            return;
+        }
+        setGeoError(null);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                setCoords(ll);
+                reverseGeocode(ll);
+                flyTo(ll);
+            },
+            (err) => {
+                const messages: Record<number, string> = {
+                    1: 'Location access was denied. Please allow location access in your browser settings.',
+                    2: 'Your location could not be determined. Please pin manually.',
+                    3: 'Location request timed out. Please pin manually.',
+                };
+                setGeoError(messages[err.code] ?? 'Failed to get your location. Please pin manually.');
+            },
+            { timeout: 10000 },
+        );
     };
 
     return (
@@ -219,6 +324,9 @@ export default function MapLibreLocationPicker({
                             Use my location
                         </Button>
                     </div>
+                    {geoError && (
+                        <p className="mt-2 text-xs text-red-500">{geoError}</p>
+                    )}
                 </div>
             </div>
 

@@ -108,10 +108,12 @@ class CartsController extends Controller
             ->where('user_id', $id)
             ->get();
 
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $isIndonesian = ($location['countryCode'] ?? 'ID') === 'ID';
+        // SECURITY: Use $request->ip() (trusted-proxy-aware) instead of raw X-Forwarded-For.
+        // SECURITY: Do NOT default to 'ID' on failure — an international user with a failed
+        // lookup would silently receive IDR pricing. Default to false (non-Indonesian) instead.
+        $ip = env('APP_ENV') === 'local' ? '36.84.152.11' : $request->ip();
+        $location = Http::timeout(5)->get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
+        $isIndonesian = ($location['countryCode'] ?? null) === 'ID';
 
         foreach ($carts as $cart) {
             if ($cart->product) {
