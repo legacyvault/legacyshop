@@ -32,7 +32,10 @@ Route::group(['prefix' => 'v1/cognito'], function () {
     Route::post('login', [AWSCognitoAuthController::class, 'login'])->name('cognito.login');
 });
 Route::group(['prefix' => 'v1/cognito'], function () {
-    Route::post('register', [AwsCognitoAuthController::class, 'registerUser'])->name('cognito.register');
+    Route::post('register', [AWSCognitoAuthController::class, 'registerUser'])->name('cognito.register');
+    Route::post('forgot-password', [AWSCognitoAuthController::class, 'sendResetCode'])->name('cognito.send-code');
+    Route::post('verify', [AWSCognitoAuthController::class, 'verifyResetCode'])->name('cognito.verify');
+    Route::post('reset', [AWSCognitoAuthController::class, 'resetPassword'])->name('cognito.reset');
 });
 Route::group(['prefix' => 'v1'], function () {
     Route::get('active-running-text', [MiscController::class, 'getActiveRunningText'])->name('active.running-text');
@@ -249,6 +252,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::post('delete-division/{id}', [DivisionController::class, 'deleteDivision'])->name('division.delete');
     Route::post('add-division-stock', [DivisionController::class, 'addStock'])->name('division.add-stock');
     Route::post('update-division-stock', [DivisionController::class, 'updateLatestStock'])->name('division.update-stock');
+    Route::post('delete-division-stock', [DivisionController::class, 'deleteLatestStock'])->name('division.delete-stock');
 
     //Variant API
     Route::post('create-variant', [VariantController::class, 'createVariant'])->name('variant.create');

@@ -191,7 +191,7 @@ trait Cognito
                 'ClientSecret' => env('AWS_COGNITO_CLIENT_SECRET'),
                 'Token' => $refresh_token,
             ]);
-            Log::info('Security Audit: AWS Revoke Token Success');  
+            Log::info('Security Audit: AWS Revoke Token Success');
             return true;
         } catch (AwsException $e) {
             Log::error('Security Audit: ERROR Revoke token: ' . $e->getMessage());
@@ -242,6 +242,71 @@ trait Cognito
         } catch (\Aws\Exception\AwsException $e) {
             Log::error('Token refresh failed: ' . $e->getMessage());
             return ['status' => 'FAILED'];
+        }
+    }
+
+    public function forgotPassword(string $email): array
+    {
+        $client    = $this->getAWSCognitoClient();
+        $secretHash = base64_encode(
+            hash_hmac(
+                'sha256',
+                $email . env('AWS_COGNITO_CLIENT_ID'),
+                env('AWS_COGNITO_CLIENT_SECRET'),
+                true
+            )
+        );
+
+        try {
+            $client->forgotPassword([
+                'ClientId'   => env('AWS_COGNITO_CLIENT_ID'),
+                'Username'   => $email,
+                'SecretHash' => $secretHash,
+            ]);
+
+            return ['status' => 'SUCCESS'];
+        } catch (CognitoIdentityProviderException $e) {
+            Log::error('Cognito forgotPassword error: ' . $e->getAwsErrorMessage());
+
+            return [
+                'status'  => 'FAILED',
+                'code'    => $e->getAwsErrorCode(),
+                'message' => $e->getAwsErrorMessage(),
+            ];
+        }
+    }
+
+    // Step 2 – Confirm the code and set a brand-new password in one call.
+    public function confirmForgotPassword(string $email, string $code, string $newPassword): array
+    {
+        $client     = $this->getAWSCognitoClient();
+        $secretHash = base64_encode(
+            hash_hmac(
+                'sha256',
+                $email . env('AWS_COGNITO_CLIENT_ID'),
+                env('AWS_COGNITO_CLIENT_SECRET'),
+                true
+            )
+        );
+
+        try {
+            $client->confirmForgotPassword([
+                'ClientId'         => env('AWS_COGNITO_CLIENT_ID'),
+                'Username'         => $email,
+                'ConfirmationCode' => $code,
+                'Password'         => $newPassword,
+                'SecretHash'       => $secretHash,
+            ]);
+
+            return ['status' => 'SUCCESS'];
+        } catch (CognitoIdentityProviderException $e) {
+            Log::error('Cognito confirmForgotPassword error: ' . $e->getAwsErrorMessage());
+
+            return [
+                'status'  => 'FAILED',
+                'code'    => $e->getAwsErrorCode(),
+                'message' => $e->getAwsErrorMessage(),
+            ];
         }
     }
 }
