@@ -289,8 +289,12 @@ Route::get('/articles', [ViewController::class, 'frontArticlesPage'])->name('fro
 Route::get('/articles/{slug}', [ViewController::class, 'frontArticleView'])->name('front.articles-view');
 
 Route::get('/login', function () {
-    return Inertia::render('auth/login');
+    return Inertia::render('auth/login', ['canResetPassword' => true]);
 })->name('login');
+
+Route::get('/forgot-password', function () {
+    return Inertia::render('auth/forgot-password');
+})->name('password.request');
 
 Route::get('/register', function () {
     return Inertia::render('auth/register');

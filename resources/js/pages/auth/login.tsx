@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
+import { Eye, EyeOff, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
 
 import DialogHandler from '@/components/dialog-handler';
@@ -41,6 +41,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
         });
     };
 
+    const [showPassword, setShowPassword] = useState(false);
     const [errorAlert, setErrorAlert] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -97,16 +98,27 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                                     </TextLink>
                                 )}
                             </div>
-                            <Input
-                                id="password"
-                                type="password"
-                                required
-                                tabIndex={2}
-                                autoComplete="current-password"
-                                value={data.password}
-                                onChange={(e) => setData('password', e.target.value)}
-                                placeholder="Password"
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    required
+                                    tabIndex={2}
+                                    autoComplete="current-password"
+                                    value={data.password}
+                                    onChange={(e) => setData('password', e.target.value)}
+                                    placeholder="Password"
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
                             <InputError message={errors.password} />
                         </div>
 
