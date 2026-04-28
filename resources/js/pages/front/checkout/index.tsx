@@ -254,6 +254,7 @@ export default function Checkout() {
         clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID ?? 'test',
         currency: 'USD',
         components: 'buttons',
+        enableFunding: 'card',
     };
 
     const [messagePaypal, setMessagePaypal] = useState('');
@@ -1522,6 +1523,150 @@ export default function Checkout() {
         router.visit('/');
     }, [clearCheckoutStorage]);
 
+    const handlePaypalCreateOrder = useCallback(async () => {
+        if (!selectedCheckoutAddress || !checkoutItems.length) {
+            if (!selectedCheckoutAddress && usingGuestAddress) {
+                setHasAttemptedGuestCheckout(true);
+            }
+            throw new Error('Missing required checkout information.');
+        }
+
+        if (!selectedAddressValidForFlow) {
+            throw new Error('Your selected address does not match your current region. Please choose a valid address.');
+        }
+
+        const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+        const headers: Record<string, string> = {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        };
+        if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
+
+        const itemsPayload = checkoutItems.map((item) => ({
+            cart_id: item.cartId ?? null,
+            product_id: item.productId ?? null,
+            unit_id: item.unitId ?? null,
+            unit_name: item.selectionSummary?.unit ?? null,
+            category_id: item.categoryId ?? null,
+            category_name: item.selectionSummary?.category ?? null,
+            category_description: item.categoryDescription ?? null,
+            sub_category_id: item.subCategoryId ?? null,
+            sub_category_name: item.selectionSummary?.subCategory ?? null,
+            sub_category_description: item.subCategoryDescription ?? null,
+            division_id: item.divisionId ?? null,
+            division_name: item.selectionSummary?.division ?? null,
+            division_description: item.divisionDescription ?? null,
+            variant_id: item.variantId ?? null,
+            variant_name: item.selectionSummary?.variant ?? null,
+            variant_color: item.selectionSummary?.variantColor ?? item.variantColor ?? null,
+            variant_description: item.variantDescription ?? null,
+            product_name: item.name,
+            product_description: item.variant ?? null,
+            product_image: item.image ?? null,
+            attributes: item.attributes?.join(', ') ?? null,
+            quantity: item.quantity,
+            price: item.price,
+            source: item.source ?? null,
+            product_sku: item.sku,
+        }));
+
+        const payload = {
+            is_manual_invoice: false,
+            payment_method: 'paypal',
+            shipping_fee: internationalShipmentPrice,
+            voucher_code: appliedVoucher?.code ?? undefined,
+            receiver_name: selectedCheckoutAddress.contact_name,
+            receiver_phone: selectedCheckoutAddress.contact_phone,
+            receiver_address: selectedCheckoutAddress.address,
+            receiver_postal_code: selectedCheckoutAddress.postal_code,
+            receiver_city: selectedCheckoutAddress.city,
+            receiver_province: selectedCheckoutAddress.province,
+            items: itemsPayload,
+            customer_type: usingGuestAddress ? 'guest' : 'user',
+            ...(usingGuestAddress
+                ? {
+                      email: guestContact.email.trim(),
+                      contact_name: guestContact.fullName.trim(),
+                      contact_phone: guestContact.phone.trim(),
+                      latitude: guestAddressForm.latitude,
+                      longitude: guestAddressForm.longitude,
+                      country: guestAddressForm.country,
+                      province: guestAddressForm.province,
+                      address: guestAddressForm.address.trim() || undefined,
+                      city: guestAddressForm.city,
+                      postal_code: guestAddressForm.postalCode,
+                      district: guestAddressForm.district,
+                      village: guestAddressForm.village,
+                  }
+                : {}),
+        };
+
+        const response = await fetch(route('order.checkout-paypal'), {
+            method: 'POST',
+            headers,
+            credentials: 'include',
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.id) {
+            const errorDetail = data?.details?.[0];
+            const errorMessage = errorDetail
+                ? `${errorDetail.issue} ${errorDetail.description} (${data.debug_id})`
+                : (data?.message ?? JSON.stringify(data));
+            setMessagePaypal(`Could not initiate PayPal Checkout: ${errorMessage}`);
+            throw new Error(errorMessage);
+        }
+
+        return data.id;
+    }, [
+        appliedVoucher,
+        checkoutItems,
+        guestAddressForm,
+        guestContact,
+        internationalShipmentPrice,
+        selectedAddressValidForFlow,
+        selectedCheckoutAddress,
+        usingGuestAddress,
+    ]);
+
+    const handlePaypalOnApprove = useCallback(
+        async (data: { orderID: string }, actions: { restart: () => void }) => {
+            try {
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                };
+
+                const response = await fetch(route('order.capture-paypal', { orderId: data.orderID }), {
+                    method: 'POST',
+                    headers,
+                    credentials: 'include',
+                });
+
+                const orderData = await response.json();
+                const errorDetail = orderData?.details?.[0];
+
+                if (errorDetail?.issue === 'INSTRUMENT_DECLINED') {
+                    return actions.restart();
+                } else if (errorDetail) {
+                    throw new Error(`${errorDetail.description} (${orderData.debug_id})`);
+                } else if (!response.ok) {
+                    throw new Error(orderData?.message ?? 'Capture failed');
+                } else {
+                    clearCheckoutStorage();
+                    router.visit(isGuest ? '/' : '/orders/order');
+                }
+            } catch (error) {
+                console.error(error);
+                setMessagePaypal(`Sorry, your transaction could not be processed: ${error}`);
+            }
+        },
+        [clearCheckoutStorage, isGuest],
+    );
+
     const handlePayNow = useCallback(async () => {
         if (isThankYou) {
             return;
@@ -2594,7 +2739,7 @@ export default function Checkout() {
                                         {internationalShipmentPrice ? (
                                             <>
                                                 <PayPalScriptProvider options={initialOptionsPaypal}>
-                                                    <div className="w-full">
+                                                    <div className="w-full space-y-2">
                                                         <PayPalButtons
                                                             style={{
                                                                 shape: 'rect',
@@ -2603,144 +2748,21 @@ export default function Checkout() {
                                                                 label: 'paypal',
                                                                 disableMaxWidth: true,
                                                             }}
-                                                            createOrder={async () => {
-                                                                if (!selectedCheckoutAddress || !checkoutItems.length) {
-                                                                    if (!selectedCheckoutAddress && usingGuestAddress) {
-                                                                        setHasAttemptedGuestCheckout(true);
-                                                                    }
-                                                                    throw new Error('Missing required checkout information.');
-                                                                }
-
-                                                                if (!selectedAddressValidForFlow) {
-                                                                    throw new Error(
-                                                                        'Your selected address does not match your current region. Please choose a valid address.',
-                                                                    );
-                                                                }
-
-                                                                const csrfToken = (
-                                                                    document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
-                                                                )?.content;
-                                                                const headers: Record<string, string> = {
-                                                                    Accept: 'application/json',
-                                                                    'Content-Type': 'application/json',
-                                                                    'X-Requested-With': 'XMLHttpRequest',
-                                                                };
-                                                                if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
-
-                                                                const itemsPayload = checkoutItems.map((item) => ({
-                                                                    cart_id: item.cartId ?? null,
-                                                                    product_id: item.productId ?? null,
-                                                                    unit_id: item.unitId ?? null,
-                                                                    unit_name: item.selectionSummary?.unit ?? null,
-                                                                    category_id: item.categoryId ?? null,
-                                                                    category_name: item.selectionSummary?.category ?? null,
-                                                                    category_description: item.categoryDescription ?? null,
-                                                                    sub_category_id: item.subCategoryId ?? null,
-                                                                    sub_category_name: item.selectionSummary?.subCategory ?? null,
-                                                                    sub_category_description: item.subCategoryDescription ?? null,
-                                                                    division_id: item.divisionId ?? null,
-                                                                    division_name: item.selectionSummary?.division ?? null,
-                                                                    division_description: item.divisionDescription ?? null,
-                                                                    variant_id: item.variantId ?? null,
-                                                                    variant_name: item.selectionSummary?.variant ?? null,
-                                                                    variant_color: item.selectionSummary?.variantColor ?? item.variantColor ?? null,
-                                                                    variant_description: item.variantDescription ?? null,
-                                                                    product_name: item.name,
-                                                                    product_description: item.variant ?? null,
-                                                                    product_image: item.image ?? null,
-                                                                    attributes: item.attributes?.join(', ') ?? null,
-                                                                    quantity: item.quantity,
-                                                                    price: item.price,
-                                                                    source: item.source ?? null,
-                                                                    product_sku: item.sku,
-                                                                }));
-
-                                                                const payload = {
-                                                                    is_manual_invoice: false,
-                                                                    payment_method: 'paypal',
-                                                                    shipping_fee: internationalShipmentPrice,
-                                                                    voucher_code: appliedVoucher?.code ?? undefined,
-                                                                    receiver_name: selectedCheckoutAddress.contact_name,
-                                                                    receiver_phone: selectedCheckoutAddress.contact_phone,
-                                                                    receiver_address: selectedCheckoutAddress.address,
-                                                                    receiver_postal_code: selectedCheckoutAddress.postal_code,
-                                                                    receiver_city: selectedCheckoutAddress.city,
-                                                                    receiver_province: selectedCheckoutAddress.province,
-                                                                    items: itemsPayload,
-                                                                    customer_type: usingGuestAddress ? 'guest' : 'user',
-                                                                    ...(usingGuestAddress
-                                                                        ? {
-                                                                              email: guestContact.email.trim(),
-                                                                              contact_name: guestContact.fullName.trim(),
-                                                                              contact_phone: guestContact.phone.trim(),
-                                                                              latitude: guestAddressForm.latitude,
-                                                                              longitude: guestAddressForm.longitude,
-                                                                              country: guestAddressForm.country,
-                                                                              province: guestAddressForm.province,
-                                                                              address: guestAddressForm.address.trim() || undefined,
-                                                                              city: guestAddressForm.city,
-                                                                              postal_code: guestAddressForm.postalCode,
-                                                                              district: guestAddressForm.district,
-                                                                              village: guestAddressForm.village,
-                                                                          }
-                                                                        : {}),
-                                                                };
-
-                                                                const response = await fetch(route('order.checkout-paypal'), {
-                                                                    method: 'POST',
-                                                                    headers,
-                                                                    credentials: 'include',
-                                                                    body: JSON.stringify(payload),
-                                                                });
-
-                                                                const data = await response.json();
-
-                                                                if (!response.ok || !data.id) {
-                                                                    const errorDetail = data?.details?.[0];
-                                                                    const errorMessage = errorDetail
-                                                                        ? `${errorDetail.issue} ${errorDetail.description} (${data.debug_id})`
-                                                                        : (data?.message ?? JSON.stringify(data));
-                                                                    setMessagePaypal(`Could not initiate PayPal Checkout: ${errorMessage}`);
-                                                                    throw new Error(errorMessage);
-                                                                }
-
-                                                                return data.id;
-                                                            }}
-                                                            onApprove={async (data, actions) => {
-                                                                try {
-                                                                    const headers: Record<string, string> = {
-                                                                        'Content-Type': 'application/json',
-                                                                        'X-Requested-With': 'XMLHttpRequest',
-                                                                    };
-
-                                                                    const response = await fetch(
-                                                                        route('order.capture-paypal', { orderId: data.orderID }),
-                                                                        {
-                                                                            method: 'POST',
-                                                                            headers,
-                                                                            credentials: 'include',
-                                                                        },
-                                                                    );
-
-                                                                    const orderData = await response.json();
-                                                                    const errorDetail = orderData?.details?.[0];
-
-                                                                    if (errorDetail?.issue === 'INSTRUMENT_DECLINED') {
-                                                                        return actions.restart();
-                                                                    } else if (errorDetail) {
-                                                                        throw new Error(`${errorDetail.description} (${orderData.debug_id})`);
-                                                                    } else if (!response.ok) {
-                                                                        throw new Error(orderData?.message ?? 'Capture failed');
-                                                                    } else {
-                                                                        clearCheckoutStorage();
-                                                                        router.visit(isGuest ? '/' : '/orders/order');
-                                                                    }
-                                                                } catch (error) {
-                                                                    console.error(error);
-                                                                    setMessagePaypal(`Sorry, your transaction could not be processed: ${error}`);
-                                                                }
-                                                            }}
                                                             fundingSource={FUNDING.PAYPAL}
+                                                            createOrder={handlePaypalCreateOrder}
+                                                            onApprove={handlePaypalOnApprove}
+                                                        />
+                                                        <PayPalButtons
+                                                            style={{
+                                                                shape: 'rect',
+                                                                layout: 'vertical',
+                                                                color: 'black',
+                                                                label: 'pay',
+                                                                disableMaxWidth: true,
+                                                            }}
+                                                            fundingSource={FUNDING.CARD}
+                                                            createOrder={handlePaypalCreateOrder}
+                                                            onApprove={handlePaypalOnApprove}
                                                         />
                                                     </div>
                                                 </PayPalScriptProvider>
