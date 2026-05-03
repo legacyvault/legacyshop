@@ -142,8 +142,8 @@ class UserController extends Controller
             'district' => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'village' => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'postal_code' => 'required|string',
-            'latitude' => 'required|string',
-            'longitude' => 'required|string',
+            'latitude' => 'nullable|string',
+            'longitude' => 'nullable|string',
             'is_active' => 'nullable|boolean'
         ]);
 
@@ -163,31 +163,31 @@ class UserController extends Controller
             $biteshipDestinationId = null;
 
             // Create lokasi di Biteship
-            if ($isIndonesia) {
-                $response = Http::withToken($this->apiKey)
-                    ->post('https://api.biteship.com/v1/locations', [
-                        'name'          => $request->name,
-                        'contact_name'  => $request->contact_name,
-                        'contact_phone' => $request->contact_phone,
-                        'address'       => $request->address,
-                        'note'          => null,
-                        'postal_code'   => $request->postal_code,
-                        'latitude'      => $request->latitude,
-                        'longitude'     => $request->longitude,
-                        'type'          => 'destination',
-                    ]);
+            // if ($isIndonesia) {
+            //     $response = Http::withToken($this->apiKey)
+            //         ->post('https://api.biteship.com/v1/locations', [
+            //             'name'          => $request->name,
+            //             'contact_name'  => $request->contact_name,
+            //             'contact_phone' => $request->contact_phone,
+            //             'address'       => $request->address,
+            //             'note'          => null,
+            //             'postal_code'   => $request->postal_code,
+            //             'latitude'      => $request->latitude ?? null,
+            //             'longitude'     => $request->longitude ?? null,
+            //             'type'          => 'destination',
+            //         ]);
 
-                if (!$response->successful()) {
-                    DB::rollBack();
-                    return redirect()->back()->with('alert', [
-                        'type' => 'error',
-                        'message' => 'Gagal create lokasi di Biteship.'
-                    ]);
-                }
+            //     if (!$response->successful()) {
+            //         DB::rollBack();
+            //         return redirect()->back()->with('alert', [
+            //             'type' => 'error',
+            //             'message' => 'Gagal create lokasi di Biteship.'
+            //         ]);
+            //     }
 
-                $biteshipData = $response->json();
-                $biteshipDestinationId = $biteshipData['id'] ?? null;
-            }
+            //     $biteshipData = $response->json();
+            //     $biteshipDestinationId = $biteshipData['id'] ?? null;
+            // }
 
             if ($hasAddress && $isActive) {
                 DeliveryAddress::where('profile_id', $profile->id)
@@ -207,8 +207,8 @@ class UserController extends Controller
                 'district'                => $isIndonesia ? ($request->district ?: null) : null,
                 'village'                 => $isIndonesia ? ($request->village ?: null) : null,
                 'postal_code'             => $request->postal_code,
-                'latitude'                => $request->latitude,
-                'longitude'               => $request->longitude,
+                'latitude'                => $request->latitude ?? null,
+                'longitude'               => $request->longitude ?? null,
                 'is_active'               => $hasAddress ? $isActive : ($request->is_active ?? true),
             ]);
 
@@ -298,8 +298,8 @@ class UserController extends Controller
             'district'      => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'village'       => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'postal_code'   => 'required|string',
-            'latitude'      => 'required|string',
-            'longitude'     => 'required|string',
+            'latitude'      => 'nullable|string',
+            'longitude'     => 'nullable|string',
             'is_active'     => 'nullable|boolean',
         ]);
 
@@ -315,28 +315,28 @@ class UserController extends Controller
 
             $deliveryAddress = DeliveryAddress::findOrFail($request->id);
 
-            if ($isIndonesia) {
+            // if ($isIndonesia) {
 
-                $response = Http::withToken($this->apiKey)
-                    ->post("https://api.biteship.com/v1/locations/{$deliveryAddress->biteship_destination_id}", [
-                        'name'          => $request->name,
-                        'contact_name'  => $request->contact_name,
-                        'contact_phone' => $request->contact_phone,
-                        'address'       => $request->address,
-                        'note'          => null,
-                        'postal_code'   => $request->postal_code,
-                        'latitude'      => $request->latitude,
-                        'longitude'     => $request->longitude
-                    ]);
+            //     $response = Http::withToken($this->apiKey)
+            //         ->post("https://api.biteship.com/v1/locations/{$deliveryAddress->biteship_destination_id}", [
+            //             'name'          => $request->name,
+            //             'contact_name'  => $request->contact_name,
+            //             'contact_phone' => $request->contact_phone,
+            //             'address'       => $request->address,
+            //             'note'          => null,
+            //             'postal_code'   => $request->postal_code,
+            //             'latitude'      => $request->latitude,
+            //             'longitude'     => $request->longitude
+            //         ]);
 
-                if (!$response->successful()) {
-                    DB::rollBack();
-                    return redirect()->back()->with('alert', [
-                        'type' => 'error',
-                        'message' => 'Gagal update lokasi di Biteship'
-                    ]);
-                }
-            }
+            //     if (!$response->successful()) {
+            //         DB::rollBack();
+            //         return redirect()->back()->with('alert', [
+            //             'type' => 'error',
+            //             'message' => 'Gagal update lokasi di Biteship'
+            //         ]);
+            //     }
+            // }
 
 
             if ($request->has('is_active') && $request->is_active) {
@@ -355,8 +355,8 @@ class UserController extends Controller
             $deliveryAddress->district      = $isIndonesia ? ($request->district ?: null) : null;
             $deliveryAddress->village       = $isIndonesia ? ($request->village ?: null) : null;
             $deliveryAddress->postal_code   = $request->postal_code;
-            $deliveryAddress->latitude      = $request->latitude;
-            $deliveryAddress->longitude     = $request->longitude;
+            $deliveryAddress->latitude      = $request->latitude ?? null;
+            $deliveryAddress->longitude     = $request->longitude ?? null;
             $deliveryAddress->save();
 
             DB::commit();
