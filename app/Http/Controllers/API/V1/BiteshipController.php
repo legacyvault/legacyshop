@@ -65,10 +65,8 @@ class BiteshipController extends Controller
     public function getDeliveryRates(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'origin_latitude'       => 'required|numeric',
-            'origin_longitude'      => 'required|numeric',
-            'destination_latitude'        => 'required|numeric',
-            'destination_longitude'       => 'required|numeric',
+            'origin_postal_code'       => 'required|numeric',
+            'destination_postal_code'        => 'required|numeric',
             'couriers'              => 'string',
             'items'                 => 'required|array',
             'items.*.name'          => 'required|string',
@@ -85,10 +83,8 @@ class BiteshipController extends Controller
         $response = Http::withToken($this->apiKey)->post(
             'https://api.biteship.com/v1/rates/couriers',
             [
-                'origin_latitude'       => (float) $request->input('origin_latitude'),
-                'origin_longitude'      => (float) $request->input('origin_longitude'),
-                'destination_latitude'  => (float) $request->input('destination_latitude'),
-                'destination_longitude' => (float) $request->input('destination_longitude'),
+                'origin_postal_code'       => (float) $request->input('origin_postal_code'),
+                'destination_postal_code'  => (float) $request->input('destination_postal_code'),
                 'couriers'              => (string) $request->input('couriers'),
                 'items' => collect($request->input('items', []))->map(fn($i) => [
                     'name'     => (string) $i['name'],
@@ -178,10 +174,8 @@ class BiteshipController extends Controller
     {
         $response = Http::withToken($this->apiKey)
             ->post($this->baseUrl . '/rates/couriers', [
-                "origin_latitude" => $request->origin_lat,
-                "origin_longitude" => $request->origin_lng,
-                "destination_latitude" => $request->destination_lat,
-                "destination_longitude" => $request->destination_lng,
+                "origin_postal_code" => $request->origin_postal_code,
+                "destination_postal_code" => $request->destination_postal_code,
                 "couriers" => "jne,sicepat,jnt,anteraja",
                 "items" => $request->items
             ]);

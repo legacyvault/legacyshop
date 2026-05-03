@@ -99,8 +99,8 @@ class OrderController extends Controller
             'email' => 'required_if:customer_type,guest|email',
             'contact_name' => 'required_if:customer_type,guest|string',
             'contact_phone' => 'required_if:customer_type,guest|string',
-            'latitude' => 'required_if:customer_type,guest|numeric',
-            'longitude' => 'required_if:customer_type,guest|numeric',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'country' => 'required_if:customer_type,guest',
             'province' => 'required_if:customer_type,guest',
             'address' => 'required_if:customer_type,guest',
@@ -191,8 +191,8 @@ class OrderController extends Controller
                     'village' => $request->village ?? null,
                     'address' => $request->receiver_address ?? $request->address,
                     'postal_code' => $request->receiver_postal_code ?? $request->postal_code,
-                    'latitude' => $request->latitude !== null ? (float) $request->latitude : 0,
-                    'longitude' => $request->longitude !== null ? (float) $request->longitude : 0,
+                    'latitude' => $request->latitude ?? null,
+                    'longitude' => $request->longitude ?? null,
                 ]);
                 $guestId = $guest->id;
             } else {
@@ -414,8 +414,8 @@ class OrderController extends Controller
             'email' => 'required_if:customer_type,guest|email',
             'contact_name' => 'required_if:customer_type,guest|string',
             'contact_phone' => 'required_if:customer_type,guest|string',
-            'latitude' => 'required_if:customer_type,guest|numeric',
-            'longitude' => 'required_if:customer_type,guest|numeric',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'country' => 'required_if:customer_type,guest',
             'province' => 'required_if:customer_type,guest',
             'address' => 'required_if:customer_type,guest',
@@ -536,8 +536,8 @@ class OrderController extends Controller
                     'village' => $request->village ?? null,
                     'address' => $request->receiver_address ?? $request->address,
                     'postal_code' => $request->receiver_postal_code ?? $request->postal_code,
-                    'latitude' => $request->latitude !== null ? (float) $request->latitude : 0,
-                    'longitude' => $request->longitude !== null ? (float) $request->longitude : 0,
+                    'latitude' => $request->latitude ?? null,
+                    'longitude' => $request->longitude ?? null,
                 ]);
                 $guestId = $guest->id;
             } else {
