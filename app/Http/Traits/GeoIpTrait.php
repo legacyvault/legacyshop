@@ -68,9 +68,10 @@ trait GeoIpTrait
 
         return Cache::remember("geo_ip:{$ip}", now()->addHours(24), function () use ($ip) {
             try {
-                $response = Http::timeout(5)->get(
-                    "http://ip-api.com/json/{$ip}?fields=status,countryCode"
-                );
+                $response = Http::timeout(5)->get("https://pro.ip-api.com/json/{$ip}", [
+                    'key' => config('services.ip_api.key'),
+                ]);
+                
                 $data = $response->json();
 
                 if (isset($data['status']) && $data['status'] !== 'fail') {
