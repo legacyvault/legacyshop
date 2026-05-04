@@ -47,7 +47,10 @@ class AWSCognitoAuthController extends Controller
             $ip = '36.84.152.11';
         }
 
-        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
+        $response = Http::get("https://pro.ip-api.com/json/{$ip}", [
+            'key' => config('services.ip_api.key'),
+        ]);
+        
         $location = $response->json();
 
         if ($location['status'] == 'fail') {
