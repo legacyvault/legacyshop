@@ -12,12 +12,15 @@ use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Http\Traits\GeoIpTrait;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Lang;
 
 class UserController extends Controller
 {
+    use GeoIpTrait;
+
     protected $user;
 
     private $apiKey;
@@ -106,12 +109,6 @@ class UserController extends Controller
     {
         $user = Auth::user();
         $profile = Profile::where('user_id', $user?->id)->first();
-        
-        //check location based on profile
-        // $isIndonesia = $this->isIndonesiaCountry($profile?->country);
-
-        //check location by ip address
-        $isIndonesia = $this->isIndonesiaCountry($request->country ?? $profile?->country);
 
         if (!$profile) {
             return redirect()->back()->with('alert', [
@@ -119,6 +116,21 @@ class UserController extends Controller
                 'message' => 'Profile not found.',
             ]);
         }
+
+        // SECURITY: Resolve country from the server-side IP lookup — never from the
+        // user-submitted form field. A user can freely forge $request->country to
+        // skip Biteship registration or bypass district/village validation.
+        // resolveCountryCodeFromIp() uses $request->ip() (trusted-proxy-aware) and
+        // falls back gracefully to null rather than blocking the save.
+        $resolvedCountryCode = $this->resolveCountryCodeFromIp($request);
+
+        // If the IP lookup cannot determine the country, fall back to the profile's
+        // known country as a secondary signal (also server-side, not user-controlled).
+        if (!$resolvedCountryCode && $profile->country) {
+            $resolvedCountryCode = strtoupper($profile->country);
+        }
+
+        $isIndonesia = $this->isIndonesiaCountry($resolvedCountryCode);
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
@@ -130,8 +142,8 @@ class UserController extends Controller
             'district' => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'village' => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'postal_code' => 'required|string',
-            'latitude' => 'required|string',
-            'longitude' => 'required|string',
+            'latitude' => 'nullable|string',
+            'longitude' => 'nullable|string',
             'is_active' => 'nullable|boolean'
         ]);
 
@@ -148,50 +160,34 @@ class UserController extends Controller
             $hasAddress = DeliveryAddress::where('profile_id', $profile->id)->exists();
             $isActive = (bool) ($request->is_active ?? false);
 
-            // Ambil lokasi IP user
-            $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-            if (env('APP_ENV') == 'local') {
-                $ip = '36.84.152.11';
-            }
-
-            $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
-            $location = $response->json();
-
-            if (!isset($location['status']) || $location['status'] === 'fail') {
-                return redirect()->back()->with('alert', [
-                    'type' => 'error',
-                    'message' => 'Failed to fetch location from IP.'
-                ]);
-            }
-
             $biteshipDestinationId = null;
 
             // Create lokasi di Biteship
-            if ($isIndonesia) {
-                $response = Http::withToken($this->apiKey)
-                    ->post('https://api.biteship.com/v1/locations', [
-                        'name'          => $request->name,
-                        'contact_name'  => $request->contact_name,
-                        'contact_phone' => $request->contact_phone,
-                        'address'       => $request->address,
-                        'note'          => null,
-                        'postal_code'   => $request->postal_code,
-                        'latitude'      => $request->latitude,
-                        'longitude'     => $request->longitude,
-                        'type'          => 'destination',
-                    ]);
+            // if ($isIndonesia) {
+            //     $response = Http::withToken($this->apiKey)
+            //         ->post('https://api.biteship.com/v1/locations', [
+            //             'name'          => $request->name,
+            //             'contact_name'  => $request->contact_name,
+            //             'contact_phone' => $request->contact_phone,
+            //             'address'       => $request->address,
+            //             'note'          => null,
+            //             'postal_code'   => $request->postal_code,
+            //             'latitude'      => $request->latitude ?? null,
+            //             'longitude'     => $request->longitude ?? null,
+            //             'type'          => 'destination',
+            //         ]);
 
-                if (!$response->successful()) {
-                    DB::rollBack();
-                    return redirect()->back()->with('alert', [
-                        'type' => 'error',
-                        'message' => 'Gagal create lokasi di Biteship.'
-                    ]);
-                }
+            //     if (!$response->successful()) {
+            //         DB::rollBack();
+            //         return redirect()->back()->with('alert', [
+            //             'type' => 'error',
+            //             'message' => 'Gagal create lokasi di Biteship.'
+            //         ]);
+            //     }
 
-                $biteshipData = $response->json();
-                $biteshipDestinationId = $biteshipData['id'] ?? null;
-            }
+            //     $biteshipData = $response->json();
+            //     $biteshipDestinationId = $biteshipData['id'] ?? null;
+            // }
 
             if ($hasAddress && $isActive) {
                 DeliveryAddress::where('profile_id', $profile->id)
@@ -204,15 +200,15 @@ class UserController extends Controller
                 'contact_phone'           => $request->contact_phone,
                 'biteship_destination_id' => $biteshipDestinationId,
                 'profile_id'              => $profile->id,
-                'country'                 => $location['countryCode'] ?? null,
+                'country'                 => $resolvedCountryCode ?: null,
                 'province'                => $request->province,
                 'address'                 => $request->address,
                 'city'                    => $request->city,
                 'district'                => $isIndonesia ? ($request->district ?: null) : null,
                 'village'                 => $isIndonesia ? ($request->village ?: null) : null,
                 'postal_code'             => $request->postal_code,
-                'latitude'                => $request->latitude,
-                'longitude'               => $request->longitude,
+                'latitude'                => $request->latitude ?? null,
+                'longitude'               => $request->longitude ?? null,
                 'is_active'               => $hasAddress ? $isActive : ($request->is_active ?? true),
             ]);
 
@@ -241,13 +237,17 @@ class UserController extends Controller
             $address = DeliveryAddress::findOrFail($addressId);
             $profileId = $address->profile_id;
 
-            $activeCount = DeliveryAddress::where('profile_id', $profileId)
-                ->where('is_active', true)
-                ->where('id', '!=', $address->id)
-                ->count();
+            // Only block deletion if the address being removed is the last active one.
+            // Inactive addresses can always be deleted freely.
+            if ($address->is_active) {
+                $otherActiveCount = DeliveryAddress::where('profile_id', $profileId)
+                    ->where('is_active', true)
+                    ->where('id', '!=', $address->id)
+                    ->count();
 
-            if ($activeCount === 0) {
-                throw new \Exception("Cannot delete this address — there must be at least one active delivery address.");
+                if ($otherActiveCount === 0) {
+                    throw new \Exception("Cannot delete this address — there must be at least one active delivery address.");
+                }
             }
 
             $address->delete();
@@ -281,8 +281,10 @@ class UserController extends Controller
 
     public function updateDeliveryAddress(Request $request)
     {
-        $profile = Profile::where('user_id', Auth::id())->first();
-        $isIndonesia = $this->isIndonesiaCountry($profile?->country);
+        // Use the address's own country (not the profile country) so validation
+        // and Biteship sync are correct when users have addresses in multiple countries.
+        $existingAddress = DeliveryAddress::find($request->id);
+        $isIndonesia = $this->isIndonesiaCountry($existingAddress?->getRawAttributeValue('country') ?? $request->country);
 
         $validator = Validator::make($request->all(), [
             'id'            => 'required|exists:delivery_address,id',
@@ -296,8 +298,8 @@ class UserController extends Controller
             'district'      => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'village'       => [$isIndonesia ? 'required' : 'nullable', 'string'],
             'postal_code'   => 'required|string',
-            'latitude'      => 'required|string',
-            'longitude'     => 'required|string',
+            'latitude'      => 'nullable|string',
+            'longitude'     => 'nullable|string',
             'is_active'     => 'nullable|boolean',
         ]);
 
@@ -313,27 +315,28 @@ class UserController extends Controller
 
             $deliveryAddress = DeliveryAddress::findOrFail($request->id);
 
-            if ($isIndonesia) {
+            // if ($isIndonesia) {
 
-                $response = Http::withToken($this->apiKey)
-                    ->post("https://api.biteship.com/v1/locations/{$deliveryAddress->biteship_destination_id}", [
-                        'name'          => $request->name,
-                        'contact_name'  => $request->contact_name,
-                        'contact_phone' => $request->contact_phone,
-                        'address'       => $request->address,
-                        'note'          => null,
-                        'postal_code'   => $request->postal_code,
-                        'latitude'      => $request->latitude,
-                        'longitude'     => $request->longitude
-                    ]);
+            //     $response = Http::withToken($this->apiKey)
+            //         ->post("https://api.biteship.com/v1/locations/{$deliveryAddress->biteship_destination_id}", [
+            //             'name'          => $request->name,
+            //             'contact_name'  => $request->contact_name,
+            //             'contact_phone' => $request->contact_phone,
+            //             'address'       => $request->address,
+            //             'note'          => null,
+            //             'postal_code'   => $request->postal_code,
+            //             'latitude'      => $request->latitude,
+            //             'longitude'     => $request->longitude
+            //         ]);
 
-                if (!$response->successful()) {
-                    return redirect()->back()->with('alert', [
-                        'type' => 'error',
-                        'message' => 'Gagal update lokasi di Biteship'
-                    ]);
-                }
-            }
+            //     if (!$response->successful()) {
+            //         DB::rollBack();
+            //         return redirect()->back()->with('alert', [
+            //             'type' => 'error',
+            //             'message' => 'Gagal update lokasi di Biteship'
+            //         ]);
+            //     }
+            // }
 
 
             if ($request->has('is_active') && $request->is_active) {
@@ -352,8 +355,8 @@ class UserController extends Controller
             $deliveryAddress->district      = $isIndonesia ? ($request->district ?: null) : null;
             $deliveryAddress->village       = $isIndonesia ? ($request->village ?: null) : null;
             $deliveryAddress->postal_code   = $request->postal_code;
-            $deliveryAddress->latitude      = $request->latitude;
-            $deliveryAddress->longitude     = $request->longitude;
+            $deliveryAddress->latitude      = $request->latitude ?? null;
+            $deliveryAddress->longitude     = $request->longitude ?? null;
             $deliveryAddress->save();
 
             DB::commit();
@@ -372,14 +375,21 @@ class UserController extends Controller
 
     public function getAllDeliveryAddress()
     {
-        $data = DeliveryAddress::orderBy('is_active', 'desc')->get();
+        $profile = Profile::where('user_id', Auth::id())->first();
+
+        $data = DeliveryAddress::where('profile_id', $profile?->id)
+            ->orderBy('is_active', 'desc')
+            ->get();
 
         return $data;
     }
 
     public function getActiveDeliveryAddress()
     {
-        $data = DeliveryAddress::where('is_active', true)
+        $profile = Profile::where('user_id', Auth::id())->first();
+
+        $data = DeliveryAddress::where('profile_id', $profile?->id)
+            ->where('is_active', true)
             ->orderBy('name', 'asc')
             ->first();
 
@@ -402,19 +412,12 @@ class UserController extends Controller
             return response()->json(['message' => 'Profile not found.'], 404);
         }
 
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        if (env('APP_ENV') == 'local') {
-            $ip = '36.84.152.11';
-        }
+        // SECURITY: Use trusted-proxy-aware IP resolution instead of raw X-Forwarded-For.
+        $countryCode = $this->resolveCountryCodeFromIp($request);
 
-        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode");
-        $location = $response->json();
-
-        if (!isset($location['status']) || $location['status'] === 'fail') {
+        if (!$countryCode) {
             return response()->json(['message' => 'Failed to fetch location from IP.'], 422);
         }
-
-        $countryCode = strtoupper($location['countryCode']);
 
         $data = DeliveryAddress::where('profile_id', $profile->id)
             ->where('country', $countryCode)

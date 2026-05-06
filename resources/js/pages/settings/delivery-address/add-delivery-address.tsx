@@ -24,7 +24,7 @@ interface DeliveryAddressPageProps extends SharedData {
 }
 
 export default function AddDeliveryAddress() {
-    const { auth, locale, translations, id, deliveryAddress } = usePage<DeliveryAddressPageProps>().props;
+    const { auth, locale, translations, id, deliveryAddress, countryCode } = usePage<DeliveryAddressPageProps>().props;
     const [isModalOpen, setIsModalOpen] = useState(true);
 
     const handleModalChange = useCallback(
@@ -49,6 +49,7 @@ export default function AddDeliveryAddress() {
                 onOpenChange={handleModalChange}
                 deliveryAddress={deliveryAddress}
                 id={id}
+                countryCode={countryCode ?? 'ID'}
                 closeOnSuccess={false}
             />
         </FrontLayout>

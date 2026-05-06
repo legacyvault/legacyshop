@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
@@ -46,7 +47,10 @@ class AWSCognitoAuthController extends Controller
             $ip = '36.84.152.11';
         }
 
-        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
+        $response = Http::get("https://pro.ip-api.com/json/{$ip}", [
+            'key' => config('services.ip_api.key'),
+        ]);
+        
         $location = $response->json();
 
         if ($location['status'] == 'fail') {
@@ -224,5 +228,200 @@ class AWSCognitoAuthController extends Controller
             Log::error('Failed to logout: ' . $e);
             return redirect()->back()->with('error', 'Logout failed');
         }
+    }
+
+    public function sendResetCode(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'meta' => [
+                    'status_code' => Response::HTTP_UNPROCESSABLE_ENTITY,
+                    'message'     => $validator->errors()->first(),
+                ],
+                'data' => null,
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        // Soft-check: make sure the email actually exists in our DB
+        // before hitting Cognito (prevents user-enumeration via Cognito errors).
+        $userExists = User::where('email', $request->email)->exists();
+
+        if (!$userExists) {
+            // Return a generic success so we don't leak whether an email is registered.
+            Log::info('Password reset requested for unknown email: ' . $request->email);
+
+            return response()->json([
+                'meta' => [
+                    'status_code' => Response::HTTP_OK,
+                    'message'     => 'If that email is registered, a verification code has been sent.',
+                ],
+                'data' => null,
+            ]);
+        }
+
+        $result = $this->forgotPassword($request->email);
+
+        if ($result['status'] === 'SUCCESS') {
+            Log::info('Security Audit: Password reset code sent to ' . $request->email);
+
+            return response()->json([
+                'meta' => [
+                    'status_code' => Response::HTTP_OK,
+                    'message'     => 'Verification code sent to your email.',
+                ],
+                'data' => null,
+            ]);
+        }
+
+        // Map known Cognito error codes to friendlier messages.
+        $friendlyMessage = match ($result['code'] ?? '') {
+            $this->USER_NOT_FOUND   => 'If that email is registered, a verification code has been sent.',
+            $this->EXPIRED_CODE     => 'The code has expired. Please request a new one.',
+            default                 => 'Failed to send verification code. Please try again.',
+        };
+
+        return response()->json([
+            'meta' => [
+                'status_code' => Response::HTTP_BAD_REQUEST,
+                'message'     => $friendlyMessage,
+            ],
+            'data' => null,
+        ], Response::HTTP_BAD_REQUEST);
+    }
+
+    public function verifyResetCode(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'code'  => 'required|string|size:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'meta' => [
+                    'status_code' => Response::HTTP_UNPROCESSABLE_ENTITY,
+                    'message'     => $validator->errors()->first(),
+                ],
+                'data' => null,
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        // Store verified email + code in the session so Step 3 can use them
+        // without the FE having to re-send them (prevents tampering).
+        session([
+            'pwd_reset_email' => $request->email,
+            'pwd_reset_code'  => $request->code,
+            'pwd_reset_verified_at' => now()->timestamp,
+        ]);
+
+        Log::info('Security Audit: Password reset code verified (session) for ' . $request->email);
+
+        return response()->json([
+            'meta' => [
+                'status_code' => Response::HTTP_OK,
+                'message'     => 'Code accepted. Please enter your new password.',
+            ],
+            'data' => null,
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/^(?=.*[0-9])(?=.*[\W_]).+$/',   // matches your registration rule
+            ],
+            'confirm_new_password' => [
+                'required',
+                'string',
+                'same:new_password',
+            ],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'meta' => [
+                    'status_code' => Response::HTTP_UNPROCESSABLE_ENTITY,
+                    'message'     => $validator->errors()->first(),
+                ],
+                'data' => null,
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        // Retrieve the session values placed by Step 2.
+        $email = session('pwd_reset_email');
+        $code  = session('pwd_reset_code');
+        $verifiedAt = session('pwd_reset_verified_at');
+
+        if (!$email || !$code) {
+            return response()->json([
+                'meta' => [
+                    'status_code' => Response::HTTP_BAD_REQUEST,
+                    'message'     => 'Reset session expired. Please restart the forgot-password flow.',
+                ],
+                'data' => null,
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Guard: session must not be older than 10 minutes.
+        if (now()->timestamp - $verifiedAt > 600) {
+            session()->forget(['pwd_reset_email', 'pwd_reset_code', 'pwd_reset_verified_at']);
+
+            return response()->json([
+                'meta' => [
+                    'status_code' => Response::HTTP_BAD_REQUEST,
+                    'message'     => 'Reset session expired. Please restart the forgot-password flow.',
+                ],
+                'data' => null,
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Call Cognito — this verifies the code AND sets the password atomically.
+        $result = $this->confirmForgotPassword($email, $code, $request->new_password);
+
+        if ($result['status'] === 'SUCCESS') {
+
+            // Keep local DB password hash in sync with Cognito.
+            User::where('email', $email)->update([
+                'password' => Hash::make($request->new_password),
+            ]);
+
+            // Clean up session.
+            session()->forget(['pwd_reset_email', 'pwd_reset_code', 'pwd_reset_verified_at']);
+
+            Log::info('Security Audit: Password reset successfully for ' . $email);
+
+            return response()->json([
+                'meta' => [
+                    'status_code' => Response::HTTP_OK,
+                    'message'     => 'Password reset successfully. Please log in with your new password.',
+                ],
+                'data' => null,
+            ]);
+        }
+
+        // Map Cognito errors.
+        $friendlyMessage = match ($result['code'] ?? '') {
+            $this->CODE_MISMATCH    => 'Invalid verification code. Please check and try again.',
+            $this->EXPIRED_CODE     => 'The verification code has expired. Please request a new one.',
+            $this->INVALID_PASSWORD => 'Password does not meet the required policy.',
+            $this->USER_NOT_FOUND   => 'User not found.',
+            default                 => 'Failed to reset password. Please try again.',
+        };
+
+        return response()->json([
+            'meta' => [
+                'status_code' => Response::HTTP_BAD_REQUEST,
+                'message'     => $friendlyMessage,
+            ],
+            'data' => null,
+        ], Response::HTTP_BAD_REQUEST);
     }
 }

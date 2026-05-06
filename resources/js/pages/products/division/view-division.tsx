@@ -65,6 +65,7 @@ export default function ViewDivision() {
 
     const [openAddStock, isOpenAddStock] = useState(false);
     const [openEditStock, isOpenEditStock] = useState(false);
+    const [openDeleteStock, isOpenDeleteStock] = useState(false);
     const [selectedStock, setSelectedStock] = useState<IStocks>();
 
     const { data, setData, post, errors } = useForm<Required<IStockFormData>>({
@@ -95,6 +96,14 @@ export default function ViewDivision() {
         });
     };
 
+    const deleteSubmitHandler = (e: any) => {
+        e.preventDefault();
+        post(route('division.delete-stock'), {
+            onSuccess: () => isOpenDeleteStock(false),
+            onError: () => isOpenDeleteStock(true),
+        });
+    };
+
     return (
         <>
             <AddStockDialog
@@ -113,6 +122,18 @@ export default function ViewDivision() {
                 isOpen={isOpenEditStock}
                 type={'edit'}
                 onSubmit={editSubmitHandler}
+                errors={errors}
+                data={data}
+                setData={setData}
+                divisionId={selectedDivision.id}
+                stock={selectedStock}
+            />
+
+            <AddStockDialog
+                open={openDeleteStock}
+                isOpen={isOpenDeleteStock}
+                type={'delete'}
+                onSubmit={deleteSubmitHandler}
                 errors={errors}
                 data={data}
                 setData={setData}
@@ -245,7 +266,13 @@ export default function ViewDivision() {
                                                         <td className="px-6 py-4 text-sm whitespace-nowrap text-card-foreground">
                                                             <div className="flex gap-4">
                                                                 <PencilLine onClick={() => editStockHandler(item, 'edit')}></PencilLine>
-                                                                <Trash2Icon className="text-destructive"></Trash2Icon>
+                                                                <Trash2Icon
+                                                            className="cursor-pointer text-destructive"
+                                                            onClick={() => {
+                                                                setSelectedStock(item);
+                                                                isOpenDeleteStock(true);
+                                                            }}
+                                                        />
                                                             </div>
                                                         </td>
                                                     ) : (
@@ -283,6 +310,9 @@ function AddStockDialog({ open, isOpen, type, onSubmit, data, setData, errors, d
                 setData('division_id', divisionId);
                 setData('quantity', '');
                 setData('remarks', '');
+            } else if (type === 'delete') {
+                setData('id', stock!.id);
+                setData('division_id', divisionId);
             }
         }
     }, [open, type]);
@@ -327,12 +357,19 @@ function AddStockDialog({ open, isOpen, type, onSubmit, data, setData, errors, d
                             </DialogClose>
                         </form>
                     ) : (
-                        <>
-                            <span>Are you sure want to delete this category?</span>
-                            <DialogClose asChild>
-                                <Button className="capitalize">{type}</Button>
-                            </DialogClose>
-                        </>
+                        <form method="POST" onSubmit={onSubmit}>
+                            <span>Are you sure want to delete this stock entry?</span>
+                            <div className="mt-4 flex gap-2">
+                                <Button type="submit" variant="destructive" className="capitalize">
+                                    {type}
+                                </Button>
+                                <DialogClose asChild>
+                                    <Button type="button" variant="outline">
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                            </div>
+                        </form>
                     )}
                 </DialogContent>
             </DialogPortal>

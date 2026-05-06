@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { CheckCircle, Circle, LoaderCircle } from 'lucide-react';
+import { CheckCircle, Circle, Eye, EyeOff, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 
 import InputError from '@/components/input-error';
@@ -39,6 +39,8 @@ export default function Register() {
         });
     };
 
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [errorAlert, setErrorAlert] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -122,17 +124,28 @@ export default function Register() {
 
                         <div className="grid gap-2">
                             <Label htmlFor="password">Password</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                required
-                                tabIndex={3}
-                                autoComplete="new-password"
-                                value={data.password}
-                                onChange={(e) => setData('password', e.target.value)}
-                                disabled={processing}
-                                placeholder="Password"
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    required
+                                    tabIndex={3}
+                                    autoComplete="new-password"
+                                    value={data.password}
+                                    onChange={(e) => setData('password', e.target.value)}
+                                    disabled={processing}
+                                    placeholder="Password"
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
                             <InputError message={errors.password} />
                             {showPasswordChecklist && (
                                 <div className="rounded-md border border-emerald-100 bg-emerald-50/50 p-4">
@@ -167,17 +180,28 @@ export default function Register() {
 
                         <div className="grid gap-2">
                             <Label htmlFor="confirm_password">Confirm password</Label>
-                            <Input
-                                id="confirm_password"
-                                type="password"
-                                required
-                                tabIndex={4}
-                                autoComplete="new-password"
-                                value={data.confirm_password}
-                                onChange={(e) => setData('confirm_password', e.target.value)}
-                                disabled={processing}
-                                placeholder="Confirm password"
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="confirm_password"
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    required
+                                    tabIndex={4}
+                                    autoComplete="new-password"
+                                    value={data.confirm_password}
+                                    onChange={(e) => setData('confirm_password', e.target.value)}
+                                    disabled={processing}
+                                    placeholder="Confirm password"
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword((v) => !v)}
+                                    className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
+                                    tabIndex={-1}
+                                >
+                                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
                             <InputError message={errors.confirm_password} />
                         </div>
 

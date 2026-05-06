@@ -42,5 +42,7 @@ return [
     'paypal' => [
         'client_id' => env('PAYPAL_CLIENT_ID', ''),
     ],
-
+    'ip_api' => [
+        'key' => env('IP_API_KEY'),
+    ],
 ];

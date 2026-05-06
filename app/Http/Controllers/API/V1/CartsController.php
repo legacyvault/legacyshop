@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\GeoIpTrait;
 use App\Models\Carts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Validator;
 
 class CartsController extends Controller
 {
+    use GeoIpTrait;
+
     public function addToCart(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -108,10 +111,7 @@ class CartsController extends Controller
             ->where('user_id', $id)
             ->get();
 
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        if (env('APP_ENV') == 'local') $ip = '36.84.152.11';
-        $location = Http::get("http://ip-api.com/json/{$ip}?fields=status,countryCode")->json();
-        $isIndonesian = ($location['countryCode'] ?? 'ID') === 'ID';
+        $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
 
         foreach ($carts as $cart) {
             if ($cart->product) {

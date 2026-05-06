@@ -9,6 +9,7 @@ use App\Models\OrderShipments;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
+use App\Http\Traits\GeoIpTrait;
 use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderShippedMail;
 use App\Models\DeliveryAddress;
@@ -36,7 +37,7 @@ use Milon\Barcode\DNS1D;
 
 class OrderController extends Controller
 {
-    use AwsS3;
+    use AwsS3, GeoIpTrait;
 
     protected $serverKey;
     protected $clientKey;
@@ -98,8 +99,8 @@ class OrderController extends Controller
             'email' => 'required_if:customer_type,guest|email',
             'contact_name' => 'required_if:customer_type,guest|string',
             'contact_phone' => 'required_if:customer_type,guest|string',
-            'latitude' => 'required_if:customer_type,guest|numeric',
-            'longitude' => 'required_if:customer_type,guest|numeric',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'country' => 'required_if:customer_type,guest',
             'province' => 'required_if:customer_type,guest',
             'address' => 'required_if:customer_type,guest',
@@ -115,16 +116,7 @@ class OrderController extends Controller
         $isManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
         $items = $request->items;
 
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        $ip = trim(explode(',', $ip)[0]);
-        if (env('APP_ENV') == 'local') {
-            $ip = '36.84.152.11';
-        }
-
-        $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,country,countryCode,regionName,city,zip");
-        $location = $response->json();
-
-        $isIndonesian = ($location['countryCode'] ?? null) === 'ID';
+        $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
 
         if ($isIndonesian) {
             return response()->json([
@@ -199,8 +191,8 @@ class OrderController extends Controller
                     'village' => $request->village ?? null,
                     'address' => $request->receiver_address ?? $request->address,
                     'postal_code' => $request->receiver_postal_code ?? $request->postal_code,
-                    'latitude' => $request->latitude !== null ? (float) $request->latitude : 0,
-                    'longitude' => $request->longitude !== null ? (float) $request->longitude : 0,
+                    'latitude' => $request->latitude ?? null,
+                    'longitude' => $request->longitude ?? null,
                 ]);
                 $guestId = $guest->id;
             } else {
@@ -422,8 +414,8 @@ class OrderController extends Controller
             'email' => 'required_if:customer_type,guest|email',
             'contact_name' => 'required_if:customer_type,guest|string',
             'contact_phone' => 'required_if:customer_type,guest|string',
-            'latitude' => 'required_if:customer_type,guest|numeric',
-            'longitude' => 'required_if:customer_type,guest|numeric',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'country' => 'required_if:customer_type,guest',
             'province' => 'required_if:customer_type,guest',
             'address' => 'required_if:customer_type,guest',
@@ -544,8 +536,8 @@ class OrderController extends Controller
                     'village' => $request->village ?? null,
                     'address' => $request->receiver_address ?? $request->address,
                     'postal_code' => $request->receiver_postal_code ?? $request->postal_code,
-                    'latitude' => $request->latitude !== null ? (float) $request->latitude : 0,
-                    'longitude' => $request->longitude !== null ? (float) $request->longitude : 0,
+                    'latitude' => $request->latitude ?? null,
+                    'longitude' => $request->longitude ?? null,
                 ]);
                 $guestId = $guest->id;
             } else {
@@ -858,23 +850,15 @@ class OrderController extends Controller
                 $destinationEmail = $request->email ?? null;
                 $destinationAddress = $request->address;
                 $destinationPostalCode = $request->postal_code;
-                $destinationLatitude = (float) $request->latitude;
-                $destinationLongitude = (float) $request->longitude;
             } else {
                 $user = Auth::user();
                 $profile = Profile::where('user_id', $user->id)->first();
-                $delivery_address = DeliveryAddress::where([
-                    'profile_id' => $profile->id,
-                    'is_active' => 1,
-                ])->first();
 
                 $destinationName = $request->receiver_name;
                 $destinationPhone = $request->receiver_phone;
                 $destinationEmail = $request->user()->email ?? null;
                 $destinationAddress = $request->receiver_address;
                 $destinationPostalCode = $request->receiver_postal_code;
-                $destinationLatitude = (float) optional($delivery_address)->latitude;
-                $destinationLongitude = (float) optional($delivery_address)->longitude;
             }
 
             $pickup_schedule = (int) $warehouse->pickup_schedule;
@@ -888,20 +872,12 @@ class OrderController extends Controller
                 'origin_address' => $warehouse->address,
                 'origin_postal_code' => $warehouse->postal_code,
                 'origin_collection_method' => 'pickup',
-                'origin_coordinate' => [
-                    'latitude' => $warehouse->latitude,
-                    'longitude' => $warehouse->longitude,
-                ],
 
                 'destination_contact_name' => $destinationName,
                 'destination_contact_phone' => $destinationPhone,
                 'destination_contact_email' => $destinationEmail,
                 'destination_address' => $destinationAddress,
                 'destination_postal_code' => $destinationPostalCode,
-                'destination_coordinate' => [
-                    'latitude' => $destinationLatitude,
-                    'longitude' => $destinationLongitude,
-                ],
 
                 'delivery_type' => 'now',
                 // 'delivery_date' => $deliveryDate,

@@ -32,7 +32,10 @@ Route::group(['prefix' => 'v1/cognito'], function () {
     Route::post('login', [AWSCognitoAuthController::class, 'login'])->name('cognito.login');
 });
 Route::group(['prefix' => 'v1/cognito'], function () {
-    Route::post('register', [AwsCognitoAuthController::class, 'registerUser'])->name('cognito.register');
+    Route::post('register', [AWSCognitoAuthController::class, 'registerUser'])->name('cognito.register');
+    Route::post('forgot-password', [AWSCognitoAuthController::class, 'sendResetCode'])->name('cognito.send-code');
+    Route::post('verify', [AWSCognitoAuthController::class, 'verifyResetCode'])->name('cognito.verify');
+    Route::post('reset', [AWSCognitoAuthController::class, 'resetPassword'])->name('cognito.reset');
 });
 Route::group(['prefix' => 'v1'], function () {
     Route::get('active-running-text', [MiscController::class, 'getActiveRunningText'])->name('active.running-text');
@@ -109,7 +112,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('profile', [UserController::class, 'getProfile'])->name('profile.edit-view');
     Route::post('create-delivery-address', [UserController::class, 'createDeliveryAddress'])->name('create.delivery-address');
     Route::post('update-delivery-address', [UserController::class, 'updateDeliveryAddress'])->name('update.delivery-address');
-    Route::post('delete-delivery-address', [UserController::class, ' deleteDeliveryAddress'])->name('delete.delivery-address');
+    Route::post('delete-delivery-address/{addressId}', [UserController::class, 'deleteDeliveryAddress'])->name('delete.delivery-address');
 
     Route::get('delivery-address', [UserController::class, 'getAllDeliveryAddress'])->name('all.delivery-address');
     Route::get('active-delivery-address', [UserController::class, 'getActiveDeliveryAddress'])->name('active.delivery-address');
@@ -249,6 +252,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::post('delete-division/{id}', [DivisionController::class, 'deleteDivision'])->name('division.delete');
     Route::post('add-division-stock', [DivisionController::class, 'addStock'])->name('division.add-stock');
     Route::post('update-division-stock', [DivisionController::class, 'updateLatestStock'])->name('division.update-stock');
+    Route::post('delete-division-stock', [DivisionController::class, 'deleteLatestStock'])->name('division.delete-stock');
 
     //Variant API
     Route::post('create-variant', [VariantController::class, 'createVariant'])->name('variant.create');
@@ -285,8 +289,12 @@ Route::get('/articles', [ViewController::class, 'frontArticlesPage'])->name('fro
 Route::get('/articles/{slug}', [ViewController::class, 'frontArticleView'])->name('front.articles-view');
 
 Route::get('/login', function () {
-    return Inertia::render('auth/login');
+    return Inertia::render('auth/login', ['canResetPassword' => true]);
 })->name('login');
+
+Route::get('/forgot-password', function () {
+    return Inertia::render('auth/forgot-password');
+})->name('password.request');
 
 Route::get('/register', function () {
     return Inertia::render('auth/register');
