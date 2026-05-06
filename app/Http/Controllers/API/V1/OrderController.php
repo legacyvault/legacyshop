@@ -850,23 +850,15 @@ class OrderController extends Controller
                 $destinationEmail = $request->email ?? null;
                 $destinationAddress = $request->address;
                 $destinationPostalCode = $request->postal_code;
-                $destinationLatitude = (float) $request->latitude;
-                $destinationLongitude = (float) $request->longitude;
             } else {
                 $user = Auth::user();
                 $profile = Profile::where('user_id', $user->id)->first();
-                $delivery_address = DeliveryAddress::where([
-                    'profile_id' => $profile->id,
-                    'is_active' => 1,
-                ])->first();
 
                 $destinationName = $request->receiver_name;
                 $destinationPhone = $request->receiver_phone;
                 $destinationEmail = $request->user()->email ?? null;
                 $destinationAddress = $request->receiver_address;
                 $destinationPostalCode = $request->receiver_postal_code;
-                $destinationLatitude = (float) optional($delivery_address)->latitude;
-                $destinationLongitude = (float) optional($delivery_address)->longitude;
             }
 
             $pickup_schedule = (int) $warehouse->pickup_schedule;
@@ -880,20 +872,12 @@ class OrderController extends Controller
                 'origin_address' => $warehouse->address,
                 'origin_postal_code' => $warehouse->postal_code,
                 'origin_collection_method' => 'pickup',
-                'origin_coordinate' => [
-                    'latitude' => $warehouse->latitude,
-                    'longitude' => $warehouse->longitude,
-                ],
 
                 'destination_contact_name' => $destinationName,
                 'destination_contact_phone' => $destinationPhone,
                 'destination_contact_email' => $destinationEmail,
                 'destination_address' => $destinationAddress,
                 'destination_postal_code' => $destinationPostalCode,
-                'destination_coordinate' => [
-                    'latitude' => $destinationLatitude,
-                    'longitude' => $destinationLongitude,
-                ],
 
                 'delivery_type' => 'now',
                 // 'delivery_date' => $deliveryDate,

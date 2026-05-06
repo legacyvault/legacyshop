@@ -1,4 +1,3 @@
-import MapLocationPicker from '@/components/map-location-picker';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -24,8 +23,6 @@ type DeliveryAddress = {
     village_code?: string | null;
     address: string;
     postal_code: string;
-    latitude: string | number;
-    longitude: string | number;
     is_active: boolean;
     country?: string | null;
 };
@@ -48,8 +45,6 @@ interface FormData {
     village: string;
     address: string;
     postal_code: string;
-    latitude: string;
-    longitude: string;
     is_active: boolean;
 }
 
@@ -156,8 +151,6 @@ export default function AddDeliveryAddressModal({
             village: villageValue ?? '',
             address: deliveryAddress?.address ?? '',
             postal_code: deliveryAddress?.postal_code ?? '',
-            latitude: deliveryAddress?.latitude?.toString() ?? '',
-            longitude: deliveryAddress?.longitude?.toString() ?? '',
             is_active: deliveryAddress?.is_active ?? true,
         };
     }, [deliveryAddress, id, initialShouldUseIndonesianFields]);
@@ -1042,29 +1035,6 @@ export default function AddDeliveryAddressModal({
         void fetchProvinces(countryCode);
     }, [open, selectedCountry, fetchProvinces]);
 
-    const selectedLocation = useMemo(() => {
-        const latString = data.latitude.trim();
-        const lngString = data.longitude.trim();
-
-        if (!latString || !lngString) {
-            return undefined;
-        }
-
-        const lat = Number(latString);
-        const lng = Number(lngString);
-
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-            return undefined;
-        }
-
-        return { lat, lng };
-    }, [data.latitude, data.longitude]);
-
-    const handleLocationPick = (coords: { lat: number; lng: number }) => {
-        setData('latitude', coords.lat.toFixed(6));
-        setData('longitude', coords.lng.toFixed(6));
-    };
-
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
@@ -1092,7 +1062,7 @@ export default function AddDeliveryAddressModal({
             <DialogContent className="sm:max-w-4xl">
                 <DialogHeader className="px-6 pt-6">
                     <DialogTitle>{isEdit ? 'Edit Delivery Address' : 'Add Delivery Address'}</DialogTitle>
-                    <DialogDescription>Provide recipient details and pin the location on the map.</DialogDescription>
+                    <DialogDescription>Provide recipient details for this delivery address.</DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="flex max-h-[85vh] flex-col overflow-hidden">
@@ -1674,49 +1644,6 @@ export default function AddDeliveryAddressModal({
                             </div>
                         </section>
 
-                        <section className="rounded-xl border border-border/60 bg-background p-6 shadow-sm">
-                            <div className="mb-6">
-                                <h2 className="text-lg font-semibold text-foreground">Pinpoint Location</h2>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    Drag the marker or search to update the coordinates. Address text will not change automatically.
-                                </p>
-                                {(errors.latitude || errors.longitude) && <p className="text-sm text-destructive">Location required.</p>}
-                            </div>
-
-                            <div className="space-y-4">
-                                <MapLocationPicker
-                                    value={selectedLocation}
-                                    onChange={(next) => handleLocationPick({ lat: next.lat, lng: next.lng })}
-                                    className="h-[320px]"
-                                    country={data.country || undefined}
-                                />
-
-                                {/* <div className="grid hidden gap-4 md:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="latitude">Latitude *</Label>
-                                        <Input
-                                            id="latitude"
-                                            value={data.latitude}
-                                            onChange={(event) => setData('latitude', event.target.value)}
-                                            placeholder="-6.200000"
-                                            aria-invalid={errors.latitude ? 'true' : undefined}
-                                        />
-                                        {errors.latitude && <p className="text-sm text-destructive">{errors.latitude}</p>}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="longitude">Longitude *</Label>
-                                        <Input
-                                            id="longitude"
-                                            value={data.longitude}
-                                            onChange={(event) => setData('longitude', event.target.value)}
-                                            placeholder="106.816666"
-                                            aria-invalid={errors.longitude ? 'true' : undefined}
-                                        />
-                                        {errors.longitude && <p className="text-sm text-destructive">{errors.longitude}</p>}
-                                    </div>
-                                </div> */}
-                            </div>
-                        </section>
                     </div>
 
                     <div className="flex items-center justify-end gap-3 border-t border-border/60 bg-muted/20 px-6 py-4">

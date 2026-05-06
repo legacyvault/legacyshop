@@ -1,6 +1,5 @@
 import AddDeliveryAddressModal from '@/components/add-delivery-address-modal';
 import CourierListModal, { HIDDEN_COURIER_SERVICE_CODES } from '@/components/courier-list-modal';
-import MapLocationPicker from '@/components/map-location-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -82,8 +81,6 @@ type GuestAddressForm = {
     village: string;
     villageCode: string;
     postalCode: string;
-    latitude: string;
-    longitude: string;
     country: string;
     notes: string;
 };
@@ -104,8 +101,6 @@ type GuestDeliveryAddress = {
     district_code?: string;
     village?: string;
     village_code?: string;
-    latitude: number;
-    longitude: number;
     country?: string;
     is_active: boolean;
 };
@@ -287,8 +282,6 @@ export default function Checkout() {
         village: '',
         villageCode: '',
         postalCode: '',
-        latitude: '',
-        longitude: '',
         country: countryCode ?? 'ID',
         notes: '',
     }));
@@ -351,10 +344,7 @@ export default function Checkout() {
         const village = guestAddressForm.village.trim();
         const postalCode = guestAddressForm.postalCode.trim();
         const countryValue = guestAddressForm.country.trim();
-        const latitude = Number(guestAddressForm.latitude);
-        const longitude = Number(guestAddressForm.longitude);
 
-        const hasCoords = Number.isFinite(latitude) && Number.isFinite(longitude);
         const requiresDistrict = isIndonesiaAddress;
         const requiresVillage = isIndonesiaAddress && villageOptions.length > 0;
         const hasRequiredFields = Boolean(
@@ -369,7 +359,7 @@ export default function Checkout() {
                 (!requiresVillage || village),
         );
 
-        if (!hasCoords || !hasRequiredFields) {
+        if (!hasRequiredFields) {
             return null;
         }
 
@@ -389,8 +379,6 @@ export default function Checkout() {
             district_code: requiresDistrict ? guestAddressForm.districtCode || undefined : undefined,
             village: requiresVillage ? village || undefined : undefined,
             village_code: requiresVillage ? guestAddressForm.villageCode || undefined : undefined,
-            latitude,
-            longitude,
             country: countryValue || undefined,
             is_active: true,
         };
@@ -430,8 +418,6 @@ export default function Checkout() {
                 districtMissing: false,
                 villageMissing: false,
                 postalCodeMissing: false,
-                latitudeMissing: false,
-                longitudeMissing: false,
             };
         }
 
@@ -444,8 +430,6 @@ export default function Checkout() {
         const district = guestAddressForm.district.trim();
         const village = guestAddressForm.village.trim();
         const postalCode = guestAddressForm.postalCode.trim();
-        const latitude = Number(guestAddressForm.latitude);
-        const longitude = Number(guestAddressForm.longitude);
 
         return {
             fullNameMissing: !fullName,
@@ -457,29 +441,8 @@ export default function Checkout() {
             districtMissing: isIndonesiaAddress && !district,
             villageMissing: isIndonesiaAddress && villageOptions.length > 0 && !village,
             postalCodeMissing: !postalCode,
-            latitudeMissing: !Number.isFinite(latitude),
-            longitudeMissing: !Number.isFinite(longitude),
         };
     }, [guestAddressForm, guestContact, isIndonesiaAddress, usingGuestAddress, villageOptions.length]);
-
-    const guestLocationValue = useMemo(() => {
-        if (!usingGuestAddress) {
-            return undefined;
-        }
-
-        const lat = Number(guestAddressForm.latitude);
-        const lng = Number(guestAddressForm.longitude);
-
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-            return undefined;
-        }
-
-        return {
-            lat,
-            lng,
-            address: guestAddressForm.address || undefined,
-        };
-    }, [guestAddressForm.address, guestAddressForm.latitude, guestAddressForm.longitude, usingGuestAddress]);
 
     const fetchProvinces = useCallback(async (countryCode: string) => {
         if (!countryCode) {
@@ -942,10 +905,9 @@ export default function Checkout() {
         () =>
             selectedCheckoutAddress
                 ? {
-                      destination_latitude: selectedCheckoutAddress.latitude,
-                      destination_longitude: selectedCheckoutAddress.longitude,
+                      destination_postal_code: selectedCheckoutAddress.postal_code,
                   }
-                : { destination_latitude: null, destination_longitude: null },
+                : { destination_postal_code: null },
         [selectedCheckoutAddress],
     );
 
@@ -1098,10 +1060,8 @@ export default function Checkout() {
             }
 
             const payload = {
-                origin_latitude: Number(warehouse.latitude),
-                origin_longitude: Number(warehouse.longitude),
-                destination_latitude: Number(selectedCheckoutAddress.latitude),
-                destination_longitude: Number(selectedCheckoutAddress.longitude),
+                origin_postal_code: warehouse.postal_code,
+                destination_postal_code: selectedCheckoutAddress.postal_code,
                 couriers: 'jne,sicepat,jnt,anteraja',
                 items: rateItemsPayload,
             };
@@ -1589,8 +1549,6 @@ export default function Checkout() {
                       email: guestContact.email.trim(),
                       contact_name: guestContact.fullName.trim(),
                       contact_phone: guestContact.phone.trim(),
-                      latitude: guestAddressForm.latitude,
-                      longitude: guestAddressForm.longitude,
                       country: guestAddressForm.country,
                       province: guestAddressForm.province,
                       address: guestAddressForm.address.trim() || undefined,
@@ -1744,8 +1702,6 @@ export default function Checkout() {
                       email: guestContact.email.trim(),
                       contact_name: guestContact.fullName.trim(),
                       contact_phone: guestContact.phone.trim(),
-                      latitude: guestAddressForm.latitude,
-                      longitude: guestAddressForm.longitude,
                       country: guestAddressForm.country,
                       province: guestAddressForm.province,
                       address: guestAddressForm.address.trim() || undefined,
@@ -1939,8 +1895,7 @@ export default function Checkout() {
                     <div className="space-y-6">
                         <Card
                             className="gap-4 border border-border/60 bg-background shadow-sm"
-                            data-destination-latitude={addressInformation.destination_latitude ?? ''}
-                            data-destination-longitude={addressInformation.destination_longitude ?? ''}
+                            data-destination-postal-code={addressInformation.destination_postal_code ?? ''}
                         >
                             <CardHeader className="flex flex-col gap-4 py-0 pt-6">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -2334,65 +2289,6 @@ export default function Checkout() {
                                                     placeholder="Gate code, preferred delivery time, etc."
                                                     className="min-h-[72px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                                 />
-                                            </div>
-                                        </section>
-
-                                        <section className="space-y-4">
-                                            <h3 className="text-base font-semibold text-foreground">Pin Delivery Location</h3>
-                                            <p className="text-xs text-muted-foreground">
-                                                Drag the marker or search for an address to set accurate coordinates for your delivery.
-                                            </p>
-                                            <div className="space-y-4">
-                                                <div className="h-[320px] w-full overflow-hidden rounded-lg border border-border/60">
-                                                    <MapLocationPicker
-                                                        value={guestLocationValue}
-                                                        onChange={(value) =>
-                                                            setGuestAddressForm((prev) => {
-                                                                const shouldReplaceAddress = prev.address.trim().length === 0 && value.address;
-                                                                return {
-                                                                    ...prev,
-                                                                    latitude: value.lat.toFixed(6),
-                                                                    longitude: value.lng.toFixed(6),
-                                                                    address: shouldReplaceAddress ? (value.address ?? prev.address) : prev.address,
-                                                                };
-                                                            })
-                                                        }
-                                                        country={guestAddressForm.country || undefined}
-                                                    />
-                                                </div>
-                                                <div className="hidden gap-4 md:grid-cols-2">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="guest-latitude">Latitude *</Label>
-                                                        <Input
-                                                            id="guest-latitude"
-                                                            value={guestAddressForm.latitude}
-                                                            onChange={(event) =>
-                                                                setGuestAddressForm((prev) => ({ ...prev, latitude: event.target.value }))
-                                                            }
-                                                            placeholder="-6.200000"
-                                                            aria-invalid={showGuestFormError && guestFieldStatus.latitudeMissing ? 'true' : undefined}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="guest-longitude">Longitude *</Label>
-                                                        <Input
-                                                            id="guest-longitude"
-                                                            value={guestAddressForm.longitude}
-                                                            onChange={(event) =>
-                                                                setGuestAddressForm((prev) => ({ ...prev, longitude: event.target.value }))
-                                                            }
-                                                            placeholder="106.816666"
-                                                            aria-invalid={
-                                                                showGuestFormError && guestFieldStatus.longitudeMissing ? 'true' : undefined
-                                                            }
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {showGuestFormError && (guestFieldStatus.latitudeMissing || guestFieldStatus.longitudeMissing) ? (
-                                                    <p className="text-xs text-destructive">
-                                                        Set the delivery pin on the map so we can calculate shipping rates.
-                                                    </p>
-                                                ) : null}
                                             </div>
                                         </section>
 

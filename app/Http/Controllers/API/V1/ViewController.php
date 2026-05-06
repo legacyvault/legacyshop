@@ -46,7 +46,7 @@ class ViewController extends Controller
         $this->warehouseController = new WarehouseController();
         $this->locationController = new LocationController();
         $this->biteshipController = new BiteshipController();
-        $this->orderhistoryController= new OrderHistoryController();
+        $this->orderhistoryController = new OrderHistoryController();
         $this->invoiceController = new AppInvoiceController();
         $this->internationalShipmentController = new InternationalShipment();
     }
@@ -61,7 +61,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function subUnitPage(Request $request){
+    public function subUnitPage(Request $request)
+    {
         $units = $this->productController->getAllUnit();
         $sub_unitsPaginated = $this->productController->getSubUnitPaginated($request);
 
@@ -356,7 +357,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function runningTextPage(){
+    public function runningTextPage()
+    {
         $runningText = $this->miscController->getAllRunningText();
 
         return Inertia::render('misc/running-text', [
@@ -364,7 +366,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function bannerPage(){
+    public function bannerPage()
+    {
         $banner = $this->miscController->getAllBanner();
 
         return Inertia::render('misc/banner', [
@@ -373,7 +376,7 @@ class ViewController extends Controller
     }
 
     public function frontArticlesPage(Request $request)
-    {  
+    {
         $articles = $this->articleController->getAllArticle();
         $events = $this->miscController->getAllActiveEvents($request);
         return Inertia::render('front/articles/index', [
@@ -405,14 +408,16 @@ class ViewController extends Controller
         ]);
     }
 
-    public function adminArticlePage(){
+    public function adminArticlePage()
+    {
         $articles = $this->articleController->getAllArticle();
         return Inertia::render('articles/index', [
             'articles' => $articles
         ]);
     }
 
-    public function addArticlePage($id = null){
+    public function addArticlePage($id = null)
+    {
         $article = null;
 
         if ($id) {
@@ -425,14 +430,16 @@ class ViewController extends Controller
         ]);
     }
 
-    public function viewArticlePage($id){
+    public function viewArticlePage($id)
+    {
         $article = $this->articleController->getArticleById($id);
         return Inertia::render('articles/view-articles', [
             'article' => $article
         ]);
     }
 
-    public function checkoutPage(Request $request){
+    public function checkoutPage(Request $request)
+    {
         $countryCode = $this->resolveCountryCodeFromIp($request);
         $isIndonesian = $countryCode === 'ID';
 
@@ -449,39 +456,42 @@ class ViewController extends Controller
         $profile = $this->userController->getProfile();
 
 
-        return Inertia::render('front/checkout/index',[
+        return Inertia::render('front/checkout/index', [
             'profile' => $profile,
             'warehouse' => $warehouse,
             'couriers' => $couriers,
             'isIndonesian' => $isIndonesian,
             'countryCode' => $countryCode,
             'internationalShipmentPrice' => $internationalShipmentPrice,
-            'rates'             => fn () => session('rates', []),
-            'flashMessage'      => fn () => session('message'),
+            'rates'             => fn() => session('rates', []),
+            'flashMessage'      => fn() => session('message'),
         ]);
     }
 
-    public function warehousePage(){
+    public function warehousePage()
+    {
         $warehouse = $this->warehouseController->getAllWarehouse();
         return Inertia::render('warehouse/index', [
             'warehouses' =>  $warehouse
         ]);
     }
 
-    public function addWarehousePage($id = null){
+    public function addWarehousePage($id = null)
+    {
         $warehouse = null;
 
-        if($id !== null){
+        if ($id !== null) {
             $warehouse = $this->warehouseController->getWarehouseById($id);
         }
 
         return Inertia::render('warehouse/add-warehouse', [
-           'id' => $id,
-           'warehouse' => $warehouse
+            'id' => $id,
+            'warehouse' => $warehouse
         ]);
     }
 
-    public function deliveryAddressProfilePage(Request $request){
+    public function deliveryAddressProfilePage(Request $request)
+    {
         $provinces = $this->locationController->getProvinceList();
         $deliveryAddresses = $this->userController->getDeliveryAddresBasedCountryCode($request);
 
@@ -498,12 +508,13 @@ class ViewController extends Controller
         ]);
     }
 
-    public function deliveryAddressProfileAddPage($id = null){
+    public function deliveryAddressProfileAddPage($id = null)
+    {
         $provinces = $this->locationController->getProvinceList();
-        
+
         $deliveryAddress = null;
-        
-        if($id !== null){
+
+        if ($id !== null) {
             $deliveryAddress = $this->userController->getDeliveryAddressById($id);
         };
 
@@ -518,7 +529,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function OrdersPage(Request $request){
+    public function OrdersPage(Request $request)
+    {
 
         $ordersPaginated = $this->orderhistoryController->getAllOrderHistory($request);
 
@@ -528,7 +540,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function orderSummaryPage(Request $request){
+    public function orderSummaryPage(Request $request)
+    {
         $orderItemsPaginated = $this->orderhistoryController->getOrderItemsSummary($request);
 
         return Inertia::render('orders/summary/index', [
@@ -537,7 +550,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function purchasesPage(Request $request){
+    public function purchasesPage(Request $request)
+    {
 
         $ordersPaginated = $this->orderhistoryController->getUserOrderHistory($request);
 
@@ -551,7 +565,8 @@ class ViewController extends Controller
         ]);
     }
 
-    public function invoicePage(Request $request){
+    public function invoicePage(Request $request)
+    {
         $filters = $request->only('q', 'status', 'per_page', 'page', 'sort_by', 'sort_dir', 'issued_from', 'issued_to');
         $invoicesPaginated = $this->invoiceController->index($request);
 
@@ -561,14 +576,16 @@ class ViewController extends Controller
         ]);
     }
 
-    public function shipmentInternationalPage(){
+    public function shipmentInternationalPage()
+    {
         $international_shipment = $this->internationalShipmentController->getAllInternationalShipment();
         return Inertia::render('shipment/international/index', [
             'international_shipment' => $international_shipment
         ]);
     }
 
-    public function groupProductPage(Request $request){
+    public function groupProductPage(Request $request)
+    {
         $productGroupsPaginated = $this->productController->getProductGroupsPaginated($request);
 
         return Inertia::render('products/product/group', [
