@@ -1165,16 +1165,19 @@ export default function Checkout() {
         setVoucherError(null);
 
         try {
-            const params = new URLSearchParams();
-            productIds.forEach((id) => params.append('product_ids[]', String(id)));
-            params.set('voucher_code', trimmedCode);
+            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+            const voucherHeaders: Record<string, string> = {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            };
+            if (csrfToken) voucherHeaders['X-CSRF-TOKEN'] = csrfToken;
 
-            const response = await fetch(`/v1/check-voucher?${params.toString()}`, {
-                method: 'GET',
-                headers: {
-                    Accept: 'application/json',
-                },
+            const response = await fetch('/v1/check-voucher', {
+                method: 'POST',
+                headers: voucherHeaders,
                 credentials: 'include',
+                body: JSON.stringify({ product_ids: productIds, voucher_code: trimmedCode }),
             });
 
             const contentType = response.headers.get('content-type') ?? '';

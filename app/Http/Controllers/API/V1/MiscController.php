@@ -237,9 +237,9 @@ class MiscController extends Controller
     public function checkVoucher(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'product_ids'     => 'required|array|min:1',
-            'product_ids.*'   => 'exists:products,id',
-            'voucher_code'    => 'required|string',
+            'product_ids'  => 'required|array|min:1',
+            'product_ids.*' => 'string',
+            'voucher_code' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -249,9 +249,7 @@ class MiscController extends Controller
             ], 422);
         }
 
-        $voucher = VoucherModel::with(['products.event'])
-            ->where('voucher_code', $request->voucher_code)
-            ->first();
+        $voucher = VoucherModel::where('voucher_code', $request->voucher_code)->first();
 
         if (!$voucher) {
             return response()->json([
@@ -259,27 +257,29 @@ class MiscController extends Controller
             ], 404);
         }
 
-        $isApplicable = $voucher->products()
+        $matchingProducts = $voucher->products()
             ->whereIn('products.id', $request->product_ids)
-            ->exists();
+            ->get(['products.id']);
 
-        if (!$isApplicable) {
+        if ($matchingProducts->isEmpty()) {
             return response()->json([
                 'message' => 'Voucher is not applicable for selected products',
             ], 400);
         }
 
+        $voucherData = array_merge($voucher->toArray(), ['products' => $matchingProducts]);
+
         if (!$voucher->is_limit) {
             return response()->json([
                 'message' => 'Voucher is valid',
-                'data'    => $voucher,
+                'data'    => $voucherData,
             ], 200);
         }
 
         if ($voucher->limit > 0) {
             return response()->json([
                 'message' => 'Voucher is valid',
-                'data'    => $voucher,
+                'data'    => $voucherData,
             ], 200);
         }
 
