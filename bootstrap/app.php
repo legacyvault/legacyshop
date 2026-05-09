@@ -24,7 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'v1/checkout/order',
             'v1/checkout-paypal/order',
-            'v1/orders/*/capture'
+            'v1/orders/*/capture',
+            'v1/check-voucher',
         ]);
 
         $middleware->web(append: [

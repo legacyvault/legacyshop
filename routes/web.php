@@ -42,7 +42,7 @@ Route::group(['prefix' => 'v1'], function () {
     Route::get('active-banner', [MiscController::class, 'getActiveBanner'])->name('active.banner');
     Route::post('delivery-rates', [BiteshipController::class, 'getDeliveryRates'])->name('delivery.rates');
 
-    Route::get('check-voucher', [MiscController::class, 'checkVoucher'])->name('check.voucher');
+    Route::post('check-voucher', [MiscController::class, 'checkVoucher'])->name('check.voucher');
 
     // Checkout routes — CSRF excluded in bootstrap/app.php
     Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
