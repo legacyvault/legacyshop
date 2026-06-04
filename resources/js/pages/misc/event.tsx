@@ -442,8 +442,16 @@ export default function Event() {
                     onOpenChange={(open) => {
                         if (!open) {
                             setFormError(null);
+                            if (draftEvent) {
+                                setDraftEvent(null);
+                            } else {
+                                // Discard unsaved changes for existing events on cancel
+                                const original = serverEvents.find((e) => e.id === activeEventId);
+                                if (original) {
+                                    setEvents((prev) => prev.map((e) => (e.id === original.id ? original : e)));
+                                }
+                            }
                             setActiveEventId(null);
-                            if (draftEvent) setDraftEvent(null);
                         }
                     }}
                     event={activeEvent}

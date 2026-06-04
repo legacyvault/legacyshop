@@ -511,6 +511,16 @@ class MiscController extends Controller
                 }]);
             }])
             ->get();
+
+        // Suppress thumbnail appends to avoid N+1 queries — thumbnails not needed on the event page
+        $data->each(function ($event) {
+            $event->event_products->each(function ($eventProduct) {
+                if ($eventProduct->product) {
+                    $eventProduct->product->setAppends([]);
+                }
+            });
+        });
+
         return $data;
     }
 
