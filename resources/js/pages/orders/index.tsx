@@ -187,6 +187,9 @@ function OrdersTable({
     const [waybillDialogOpen, setWaybillDialogOpen] = useState(false);
     const [waybillOrderId, setWaybillOrderId] = useState<string | null>(null);
     const [waybillInput, setWaybillInput] = useState('');
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
+    const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
     const [invoiceFeedback, setInvoiceFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -838,6 +841,45 @@ function OrdersTable({
         [confirmingOrder, refreshOrders],
     );
 
+    const handleCancelOrder = useCallback(
+        async (orderId: string) => {
+            if (cancellingOrder) return;
+
+            setCancellingOrder(orderId);
+            try {
+                const csrfToken = getCsrfToken();
+                const response = await fetch(`/v1/cancel-order/${orderId}`, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                    },
+                    credentials: 'include',
+                });
+
+                if (!response.ok) {
+                    let message = 'Failed to cancel order.';
+                    try {
+                        const payload = await response.json();
+                        message = payload?.error ?? payload?.message ?? message;
+                    } catch {
+                        // ignore parse errors
+                    }
+                    throw new Error(message);
+                }
+
+                refreshOrders();
+            } catch (error) {
+                console.error('Cancel order failed:', error);
+            } finally {
+                setCancellingOrder(null);
+            }
+        },
+        [cancellingOrder, refreshOrders],
+    );
+
     return (
         <>
             {loading && (
@@ -1082,7 +1124,15 @@ function OrdersTable({
                                                         {isPaymentReceived && (
                                                             <DropdownMenuItem
                                                                 className="cursor-pointer gap-2"
+                                                                disabled={cancellingOrder === order.id}
+                                                                onClick={() => {
+                                                                    setCancelOrderId(order.id);
+                                                                    setCancelDialogOpen(true);
+                                                                }}
                                                             >
+                                                                {cancellingOrder === order.id && (
+                                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                                )}
                                                                 Cancel Order
                                                             </DropdownMenuItem>
                                                         )}
@@ -1206,6 +1256,39 @@ function OrdersTable({
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 )}
                                 Confirm Order
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Cancel Order</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-1">
+                        <p className="text-sm text-muted-foreground">
+                            Are you sure you want to cancel this order? Stock will be restored and the order cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+                                No
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                disabled={cancellingOrder === cancelOrderId}
+                                onClick={() => {
+                                    if (cancelOrderId) {
+                                        setCancelDialogOpen(false);
+                                        handleCancelOrder(cancelOrderId);
+                                    }
+                                }}
+                            >
+                                {cancellingOrder === cancelOrderId && (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )}
+                                Yes, Cancel Order
                             </Button>
                         </div>
                     </div>

@@ -190,7 +190,7 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
                         style={{ backgroundImage: `url('${banner.picture_url ?? '/banner-example.jpg'}')` }}
                         onClick={() => window.location.replace(banner.url)}
                     >
-                        <div className="absolute inset-0 bg-black/30" />
+                        {/* <div className="absolute inset-0 bg-black/30" /> */}
 
                         <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-4 text-center text-background">
                             {banner.banner_title && <h1 className="text-5xl font-bold md:text-7xl">{banner.banner_title}</h1>}

@@ -1090,6 +1090,11 @@ class ProductController extends Controller
 
         $productGroups = $groupQuery->get();
 
+        // Suppress thumbnail appends to avoid N+1 queries — thumbnails not needed in the picker
+        $productGroups->each(function ($group) {
+            $group->products->each(fn ($product) => $product->setAppends([]));
+        });
+
         $ungroupedQuery = Product::whereNull('product_group_id')
             ->select(['id', 'product_name', 'product_sku', 'product_price', 'product_usd_price'])
             ->orderBy('product_name');
@@ -1102,6 +1107,7 @@ class ProductController extends Controller
         }
 
         $ungroupedProducts = $ungroupedQuery->get();
+        $ungroupedProducts->each(fn ($product) => $product->setAppends([]));
 
         return response()->json([
             'status' => true,

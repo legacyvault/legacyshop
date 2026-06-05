@@ -1721,6 +1721,77 @@ class OrderController extends Controller
         }
     }
 
+    public function cancelOrder($id)
+    {
+        try {
+            $order = Order::with(['items', 'user', 'guest'])->findOrFail($id);
+
+            $terminalStatuses = ['order_confirmed', 'delivered', 'completed', 'order_cancelled'];
+            if (in_array($order->status, $terminalStatuses)) {
+                return response()->json(['error' => 'Order cannot be cancelled in its current status.'], 422);
+            }
+
+            if ($order->payment_status !== 'payment_received') {
+                return response()->json(['error' => 'Only orders with received payment can be cancelled.'], 422);
+            }
+
+            foreach ($order->items as $item) {
+                try {
+                    if (!empty($item->variant_id)) {
+                        $variant = Variant::find($item->variant_id);
+                        if ($variant) {
+                            $variant->update(['total_stock' => $variant->total_stock + $item->quantity]);
+                        }
+                    }
+
+                    if (!empty($item->division_id)) {
+                        $division = Division::find($item->division_id);
+                        if ($division) {
+                            $division->update(['total_stock' => $division->total_stock + $item->quantity]);
+                        }
+                    }
+
+                    if (!empty($item->sub_category_id)) {
+                        $subCategory = SubCategory::find($item->sub_category_id);
+                        if ($subCategory) {
+                            $subCategory->update(['total_stock' => $subCategory->total_stock + $item->quantity]);
+                        }
+                    }
+
+                    if (!empty($item->product_id)) {
+                        $product = Product::find($item->product_id);
+                        if ($product) {
+                            $product->update(['total_stock' => $product->total_stock + $item->quantity]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Failed to restore stock for item {$item->id}: " . $e->getMessage());
+                }
+            }
+
+            if ($order->voucher_code) {
+                $voucher = VoucherModel::where('voucher_code', $order->voucher_code)->first();
+                if ($voucher && $voucher->is_limit) {
+                    $voucher->increment('limit', 1);
+                }
+            }
+
+            $order->update([
+                'status' => 'order_cancelled',
+                'payment_status' => 'payment_failed',
+            ]);
+
+            Log::info("Order {$order->order_number} cancelled by admin — stock restored.");
+
+            return response()->json(['message' => 'Order cancelled successfully.']);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Order not found.'], 404);
+        } catch (Exception $e) {
+            Log::error('[CANCEL ORDER] Failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to cancel order.'], 500);
+        }
+    }
+
     //Paypal
     public function createPaypalOrder($order) {}
 }
