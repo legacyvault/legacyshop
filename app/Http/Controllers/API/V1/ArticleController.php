@@ -28,6 +28,7 @@ class ArticleController extends Controller
             'content'       => ['required', 'array'],
             'content_html'  => ['nullable', 'string'],
             'is_published'  => ['boolean'],
+            'is_featured'   => ['nullable', 'boolean'],
             'published_at'  => ['nullable', 'date'],
             'image_cover'   => ['nullable', 'string', 'max:2048'],
         ]);
@@ -41,6 +42,7 @@ class ArticleController extends Controller
 
             $imageCoverUrl = $request->input('image_cover');
             $isPublished = $request->boolean('is_published');
+            $isFeatured = $request->boolean('is_featured');
             $publishedAtInput = $request->input('published_at');
             $publishedAt = null;
 
@@ -56,6 +58,7 @@ class ArticleController extends Controller
                 'content'      => $request->content,
                 'content_html' => $request->content_html,
                 'is_published' => $isPublished,
+                'is_featured'  => $isFeatured,
                 'published_at' => $publishedAt,
                 'image_cover'  => $imageCoverUrl,
             ]);
@@ -90,6 +93,7 @@ class ArticleController extends Controller
             'content'       => ['required', 'array'],
             'content_html'  => ['nullable', 'string'],
             'is_published'  => ['boolean'],
+            'is_featured'   => ['nullable', 'boolean'],
             'published_at'  => ['nullable', 'date'],
             'image_cover'   => ['nullable', 'string', 'max:2048'],
         ]);
@@ -105,6 +109,7 @@ class ArticleController extends Controller
             $imageCoverUrl = $request->input('image_cover');
 
             $isPublished = $request->boolean('is_published');
+            $isFeatured = $request->boolean('is_featured');
             $publishedAtInput = $request->input('published_at');
             $publishedAt = null;
 
@@ -120,6 +125,7 @@ class ArticleController extends Controller
                 'content'       => $request->content,
                 'content_html'  => $request->content_html,
                 'is_published'  => $isPublished,
+                'is_featured'   => $isFeatured,
                 'published_at'  => $publishedAt,
                 'image_cover'   => $imageCoverUrl,
             ]);
@@ -142,7 +148,7 @@ class ArticleController extends Controller
 
     public function getAllArticle()
     {
-        $data = Article::orderBy('created_at', 'desc')->get();
+        $data = Article::orderBy('is_featured', 'desc')->orderBy('created_at', 'desc')->get();
 
         return $data;
     }
@@ -191,10 +197,9 @@ class ArticleController extends Controller
 
     public function getNewestArticle()
     {
-        $data = Article::orderBy('published_at')
-
-            ->where('is_published',true)
+        $data = Article::where('is_published', true)
             // ->where('published_at', '<=', Carbon::now())
+            ->orderBy('is_featured', 'desc')
             ->orderBy('published_at', 'desc')
             ->limit(3)
             ->get();

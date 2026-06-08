@@ -64,6 +64,7 @@ export default function AddArticlePage() {
         content: (article?.content as any[]) ?? [],
         content_html: article?.content_html ?? '',
         is_published: article?.is_published ?? false,
+        is_featured: article?.is_featured ?? false,
         published_at: initialPublishedAt,
         image_cover: article?.image_cover ?? null,
     });
@@ -219,6 +220,7 @@ export default function AddArticlePage() {
             content_html: editorHtml,
             published_at: formData.is_published ? formData.published_at : null,
             image_cover: formData.image_cover ?? null,
+            is_featured: formData.is_featured ?? false,
         }));
 
         const url = route(isEdit ? 'edit-article' : 'create-article');
@@ -233,6 +235,7 @@ export default function AddArticlePage() {
                     setImageCoverPreview(null);
                     setImageCoverError(null);
                     setData('image_cover', null);
+                    setData('is_featured', false);
                     if (imageCoverInputRef.current) {
                         imageCoverInputRef.current.value = '';
                     }
@@ -508,6 +511,21 @@ export default function AddArticlePage() {
                                 onChange={handleImageCoverChange}
                             />
                             <InputError message={imageCoverError ?? errors.image_cover} />
+                        </div>
+                        <div className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label htmlFor="is_featured" className="text-base font-semibold">
+                                        Set Featured
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">Pin this article to the top of listings.</p>
+                                </div>
+                                <Checkbox
+                                    id="is_featured"
+                                    checked={data.is_featured}
+                                    onCheckedChange={(value) => setData('is_featured', value === true)}
+                                />
+                            </div>
                         </div>
                         <div className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
                             <div className="flex items-center justify-between">
