@@ -16,8 +16,8 @@ class Article extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $fillable = ['title', 'slug', 'content', 'content_html', 'image_cover' ,'is_published', 'published_at'];
-    protected $casts = ['content' => 'array', 'is_published' => 'boolean', 'published_at' => 'datetime'];
+    protected $fillable = ['title', 'slug', 'content', 'content_html', 'image_cover', 'is_published', 'is_featured', 'published_at'];
+    protected $casts = ['content' => 'array', 'is_published' => 'boolean', 'is_featured' => 'boolean', 'published_at' => 'datetime'];
 
     protected static function booted(): void
     {
