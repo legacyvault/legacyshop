@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { isValidEmail } from '@/lib/validation';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -27,13 +28,18 @@ type ProfileForm = {
 export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: boolean; status?: string }) {
     const { auth } = usePage<SharedData>().props;
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } = useForm<Required<ProfileForm>>({
+    const { data, setData, patch, errors, setError, processing, recentlySuccessful } = useForm<Required<ProfileForm>>({
         name: auth.user.name,
         email: auth.user.email,
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+
+        if (!isValidEmail(data.email)) {
+            setError('email', 'Please enter a valid email address.');
+            return;
+        }
 
         patch(route('profile.update'), {
             preserveScroll: true,

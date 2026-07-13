@@ -9,6 +9,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogOverlay, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import { isValidEmail } from '@/lib/validation';
 
 type Step = 'email' | 'verify' | 'reset';
 
@@ -51,6 +52,12 @@ export default function ForgotPassword() {
 
     const sendCode = async () => {
         clearErrors();
+
+        if (!isValidEmail(email)) {
+            setErrors({ email: 'Please enter a valid email address.' });
+            return;
+        }
+
         setProcessing(true);
         try {
             const json = await cognitoPost('cognito.send-code', { email });

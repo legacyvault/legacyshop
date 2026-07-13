@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import { isValidEmail } from '@/lib/validation';
 
 import DialogHandler from '@/components/dialog-handler';
 
@@ -23,7 +24,7 @@ type LoginFormErrors = RegisterForm & {
 };
 
 export default function Register() {
-    const { data, setData, post, processing, errors, reset } = useForm<Required<RegisterForm>>({
+    const { data, setData, post, processing, errors, setError, reset } = useForm<Required<RegisterForm>>({
         name: '',
         email: '',
         password: '',
@@ -34,6 +35,12 @@ export default function Register() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+
+        if (!isValidEmail(data.email)) {
+            setError('email', 'Please enter a valid email address.');
+            return;
+        }
+
         post(route('cognito.register'), {
             onFinish: () => reset('password', 'confirm_password'),
         });
