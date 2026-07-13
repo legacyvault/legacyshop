@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import { isValidEmail } from '@/lib/validation';
 
 type LoginForm = {
     email: string;
@@ -26,7 +27,7 @@ interface LoginProps {
 }
 
 export default function Login({ status, canResetPassword }: LoginProps) {
-    const { data, setData, post, processing, errors, reset } = useForm<Required<LoginForm>>({
+    const { data, setData, post, processing, errors, setError, reset } = useForm<Required<LoginForm>>({
         email: '',
         password: '',
         // remember: false,
@@ -36,6 +37,12 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+
+        if (!isValidEmail(data.email)) {
+            setError('email', 'Please enter a valid email address.');
+            return;
+        }
+
         post(route('cognito.login'), {
             onFinish: () => reset('password'),
         });

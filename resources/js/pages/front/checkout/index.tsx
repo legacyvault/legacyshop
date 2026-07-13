@@ -5,6 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { isValidEmail } from '@/lib/validation';
 import { IProducts, SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
 import { Link, router, usePage, useRemember } from '@inertiajs/react';
 import { FUNDING, PayPalButtons, PayPalScriptProvider } from '@paypal/react-paypal-js';
@@ -350,6 +351,7 @@ export default function Checkout() {
         const hasRequiredFields = Boolean(
             fullName &&
                 email &&
+                isValidEmail(email) &&
                 phone &&
                 address &&
                 city &&
@@ -411,6 +413,7 @@ export default function Checkout() {
             return {
                 fullNameMissing: false,
                 emailMissing: false,
+                emailInvalid: false,
                 phoneMissing: false,
                 addressMissing: false,
                 cityMissing: false,
@@ -434,6 +437,7 @@ export default function Checkout() {
         return {
             fullNameMissing: !fullName,
             emailMissing: !email,
+            emailInvalid: Boolean(email) && !isValidEmail(email),
             phoneMissing: !phone,
             addressMissing: !addressLine,
             cityMissing: !city,
@@ -2035,12 +2039,18 @@ export default function Checkout() {
                                                         value={guestContact.email}
                                                         onChange={(event) => setGuestContact((prev) => ({ ...prev, email: event.target.value }))}
                                                         placeholder="jane@example.com"
-                                                        aria-invalid={showGuestFormError && guestFieldStatus.emailMissing ? 'true' : undefined}
+                                                        aria-invalid={
+                                                            showGuestFormError && (guestFieldStatus.emailMissing || guestFieldStatus.emailInvalid)
+                                                                ? 'true'
+                                                                : undefined
+                                                        }
                                                     />
                                                     {showGuestFormError && guestFieldStatus.emailMissing ? (
                                                         <p className="text-xs text-destructive">
                                                             Provide an email so we can send the order confirmation.
                                                         </p>
+                                                    ) : showGuestFormError && guestFieldStatus.emailInvalid ? (
+                                                        <p className="text-xs text-destructive">Please enter a valid email address.</p>
                                                     ) : null}
                                                 </div>
                                                 <div className="space-y-2">

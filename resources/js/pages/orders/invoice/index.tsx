@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
+import { isValidEmail } from '@/lib/validation';
 import {
     type BreadcrumbItem,
     type IInvoice,
@@ -708,6 +709,11 @@ function InvoiceTable({ invoicesPaginated, filters = {} }: { invoicesPaginated?:
     const handleSubmit = useCallback(
         (event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
+
+            if (form.data.bill_to_email && !isValidEmail(form.data.bill_to_email)) {
+                form.setError('bill_to_email', 'Please enter a valid email address.');
+                return;
+            }
 
             form.transform((data) => {
                 const normalizeId = (value?: string | null) => {
