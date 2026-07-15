@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { COUNTRIES } from '@/lib/countries';
 import type { IProvince, SharedData } from '@/types';
 import { useForm, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -168,8 +169,8 @@ export default function AddDeliveryAddressModal({
     const lastFetchedProvinceCountryRef = useRef<string | null>(null);
     const hasNormalizedCountryRef = useRef(false);
 
-    const [countries, setCountries] = useState<CountryOption[]>([{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
-    const [isLoadingCountries, setIsLoadingCountries] = useState(false);
+    const [countries] = useState<CountryOption[]>(COUNTRIES);
+    const isLoadingCountries = false;
     const [countryQuery, setCountryQuery] = useState('');
 
     const [provinceOptions, setProvinceOptions] = useState<IProvince[]>([]);
@@ -214,73 +215,6 @@ export default function AddDeliveryAddressModal({
 
     const shouldUseIndonesianFields = useMemo(() => isIndonesiaCountry(selectedCountry), [selectedCountry]);
     const usePostalInput = useMemo(() => !shouldUseIndonesianFields, [shouldUseIndonesianFields]);
-
-    useEffect(() => {
-        let isMounted = true;
-
-        const loadCountries = async () => {
-            setIsLoadingCountries(true);
-            try {
-                const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2,flag');
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch countries');
-                }
-
-                const payload: unknown = await response.json();
-                if (!isMounted) {
-                    return;
-                }
-
-                const normalized = Array.isArray(payload)
-                    ? payload
-                          .map((item: any): CountryOption | null => {
-                              if (!item) {
-                                  return null;
-                              }
-
-                              const name = item?.name?.common ?? item?.name ?? '';
-                              const code = item?.cca2 ?? item?.code ?? '';
-                              if (!name || !code) {
-                                  return null;
-                              }
-
-                              return {
-                                  name,
-                                  code: String(code).toUpperCase(),
-                                  flag: typeof item.flag === 'string' ? item.flag : undefined,
-                              };
-                          })
-                          .filter((country): country is CountryOption => Boolean(country))
-                          .sort((a, b) => a.name.localeCompare(b.name))
-                    : [];
-
-                if (normalized.length) {
-                    setCountries(normalized);
-                }
-            } catch (error) {
-                console.error('Error fetching countries:', error);
-                if (!isMounted) {
-                    return;
-                }
-                setCountries([
-                    { name: 'Indonesia', code: 'ID', flag: '🇮🇩' },
-                    { name: 'Singapore', code: 'SG', flag: '🇸🇬' },
-                    { name: 'United States', code: 'US', flag: '🇺🇸' },
-                ]);
-            } finally {
-                if (isMounted) {
-                    setIsLoadingCountries(false);
-                }
-            }
-        };
-
-        void loadCountries();
-
-        return () => {
-            isMounted = false;
-        };
-    }, []);
 
     useEffect(() => {
         if (hasNormalizedCountryRef.current) {
