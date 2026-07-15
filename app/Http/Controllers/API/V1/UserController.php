@@ -70,6 +70,7 @@ class UserController extends Controller
             'name' => 'required|string',
             'phone' => 'required|string|regex:/^\d+$/',
             'date_of_birth' => 'required',
+            'country' => 'nullable|string|size:2',
         ]);
 
         if ($validator->fails()) {
@@ -84,6 +85,7 @@ class UserController extends Controller
                 $user->name = $request->name;
                 $user->date_of_birth = $request->date_of_birth;
                 $user->phone = $request->phone;
+                $user->country = $request->country;
                 $user->save();
 
                 return redirect()->back()->with('alert', [

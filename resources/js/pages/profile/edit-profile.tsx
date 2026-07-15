@@ -20,6 +20,7 @@ export default function EditProfileForm({ profile }: EditProfileFormProps) {
         name: profile?.name || '',
         phone: profile?.phone || '',
         date_of_birth: profile?.date_of_birth || '',
+        country: profile?.country || '',
     });
 
     // Fetch countries on component mount
@@ -150,9 +151,9 @@ export default function EditProfileForm({ profile }: EditProfileFormProps) {
                                     </label>
                                     <select
                                         id="country"
-                                        value={profile.country!}
+                                        value={data.country}
+                                        onChange={(e) => setData('country', e.target.value)}
                                         className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground focus:border-transparent focus:ring-2 focus:ring-ring focus:outline-none"
-                                        disabled={true}
                                     >
                                         <option value="">Select Country</option>
                                         {countries.map((country) => (
@@ -161,6 +162,7 @@ export default function EditProfileForm({ profile }: EditProfileFormProps) {
                                             </option>
                                         ))}
                                     </select>
+                                    {errors.country && <p className="mt-1 text-sm text-destructive">{errors.country}</p>}
                                 </div>
                             </div>
                         </div>
