@@ -4,6 +4,7 @@ import { Country, ShippingZone } from '@/components/shipment/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { COUNTRIES_WITH_CONTINENT } from '@/lib/countries';
 import { BreadcrumbItem, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import type { CheckedState } from '@radix-ui/react-checkbox';
@@ -34,82 +35,15 @@ export default function InternationalShipment() {
 
     const { international_shipment } = usePage<PageProps>().props;
 
-    const [countries, setCountries] = useState<Country[]>([]);
+    const [countries] = useState<Country[]>(COUNTRIES_WITH_CONTINENT);
     const [zones, setZones] = useState<Array<ShippingZone & { isNew?: boolean }>>([]);
     const [draftZone, setDraftZone] = useState<(ShippingZone & { isNew: boolean }) | null>(null);
     const [activeZoneId, setActiveZoneId] = useState<string | null>(null);
-    const [loadingCountries, setLoadingCountries] = useState(true);
-    const [countryError, setCountryError] = useState<string | null>(null);
+    const loadingCountries = false;
+    const countryError: string | null = null;
     const [savingZoneId, setSavingZoneId] = useState<string | null>(null);
     const [deletingZoneId, setDeletingZoneId] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
-
-    useEffect(() => {
-        let isMounted = true;
-        const loadCountries = async () => {
-            try {
-                setLoadingCountries(true);
-                const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2,flag,continents');
-                if (!response.ok) {
-                    throw new Error('Unable to fetch countries');
-                }
-                const data = (await response.json()) as unknown[];
-                if (!isMounted) return;
-
-                const normalized = data
-                    .map((item) => {
-                        if (!item || typeof item !== 'object') return null;
-
-                        type RawCountry = {
-                            name?: { common?: unknown; official?: unknown };
-                            cca2?: unknown;
-                            flag?: unknown;
-                            continents?: unknown;
-                        };
-
-                        const record = item as RawCountry;
-                        const nameData = record.name;
-                        const name =
-                            (nameData && typeof nameData === 'object' && typeof (nameData as { common?: unknown }).common === 'string'
-                                ? (nameData as { common?: string }).common
-                                : undefined) ??
-                            (nameData && typeof nameData === 'object' && typeof (nameData as { official?: unknown }).official === 'string'
-                                ? (nameData as { official?: string }).official
-                                : undefined) ??
-                            '';
-                        const code = typeof record.cca2 === 'string' ? record.cca2 : '';
-                        const flag = typeof record.flag === 'string' ? record.flag : '[flag]';
-                        const continents = Array.isArray(record.continents)
-                            ? record.continents.filter((value): value is string => typeof value === 'string')
-                            : [];
-                        const continent = continents[0] ?? 'Other';
-
-                        if (!name || !code) return null;
-                        return {
-                            name,
-                            code,
-                            flag,
-                            continent,
-                        } satisfies Country;
-                    })
-                    .filter((country): country is Country => Boolean(country))
-                    .sort((a, b) => a.name.localeCompare(b.name));
-
-                setCountries(normalized);
-                setCountryError(null);
-            } catch (error) {
-                console.error(error);
-                if (isMounted) setCountryError('We could not load countries right now. Please try again.');
-            } finally {
-                if (isMounted) setLoadingCountries(false);
-            }
-        };
-
-        loadCountries();
-        return () => {
-            isMounted = false;
-        };
-    }, []);
 
     const serverZones = useMemo<Array<ShippingZone & { isNew?: boolean }>>(() => {
         if (!Array.isArray(international_shipment)) return [];

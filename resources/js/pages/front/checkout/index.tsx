@@ -5,6 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { COUNTRIES, type Country } from '@/lib/countries';
 import { isValidEmail } from '@/lib/validation';
 import { IProducts, SharedData, type IDeliveryAddress, type IRatePricing, type IRootCheckoutOrderMidtrans } from '@/types';
 import { Link, router, usePage, useRemember } from '@inertiajs/react';
@@ -16,12 +17,6 @@ const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 const CART_ITEMS_STORAGE_KEY = 'cart_session';
 const FALLBACK_IMAGE = '/banner-example.jpg';
 const SNAP_EMBED_CONTAINER_ID = 'midtrans-snap-container';
-
-interface Country {
-    name: string;
-    code: string;
-    flag: string;
-}
 
 type CheckoutItem = {
     id: string;
@@ -255,7 +250,7 @@ export default function Checkout() {
 
     const [messagePaypal, setMessagePaypal] = useState('');
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>(() => loadStoredCheckoutItems());
-    const [countries, setCountries] = useState<Country[]>(() => [{ name: 'Indonesia', code: 'ID', flag: '🇮🇩' }]);
+    const [countries] = useState<Country[]>(COUNTRIES);
 
     const displayCurrency = (checkoutItems[0]?.currency || 'IDR').toUpperCase();
 
@@ -862,36 +857,6 @@ export default function Checkout() {
             }));
         }
     }, [guestAddressForm.postalCode, isIndonesian, postalCodeOptions]);
-
-    // Fetch countries on component mount
-    useEffect(() => {
-        fetchCountries();
-    }, []);
-
-    const fetchCountries = async () => {
-        try {
-            const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2,flag');
-            const data = await response.json();
-
-            const formattedCountries: Country[] = data
-                .map((country: any) => ({
-                    name: country.name.common,
-                    code: country.cca2,
-                    flag: country.flag,
-                }))
-                .sort((a: Country, b: Country) => a.name.localeCompare(b.name));
-
-            setCountries(formattedCountries);
-        } catch (error) {
-            console.error('Error fetching countries:', error);
-            // Fallback to basic countries if API fails
-            setCountries([
-                { name: 'Indonesia', code: 'ID', flag: '🇮🇩' },
-                { name: 'United States', code: 'US', flag: '🇺🇸' },
-                { name: 'Singapore', code: 'SG', flag: '🇸🇬' },
-            ]);
-        }
-    };
 
     useEffect(() => {
         if (guestSelectedAddress && hasAttemptedGuestRates) {
@@ -2100,7 +2065,7 @@ export default function Checkout() {
                                                     <select
                                                         id="guest-country"
                                                         value={guestAddressForm.country}
-                                                        onChange={(e) => handleCountryChange(e.target.value)}
+                                                        disabled
                                                         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
                                                         <option value="">Select Country</option>
@@ -2137,7 +2102,7 @@ export default function Checkout() {
                                                         <p className="text-xs text-destructive">Select the province or state.</p>
                                                     ) : null}
                                                 </div>
-                                                {isIndonesian ? (
+                                                {isIndonesiaAddress ? (
                                                     <div className="space-y-2">
                                                         <Label htmlFor="guest-city">City *</Label>
                                                         <select
@@ -2183,7 +2148,7 @@ export default function Checkout() {
                                                         ) : null}
                                                     </div>
                                                 )}
-                                                {isIndonesian ? (
+                                                {isIndonesiaAddress ? (
                                                     <div className="space-y-2">
                                                         <Label htmlFor="guest-district">Kecamatan *</Label>
                                                         <select
@@ -2213,7 +2178,7 @@ export default function Checkout() {
                                                         ) : null}
                                                     </div>
                                                 ) : null}
-                                                {isIndonesian ? (
+                                                {isIndonesiaAddress ? (
                                                     <div className="space-y-2">
                                                         <Label htmlFor="guest-village">Kelurahan *</Label>
                                                         <select
@@ -2243,7 +2208,7 @@ export default function Checkout() {
                                                         ) : null}
                                                     </div>
                                                 ) : null}
-                                                {isIndonesian ? (
+                                                {isIndonesiaAddress ? (
                                                     <div className="space-y-2">
                                                         <Label htmlFor="guest-postal-code">Postal Code *</Label>
                                                         <select

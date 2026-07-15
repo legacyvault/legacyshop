@@ -1,7 +1,8 @@
+import { COUNTRIES } from '@/lib/countries';
 import { IProfile } from '@/types';
 import { useForm } from '@inertiajs/react';
 import { Calendar, Globe, Phone, Save, User } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 interface Country {
     name: string;
@@ -14,7 +15,7 @@ interface EditProfileFormProps {
 }
 
 export default function EditProfileForm({ profile }: EditProfileFormProps) {
-    const [countries, setCountries] = useState<Country[]>([]);
+    const [countries] = useState<Country[]>(COUNTRIES);
 
     const { data, setData, post, processing, errors, isDirty } = useForm({
         name: profile?.name || '',
@@ -22,36 +23,6 @@ export default function EditProfileForm({ profile }: EditProfileFormProps) {
         date_of_birth: profile?.date_of_birth || '',
         country: profile?.country || '',
     });
-
-    // Fetch countries on component mount
-    useEffect(() => {
-        fetchCountries();
-    }, []);
-
-    const fetchCountries = async () => {
-        try {
-            const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2,flag');
-            const data = await response.json();
-
-            const formattedCountries: Country[] = data
-                .map((country: any) => ({
-                    name: country.name.common,
-                    code: country.cca2,
-                    flag: country.flag,
-                }))
-                .sort((a: Country, b: Country) => a.name.localeCompare(b.name));
-
-            setCountries(formattedCountries);
-        } catch (error) {
-            console.error('Error fetching countries:', error);
-            // Fallback to basic countries if API fails
-            setCountries([
-                { name: 'Indonesia', code: 'ID', flag: '🇮🇩' },
-                { name: 'United States', code: 'US', flag: '🇺🇸' },
-                { name: 'Singapore', code: 'SG', flag: '🇸🇬' },
-            ]);
-        }
-    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

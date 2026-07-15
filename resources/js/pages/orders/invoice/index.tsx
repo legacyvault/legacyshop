@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
+import { COUNTRIES } from '@/lib/countries';
 import { isValidEmail } from '@/lib/validation';
 import {
     type BreadcrumbItem,
@@ -323,7 +324,7 @@ function InvoiceTable({ invoicesPaginated, filters = {} }: { invoicesPaginated?:
     const [productDetailCache, setProductDetailCache] = useState<Record<string, IProducts>>({});
     const [productDetailLoading, setProductDetailLoading] = useState<Record<string, boolean>>({});
 
-    const [countries, setCountries] = useState<CountryOption[]>([{ code: 'ID', name: 'Indonesia', flag: '🇮🇩' }]);
+    const [countries] = useState<CountryOption[]>(COUNTRIES);
     const [countryCode, setCountryCode] = useState<string>('ID');
     const [provinceCode, setProvinceCode] = useState<string>('');
     const [cityCode, setCityCode] = useState<string>('');
@@ -480,39 +481,6 @@ function InvoiceTable({ invoicesPaginated, filters = {} }: { invoicesPaginated?:
         },
         [productDetailCache, productDetailLoading],
     );
-
-    const fetchCountries = useCallback(async () => {
-        try {
-            const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2,flag');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch countries (${response.status})`);
-            }
-            const data = await response.json();
-            const formatted: CountryOption[] = Array.isArray(data)
-                ? data
-                      .map((item: any) => ({
-                          code: typeof item?.cca2 === 'string' ? item.cca2 : '',
-                          name: typeof item?.name?.common === 'string' ? item.name.common : '',
-                          flag: typeof item?.flag === 'string' ? item.flag : undefined,
-                      }))
-                      .filter((item: CountryOption) => item.code && item.name)
-                      .sort((a: CountryOption, b: CountryOption) => a.name.localeCompare(b.name))
-                : [];
-
-            if (!formatted.some((country) => country.code === 'ID')) {
-                formatted.unshift({ code: 'ID', name: 'Indonesia', flag: '🇮🇩' });
-            }
-
-            setCountries(formatted);
-        } catch (error) {
-            console.error('Failed to fetch countries', error);
-            setCountries([
-                { code: 'ID', name: 'Indonesia', flag: '🇮🇩' },
-                { code: 'US', name: 'United States', flag: '🇺🇸' },
-                { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
-            ]);
-        }
-    }, []);
 
     const loadProvinces = useCallback(async (country: string) => {
         if (!country) {
@@ -923,9 +891,6 @@ function InvoiceTable({ invoicesPaginated, filters = {} }: { invoicesPaginated?:
         }
     }, []);
 
-    useEffect(() => {
-        fetchCountries();
-    }, [fetchCountries]);
 
     useEffect(() => {
         if (!isFormOpen) {
