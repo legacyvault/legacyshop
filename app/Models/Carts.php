@@ -51,10 +51,17 @@ class Carts extends Model
 
     public function getPricePerProductAttribute()
     {
+        return $this->resolvePriceForCurrency(true);
+    }
+
+    public function resolvePriceForCurrency(bool $isIndonesian): float
+    {
         $total = 0;
 
         if ($this->product) {
-            $price = $this->product->product_price;
+            $price = $isIndonesian
+                ? $this->product->product_price
+                : ($this->product->product_usd_price ?? 0);
 
             $eventDiscount = ($this->product->event && ($this->product->event->is_active ?? false)) ? $this->product->event->discount : 0;
             $productDiscount = $this->product->product_discount ?? 0;
@@ -69,7 +76,7 @@ class Carts extends Model
         }
 
         if ($this->subCategory) {
-            $price = $this->subCategory->price ?? 0;
+            $price = ($isIndonesian ? $this->subCategory->price : $this->subCategory->usd_price) ?? 0;
 
             $pivot = $this->product?->subcategories()
                 ->where('sub_category_id', $this->sub_category_id)
@@ -91,7 +98,7 @@ class Carts extends Model
         }
 
         if ($this->division) {
-            $price = $this->division->price ?? 0;
+            $price = ($isIndonesian ? $this->division->price : $this->division->usd_price) ?? 0;
 
             $pivot = $this->product?->divisions()
                 ->where('division_id', $this->division_id)
@@ -113,7 +120,7 @@ class Carts extends Model
         }
 
         if ($this->variant) {
-            $price = $this->variant->price ?? 0;
+            $price = ($isIndonesian ? $this->variant->price : $this->variant->usd_price) ?? 0;
 
             $pivot = $this->product?->variants()
                 ->where('variant_id', $this->variant_id)

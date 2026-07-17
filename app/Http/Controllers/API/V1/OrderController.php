@@ -9,6 +9,7 @@ use App\Models\OrderShipments;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AwsS3;
+use App\Http\Traits\AuthoritativePricingTrait;
 use App\Http\Traits\GeoIpTrait;
 use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderShippedMail;
@@ -37,7 +38,7 @@ use Milon\Barcode\DNS1D;
 
 class OrderController extends Controller
 {
-    use AwsS3, GeoIpTrait;
+    use AwsS3, GeoIpTrait, AuthoritativePricingTrait;
 
     protected $serverKey;
     protected $clientKey;
@@ -113,7 +114,8 @@ class OrderController extends Controller
 
         DB::beginTransaction();
 
-        $isManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
+        $requestedManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
+        $isManualInvoice = $requestedManualInvoice && Auth::check() && Auth::user()->role === 'admin';
         $items = $request->items;
 
         $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
@@ -123,6 +125,11 @@ class OrderController extends Controller
                 'message' => 'Checkout failed. Invalid Region.'
             ], 500);
         }
+
+        foreach ($items as &$item) {
+            $item['price'] = $this->resolveAuthoritativeItemPrice($item, false);
+        }
+        unset($item);
 
         $subtotal = 0;
 
@@ -428,8 +435,22 @@ class OrderController extends Controller
 
         DB::beginTransaction();
 
-        $isManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
+        $requestedManualInvoice = $request->boolean('is_manual_invoice') || $request->input('source') === 'manual_invoice';
+        $isManualInvoice = $requestedManualInvoice && Auth::check() && Auth::user()->role === 'admin';
         $items = $request->items;
+
+        $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
+
+        if (!$isIndonesian) {
+            return response()->json([
+                'message' => 'Checkout failed. Invalid Region.'
+            ], 500);
+        }
+
+        foreach ($items as &$item) {
+            $item['price'] = $this->resolveAuthoritativeItemPrice($item, true);
+        }
+        unset($item);
 
         // $activeEvents = Events::with('event_products')
         //     ->where('is_active', true)
