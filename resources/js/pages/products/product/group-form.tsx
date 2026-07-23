@@ -274,6 +274,26 @@ export default function GroupProductForm() {
     const [removedProductIds, setRemovedProductIds] = useState<string[]>([]);
     const [openAddGroupStock, setOpenAddGroupStock] = useState(false);
 
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const isFirstRenderRef = useRef(true);
+    useEffect(() => {
+        if (isFirstRenderRef.current) {
+            isFirstRenderRef.current = false;
+            return;
+        }
+        setHasUnsavedChanges(true);
+    }, [groupMeta, hierarchy, bulkNames, bulkRows, bulkWeight, bulkDescription, pricing, subcategoryDiscounts, divisionDiscounts, variantDiscounts, removedProductIds]);
+
+    const bottomSaveBarRef = useRef<HTMLDivElement>(null);
+    const [isBottomSaveBarVisible, setIsBottomSaveBarVisible] = useState(false);
+    useEffect(() => {
+        const el = bottomSaveBarRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(([entry]) => setIsBottomSaveBarVisible(entry.isIntersecting));
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
     const {
         data: groupStockData,
         setData: setGroupStockData,
@@ -1038,6 +1058,7 @@ export default function GroupProductForm() {
 
         router.post(targetRoute, fd, {
             forceFormData: true,
+            onSuccess: () => setHasUnsavedChanges(false),
             onError: (errors) => {
                 const mappedFormErrors: typeof formErrors = {};
                 const mappedRowErrors: Record<string, RowError> = {};
@@ -2022,7 +2043,7 @@ export default function GroupProductForm() {
                             </Card>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="space-y-6" ref={bottomSaveBarRef}>
                             <div className="flex flex-col gap-2">
                                 <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
                                     {isSubmitting ? 'Saving…' : isEditMode ? 'Update group' : 'Save group'}
@@ -2032,6 +2053,15 @@ export default function GroupProductForm() {
                         </div>
                     </div>
                 </div>
+
+                {hasUnsavedChanges && !isBottomSaveBarVisible && (
+                    <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border bg-card px-4 py-2 shadow-lg">
+                        <span className="text-sm text-muted-foreground">Unsaved changes</span>
+                        <Button type="button" size="sm" onClick={handleSubmit} disabled={isSubmitting}>
+                            {isSubmitting ? 'Saving…' : isEditMode ? 'Update group' : 'Save group'}
+                        </Button>
+                    </div>
+                )}
             </AppLayout>
         </>
     );
