@@ -736,6 +736,24 @@ class ProductController extends Controller
 
     public function editProductGroup(Request $request, $groupId)
     {
+        // Array-item `exists:` rules run one query PER item, which turns validation of a
+        // 120-product group into 100+ round trips before the request logic even starts.
+        // Pre-fetch the candidate ID sets once and validate against them in memory instead.
+        $productsInput = $request->input('products', []);
+
+        $productIdCandidates = collect($productsInput)->pluck('id')->filter()
+            ->merge(collect($request->input('remove_product_ids', [])))
+            ->unique()->values()->all();
+        $validProductIds = Product::whereIn('id', $productIdCandidates)->pluck('id')->all();
+
+        $pictureIdCandidates = collect($productsInput)
+            ->flatMap(fn($p) => array_merge($p['remove_picture_ids'] ?? [], $p['existing_picture_order'] ?? []))
+            ->unique()->values()->all();
+        $validPictureIds = ProductPictures::whereIn('id', $pictureIdCandidates)->pluck('id')->all();
+
+        $tagIdCandidates = collect($productsInput)->flatMap(fn($p) => $p['tags'] ?? [])->unique()->values()->all();
+        $validTagIds = Tags::whereIn('id', $tagIdCandidates)->pluck('id')->all();
+
         $validator = Validator::make($request->all(), [
             'group_name' => 'required|string|max:255',
 
@@ -764,7 +782,7 @@ class ProductController extends Controller
             'variants.*.manual_discount' => 'nullable|numeric',
 
             'products' => 'required|array|min:1',
-            'products.*.id' => 'nullable|exists:products,id',
+            'products.*.id' => ['nullable', Rule::in($validProductIds)],
             'products.*.product_name' => 'required|string',
             'products.*.weight' => 'required|numeric|min:0',
             'products.*.description' => 'required|string',
@@ -773,16 +791,16 @@ class ProductController extends Controller
             'products.*.pictures.*' => 'file|mimes:jpg,jpeg,png,webp|max:2048',
 
             'products.*.remove_picture_ids'    => 'nullable|array',
-            'products.*.remove_picture_ids.*'  => 'exists:product_pictures,id',
+            'products.*.remove_picture_ids.*'  => [Rule::in($validPictureIds)],
 
             'products.*.existing_picture_order'    => 'nullable|array',
-            'products.*.existing_picture_order.*'  => 'exists:product_pictures,id',
+            'products.*.existing_picture_order.*'  => [Rule::in($validPictureIds)],
 
             'products.*.tags'   => 'nullable|array',
-            'products.*.tags.*' => 'exists:tags,id',
+            'products.*.tags.*' => [Rule::in($validTagIds)],
 
             'remove_product_ids' => 'nullable|array',
-            'remove_product_ids.*' => 'exists:products,id',
+            'remove_product_ids.*' => [Rule::in($validProductIds)],
         ]);
 
         if ($validator->fails()) {
@@ -829,22 +847,76 @@ class ProductController extends Controller
             $subUnitId = $request->sub_unit_id;
 
             // 2️⃣ ADD / UPDATE PRODUCTS
-            $productsInput = $request->products;
+
+            // These pivot inputs are group-level (identical for every product in the loop),
+            // so build the desired sync payloads once instead of rebuilding them per product.
+            $desiredCategoryIds = $request->filled('categories')
+                ? collect($request->categories)->map(fn($v) => (string) $v)->sort()->values()->all()
+                : null;
+
+            $desiredSubcategorySync = null;
+            if ($request->filled('sub_categories')) {
+                $desiredSubcategorySync = [];
+                foreach ($request->sub_categories as $sc) {
+                    $desiredSubcategorySync[$sc['id']] = [
+                        'use_subcategory_discount' => $sc['use_subcategory_discount'] ?? true,
+                        'manual_discount'          => $sc['manual_discount'] ?? 0,
+                        'stock'                    => $sc['stock'] ?? null,
+                    ];
+                }
+            }
+
+            $desiredDivisionSync = null;
+            if ($request->filled('divisions')) {
+                $desiredDivisionSync = [];
+                foreach ($request->divisions as $d) {
+                    $desiredDivisionSync[$d['id']] = [
+                        'use_division_discount' => $d['use_division_discount'] ?? true,
+                        'manual_discount'       => $d['manual_discount'] ?? 0,
+                        'stock'                 => $d['stock'] ?? null,
+                    ];
+                }
+            }
+
+            $desiredVariantSync = null;
+            if ($request->filled('variants')) {
+                $desiredVariantSync = [];
+                foreach ($request->variants as $v) {
+                    $desiredVariantSync[$v['id']] = [
+                        'use_variant_discount' => $v['use_variant_discount'] ?? true,
+                        'manual_discount'      => $v['manual_discount'] ?? 0,
+                        'stock'                => $v['stock'] ?? null,
+                    ];
+                }
+            }
+
+            // Batch-load existing products with their pivots in one round trip instead of
+            // querying (and lazy-loading 5 relations) per product inside the loop below —
+            // that N+1 pattern is what actually dominates the request time.
+            $existingProductIds = collect($productsInput)->pluck('id')->filter()->all();
+            $existingProducts = Product::with(['tags', 'categories', 'subcategories', 'divisions', 'variants', 'pictures'])
+                ->whereIn('id', $existingProductIds)
+                ->get()
+                ->keyBy('id');
 
             foreach ($productsInput as $i => $p) {
 
                 if (!empty($p['id'])) {
-                    // UPDATE PRODUCT (no unit_id/sub_unit_id anymore)
-                    $product = Product::findOrFail($p['id']);
-                    $product->product_name       = $p['product_name'];
-                    $product->product_weight     = $p['weight'];
-                    $product->description        = $p['description'];
-                    $product->unit_id            = $unitId;
-                    $product->sub_unit_id        = $subUnitId;
-                    $product->product_price      = $default_price;
-                    $product->product_usd_price  = $default_usd_price;
-                    $product->product_discount   = $default_discount;
-                    $product->save();
+                    // UPDATE PRODUCT (no unit_id/sub_unit_id anymore) — only write if something actually changed
+                    $product = $existingProducts->get($p['id']) ?? Product::findOrFail($p['id']);
+                    $product->fill([
+                        'product_name'       => $p['product_name'],
+                        'product_weight'     => $p['weight'],
+                        'description'        => $p['description'],
+                        'unit_id'            => $unitId,
+                        'sub_unit_id'        => $subUnitId,
+                        'product_price'      => $default_price,
+                        'product_usd_price'  => $default_usd_price,
+                        'product_discount'   => $default_discount,
+                    ]);
+                    if ($product->isDirty()) {
+                        $product->save();
+                    }
                 } else {
                     // CREATE PRODUCT
                     $product = Product::create([
@@ -864,56 +936,48 @@ class ProductController extends Controller
                     ]);
                 }
 
-                // TAGS pivot
+                // TAGS pivot (per-product input) — only sync if the desired set differs from current
                 if (array_key_exists('tags', $p)) {
-                    $product->tags()->sync(is_array($p['tags']) ? $p['tags'] : []);
+                    $desiredTagIds = collect(is_array($p['tags']) ? $p['tags'] : [])
+                        ->map(fn($v) => (string) $v)->sort()->values()->all();
+                    $currentTagIds = $product->tags->pluck('id')
+                        ->map(fn($v) => (string) $v)->sort()->values()->all();
+                    if ($desiredTagIds !== $currentTagIds) {
+                        $product->tags()->sync(is_array($p['tags']) ? $p['tags'] : []);
+                    }
                 }
 
                 // CATEGORIES pivot
-                if ($request->filled('categories')) {
-                    $product->categories()->sync($request->categories);
+                if ($desiredCategoryIds !== null) {
+                    $currentCategoryIds = $product->categories->pluck('id')
+                        ->map(fn($v) => (string) $v)->sort()->values()->all();
+                    if ($desiredCategoryIds !== $currentCategoryIds) {
+                        $product->categories()->sync($request->categories);
+                    }
                 }
 
                 // SUBCATEGORY pivot + discount/stock
-                if ($request->filled('sub_categories')) {
-                    $sync = [];
-                    foreach ($request->sub_categories as $sc) {
-                        $sync[$sc['id']] = [
-                            'use_subcategory_discount' => $sc['use_subcategory_discount'] ?? true,
-                            'manual_discount'          => $sc['manual_discount'] ?? 0,
-                            'stock'                    => $sc['stock'] ?? null,
-                        ];
+                if ($desiredSubcategorySync !== null) {
+                    if ($this->pivotSyncDiffers($product->subcategories, $desiredSubcategorySync, ['use_subcategory_discount', 'manual_discount', 'stock'])) {
+                        $product->subcategories()->sync($desiredSubcategorySync);
                     }
-                    $product->subcategories()->sync($sync);
                 }
 
                 // DIVISION pivot + discount/stock
-                if ($request->filled('divisions')) {
-                    $sync = [];
-                    foreach ($request->divisions as $d) {
-                        $sync[$d['id']] = [
-                            'use_division_discount' => $d['use_division_discount'] ?? true,
-                            'manual_discount'       => $d['manual_discount'] ?? 0,
-                            'stock'                 => $d['stock'] ?? null,
-                        ];
+                if ($desiredDivisionSync !== null) {
+                    if ($this->pivotSyncDiffers($product->divisions, $desiredDivisionSync, ['use_division_discount', 'manual_discount', 'stock'])) {
+                        $product->divisions()->sync($desiredDivisionSync);
                     }
-                    $product->divisions()->sync($sync);
-                } else {
+                } elseif ($product->divisions->isNotEmpty()) {
                     $product->divisions()->detach();
                 }
 
                 // VARIANT pivot + discount/stock
-                if ($request->filled('variants')) {
-                    $sync = [];
-                    foreach ($request->variants as $v) {
-                        $sync[$v['id']] = [
-                            'use_variant_discount' => $v['use_variant_discount'] ?? true,
-                            'manual_discount'      => $v['manual_discount'] ?? 0,
-                            'stock'                => $v['stock'] ?? null,
-                        ];
+                if ($desiredVariantSync !== null) {
+                    if ($this->pivotSyncDiffers($product->variants, $desiredVariantSync, ['use_variant_discount', 'manual_discount', 'stock'])) {
+                        $product->variants()->sync($desiredVariantSync);
                     }
-                    $product->variants()->sync($sync);
-                } else {
+                } elseif ($product->variants->isNotEmpty()) {
                     $product->variants()->detach();
                 }
 
@@ -926,9 +990,14 @@ class ProductController extends Controller
                     }
                 }
 
-                // UPDATE EXISTING PICTURE SORT ORDER
+                // UPDATE EXISTING PICTURE SORT ORDER — the frontend resends this array on every
+                // save to preserve ordering, so only write rows whose order actually changed.
                 if (!empty($p['existing_picture_order']) && is_array($p['existing_picture_order'])) {
+                    $currentSortOrders = $product->pictures->pluck('sort_order', 'id')->all();
                     foreach ($p['existing_picture_order'] as $order => $picId) {
+                        if (array_key_exists($picId, $currentSortOrders) && (int) $currentSortOrders[$picId] === (int) $order) {
+                            continue;
+                        }
                         ProductPictures::where('id', $picId)
                             ->where('product_id', $product->id)
                             ->update(['sort_order' => $order]);
@@ -964,6 +1033,35 @@ class ProductController extends Controller
                 'message' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Compare a loaded pivot relation collection against a desired sync() payload
+     * (id => [pivotColumn => value, ...]) so callers can skip sync() when nothing changed.
+     */
+    private function pivotSyncDiffers($currentRelation, array $desiredSync, array $pivotColumns): bool
+    {
+        $current = $currentRelation->mapWithKeys(function ($related) use ($pivotColumns) {
+            $values = [];
+            foreach ($pivotColumns as $column) {
+                $values[$column] = $related->pivot->{$column};
+            }
+            return [(string) $related->id => $values];
+        })->all();
+
+        $desired = [];
+        foreach ($desiredSync as $id => $values) {
+            $normalized = [];
+            foreach ($pivotColumns as $column) {
+                $normalized[$column] = $values[$column] ?? null;
+            }
+            $desired[(string) $id] = $normalized;
+        }
+
+        ksort($current);
+        ksort($desired);
+
+        return $current != $desired;
     }
 
     public function deleteProductGroup($groupId)
