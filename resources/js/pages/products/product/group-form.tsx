@@ -1201,7 +1201,6 @@ export default function GroupProductForm() {
     const addEmptyRow = () => {
         const id = randomId();
         setBulkRows((prev) => [
-            ...prev,
             {
                 id,
                 name: '',
@@ -1214,6 +1213,7 @@ export default function GroupProductForm() {
                 tags: [],
                 dirty: true,
             },
+            ...prev,
         ]);
         setExpandedRowIds((prev) => new Set(prev).add(id));
     };
