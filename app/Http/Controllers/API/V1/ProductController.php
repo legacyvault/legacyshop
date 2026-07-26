@@ -781,7 +781,7 @@ class ProductController extends Controller
             'variants.*.stock' => 'nullable|integer',
             'variants.*.manual_discount' => 'nullable|numeric',
 
-            'products' => 'required|array|min:1',
+            'products' => 'nullable|array',
             'products.*.id' => ['nullable', Rule::in($validProductIds)],
             'products.*.product_name' => 'required|string',
             'products.*.weight' => 'required|numeric|min:0',
@@ -891,10 +891,10 @@ class ProductController extends Controller
             }
 
             // Batch-load existing products with their pivots in one round trip instead of
-            // querying (and lazy-loading 5 relations) per product inside the loop below —
+            // querying (and lazy-loading relations) per product inside the loop below —
             // that N+1 pattern is what actually dominates the request time.
             $existingProductIds = collect($productsInput)->pluck('id')->filter()->all();
-            $existingProducts = Product::with(['tags', 'categories', 'subcategories', 'divisions', 'variants', 'pictures'])
+            $existingProducts = Product::with(['tags', 'pictures'])
                 ->whereIn('id', $existingProductIds)
                 ->get()
                 ->keyBy('id');
@@ -902,17 +902,14 @@ class ProductController extends Controller
             foreach ($productsInput as $i => $p) {
 
                 if (!empty($p['id'])) {
-                    // UPDATE PRODUCT (no unit_id/sub_unit_id anymore) — only write if something actually changed
+                    // UPDATE PRODUCT identity fields only — unit_id/sub_unit_id/pricing are
+                    // group-wide and applied to every product in the group below, regardless
+                    // of which rows the frontend included here.
                     $product = $existingProducts->get($p['id']) ?? Product::findOrFail($p['id']);
                     $product->fill([
                         'product_name'       => $p['product_name'],
                         'product_weight'     => $p['weight'],
                         'description'        => $p['description'],
-                        'unit_id'            => $unitId,
-                        'sub_unit_id'        => $subUnitId,
-                        'product_price'      => $default_price,
-                        'product_usd_price'  => $default_usd_price,
-                        'product_discount'   => $default_discount,
                     ]);
                     if ($product->isDirty()) {
                         $product->save();
@@ -947,39 +944,8 @@ class ProductController extends Controller
                     }
                 }
 
-                // CATEGORIES pivot
-                if ($desiredCategoryIds !== null) {
-                    $currentCategoryIds = $product->categories->pluck('id')
-                        ->map(fn($v) => (string) $v)->sort()->values()->all();
-                    if ($desiredCategoryIds !== $currentCategoryIds) {
-                        $product->categories()->sync($request->categories);
-                    }
-                }
-
-                // SUBCATEGORY pivot + discount/stock
-                if ($desiredSubcategorySync !== null) {
-                    if ($this->pivotSyncDiffers($product->subcategories, $desiredSubcategorySync, ['use_subcategory_discount', 'manual_discount', 'stock'])) {
-                        $product->subcategories()->sync($desiredSubcategorySync);
-                    }
-                }
-
-                // DIVISION pivot + discount/stock
-                if ($desiredDivisionSync !== null) {
-                    if ($this->pivotSyncDiffers($product->divisions, $desiredDivisionSync, ['use_division_discount', 'manual_discount', 'stock'])) {
-                        $product->divisions()->sync($desiredDivisionSync);
-                    }
-                } elseif ($product->divisions->isNotEmpty()) {
-                    $product->divisions()->detach();
-                }
-
-                // VARIANT pivot + discount/stock
-                if ($desiredVariantSync !== null) {
-                    if ($this->pivotSyncDiffers($product->variants, $desiredVariantSync, ['use_variant_discount', 'manual_discount', 'stock'])) {
-                        $product->variants()->sync($desiredVariantSync);
-                    }
-                } elseif ($product->variants->isNotEmpty()) {
-                    $product->variants()->detach();
-                }
+                // Categories/subcategories/divisions/variants are group-wide and synced for
+                // every product in the group in the pass below, not here.
 
                 // REMOVE PICTURES
                 if (!empty($p['remove_picture_ids'])) {
@@ -1015,6 +981,55 @@ class ProductController extends Controller
                             'product_id' => $product->id,
                             'sort_order' => $existingPicCount + $j,
                         ]);
+                    }
+                }
+            }
+
+            // 3️⃣unit, pricing, and the categories/subcategories/
+            $groupProductIds = Product::where('product_group_id', $group->id)->pluck('id')->all();
+
+            if (!empty($groupProductIds)) {
+                Product::whereIn('id', $groupProductIds)->update([
+                    'unit_id'           => $unitId,
+                    'sub_unit_id'       => $subUnitId,
+                    'product_price'     => $default_price,
+                    'product_usd_price' => $default_usd_price,
+                    'product_discount'  => $default_discount,
+                ]);
+
+                $groupProducts = Product::with(['categories', 'subcategories', 'divisions', 'variants'])
+                    ->whereIn('id', $groupProductIds)
+                    ->get();
+
+                foreach ($groupProducts as $product) {
+                    if ($desiredCategoryIds !== null) {
+                        $currentCategoryIds = $product->categories->pluck('id')
+                            ->map(fn($v) => (string) $v)->sort()->values()->all();
+                        if ($desiredCategoryIds !== $currentCategoryIds) {
+                            $product->categories()->sync($request->categories);
+                        }
+                    }
+
+                    if ($desiredSubcategorySync !== null) {
+                        if ($this->pivotSyncDiffers($product->subcategories, $desiredSubcategorySync, ['use_subcategory_discount', 'manual_discount', 'stock'])) {
+                            $product->subcategories()->sync($desiredSubcategorySync);
+                        }
+                    }
+
+                    if ($desiredDivisionSync !== null) {
+                        if ($this->pivotSyncDiffers($product->divisions, $desiredDivisionSync, ['use_division_discount', 'manual_discount', 'stock'])) {
+                            $product->divisions()->sync($desiredDivisionSync);
+                        }
+                    } elseif ($product->divisions->isNotEmpty()) {
+                        $product->divisions()->detach();
+                    }
+
+                    if ($desiredVariantSync !== null) {
+                        if ($this->pivotSyncDiffers($product->variants, $desiredVariantSync, ['use_variant_discount', 'manual_discount', 'stock'])) {
+                            $product->variants()->sync($desiredVariantSync);
+                        }
+                    } elseif ($product->variants->isNotEmpty()) {
+                        $product->variants()->detach();
                     }
                 }
             }
@@ -1190,7 +1205,7 @@ class ProductController extends Controller
 
         // Suppress thumbnail appends to avoid N+1 queries — thumbnails not needed in the picker
         $productGroups->each(function ($group) {
-            $group->products->each(fn ($product) => $product->setAppends([]));
+            $group->products->each(fn($product) => $product->setAppends([]));
         });
 
         $ungroupedQuery = Product::whereNull('product_group_id')
@@ -1205,7 +1220,7 @@ class ProductController extends Controller
         }
 
         $ungroupedProducts = $ungroupedQuery->get();
-        $ungroupedProducts->each(fn ($product) => $product->setAppends([]));
+        $ungroupedProducts->each(fn($product) => $product->setAppends([]));
 
         return response()->json([
             'status' => true,
