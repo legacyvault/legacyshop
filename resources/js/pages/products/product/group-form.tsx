@@ -239,12 +239,43 @@ export default function GroupProductForm() {
     });
 
     const [bulkNames, setBulkNames] = useState('');
+    const initialRowIdRef = useRef(randomId());
     const [bulkRows, setBulkRows] = useState<BulkProductRow[]>([
-        { id: randomId(), name: '', images: [], previews: [], description: '', weight: '', existingPictures: [], removePictureIds: [], tags: [] },
+        {
+            id: initialRowIdRef.current,
+            name: '',
+            images: [],
+            previews: [],
+            description: '',
+            weight: '',
+            existingPictures: [],
+            removePictureIds: [],
+            tags: [],
+        },
     ]);
     const [bulkWeight, setBulkWeight] = useState('');
     const [bulkDescription, setBulkDescription] = useState('');
     const [rowErrors, setRowErrors] = useState<Record<string, RowError>>({});
+    const [rowFilter, setRowFilter] = useState('');
+    // Rows are collapsed by default once saved; this tracks which ones are currently expanded
+    // (new rows are seeded in as expanded — see addEmptyRow / addBulkRowsFromNames).
+    const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(() => new Set([initialRowIdRef.current]));
+    const toggleRowExpanded = (id: string) => {
+        setExpandedRowIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    };
+    const visibleRows = useMemo(() => {
+        const query = rowFilter.trim().toLowerCase();
+        if (!query) return bulkRows;
+        return bulkRows.filter((row) => row.name.toLowerCase().includes(query));
+    }, [bulkRows, rowFilter]);
     const [formErrors, setFormErrors] = useState<{
         group_name?: string;
         unit_id?: string;
@@ -274,31 +305,6 @@ export default function GroupProductForm() {
     const [variantDiscounts, setVariantDiscounts] = useState<Record<string, DiscountEntry>>({});
     const [removedProductIds, setRemovedProductIds] = useState<string[]>([]);
     const [openAddGroupStock, setOpenAddGroupStock] = useState(false);
-
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-    const [hasHydrated, setHasHydrated] = useState(!isEditMode);
-    const isFirstRenderRef = useRef(true);
-    useEffect(() => {
-        if (!hasHydrated) return;
-        if (isFirstRenderRef.current) {
-            isFirstRenderRef.current = false;
-            return;
-        }
-        setHasUnsavedChanges(true);
-    }, [
-        hasHydrated,
-        groupMeta,
-        hierarchy,
-        bulkNames,
-        bulkRows,
-        bulkWeight,
-        bulkDescription,
-        pricing,
-        subcategoryDiscounts,
-        divisionDiscounts,
-        variantDiscounts,
-        removedProductIds,
-    ]);
 
     const bottomSaveBarRef = useRef<HTMLDivElement>(null);
     const [isBottomSaveBarVisible, setIsBottomSaveBarVisible] = useState(false);
@@ -544,7 +550,6 @@ export default function GroupProductForm() {
         hydrateDiscountsFromProducts(products);
         setRowErrors({});
         setRemovedProductIds([]);
-        setHasHydrated(true);
     }, [productGroup, hydrateDiscountsFromProducts]);
 
     useEffect(
@@ -1016,6 +1021,7 @@ export default function GroupProductForm() {
         if (Object.keys(newFormErrors).length || Object.keys(newRowErrors).length) {
             setFormErrors(newFormErrors);
             setRowErrors(newRowErrors);
+            setExpandedRowIds((prev) => new Set([...prev, ...Object.keys(newRowErrors)]));
             return;
         }
 
@@ -1083,7 +1089,6 @@ export default function GroupProductForm() {
 
         router.post(targetRoute, fd, {
             forceFormData: true,
-            onSuccess: () => setHasUnsavedChanges(false),
             onError: (errors) => {
                 const mappedFormErrors: typeof formErrors = {};
                 const mappedRowErrors: Record<string, RowError> = {};
@@ -1118,6 +1123,7 @@ export default function GroupProductForm() {
                 setFormErrors(mappedFormErrors);
                 if (Object.keys(mappedRowErrors).length) {
                     setRowErrors((prev) => ({ ...prev, ...mappedRowErrors }));
+                    setExpandedRowIds((prev) => new Set([...prev, ...Object.keys(mappedRowErrors)]));
                 }
             },
             onFinish: () => setIsSubmitting(false),
@@ -1173,30 +1179,31 @@ export default function GroupProductForm() {
 
         if (!names.length) return;
 
-        setBulkRows((prev) => [
-            ...prev,
-            ...names.map((name) => ({
-                id: randomId(),
-                name,
-                images: [],
-                previews: [],
-                existingPictures: [],
-                removePictureIds: [],
-                description: bulkDescription,
-                weight: bulkWeight,
-                tags: [],
-                dirty: true,
-            })),
-        ]);
+        const newRows = names.map((name) => ({
+            id: randomId(),
+            name,
+            images: [],
+            previews: [],
+            existingPictures: [],
+            removePictureIds: [],
+            description: bulkDescription,
+            weight: bulkWeight,
+            tags: [],
+            dirty: true,
+        }));
+
+        setBulkRows((prev) => [...prev, ...newRows]);
+        setExpandedRowIds((prev) => new Set([...prev, ...newRows.map((row) => row.id)]));
         setBulkNames('');
         setRowErrors({});
     };
 
-    const addEmptyRow = () =>
+    const addEmptyRow = () => {
+        const id = randomId();
         setBulkRows((prev) => [
             ...prev,
             {
-                id: randomId(),
+                id,
                 name: '',
                 images: [],
                 previews: [],
@@ -1208,6 +1215,8 @@ export default function GroupProductForm() {
                 dirty: true,
             },
         ]);
+        setExpandedRowIds((prev) => new Set(prev).add(id));
+    };
 
     const removeRow = (id: string) => {
         setBulkRows((prev) => {
@@ -1222,6 +1231,12 @@ export default function GroupProductForm() {
         setRowErrors((errs) => {
             const next = { ...errs };
             delete next[id];
+            return next;
+        });
+        setExpandedRowIds((prev) => {
+            if (!prev.has(id)) return prev;
+            const next = new Set(prev);
+            next.delete(id);
             return next;
         });
         delete descriptionRefs.current[id];
@@ -1790,12 +1805,61 @@ export default function GroupProductForm() {
                                         </p>
                                     </div>
 
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="row-filter">Find a product</Label>
+                                        <div className="relative">
+                                            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                            <Input
+                                                id="row-filter"
+                                                placeholder="Filter rows by name…"
+                                                value={rowFilter}
+                                                onChange={(e) => setRowFilter(e.target.value)}
+                                                className="pl-9"
+                                            />
+                                        </div>
+                                        {rowFilter.trim() && (
+                                            <p className="text-xs text-muted-foreground">
+                                                Showing {visibleRows.length} of {bulkRows.length} rows.
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="overflow-hidden rounded-lg border">
                                         <div className="divide-y">
-                                            {bulkRows.map((row) => (
+                                            {visibleRows.map((row) => {
+                                                const isExpanded = expandedRowIds.has(row.id);
+                                                const rowHasErrors = Boolean(rowErrors[row.id] && Object.keys(rowErrors[row.id]).length);
+                                                const thumbnailUrl = row.existingPictures?.[0]?.url ?? row.previews[0];
+                                                const pictureCount = row.images.length + (row.existingPictures?.length ?? 0);
+
+                                                return (
                                                 <div key={row.id} className="space-y-4 px-4 py-3">
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleRowExpanded(row.id)}
+                                                        className="flex w-full items-center gap-3 text-left"
+                                                        aria-expanded={isExpanded}
+                                                    >
+                                                        <ChevronDown
+                                                            className={`size-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                                        />
+                                                        {thumbnailUrl ? (
+                                                            <img src={thumbnailUrl} alt="" className="size-10 shrink-0 rounded-md border object-cover" />
+                                                        ) : (
+                                                            <div className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-gray-50 text-[10px] text-muted-foreground">
+                                                                No image
+                                                            </div>
+                                                        )}
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="truncate text-sm font-medium">{row.name.trim() || 'Untitled product'}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {row.weight ? `${row.weight}g` : 'No weight'} · {pictureCount} image{pictureCount === 1 ? '' : 's'} ·{' '}
+                                                                {row.tags.length} tag{row.tags.length === 1 ? '' : 's'}
+                                                            </p>
+                                                        </div>
+                                                        {rowHasErrors && <span className="shrink-0 text-xs font-medium text-red-500">Needs attention</span>}
+                                                    </button>
+                                                    <div className="flex items-center justify-end gap-2">
                                                             <span className="text-sm">Delete Row</span>
                                                             <Button
                                                                 type="button"
@@ -1808,7 +1872,8 @@ export default function GroupProductForm() {
                                                                 <Trash2 className="size-4" />
                                                             </Button>
                                                         </div>
-                                                    </div>
+                                                    {isExpanded && (
+                                                    <>
                                                     <div className="space-y-2">
                                                         <Label htmlFor={`name-${row.id}`}>Product name</Label>
                                                         <Input
@@ -2047,8 +2112,11 @@ export default function GroupProductForm() {
                                                         )}
                                                         <p className="text-xs text-muted-foreground">Formatting: **bold**, *italic*, __underline__</p>
                                                     </div>
+                                                    </>
+                                                    )}
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
@@ -2070,7 +2138,7 @@ export default function GroupProductForm() {
                             </Card>
                         </div>
 
-                        <div className="space-y-6" ref={bottomSaveBarRef}>
+                        <div className="space-y-6 xl:sticky xl:top-6 xl:self-start" ref={bottomSaveBarRef}>
                             <div className="flex flex-col gap-2">
                                 <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
                                     {isSubmitting ? 'Saving…' : isEditMode ? 'Update group' : 'Save group'}
@@ -2081,13 +2149,15 @@ export default function GroupProductForm() {
                     </div>
                 </div>
 
-                {hasUnsavedChanges && !isBottomSaveBarVisible && (
-                    <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border bg-card px-4 py-2 shadow-lg">
-                        <span className="text-sm text-muted-foreground">Unsaved changes</span>
-                        <Button type="button" size="sm" onClick={handleSubmit} disabled={isSubmitting}>
-                            {isSubmitting ? 'Saving…' : isEditMode ? 'Update group' : 'Save group'}
-                        </Button>
-                    </div>
+                {!isBottomSaveBarVisible && (
+                    <button
+                        type="button"
+                        onClick={() => bottomSaveBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        className="fixed right-6 bottom-6 z-50 flex size-11 items-center justify-center rounded-full border bg-card shadow-lg hover:bg-accent"
+                        aria-label="Scroll to save button"
+                    >
+                        <ChevronDown className="size-5" />
+                    </button>
                 )}
             </AppLayout>
         </>
