@@ -42,6 +42,7 @@ type BulkProductRow = {
     description: string;
     weight: string;
     tags: string[];
+    dirty?: boolean;
 };
 
 type RowError = {
@@ -275,14 +276,29 @@ export default function GroupProductForm() {
     const [openAddGroupStock, setOpenAddGroupStock] = useState(false);
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [hasHydrated, setHasHydrated] = useState(!isEditMode);
     const isFirstRenderRef = useRef(true);
     useEffect(() => {
+        if (!hasHydrated) return;
         if (isFirstRenderRef.current) {
             isFirstRenderRef.current = false;
             return;
         }
         setHasUnsavedChanges(true);
-    }, [groupMeta, hierarchy, bulkNames, bulkRows, bulkWeight, bulkDescription, pricing, subcategoryDiscounts, divisionDiscounts, variantDiscounts, removedProductIds]);
+    }, [
+        hasHydrated,
+        groupMeta,
+        hierarchy,
+        bulkNames,
+        bulkRows,
+        bulkWeight,
+        bulkDescription,
+        pricing,
+        subcategoryDiscounts,
+        divisionDiscounts,
+        variantDiscounts,
+        removedProductIds,
+    ]);
 
     const bottomSaveBarRef = useRef<HTMLDivElement>(null);
     const [isBottomSaveBarVisible, setIsBottomSaveBarVisible] = useState(false);
@@ -504,6 +520,7 @@ export default function GroupProductForm() {
             description: p.description || '',
             weight: p.product_weight !== null && p.product_weight !== undefined ? String(p.product_weight) : '',
             tags: p.tags?.map((tag) => tag.id) || [],
+            dirty: false,
         }));
 
         setBulkRows(
@@ -527,6 +544,7 @@ export default function GroupProductForm() {
         hydrateDiscountsFromProducts(products);
         setRowErrors({});
         setRemovedProductIds([]);
+        setHasHydrated(true);
     }, [productGroup, hydrateDiscountsFromProducts]);
 
     useEffect(
@@ -632,7 +650,7 @@ export default function GroupProductForm() {
     };
 
     const handleTagChange = (id: string, tags: string[]) => {
-        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, tags } : row)));
+        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, tags, dirty: true } : row)));
         setRowErrors((prev) => {
             if (!prev[id]?.tags) return prev;
             return { ...prev, [id]: { ...prev[id], tags: undefined } };
@@ -727,7 +745,7 @@ export default function GroupProductForm() {
     }, [selectedUnit, selectedUnitPrice, selectedUnitUsdPrice, selectedUnitDiscount]);
 
     const handleRowNameChange = (id: string, name: string) => {
-        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, name } : row)));
+        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, name, dirty: true } : row)));
         setRowErrors((prev) => {
             if (!prev[id]?.name) return prev;
             return { ...prev, [id]: { ...prev[id], name: undefined } };
@@ -735,7 +753,7 @@ export default function GroupProductForm() {
     };
 
     const handleRowWeightChange = (id: string, weight: string) => {
-        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, weight } : row)));
+        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, weight, dirty: true } : row)));
         setRowErrors((prev) => {
             if (!prev[id]?.weight) return prev;
             return { ...prev, [id]: { ...prev[id], weight: undefined } };
@@ -810,6 +828,7 @@ export default function GroupProductForm() {
                     ...row,
                     images: [...row.images, ...validFiles],
                     previews: [...row.previews, ...validPreviews],
+                    dirty: true,
                 };
             }),
         );
@@ -827,7 +846,7 @@ export default function GroupProductForm() {
                     ...errs,
                     [rowId]: { ...errs[rowId], images: undefined },
                 }));
-                return { ...row, images: nextImages, previews: nextPreviews };
+                return { ...row, images: nextImages, previews: nextPreviews, dirty: true };
             }),
         );
     };
@@ -841,6 +860,7 @@ export default function GroupProductForm() {
                     ...row,
                     existingPictures: row.existingPictures?.filter((pic) => pic.id !== pictureId) ?? [],
                     removePictureIds: nextRemove,
+                    dirty: true,
                 };
             }),
         );
@@ -854,7 +874,7 @@ export default function GroupProductForm() {
                 const reordered = [...(row.existingPictures ?? [])];
                 const [moved] = reordered.splice(fromIndex, 1);
                 reordered.splice(toIndex, 0, moved);
-                return { ...row, existingPictures: reordered };
+                return { ...row, existingPictures: reordered, dirty: true };
             }),
         );
     };
@@ -870,7 +890,7 @@ export default function GroupProductForm() {
                 const [movedPreview] = reorderedPreviews.splice(fromIndex, 1);
                 reorderedImages.splice(toIndex, 0, movedImage);
                 reorderedPreviews.splice(toIndex, 0, movedPreview);
-                return { ...row, images: reorderedImages, previews: reorderedPreviews };
+                return { ...row, images: reorderedImages, previews: reorderedPreviews, dirty: true };
             }),
         );
     };
@@ -884,7 +904,7 @@ export default function GroupProductForm() {
     };
 
     const handleRowDescriptionChange = (id: string, value: string) => {
-        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, description: value } : row)));
+        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, description: value, dirty: true } : row)));
         setRowErrors((prev) => {
             if (!prev[id]?.description) return prev;
             return { ...prev, [id]: { ...prev[id], description: undefined } };
@@ -902,7 +922,7 @@ export default function GroupProductForm() {
         const after = textarea.value.substring(end);
         const nextValue = before + startTag + selected + endTag + after;
 
-        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, description: nextValue } : row)));
+        setBulkRows((prev) => prev.map((row) => (row.id === id ? { ...row, description: nextValue, dirty: true } : row)));
 
         setTimeout(() => {
             textarea.focus();
@@ -1034,7 +1054,12 @@ export default function GroupProductForm() {
             fd.append(`${item.prefix}[${item.index}][${item.manualKey}]`, item.useDefault ? '0' : String(Number(item.value || 0)));
         });
 
-        bulkRows.forEach((row, i) => {
+        // Edit mode only needs to send products that are new or were actually touched —
+        // unchanged rows are already correct server-side, and this keeps the payload
+        // (and file uploads) proportional to what changed instead of the whole group.
+        const rowsToSubmit = isEditMode ? bulkRows.filter((row) => !row.productId || row.dirty) : bulkRows;
+
+        rowsToSubmit.forEach((row, i) => {
             if (row.productId) {
                 fd.append(`products[${i}][id]`, row.productId);
             }
@@ -1068,7 +1093,7 @@ export default function GroupProductForm() {
                         const parts = key.split('.');
                         const index = Number(parts[1]);
                         const field = parts[2] || '';
-                        const rowId = bulkRows[index]?.id;
+                        const rowId = rowsToSubmit[index]?.id;
                         if (!rowId) return;
                         const fieldKey =
                             field === 'product_name'
@@ -1101,12 +1126,12 @@ export default function GroupProductForm() {
 
     const applyBulkWeight = (value: string) => {
         setBulkWeight(value);
-        setBulkRows((prev) => prev.map((row) => ({ ...row, weight: value })));
+        setBulkRows((prev) => prev.map((row) => ({ ...row, weight: value, dirty: true })));
     };
 
     const applyBulkDescription = (value: string) => {
         setBulkDescription(value);
-        setBulkRows((prev) => prev.map((row) => ({ ...row, description: value })));
+        setBulkRows((prev) => prev.map((row) => ({ ...row, description: value, dirty: true })));
         setRowErrors((prev) => {
             const hasDescriptionError = Object.values(prev).some((err) => err?.description);
             if (!hasDescriptionError) return prev;
@@ -1160,6 +1185,7 @@ export default function GroupProductForm() {
                 description: bulkDescription,
                 weight: bulkWeight,
                 tags: [],
+                dirty: true,
             })),
         ]);
         setBulkNames('');
@@ -1179,6 +1205,7 @@ export default function GroupProductForm() {
                 description: bulkDescription,
                 weight: bulkWeight,
                 tags: [],
+                dirty: true,
             },
         ]);
 
