@@ -2244,7 +2244,7 @@ class ProductController extends Controller
 
             return redirect()->back()->with('alert', [
                 'type' => 'error',
-                'message' => 'Failed to delete tag it still has product linked ',
+                'message' => $e->getMessage(),
             ]);
         }
     }
