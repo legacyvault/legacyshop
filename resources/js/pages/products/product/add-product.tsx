@@ -1761,21 +1761,6 @@ export default function AddProduct() {
                     </div>
                 )}
 
-                {/* Tags Multi-Select */}
-                <div className="mb-6">
-                    <label className="mb-2 block text-sm font-medium">Tags *</label>
-                    <MultiSelect
-                        options={tagOptions}
-                        values={formData.tags}
-                        onChange={(values) => {
-                            handleInputChange('tags', values);
-                        }}
-                        placeholder="Select tags"
-                        error={errors.tags}
-                    />
-                    {errors.tags && <p className="mt-1 text-sm text-red-500">{errors.tags}</p>}
-                </div>
-
                 {/* Price Summary */}
                 {formData.price && (
                     <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -1862,6 +1847,21 @@ export default function AddProduct() {
                 )}
 
                 </>)}
+
+                {/* Tags Multi-Select */}
+                <div className="mb-6">
+                    <label className="mb-2 block text-sm font-medium">Tags *</label>
+                    <MultiSelect
+                        options={tagOptions}
+                        values={formData.tags}
+                        onChange={(values) => {
+                            handleInputChange('tags', values);
+                        }}
+                        placeholder="Select tags"
+                        error={errors.tags}
+                    />
+                    {errors.tags && <p className="mt-1 text-sm text-red-500">{errors.tags}</p>}
+                </div>
 
                 {/* Submit Button */}
                 <form onSubmit={handleSubmit} className="flex gap-4 pt-4">
