@@ -931,6 +931,18 @@ class ProductController extends Controller
                             'sub_unit_id'  => $request->sub_unit_id
                         ])),
                     ]);
+
+                    // an initial stock record + total_stock, not just a bare row.
+                    $initialStock = 100;
+
+                    ProductStock::create([
+                        'product_id' => $product->id,
+                        'quantity'   => $initialStock,
+                        'remarks'    => 'Initial stock (auto)',
+                    ]);
+
+                    $product->total_stock = $initialStock;
+                    $product->save();
                 }
 
                 // TAGS pivot (per-product input) — only sync if the desired set differs from current
