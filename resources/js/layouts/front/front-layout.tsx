@@ -1,6 +1,7 @@
 import DialogHandler from '@/components/dialog-handler';
 import { CartProvider, useCart } from '@/contexts/CartContext';
-import { Auth } from '@/types';
+import { SearchBarProvider } from '@/contexts/SearchBarContext';
+import { SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronRight, HandCoins, MapPinned, User } from 'lucide-react';
@@ -8,58 +9,33 @@ import { PropsWithChildren } from 'react';
 import FrontFooter from './front-footer';
 import FrontHeader from './front-header';
 
-interface IPropsHeader {
-    auth: Auth;
-    locale: string;
-    translations: any;
-    searchValue?: string;
-    onSearchChange?: (value: string) => void;
-    searchRoute?: string;
-    searchScopeLabel?: string;
-    searchUnitId?: string;
-}
+/**
+ * Persistent Inertia layout for the storefront.
+ *
+ * This is assigned via `Page.layout = (page) => <FrontLayout>{page}</FrontLayout>`
+ * on each front/* page component, NOT imported and wrapped inline in JSX.
+ * Inertia keeps a persistent layout mounted across page visits and only
+ * swaps out the page content it wraps, so FrontHeader/FrontFooter/CartProvider
+ * stay mounted (and FrontHeader's running-text + active-events fetches only
+ * fire once) instead of remounting on every storefront navigation.
+ *
+ * auth/locale/translations used to be threaded in as props from every page;
+ * they're plain Inertia shared props now, so FrontHeader/FrontFooter read
+ * them directly via usePage() instead.
+ */
+export default function FrontLayout({ children }: PropsWithChildren) {
+    const { auth } = usePage<SharedData>().props;
 
-export default function FrontLayout({
-    auth,
-    locale,
-    translations,
-    children,
-    searchValue,
-    onSearchChange,
-    searchRoute,
-    searchScopeLabel,
-    searchUnitId,
-}: PropsWithChildren<IPropsHeader>) {
     return (
-        <>
+        <SearchBarProvider>
             <CartProvider auth={auth}>
-                <FrontChildLayout
-                    children={children}
-                    auth={auth}
-                    locale={locale}
-                    translations={translations}
-                    searchValue={searchValue}
-                    onSearchChange={onSearchChange}
-                    searchRoute={searchRoute}
-                    searchScopeLabel={searchScopeLabel}
-                    searchUnitId={searchUnitId}
-                />
+                <FrontChildLayout>{children}</FrontChildLayout>
             </CartProvider>
-        </>
+        </SearchBarProvider>
     );
 }
 
-function FrontChildLayout({
-    children,
-    auth,
-    locale,
-    translations,
-    searchValue,
-    onSearchChange,
-    searchRoute,
-    searchScopeLabel,
-    searchUnitId,
-}: PropsWithChildren<IPropsHeader>) {
+function FrontChildLayout({ children }: PropsWithChildren) {
     const { isCartOpen } = useCart();
     const page = usePage();
     const isSettings = page.url.startsWith('/settings');
@@ -67,16 +43,7 @@ function FrontChildLayout({
     return (
         <>
             <DialogHandler />
-            <FrontHeader
-                auth={auth}
-                locale={locale}
-                translations={translations}
-                searchValue={searchValue}
-                onSearchChange={onSearchChange}
-                searchRoute={searchRoute}
-                searchScopeLabel={searchScopeLabel}
-                searchUnitId={searchUnitId}
-            />
+            <FrontHeader />
             <div className="relative min-h-screen bg-background">
                 <div
                     className={`absolute inset-0 z-40 bg-foreground transition-opacity ${

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { IRootHistoryOrders, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { Search } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 
 type Filters = {
     q?: string;
@@ -20,8 +20,8 @@ type Filters = {
     per_page?: number;
 };
 
-export default function Purchases() {
-    const { auth, locale, translations, ordersPaginated, filters } = usePage<SharedData & { filters?: Filters }>().props;
+function Purchases() {
+    const { ordersPaginated, filters } = usePage<SharedData & { filters?: Filters }>().props;
 
     const orders = ordersPaginated?.data ?? [];
     const [searchValue, setSearchValue] = useState<string>((filters?.q as string) ?? '');
@@ -108,7 +108,7 @@ export default function Purchases() {
     console.log(orders);
 
     return (
-        <FrontLayout auth={auth} locale={locale} translations={translations}>
+        <>
             <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 lg:px-0">
                 <header className="space-y-2">
                     <h1 className="text-2xl font-semibold text-foreground">Transaction List</h1>
@@ -157,9 +157,13 @@ export default function Purchases() {
                 <TransactionList orders={orders} onViewDetail={handleViewDetail} onRefreshOrders={refreshOrders} isSnapReady={isSnapReady} />
             </section>
             <TransactionDetailDialog open={detailOpen} onOpenChange={handleDetailOpenChange} order={selectedOrder} />
-        </FrontLayout>
+        </>
     );
 }
+
+Purchases.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default Purchases;
 
 function TransactionList({
     orders,

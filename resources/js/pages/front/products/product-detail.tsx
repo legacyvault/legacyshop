@@ -18,21 +18,25 @@ import {
 } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import { Minus, Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 
 type PageProps = SharedData & {
     product: IProducts;
 };
 
-export default function ProductDetail() {
-    const { auth, translations, locale, product, rec_prod } = usePage<PageProps>().props;
+function ProductDetail() {
+    const { translations, product, rec_prod } = usePage<PageProps>().props;
     return (
-        <FrontLayout auth={auth} translations={translations} locale={locale}>
+        <>
             <DetailContent product={product} translations={translations} />
             <ReccomendationList rec_prod={rec_prod} />
-        </FrontLayout>
+        </>
     );
 }
+
+ProductDetail.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default ProductDetail;
 
 function DetailContent({ product }: { product: IProducts; translations: any }) {
     const { addItem, items, updateQuantity, openCart } = useCart();

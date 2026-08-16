@@ -8,7 +8,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -589,8 +589,8 @@ const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEv
     );
 };
 
-export default function Welcome() {
-    const { auth, translations, locale } = usePage<SharedData>().props;
+function Welcome() {
+    const { translations } = usePage<SharedData>().props;
 
     const textRef1 = useRef<HTMLDivElement | null>(null);
     const textRef2 = useRef<HTMLDivElement | null>(null);
@@ -645,8 +645,7 @@ export default function Welcome() {
     return (
         <>
             <div className="">
-                <FrontLayout auth={auth} locale={locale} translations={translations}>
-                    {/* BANNER */}
+                {/* BANNER */}
                     {activeBanner.length > 0 && <BannerCarousel banners={activeBanner} />}
 
                     {/* UNIT SHOWCASE */}
@@ -769,8 +768,11 @@ export default function Welcome() {
                     <div className="my-8">
                         <ArticlesSection articles={articles} />
                     </div>
-                </FrontLayout>
             </div>
         </>
     );
 }
+
+Welcome.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default Welcome;

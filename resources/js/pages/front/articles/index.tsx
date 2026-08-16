@@ -1,22 +1,24 @@
 import { formatPublishedDate, getArticleExcerpt, getArticleLink, getArticleReadTime } from '@/components/articles/article-utils';
+import { usePageSearchBar } from '@/contexts/SearchBarContext';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IArticle, SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 
-export default function FrontArticles() {
-    const { auth, translations, locale, filters, articles } = usePage<SharedData>().props;
+function FrontArticles() {
+    const { filters, articles } = usePage<SharedData>().props;
     const [search, setSearch] = useState(String((filters as any)?.q || ''));
     const allArticles = useMemo(() => (Array.isArray(articles) ? (articles as IArticle[]) : []), [articles]);
     const featuredArticle = allArticles[0];
     const remainingArticles = allArticles.slice(1);
     const featuredReadTime = featuredArticle ? getArticleReadTime(featuredArticle) : null;
 
+    usePageSearchBar({ value: search, onChange: setSearch });
+
     return (
         <>
             <Head title="Articles" />
-            <FrontLayout auth={auth} translations={translations} locale={locale} searchValue={search} onSearchChange={setSearch}>
-                <section className="py-16">
+            <section className="py-16">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <header className="mb-12 text-left">
                             <h1 className="mb-4 text-5xl font-bold text-primary">News & Articles</h1>
@@ -132,7 +134,10 @@ export default function FrontArticles() {
                         )}
                     </div>
                 </section>
-            </FrontLayout>
         </>
     );
 }
+
+FrontArticles.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default FrontArticles;

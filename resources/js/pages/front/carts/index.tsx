@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { CartItem, useCart } from '@/contexts/CartContext';
+import { usePageSearchBar } from '@/contexts/SearchBarContext';
 import FrontLayout from '@/layouts/front/front-layout';
 import { ICart, SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 interface PageProps extends SharedData {
     carts: ICart[];
@@ -273,21 +274,25 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
     };
 };
 
-export default function Carts() {
-    const { auth, translations, locale, carts, filters, isIndonesian } = usePage<PageProps>().props;
+function Carts() {
+    const { carts, filters, isIndonesian } = usePage<PageProps>().props;
     const [search, setSearch] = useState(String((filters as any)?.q || ''));
+
+    usePageSearchBar({ value: search, onChange: setSearch });
 
     console.log(carts)
 
     return (
         <>
             <Head title="Cart" />
-            <FrontLayout auth={auth} translations={translations} locale={locale} searchValue={search} onSearchChange={setSearch}>
-                <CartContent carts={carts} isIndonesian={isIndonesian} />
-            </FrontLayout>
+            <CartContent carts={carts} isIndonesian={isIndonesian} />
         </>
     );
 }
+
+Carts.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default Carts;
 
 function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndonesian: boolean }) {
     const { items: contextItems, updateQuantity, removeItem } = useCart();

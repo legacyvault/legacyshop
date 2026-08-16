@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { usePageSearchBar } from '@/contexts/SearchBarContext';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IEvents, IProducts, IRootProducts, IUnit, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 // Small helper to immutably toggle a Set item
 function toggleSet(set: Set<string>, value: string, checked: boolean) {
@@ -25,11 +26,8 @@ function hasFilterValue(value: unknown) {
     return value !== undefined && value !== null && value !== '';
 }
 
-export default function FrontProducts() {
+function FrontProducts() {
     const {
-        auth,
-        translations,
-        locale,
         products: productsPayload,
         subunits,
         tags,
@@ -89,6 +87,16 @@ export default function FrontProducts() {
 
     // Build query params for server requests
     const listPath = event ? `/list-product/${event.id}` : unit ? `/list-product/${unit.id}` : '/list-products';
+
+    // Drive the persistent FrontHeader's search box with this page's local search state
+    usePageSearchBar({
+        value: search,
+        onChange: setSearch,
+        route: listPath,
+        scopeLabel: event?.name ?? unit?.name,
+        unitId: unit?.id,
+    });
+
     const buildParams = (extra: Record<string, any> = {}) => ({
         q: search || undefined,
         unit_id: unit?.id,
@@ -155,16 +163,7 @@ export default function FrontProducts() {
     // };
 
     return (
-        <FrontLayout
-            auth={auth}
-            translations={translations}
-            locale={locale}
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchRoute={listPath}
-            searchScopeLabel={event?.name ?? unit?.name}
-            searchUnitId={unit?.id}
-        >
+        <>
             <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-6 space-y-2">
@@ -407,9 +406,13 @@ export default function FrontProducts() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog> */}
-        </FrontLayout>
+        </>
     );
 }
+
+FrontProducts.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default FrontProducts;
 
 type Option = { value: string; label: string };
 

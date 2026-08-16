@@ -2,23 +2,13 @@ import AppLogoIcon from '@/components/app-logo-icon';
 import { CartDropdown } from '@/components/CartDropdown';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
+import { useSearchBar } from '@/contexts/SearchBarContext';
 import { useInitials } from '@/hooks/use-initials';
-import { Auth, IEvents, IRunningText } from '@/types';
+import { IEvents, IRunningText, SharedData } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { Loader2, SearchIcon, X } from 'lucide-react';
 import { ChangeEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-
-interface IPropsHeader {
-    auth: Auth;
-    locale: string;
-    translations: any;
-    searchValue?: string;
-    onSearchChange?: (value: string) => void;
-    searchRoute?: string;
-    searchScopeLabel?: string;
-    searchUnitId?: string;
-}
 
 type ProductSuggestion = {
     id: string;
@@ -44,17 +34,15 @@ const NavBottom = [
     },
 ];
 
-export default function FrontHeader({
-    auth,
-    locale,
-    translations,
-    searchValue,
-    onSearchChange,
-    searchRoute,
-    searchScopeLabel,
-    searchUnitId,
-}: IPropsHeader) {
-    const page = usePage();
+export default function FrontHeader() {
+    const page = usePage<SharedData>();
+    const { auth, translations } = page.props;
+    const searchBar = useSearchBar();
+    const searchValue = searchBar?.value;
+    const onSearchChange = searchBar?.onChange;
+    const searchRoute = searchBar?.route;
+    const searchScopeLabel = searchBar?.scopeLabel;
+    const searchUnitId = searchBar?.unitId;
     const getInitials = useInitials();
     const [internalQuery, setInternalQuery] = useState('');
     const value = searchValue !== undefined ? searchValue : internalQuery;
