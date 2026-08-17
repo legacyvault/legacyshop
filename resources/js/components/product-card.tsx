@@ -41,9 +41,23 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
                 {/* Image */}
                 <div className="relative aspect-[3/4] w-full">
                     {secondaryImage ? (
-                        <img src={hover ? secondaryImage : primaryImage} alt={product.product_name} className="h-full w-full object-cover" />
+                        <img
+                            src={hover ? secondaryImage : primaryImage}
+                            alt={product.product_name}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            width={600}
+                            height={800}
+                        />
                     ) : (
-                        <img src={primaryImage} alt={product.product_name} className="h-full w-full object-contain px-2" />
+                        <img
+                            src={primaryImage}
+                            alt={product.product_name}
+                            className="h-full w-full object-contain px-2"
+                            loading="lazy"
+                            width={600}
+                            height={800}
+                        />
                     )}
                 </div>
             </div>

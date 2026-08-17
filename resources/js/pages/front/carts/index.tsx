@@ -543,7 +543,14 @@ function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndones
                                                 aria-label={`Pilih ${item.productName}`}
                                             />
                                             <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border">
-                                                <img src={item.imageUrl} alt={item.productName} className="h-full w-full object-cover" />
+                                                <img
+                                                    src={item.imageUrl}
+                                                    alt={item.productName}
+                                                    className="h-full w-full object-cover"
+                                                    loading="lazy"
+                                                    width={80}
+                                                    height={80}
+                                                />
                                                 {item.discountPercent > 0 && (
                                                     <Badge variant="destructive" className="absolute top-1 left-1">
                                                         -{item.discountPercent}%

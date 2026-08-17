@@ -141,7 +141,14 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                                                 {/* Product Image */}
                                                 <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                                                     {item.image ? (
-                                                        <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                                                        <img
+                                                            src={item.image}
+                                                            alt={item.name}
+                                                            className="h-full w-full object-cover"
+                                                            loading="lazy"
+                                                            width={48}
+                                                            height={48}
+                                                        />
                                                     ) : (
                                                         <div className="flex h-full w-full items-center justify-center bg-muted">
                                                             <ShoppingBag className="h-6 w-6 text-muted-foreground" />

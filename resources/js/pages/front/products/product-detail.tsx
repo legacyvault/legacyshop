@@ -273,14 +273,27 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                         }`}
                                         onClick={() => setActiveIndex(i)}
                                     >
-                                        <img src={p.url} alt={`thumb-${i}`} className="aspect-square w-20 object-cover" />
+                                        <img
+                                            src={p.url}
+                                            alt={`thumb-${i}`}
+                                            className="aspect-square w-20 object-cover"
+                                            loading="lazy"
+                                            width={80}
+                                            height={80}
+                                        />
                                     </button>
                                 ))}
                             </div>
                         )}
                         <div className="overflow-hidden rounded-lg border bg-background">
                             <div className="relative aspect-[3/4] w-full md:aspect-auto md:h-[560px]">
-                                <img src={mainImage} alt={product.product_name} className="h-full w-full object-contain p-6" />
+                                <img
+                                    src={mainImage}
+                                    alt={product.product_name}
+                                    className="h-full w-full object-contain p-6"
+                                    width={900}
+                                    height={1200}
+                                />
                             </div>
                         </div>
                     </div>
@@ -289,7 +302,13 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     <div className="md:hidden">
                         <div className="overflow-hidden rounded-lg border bg-background">
                             <div className="relative aspect-[3/4] w-full">
-                                <img src={mainImage} alt={product.product_name} className="h-full w-full object-contain p-6" />
+                                <img
+                                    src={mainImage}
+                                    alt={product.product_name}
+                                    className="h-full w-full object-contain p-6"
+                                    width={900}
+                                    height={1200}
+                                />
                             </div>
                         </div>
                         {pictures.length > 0 && (
@@ -302,7 +321,14 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                         }`}
                                         onClick={() => setActiveIndex(i)}
                                     >
-                                        <img src={p.url} alt={`thumb-${i}`} className="aspect-square w-full object-cover" />
+                                        <img
+                                            src={p.url}
+                                            alt={`thumb-${i}`}
+                                            className="aspect-square w-full object-cover"
+                                            loading="lazy"
+                                            width={80}
+                                            height={80}
+                                        />
                                     </button>
                                 ))}
                             </div>
