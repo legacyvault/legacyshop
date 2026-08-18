@@ -82,6 +82,7 @@ export interface IEvents {
     is_active: number;
     name: string;
     picture_url: string;
+    thumbnail_url?: string | null;
     updated_at: string | Date;
     event_products: IEventProduct[];
 }
@@ -247,6 +248,7 @@ export interface IUnit {
     usd_price?: number;
     discount?: number;
     picture_url?: string;
+    thumbnail_url?: string | null;
     categories: ICategories[];
     is_active: boolean;
 }
@@ -347,6 +349,7 @@ export interface IArticle {
     created_at?: string;
     updated_at?: string;
     image_cover: string | null;
+    thumbnail_url?: string | null;
 }
 
 export interface IWarehouse {
@@ -614,6 +617,7 @@ export interface IProductGroupProduct {
     pictures?: {
         id: string;
         url: string;
+        thumbnail_url?: string | null;
         product_id: string;
         created_at?: string;
         updated_at?: string;
@@ -666,6 +670,7 @@ export interface IProducts {
         product_id: string;
         updated_at: string;
         url: string;
+        thumbnail_url?: string | null;
     }[];
     product_discount: number;
     product_name: string;

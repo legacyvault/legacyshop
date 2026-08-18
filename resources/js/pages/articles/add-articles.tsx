@@ -67,6 +67,7 @@ export default function AddArticlePage() {
         is_featured: article?.is_featured ?? false,
         published_at: initialPublishedAt,
         image_cover: article?.image_cover ?? null,
+        thumbnail_url: article?.thumbnail_url ?? null,
     });
 
     const { data, setData, post, processing, errors, reset, transform } = form;
@@ -139,16 +140,19 @@ export default function AddArticlePage() {
         setImageCoverError(null);
         setIsUploadingCover(true);
         const previousValue = data.image_cover;
+        const previousThumbnail = data.thumbnail_url;
 
         void (async () => {
             try {
-                const uploadedUrl = await uploadArticleImage(file);
-                setData('image_cover', uploadedUrl);
-                setImageCoverPreview(uploadedUrl);
+                const uploaded = await uploadArticleImage(file);
+                setData('image_cover', uploaded.url);
+                setData('thumbnail_url', uploaded.thumbnail_url);
+                setImageCoverPreview(uploaded.url);
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Failed to upload cover image. Please try again.';
                 setImageCoverError(message);
                 setData('image_cover', previousValue ?? article?.image_cover ?? null);
+                setData('thumbnail_url', previousThumbnail ?? article?.thumbnail_url ?? null);
             } finally {
                 setIsUploadingCover(false);
                 event.target.value = '';
@@ -158,6 +162,7 @@ export default function AddArticlePage() {
 
     const handleRemoveImageCover = () => {
         setData('image_cover', null);
+        setData('thumbnail_url', null);
         setImageCoverPreview(null);
         setImageCoverError(null);
         if (imageCoverInputRef.current) {
@@ -173,10 +178,9 @@ export default function AddArticlePage() {
         setIsUploadingImage(true);
 
         try {
-            const url = await uploadArticleImage(file);
-            console.log(url);
-            if (url) {
-                editor.chain().focus().setImage({ src: url }).run();
+            const uploaded = await uploadArticleImage(file);
+            if (uploaded.url) {
+                editor.chain().focus().setImage({ src: uploaded.url }).run();
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to upload image. Please try again.';
@@ -220,6 +224,7 @@ export default function AddArticlePage() {
             content_html: editorHtml,
             published_at: formData.is_published ? formData.published_at : null,
             image_cover: formData.image_cover ?? null,
+            thumbnail_url: formData.thumbnail_url ?? null,
             is_featured: formData.is_featured ?? false,
         }));
 
@@ -235,6 +240,7 @@ export default function AddArticlePage() {
                     setImageCoverPreview(null);
                     setImageCoverError(null);
                     setData('image_cover', null);
+                    setData('thumbnail_url', null);
                     setData('is_featured', false);
                     if (imageCoverInputRef.current) {
                         imageCoverInputRef.current.value = '';
@@ -580,7 +586,12 @@ function formatDatetimeLocal(value: string | Date | null): string | null {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-async function uploadArticleImage(file: File): Promise<string> {
+interface UploadedArticleImage {
+    url: string;
+    thumbnail_url: string | null;
+}
+
+async function uploadArticleImage(file: File): Promise<UploadedArticleImage> {
     const formData = new FormData();
     formData.append('image', file);
 
@@ -607,13 +618,17 @@ async function uploadArticleImage(file: File): Promise<string> {
 
     if (contentType.includes('application/json')) {
         const data = await response.json();
-        console.log(data);
-        if (typeof data === 'string') return sanitizeUploadUrl(data);
-        if (data && typeof data.url === 'string') return sanitizeUploadUrl(data.url);
+        if (typeof data === 'string') return { url: sanitizeUploadUrl(data), thumbnail_url: null };
+        if (data && typeof data.url === 'string') {
+            return {
+                url: sanitizeUploadUrl(data.url),
+                thumbnail_url: typeof data.thumbnail_url === 'string' ? sanitizeUploadUrl(data.thumbnail_url) : null,
+            };
+        }
     }
 
     const text = await response.text();
-    return sanitizeUploadUrl(text);
+    return { url: sanitizeUploadUrl(text), thumbnail_url: null };
 }
 
 function sanitizeUploadUrl(url: string): string {

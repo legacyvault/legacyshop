@@ -140,6 +140,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     const totalStock = Number(product.total_stock);
 
     const mainImage = pictures?.[activeIndex]?.url || 'https://via.placeholder.com/600x800?text=No+Image';
+    // Cart line items don't need the full-size hero image — prefer the resized thumbnail,
+    // falling back to the full-size url for pictures uploaded before thumbnails existed.
+    const cartImage = pictures?.[activeIndex]?.thumbnail_url || mainImage;
 
     const productStockInsufficient = Number(totalStock ?? 0) < selectedQty;
     const subcatStockInsufficient = selectedSubcat ? Number(selectedSubcat.total_stock ?? 0) < selectedQty : false;
@@ -218,7 +221,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         const existing = items.find((i) => i.id === compositeId)?.quantity ?? 0;
         const targetQty = Math.max(1, existing + selectedQty);
 
-        void addItem({ id: compositeId, name, price: finalPrice, image: mainImage, meta, sku }, { quantity: targetQty, meta });
+        void addItem({ id: compositeId, name, price: finalPrice, image: cartImage, meta, sku }, { quantity: targetQty, meta });
         openCart(true);
     };
 

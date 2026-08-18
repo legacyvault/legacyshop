@@ -31,6 +31,7 @@ class ArticleController extends Controller
             'is_featured'   => ['nullable', 'boolean'],
             'published_at'  => ['nullable', 'date'],
             'image_cover'   => ['nullable', 'string', 'max:2048'],
+            'thumbnail_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
         if ($validator->fails()) {
@@ -41,6 +42,7 @@ class ArticleController extends Controller
             DB::beginTransaction();
 
             $imageCoverUrl = $request->input('image_cover');
+            $thumbnailUrl = $request->input('thumbnail_url');
             $isPublished = $request->boolean('is_published');
             $isFeatured = $request->boolean('is_featured');
             $publishedAtInput = $request->input('published_at');
@@ -53,14 +55,15 @@ class ArticleController extends Controller
             }
 
             Article::create([
-                'title'        => $request->title,
-                'slug'         => $request->slug,
-                'content'      => $request->content,
-                'content_html' => $request->content_html,
-                'is_published' => $isPublished,
-                'is_featured'  => $isFeatured,
-                'published_at' => $publishedAt,
-                'image_cover'  => $imageCoverUrl,
+                'title'         => $request->title,
+                'slug'          => $request->slug,
+                'content'       => $request->content,
+                'content_html'  => $request->content_html,
+                'is_published'  => $isPublished,
+                'is_featured'   => $isFeatured,
+                'published_at'  => $publishedAt,
+                'image_cover'   => $imageCoverUrl,
+                'thumbnail_url' => $thumbnailUrl,
             ]);
 
             DB::commit();
@@ -96,6 +99,7 @@ class ArticleController extends Controller
             'is_featured'   => ['nullable', 'boolean'],
             'published_at'  => ['nullable', 'date'],
             'image_cover'   => ['nullable', 'string', 'max:2048'],
+            'thumbnail_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
         if ($validator->fails()) {
@@ -107,6 +111,7 @@ class ArticleController extends Controller
             $article = Article::findOrFail($request->id);
 
             $imageCoverUrl = $request->input('image_cover');
+            $thumbnailUrl = $request->input('thumbnail_url');
 
             $isPublished = $request->boolean('is_published');
             $isFeatured = $request->boolean('is_featured');
@@ -128,6 +133,7 @@ class ArticleController extends Controller
                 'is_featured'   => $isFeatured,
                 'published_at'  => $publishedAt,
                 'image_cover'   => $imageCoverUrl,
+                'thumbnail_url' => $thumbnailUrl,
             ]);
 
             DB::commit();
@@ -183,9 +189,12 @@ class ArticleController extends Controller
         }
 
         try {
-            $url = $this->uploadArticleImageToS3($request->file('image'));
-            
-            return response()->json(['url' => $url]);
+            $upload = $this->uploadArticleImageToS3($request->file('image'));
+
+            return response()->json([
+                'url'           => $upload['url'],
+                'thumbnail_url' => $upload['thumbnail_url'],
+            ]);
         } catch (Exception $e) {
             Log::error('Upload article image failed: ' . $e->getMessage());
 

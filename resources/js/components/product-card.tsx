@@ -13,8 +13,13 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
         }).format(price);
 
     // Derived fields from IProducts
-    const primaryImage = useMemo(() => product.pictures?.[0]?.url || 'https://via.placeholder.com/600x800?text=No+Image', [product.pictures]);
-    const secondaryImage = product.pictures?.[1]?.url;
+    // Prefer the resized thumbnail (grid cards don't need the full-size original) — falls
+    // back to the full-size url for pictures uploaded before thumbnails were generated.
+    const primaryImage = useMemo(
+        () => product.pictures?.[0]?.thumbnail_url || product.pictures?.[0]?.url || 'https://via.placeholder.com/600x800?text=No+Image',
+        [product.pictures],
+    );
+    const secondaryImage = product.pictures?.[1]?.thumbnail_url || product.pictures?.[1]?.url;
     const currency = (product.default_currency || 'IDR').toUpperCase();
     const basePrice = Number(product.default_price ?? 0);
     const eventDiscountPct = Number(product.event?.discount ?? 0);

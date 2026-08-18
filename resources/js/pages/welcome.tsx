@@ -37,7 +37,7 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
                         <div className="group relative block overflow-hidden bg-muted" aria-label={`Read article ${featuredArticle.title}`}>
                             <div className="aspect-[4/3] w-full overflow-hidden rounded-md">
                                 <img
-                                    src={featuredArticle.image_cover ?? '/banner-example.jpg'}
+                                    src={featuredArticle.thumbnail_url ?? featuredArticle.image_cover ?? '/banner-example.jpg'}
                                     alt={featuredArticle.title}
                                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                     loading="lazy"
@@ -86,7 +86,7 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
                                             aria-label={`Read article ${article.title}`}
                                         >
                                             <img
-                                                src={article.image_cover ?? '/banner-example.jpg'}
+                                                src={article.thumbnail_url ?? article.image_cover ?? '/banner-example.jpg'}
                                                 alt={article.title}
                                                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                                 loading="lazy"
@@ -664,7 +664,7 @@ function Welcome() {
                                         <div
                                             className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
                                             style={{
-                                                backgroundImage: `url('${unit.picture_url ?? '/banner-example.jpg'}')`,
+                                                backgroundImage: `url('${unit.thumbnail_url ?? unit.picture_url ?? '/banner-example.jpg'}')`,
                                             }}
                                         />
 
@@ -697,7 +697,7 @@ function Welcome() {
                                         <div
                                             className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
                                             style={{
-                                                backgroundImage: `url('${event.picture_url ?? '/banner-example.jpg'}')`,
+                                                backgroundImage: `url('${event.thumbnail_url ?? event.picture_url ?? '/banner-example.jpg'}')`,
                                             }}
                                         />
 

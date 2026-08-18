@@ -312,7 +312,9 @@ function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndones
             const quantity = contextItem?.quantity ?? Number(cart.quantity ?? 0) ?? 0;
             const summary = extractSelectionSummary(cart);
             const pricing = computePricingDetails(cart, contextItem);
-            const imageUrl = cart.product?.pictures?.[0]?.url ?? FALLBACK_IMAGE;
+            // Prefer the resized thumbnail — falls back to the full-size url for pictures
+            // uploaded before thumbnails were generated.
+            const imageUrl = cart.product?.pictures?.[0]?.thumbnail_url ?? cart.product?.pictures?.[0]?.url ?? FALLBACK_IMAGE;
             const vendorName = summary.unit ?? cart.product?.unit?.name ?? 'Legacy Vault';
             const vendorId = cart.product?.unit?.id ?? cart.product_id ?? compositeId;
             const sku = cart.product?.product_sku;

@@ -36,7 +36,7 @@ function FrontArticles() {
                                     >
                                         <div className="aspect-[16/9] w-full overflow-hidden rounded-md">
                                             <img
-                                                src={featuredArticle.image_cover ?? '/banner-example.jpg'}
+                                                src={featuredArticle.thumbnail_url ?? featuredArticle.image_cover ?? '/banner-example.jpg'}
                                                 alt={featuredArticle.title}
                                                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                                 loading="lazy"
@@ -91,7 +91,7 @@ function FrontArticles() {
                                                 aria-label={`Read article ${article.title}`}
                                             >
                                                 <img
-                                                    src={article.image_cover ?? '/banner-example.jpg'}
+                                                    src={article.thumbnail_url ?? article.image_cover ?? '/banner-example.jpg'}
                                                     alt={article.title}
                                                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                                     loading="lazy"
