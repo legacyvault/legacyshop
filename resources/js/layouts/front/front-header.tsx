@@ -371,16 +371,16 @@ export default function FrontHeader() {
             )}
 
             {runningTexts.length > 0 && (
-                <div ref={marqueeContainerRef} className="relative overflow-hidden">
+                <div ref={marqueeContainerRef} className="relative overflow-hidden bg-secondary-foreground">
                     <div
                         ref={marqueeRef}
-                        className="flex gap-8 py-2 text-[11px] whitespace-nowrap text-muted-foreground uppercase will-change-transform"
+                        className="flex gap-8 py-2 text-[11px] whitespace-nowrap text-secondary uppercase will-change-transform"
                     >
                         {/* sequence A: repeat to ensure adequate width based on computed repeatFactor */}
                         {Array.from({ length: Math.max(1, repeatFactor) }).flatMap((_, repIdx) =>
                             runningTexts.map((t, i) => (
                                 <div className="flex" key={`a-${repIdx}-${i}-${t.id}`}>
-                                    <img src="/poke-icon.png" className="me-4 h-4 w-4" />
+ 
                                     <span>{t.running_text}</span>
                                 </div>
                             )),
