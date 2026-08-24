@@ -22,7 +22,7 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
         <section className="py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="mb-12 text-center">
-                    <h2 className="mb-4 text-5xl font-bold text-primary">NEWS & ARTICLES</h2>
+                    <h2 className="mb-4 text-5xl font-bold text-primary font-pixel">NEWS & ARTICLES</h2>
                     <p className="mx-auto max-w-6xl text-xl text-muted-foreground">
                         Get latest news from what’s happening in the world of Cards & Collectibles.
                     </p>
@@ -821,18 +821,18 @@ function Welcome() {
                 {/* HERO + SEQUENCE SECTION */}
                 <section className="w-full overflow-hidden bg-background py-24 text-foreground">
                     <div className="mx-auto max-w-6xl px-4 sm:px-6">
-                        {/* Headline on the left, supporting copy + CTA on the right */}
-                        <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-16">
-                            <h1 ref={textRef1} className="text-3xl font-black text-balance md:text-5xl">
+                        {/* Headline on the first row, supporting copy + CTA right-aligned on the second */}
+                        <div className="flex flex-col gap-4 lg:gap-8">
+                            <h1 ref={textRef1} className="font-pixel text-3xl text-center font-black text-balance md:text-3xl">
                                 {translations.home.welcome}
                             </h1>
 
-                            <div>
-                                <p ref={textRef2} className="md:text-md max-w-md text-sm text-muted-foreground">
+                            <div className="self-center text-center">
+                                <p ref={textRef2} className="md:text-md max-w-xl text-sm text-muted-foreground">
                                     {translations.home.description1}
                                 </p>
 
-                                <div ref={bottomRef} className="mt-8 flex flex-wrap items-center gap-3">
+                                <div ref={bottomRef} className="mt-8 flex flex-wrap items-center gap-3 justify-center">
                                     <Button className="px-7 transition hover:scale-105">Get Started</Button>
                                     <Button variant={'outline'} className="px-7 transition hover:scale-105">
                                         How it works
