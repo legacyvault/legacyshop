@@ -31,34 +31,45 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
 
     return (
         <div
-            className={`group cursor-pointer rounded p-2 ${hover ? 'shadow-sm' : ''}`}
+            className="group cursor-pointer rounded border border-transparent p-2 transition-all duration-300 ease-out hover:rounded-xl hover:shadow-md"
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
             onClick={onClick}
         >
             {/* Image block */}
-            <div className="relative overflow-hidden rounded bg-background">
+            <div className="relative overflow-hidden rounded bg-background transition-all duration-300 ease-out group-hover:rounded-lg">
                 {hasEvent && eventDiscountPct > 0 && (
-                    <span className="absolute top-2 left-2 z-10 rounded-full bg-red-500 px-3 py-1 text-[10px] font-bold text-primary-foreground uppercase shadow-sm">
+                    <span className="absolute top-2 left-2 z-10 rounded-full bg-red-500 px-2.5 py-0.5 text-[9px] font-bold text-primary-foreground uppercase shadow-sm">
                         {`${eventDiscountPct}%`}
                     </span>
                 )}
                 {/* Image */}
                 <div className="relative aspect-[3/4] w-full">
                     {secondaryImage ? (
-                        <img
-                            src={hover ? secondaryImage : primaryImage}
-                            alt={product.product_name}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            width={600}
-                            height={800}
-                        />
+                        <>
+                            <img
+                                src={primaryImage}
+                                alt={product.product_name}
+                                className={`h-full w-full object-cover transition-opacity duration-500 ease-in-out ${hover ? 'opacity-0' : 'opacity-100'}`}
+                                loading="lazy"
+                                width={600}
+                                height={800}
+                            />
+                            <img
+                                src={secondaryImage}
+                                alt={product.product_name}
+                                aria-hidden
+                                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ease-in-out ${hover ? 'opacity-100' : 'opacity-0'}`}
+                                loading="lazy"
+                                width={600}
+                                height={800}
+                            />
+                        </>
                     ) : (
                         <img
                             src={primaryImage}
                             alt={product.product_name}
-                            className="h-full w-full object-contain px-2"
+                            className="h-full w-full object-contain px-2 transition-opacity duration-500 ease-in-out"
                             loading="lazy"
                             width={600}
                             height={800}
@@ -68,9 +79,9 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
             </div>
 
             {/* Meta */}
-            <div className="mt-4 space-y-2">
-                <div className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">{product.unit?.name ?? ''}</div>
-                <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-foreground">{product.product_name}</h3>
+            <div className="mt-3 space-y-1.5">
+                <div className="text-[9px] font-semibold tracking-[0.12em] text-muted-foreground">{product.unit?.name ?? ''}</div>
+                <h3 className="line-clamp-2 min-h-[2rem] text-xs font-medium text-foreground">{product.product_name}</h3>
 
                 {/* {hasEvent && (
                     <div className="flex items-center gap-2">
@@ -81,8 +92,8 @@ export default function ProductCard({ product, onClick }: { product: IProducts; 
                 )} */}
 
                 <div className="flex items-baseline gap-2">
-                    <span className="text-base font-extrabold">{formatPrice(salePrice ?? basePrice, currency)}</span>
-                    {isOnSale && <span className="text-xs text-destructive line-through">{formatPrice(basePrice, currency)}</span>}
+                    <span className="text-sm font-extrabold">{formatPrice(salePrice ?? basePrice, currency)}</span>
+                    {isOnSale && <span className="text-[10px] text-destructive line-through">{formatPrice(basePrice, currency)}</span>}
                 </div>
             </div>
         </div>
