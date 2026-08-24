@@ -818,35 +818,39 @@ function Welcome() {
                         </div>
                     </section>
                 )}
-                <div className="relative">
-                    {/* HERO + SEQUENCE SECTION */}
-                    <section className="relative z-50">
-                        <div className="flex w-full flex-col items-center justify-start bg-primary pt-24 text-center text-white md:justify-center">
-                            <h1 ref={textRef1} className="mb-6 text-3xl font-black drop-shadow-lg md:text-7xl">
+                {/* HERO + SEQUENCE SECTION */}
+                <section className="w-full overflow-hidden bg-background py-24 text-foreground">
+                    <div className="mx-auto max-w-6xl px-4 sm:px-6">
+                        {/* Headline on the left, supporting copy + CTA on the right */}
+                        <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-16">
+                            <h1 ref={textRef1} className="text-3xl font-black text-balance md:text-5xl">
                                 {translations.home.welcome}
                             </h1>
-                            <p ref={textRef2} className="text-md max-w-2xl px-4 md:text-xl">
-                                {translations.home.description1}
-                            </p>
+
+                            <div>
+                                <p ref={textRef2} className="md:text-md max-w-md text-sm text-muted-foreground">
+                                    {translations.home.description1}
+                                </p>
+
+                                <div ref={bottomRef} className="mt-8 flex flex-wrap items-center gap-3">
+                                    <Button className="px-7 transition hover:scale-105">Get Started</Button>
+                                    <Button variant={'outline'} className="px-7 transition hover:scale-105">
+                                        How it works
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
-                    </section>
-                    <section className="relative -mt-40 flex h-[200vh] w-full flex-col bg-primary">
-                        {/* Image sequence pinned behind */}
-                        <div className="h-screen w-full">
-                            <ImageSequence />
+
+                        {/* Caption on the left, sequence on the right — playback is driven by hover */}
+                        <div className="mt-16 flex flex-col items-start gap-8 rounded-3xl bg-primary p-8 text-white/70 lg:flex-row lg:gap-16 lg:p-12">
+                            <p className="max-w-md text-md lg:flex-[0_1_22rem]">{translations.home.description2}</p>
+
+                            <div className="aspect-square w-full lg:aspect-[4/3] lg:flex-1">
+                                <ImageSequence />
+                            </div>
                         </div>
-                        {/* Scroll down to reveal more content */}
-                        <div ref={bottomRef} className="relative z-10 mt-auto py-12 text-center">
-                            <h2 className="text-md mx-auto mb-6 max-w-3xl font-bold text-background md:text-xl">{translations.home.description2}</h2>
-                            <p className="text-md mx-auto max-w-xl text-background md:text-lg">
-                                Discover more about our work, technology, and how we bring ideas to life.
-                            </p>
-                            <Button className="mt-8 bg-background text-foreground transition hover:scale-105" variant={'secondary'}>
-                                Get Started
-                            </Button>
-                        </div>
-                    </section>
-                </div>
+                    </div>
+                </section>
 
                 {/* EVENT SHOWCASE PRODUCT SECTION */}
 
