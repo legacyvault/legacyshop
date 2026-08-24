@@ -125,6 +125,9 @@
 
     --animate-accordion-down: accordion-down 0.2s ease-out;
     --animate-accordion-up: accordion-up 0.2s ease-out;
+
+    /* Liquid-chrome card back: the texture slowly drifts and swells */
+    --animate-card-chrome: card-chrome 16s ease-in-out infinite;
 }
 
 @keyframes accordion-down {
@@ -142,6 +145,23 @@
     }
     to {
         height: 0;
+    }
+}
+
+/* Transform-only so the drift composites instead of repainting the texture */
+@keyframes card-chrome {
+    0%,
+    100% {
+        transform: translate3d(-3%, -2%, 0) scale(1.15) rotate(0deg);
+    }
+    50% {
+        transform: translate3d(3%, 2%, 0) scale(1.28) rotate(4deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-card-chrome {
+        animation: none;
     }
 }
 

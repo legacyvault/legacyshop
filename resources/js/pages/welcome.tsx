@@ -3,6 +3,7 @@ import ImageSequence from '@/components/image-sequence';
 import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
 import { Casestudy5, type CasestudyItem } from '@/components/ui/casestudy-5';
+import { StaggerTestimonials } from '@/components/ui/stagger-testimonials';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IArticle, IBanner, IEventProduct, IProducts, type SharedData } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
@@ -792,6 +793,17 @@ function Welcome() {
                 <div className="my-8">
                     <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />
                 </div>
+
+                {/* TESTIMONIALS */}
+                <section className="my-8 py-16">
+                    <div className="mx-auto max-w-7xl px-4 -mb-8 sm:px-6 lg:px-8">
+                        <div className="mb-12 text-center">
+                            <h2 className="mb-4 font-pixel text-2xl font-bold text-primary md:text-3xl">WHAT COLLECTORS SAY</h2>
+                            <p className="text-sm text-muted-foreground">Hear from the collectors and sellers who trade with us every day.</p>
+                        </div>
+                    </div>
+                    <StaggerTestimonials />
+                </section>
 
                 <div className="my-8">
                     <ProductCardsSection products={productsBottom} title={'SHOP PICKS OF THE MONTH'} />
