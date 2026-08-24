@@ -7,11 +7,7 @@ import { StaggerTestimonials } from '@/components/ui/stagger-testimonials';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IArticle, IBanner, IEventProduct, IProducts, type SharedData } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const toCasestudyItem = (article: IArticle, label: string, excerptLength = 140): CasestudyItem => {
     const readTime = getArticleReadTime(article);
@@ -623,40 +619,6 @@ const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEv
 function Welcome() {
     const { translations } = usePage<SharedData>().props;
 
-    const textRef1 = useRef<HTMLDivElement | null>(null);
-    const textRef2 = useRef<HTMLDivElement | null>(null);
-    const bottomRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        if (!textRef1.current || !textRef2.current || !bottomRef.current) return;
-
-        // Scope GSAP instances so React Strict Mode double-runs don't orphan DOM nodes
-        const ctx = gsap.context(() => {
-            // 👇 Intro reveal (on first load)
-            gsap.from([textRef1.current, textRef2.current], {
-                opacity: 0,
-                y: 50,
-                duration: 1,
-                ease: 'power3.out',
-                stagger: 0.2,
-            });
-
-            gsap.from(bottomRef.current, {
-                opacity: 0,
-                y: 100,
-                duration: 1,
-                ease: 'power3.out',
-                scrollTrigger: {
-                    trigger: bottomRef.current,
-                    start: 'top 80%', // reveal when top enters 80% of viewport
-                    toggleActions: 'play none none reverse',
-                },
-            });
-        });
-
-        return () => ctx.revert();
-    }, []);
-
     const { productsTop, productsBottom, units, banner, articles, events } = usePage<
         SharedData & { productsTop: IProducts[]; productsBottom: IProducts[] }
     >().props;
@@ -745,31 +707,39 @@ function Welcome() {
                     </section>
                 )}
                 {/* HERO + SEQUENCE SECTION */}
-                <section className="w-full overflow-hidden bg-background py-24 text-foreground">
+                <section className="w-full overflow-hidden bg-background pb-24 text-foreground">
                     <div className="mx-auto max-w-6xl px-4 sm:px-6">
                         {/* Headline on the first row, supporting copy + CTA right-aligned on the second */}
-                        <div className="flex flex-col gap-4 lg:gap-8">
-                            <h1 ref={textRef1} className="font-pixel text-3xl text-center font-black text-balance md:text-3xl">
+                        <div className="flex flex-col gap-4 ">
+                            <h1 className="font-pixel text-3xl text-center font-black text-balance md:text-3xl">
                                 {translations.home.welcome}
                             </h1>
 
                             <div className="self-center text-center">
-                                <p ref={textRef2} className="md:text-md max-w-xl text-sm text-muted-foreground">
+                                <p className="md:text-md max-w-xl text-sm text-muted-foreground">
                                     {translations.home.description1}
                                 </p>
 
-                                <div ref={bottomRef} className="mt-8 flex flex-wrap items-center gap-3 justify-center">
+                                <div className="mt-4 flex flex-wrap items-center gap-3 justify-center">
                                     <Button className="px-7 transition hover:scale-105">Get Started</Button>
-                                    <Button variant={'outline'} className="px-7 transition hover:scale-105">
-                                        How it works
-                                    </Button>
                                 </div>
                             </div>
                         </div>
 
                         {/* Caption on the left, sequence on the right — playback is driven by hover */}
-                        <div className="mt-16 flex flex-col items-start gap-8 rounded-3xl bg-primary p-8 text-white/70 lg:flex-row lg:gap-16 lg:p-12">
-                            <p className="max-w-md text-md lg:flex-[0_1_22rem]">{translations.home.description2}</p>
+                        <div className="mt-4 flex flex-col items-stretch gap-8 rounded-3xl bg-primary p-8 text-white/70 lg:flex-row lg:gap-16 lg:p-12">
+                            <div className="flex w-full flex-col items-start justify-between gap-4 lg:flex-[0_1_22rem]">
+                                <p className="max-w-md text-md">{translations.home.description2}</p>
+                                <div>
+                                    <p className="max-w-md text-md">Discover more about our work, technology, and how we bring ideas to life.</p>
+                                    <Button
+                                        variant={'outline'}
+                                        className="mt-4 border-white/50 bg-transparent px-7 text-white transition hover:scale-105 hover:bg-white hover:text-primary"
+                                    >
+                                        How it works
+                                    </Button>
+                                </div>
+                            </div>
 
                             <div className="aspect-square w-full lg:aspect-[4/3] lg:flex-1">
                                 <ImageSequence />
@@ -790,10 +760,6 @@ function Welcome() {
                     </section>
                 )}
 
-                <div className="my-8">
-                    <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />
-                </div>
-
                 {/* TESTIMONIALS */}
                 <section className="my-8 py-16">
                     <div className="mx-auto max-w-7xl px-4 -mb-8 sm:px-6 lg:px-8">
@@ -804,6 +770,11 @@ function Welcome() {
                     </div>
                     <StaggerTestimonials />
                 </section>
+
+
+                <div className="my-8">
+                    <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />
+                </div>
 
                 <div className="my-8">
                     <ProductCardsSection products={productsBottom} title={'SHOP PICKS OF THE MONTH'} />
