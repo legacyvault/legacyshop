@@ -2,6 +2,7 @@ import { formatPublishedDate, getArticleExcerpt, getArticleLink, getArticleReadT
 import ImageSequence from '@/components/image-sequence';
 import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
+import { Casestudy5, type CasestudyItem } from '@/components/ui/casestudy-5';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IArticle, IBanner, IEventProduct, IProducts, type SharedData } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
@@ -11,122 +12,46 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const toCasestudyItem = (article: IArticle, label: string, excerptLength = 140): CasestudyItem => {
+    const readTime = getArticleReadTime(article);
+
+    return {
+        company: label,
+        tags: [formatPublishedDate(article.published_at), readTime].filter(Boolean).join(' / ').toUpperCase(),
+        title: article.title,
+        subtitle: getArticleExcerpt(article, excerptLength),
+        image: article.thumbnail_url ?? article.image_cover ?? '/banner-example.jpg',
+        link: getArticleLink(article),
+    };
+};
+
 const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
     if (!articles.length) return null;
-    const featuredArticle = articles[0];
-    const secondaryArticles = articles.slice(1, 4);
 
-    const featuredReadTime = getArticleReadTime(featuredArticle);
+    const featuredArticle = toCasestudyItem(articles[0], 'Featured', 140);
+    const latestArticle = articles.slice(1, 2).map((article) => toCasestudyItem(article, 'Latest', 90));
 
     return (
-        <section className="py-16">
+        <section className="py-10">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="mb-12 text-center">
-                    <h2 className="mb-4 text-5xl font-bold text-primary font-pixel">NEWS & ARTICLES</h2>
-                    <p className="mx-auto max-w-6xl text-xl text-muted-foreground">
-                        Get latest news from what’s happening in the world of Cards & Collectibles.
-                    </p>
-                    <Link href={'/articles'}>
-                        <Button className="mt-4">Explore More</Button>
-                    </Link>
-                </div>
-
-                <Link href={getArticleLink(featuredArticle)}>
-                    <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                        <div className="group relative block overflow-hidden bg-muted" aria-label={`Read article ${featuredArticle.title}`}>
-                            <div className="aspect-[4/3] w-full overflow-hidden rounded-md">
-                                <img
-                                    src={featuredArticle.thumbnail_url ?? featuredArticle.image_cover ?? '/banner-example.jpg'}
-                                    alt={featuredArticle.title}
-                                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                    loading="lazy"
-                                />
-                            </div>
-                        </div>
-
-                        <article className="flex flex-col justify-center">
-                            <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                                Featured
-                            </span>
-                            <div className="mt-4 block">
-                                <h3 className="text-3xl leading-tight font-bold text-foreground transition hover:text-primary">
-                                    {featuredArticle.title}
-                                </h3>
-                            </div>
-                            <p className="mt-4 text-lg text-muted-foreground">{getArticleExcerpt(featuredArticle, 200)}</p>
-                            <div className="mt-8 flex items-center gap-4">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary">
-                                    {featuredArticle.title?.slice(0, 1).toUpperCase() ?? 'L'}
-                                </div>
-                                <div className="text-sm">
-                                    <p className="font-semibold text-foreground">Legacy Vault Team</p>
-                                    <p className="text-muted-foreground">
-                                        {formatPublishedDate(featuredArticle.published_at)}
-                                        {featuredReadTime ? ` • ${featuredReadTime}` : ''}
-                                    </p>
-                                </div>
-                            </div>
-                        </article>
-                    </div>
-                </Link>
-                {secondaryArticles.length > 0 && (
-                    <div className="mt-12 grid gap-8 md:grid-cols-2">
-                        {secondaryArticles.map((article) => {
-                            const readTime = getArticleReadTime(article);
-
-                            return (
-                                <Link href={getArticleLink(article)}>
-                                    <article
-                                        key={article.id}
-                                        className="group flex h-full flex-col overflow-hidden bg-background transition hover:-translate-y-1 hover:shadow-xl"
-                                    >
-                                        <div
-                                            className="relative block aspect-[16/10] overflow-hidden bg-muted"
-                                            aria-label={`Read article ${article.title}`}
-                                        >
-                                            <img
-                                                src={article.thumbnail_url ?? article.image_cover ?? '/banner-example.jpg'}
-                                                alt={article.title}
-                                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                                loading="lazy"
-                                            />
-                                        </div>
-                                        <div className="flex flex-1 flex-col px-6 pt-5 pb-6">
-                                            <span className="inline-flex w-fit items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold tracking-wide text-primary uppercase">
-                                                Article
-                                            </span>
-                                            <div className="mt-4 block">
-                                                <h4 className="text-xl leading-tight font-semibold text-foreground transition group-hover:text-primary">
-                                                    {article.title}
-                                                </h4>
-                                            </div>
-                                            <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">{getArticleExcerpt(article)}</p>
-                                            <div className="mt-auto flex items-center justify-between pt-6 text-sm text-muted-foreground">
-                                                <div>
-                                                    {formatPublishedDate(article.published_at)}
-                                                    {readTime ? ` • ${readTime}` : ''}
-                                                </div>
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="1.8"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    className="h-5 w-5 transition group-hover:translate-x-1"
-                                                >
-                                                    <path d="M5 12h14" />
-                                                    <path d="M13 5l7 7-7 7" />
-                                                </svg>
-                                            </div>
-                                        </div>
-                                    </article>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                )}
+                <Casestudy5
+                    featuredCasestudy={featuredArticle}
+                    casestudies={latestArticle}
+                    ctaLabel="Read article"
+                    linkComponent={Link}
+                    className=""
+                    aside={
+                        <>
+                            <h2 className="mb-2 font-pixel text-2xl font-bold text-primary md:text-3xl">NEWS &amp; ARTICLES</h2>
+                            <p className="text-sm text-muted-foreground">
+                                Get latest news from what’s happening in the world of Cards &amp; Collectibles.
+                            </p>
+                            <Link href={'/articles'} className="mt-4 w-fit">
+                                <Button size="sm">Explore More</Button>
+                            </Link>
+                        </>
+                    }
+                />
             </div>
         </section>
     );
