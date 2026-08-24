@@ -4,7 +4,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Button } from '@/components/ui/button';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
+import {
+    NavigationMenu,
+    NavigationMenuContent,
+    NavigationMenuItem,
+    NavigationMenuLink,
+    NavigationMenuList,
+    NavigationMenuTrigger,
+} from '@/components/ui/navigation-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useSearchBar } from '@/contexts/SearchBarContext';
@@ -380,8 +387,8 @@ export default function FrontHeader() {
                         {Array.from({ length: Math.max(1, repeatFactor) }).flatMap((_, repIdx) =>
                             runningTexts.map((t, i) => (
                                 <div className="flex" key={`a-${repIdx}-${i}-${t.id}`}>
- 
-                                    <span>{t.running_text}</span>
+                                    <img src="/poke-icon.png" className="me-4 h-4 w-4" />
+                                    <span className='text-muted'>{t.running_text}</span>
                                 </div>
                             )),
                         )}
@@ -390,7 +397,7 @@ export default function FrontHeader() {
                             runningTexts.map((t, i) => (
                                 <div className="flex" key={`b-${repIdx}-${i}-${t.id}`}>
                                     <img src="/poke-icon.png" className="me-4 h-4 w-4" />
-                                    <span>{t.running_text}</span>
+                                    <span className='text-muted'>{t.running_text}</span>
                                 </div>
                             )),
                         )}
@@ -398,7 +405,7 @@ export default function FrontHeader() {
                 </div>
             )}
 
-            <header className="w-full border-b bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
+            <header className="relative z-50 w-full border-b border-border/40 bg-background/95 shadow-[0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur supports-[backdrop-filter]:bg-background/80">
                 <div className="mx-auto max-w-7xl px-4">
                     <div className="flex items-center justify-between gap-3 py-3 md:gap-6">
                         <div className="flex min-w-0 items-center gap-2">
@@ -426,20 +433,45 @@ export default function FrontHeader() {
                                         </NavigationMenuItem>
                                     ))}
 
-                                    {(activeEvents.length > 0 || isEventsLoading) &&
-                                        activeEvents.map((event) => (
-                                            <NavigationMenuItem key={event.id} className="relative">
-                                                <NavigationMenuLink asChild>
-                                                    <Link
-                                                        href={`/list-product/${event.id}`}
-                                                        className="inline-flex h-9 w-max items-center justify-center rounded-full px-4 py-2 text-sm font-bold uppercase transition-colors hover:bg-muted"
-                                                    >
-                                                        {event.name}
-                                                    </Link>
-                                                </NavigationMenuLink>
-                                                {renderEventBadge(event.discount)}
-                                            </NavigationMenuItem>
-                                        ))}
+                                    {(activeEvents.length > 0 || isEventsLoading) && (
+                                        <NavigationMenuItem>
+                                            <NavigationMenuTrigger className="h-9 rounded-full bg-transparent px-4 py-2 text-sm font-bold uppercase transition-colors hover:bg-muted hover:text-foreground focus:bg-transparent focus:text-foreground data-[state=open]:bg-transparent data-[state=open]:text-foreground">
+                                                Events
+                                            </NavigationMenuTrigger>
+                                            <NavigationMenuContent className="z-50 border-0! bg-background! shadow-[0_0_24px_rgba(0,0,0,0.14)]!">
+                                                <ul className="flex w-72 flex-col gap-1">
+                                                    {isEventsLoading && activeEvents.length === 0 && (
+                                                        <li className="flex items-center gap-2 px-3 py-2 text-left text-sm text-muted-foreground">
+                                                            <Loader2 className="size-4 shrink-0 animate-spin" />
+                                                            Loading...
+                                                        </li>
+                                                    )}
+                                                    {activeEvents.map((event) => (
+                                                        <li key={event.id} className="relative">
+                                                            <NavigationMenuLink asChild>
+                                                                <Link
+                                                                    href={`/list-product/${event.id}`}
+                                                                    className="flex flex-col items-start gap-1 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted"
+                                                                >
+                                                                    <span className="w-full truncate pr-10 text-sm font-normal uppercase">{event.name}</span>
+                                                                    {event.description && (
+                                                                        <span className="line-clamp-2 w-full text-xs font-normal text-muted-foreground">
+                                                                            {event.description}
+                                                                        </span>
+                                                                    )}
+                                                                </Link>
+                                                            </NavigationMenuLink>
+                                                            {event.discount > 0 && (
+                                                                <span className="absolute top-2 right-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-0.5 text-[8px] leading-none font-semibold text-destructive-foreground">
+                                                                    {event.discount}%
+                                                                </span>
+                                                            )}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </NavigationMenuContent>
+                                        </NavigationMenuItem>
+                                    )}
                                 </NavigationMenuList>
                             </NavigationMenu>
                         </div>
