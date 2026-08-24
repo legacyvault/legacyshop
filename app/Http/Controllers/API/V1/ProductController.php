@@ -495,12 +495,13 @@ class ProductController extends Controller
             // Upload pictures to S3
             if ($request->hasFile('pictures')) {
                 foreach ($request->file('pictures') as $j => $file) {
-                    $url = $this->uploadToS3($file, $product->id);
+                    $upload = $this->uploadToS3($file, $product->id);
 
                     ProductPictures::create([
-                        'url'        => $url,
-                        'product_id' => $product->id,
-                        'sort_order' => $j,
+                        'url'           => $upload['url'],
+                        'thumbnail_url' => $upload['thumbnail_url'],
+                        'product_id'    => $product->id,
+                        'sort_order'    => $j,
                     ]);
                 }
             }
@@ -667,12 +668,13 @@ class ProductController extends Controller
                 if ($files && is_array($files)) {
                     foreach ($files as $j => $file) {
                         if ($file instanceof \Illuminate\Http\UploadedFile) {
-                            $url = $this->uploadToS3($file, $product->id);
+                            $upload = $this->uploadToS3($file, $product->id);
 
                             ProductPictures::create([
-                                'url'        => $url,
-                                'product_id' => $product->id,
-                                'sort_order' => $j,
+                                'url'           => $upload['url'],
+                                'thumbnail_url' => $upload['thumbnail_url'],
+                                'product_id'    => $product->id,
+                                'sort_order'    => $j,
                             ]);
                         }
                     }
@@ -987,11 +989,12 @@ class ProductController extends Controller
                 if ($files) {
                     $existingPicCount = count($p['existing_picture_order'] ?? []);
                     foreach ($files as $j => $file) {
-                        $url = $this->uploadToS3($file, $product->id);
+                        $upload = $this->uploadToS3($file, $product->id);
                         ProductPictures::create([
-                            'url'        => $url,
-                            'product_id' => $product->id,
-                            'sort_order' => $existingPicCount + $j,
+                            'url'           => $upload['url'],
+                            'thumbnail_url' => $upload['thumbnail_url'],
+                            'product_id'    => $product->id,
+                            'sort_order'    => $existingPicCount + $j,
                         ]);
                     }
                 }
@@ -1503,11 +1506,12 @@ class ProductController extends Controller
                 if ($request->hasFile('pictures')) {
                     $existingPicCount = count($request->input('existing_picture_order', []));
                     foreach ($request->file('pictures') as $j => $file) {
-                        $url = $this->uploadToS3($file, $product->id);
+                        $upload = $this->uploadToS3($file, $product->id);
                         ProductPictures::create([
-                            'url'        => $url,
-                            'product_id' => $product->id,
-                            'sort_order' => $existingPicCount + $j,
+                            'url'           => $upload['url'],
+                            'thumbnail_url' => $upload['thumbnail_url'],
+                            'product_id'    => $product->id,
+                            'sort_order'    => $existingPicCount + $j,
                         ]);
                     }
                 }
@@ -1677,11 +1681,12 @@ class ProductController extends Controller
             if ($request->hasFile('pictures')) {
                 $existingPicCount = count($request->input('existing_picture_order', []));
                 foreach ($request->file('pictures') as $j => $file) {
-                    $url = $this->uploadToS3($file, $product->id);
+                    $upload = $this->uploadToS3($file, $product->id);
                     ProductPictures::create([
-                        'url'        => $url,
-                        'product_id' => $product->id,
-                        'sort_order' => $existingPicCount + $j,
+                        'url'           => $upload['url'],
+                        'thumbnail_url' => $upload['thumbnail_url'],
+                        'product_id'    => $product->id,
+                        'sort_order'    => $existingPicCount + $j,
                     ]);
                 }
             }
@@ -2363,8 +2368,11 @@ class ProductController extends Controller
 
 
             $pictureUrl = null;
+            $thumbnailUrl = null;
             if ($request->hasFile('image')) {
-                $pictureUrl = $this->uploadUnitImageToS3($request->file('image'));
+                $upload = $this->uploadUnitImageToS3($request->file('image'));
+                $pictureUrl = $upload['url'];
+                $thumbnailUrl = $upload['thumbnail_url'];
             }
 
             $create = Unit::create([
@@ -2374,6 +2382,7 @@ class ProductController extends Controller
                 'usd_price' => $request->usd_price,
                 'discount' => $request->discount,
                 'picture_url' => $pictureUrl,
+                'thumbnail_url' => $thumbnailUrl,
                 'is_active' => $request->is_active ?? true,
             ]);
 
@@ -2403,6 +2412,9 @@ class ProductController extends Controller
 
             if ($unit->picture_url) {
                 $this->deleteFromS3($unit->picture_url);
+            }
+            if ($unit->thumbnail_url) {
+                $this->deleteFromS3($unit->thumbnail_url);
             }
 
             $unit->delete();
@@ -2464,7 +2476,12 @@ class ProductController extends Controller
                 if ($unit->picture_url) {
                     $this->deleteFromS3($unit->picture_url);
                 }
-                $unit->picture_url = $this->uploadUnitImageToS3($request->file('image'), $unit->id);
+                if ($unit->thumbnail_url) {
+                    $this->deleteFromS3($unit->thumbnail_url);
+                }
+                $upload = $this->uploadUnitImageToS3($request->file('image'), $unit->id);
+                $unit->picture_url = $upload['url'];
+                $unit->thumbnail_url = $upload['thumbnail_url'];
             }
 
             $unit->name        = $request->name;

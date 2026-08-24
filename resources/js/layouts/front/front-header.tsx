@@ -1,24 +1,21 @@
 import AppLogoIcon from '@/components/app-logo-icon';
 import { CartDropdown } from '@/components/CartDropdown';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
+import { CommandDialog, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { UserMenuContent } from '@/components/user-menu-content';
+import { useSearchBar } from '@/contexts/SearchBarContext';
 import { useInitials } from '@/hooks/use-initials';
-import { Auth, IEvents, IRunningText } from '@/types';
+import { cn } from '@/lib/utils';
+import { IEvents, IRunningText, SharedData } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
+import { Command as CommandPrimitive } from 'cmdk';
 import gsap from 'gsap';
-import { Loader2, SearchIcon, X } from 'lucide-react';
-import { ChangeEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-
-interface IPropsHeader {
-    auth: Auth;
-    locale: string;
-    translations: any;
-    searchValue?: string;
-    onSearchChange?: (value: string) => void;
-    searchRoute?: string;
-    searchScopeLabel?: string;
-    searchUnitId?: string;
-}
+import { Boxes, Layers, Loader2, Menu, Newspaper, Search, SearchIcon, Sparkles, Store, Tag } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 type ProductSuggestion = {
     id: string;
@@ -44,26 +41,29 @@ const NavBottom = [
     },
 ];
 
-export default function FrontHeader({
-    auth,
-    locale,
-    translations,
-    searchValue,
-    onSearchChange,
-    searchRoute,
-    searchScopeLabel,
-    searchUnitId,
-}: IPropsHeader) {
-    const page = usePage();
+const NAV_ICONS: Record<string, React.ReactNode> = {
+    home: <Store className="size-5 shrink-0" />,
+    products: <Boxes className="size-5 shrink-0" />,
+    articles: <Newspaper className="size-5 shrink-0" />,
+};
+
+export default function FrontHeader() {
+    const page = usePage<SharedData>();
+    const { auth, translations } = page.props;
+    const searchBar = useSearchBar();
+    const searchValue = searchBar?.value;
+    const onSearchChange = searchBar?.onChange;
+    const searchRoute = searchBar?.route;
+    const searchScopeLabel = searchBar?.scopeLabel;
+    const searchUnitId = searchBar?.unitId;
     const getInitials = useInitials();
     const [internalQuery, setInternalQuery] = useState('');
     const value = searchValue !== undefined ? searchValue : internalQuery;
     const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([]);
-    const [showDropdown, setShowDropdown] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     const [recentSearches, setRecentSearches] = useState<string[]>([]);
-    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-    const searchContainerRef = useRef<HTMLDivElement | null>(null);
     const marqueeRef = useRef<HTMLDivElement | null>(null);
     const marqueeContainerRef = useRef<HTMLDivElement | null>(null);
     const [runningTexts, setRunningTexts] = useState<IRunningText[]>([]);
@@ -117,37 +117,17 @@ export default function FrontHeader({
         else setInternalQuery(term);
     };
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        updateQuery(e.target.value);
-        setShowDropdown(true);
-    };
-
-    const handleSubmitSearch = (source: 'enter' | 'click' = 'enter') => {
+    const handleSubmitSearch = () => {
         const q = value.trim();
         if (!q) return;
         addRecentSearch(q);
         const payload = searchUnitId ? { q, unit_id: searchUnitId } : q ? { q } : {};
         router.get(searchRoute ?? '/list-products', payload);
-        setShowDropdown(false);
-        if (mobileSearchOpen) {
-            setMobileSearchOpen(false);
-        }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handleSubmitSearch('enter');
-        }
-    };
-
-    const handleClear = () => {
-        updateQuery('');
-        setSuggestions([]);
+        setSearchOpen(false);
     };
 
     const handleSuggestionClick = (suggestion: ProductSuggestion) => {
-        setShowDropdown(false);
-        setMobileSearchOpen(false);
+        setSearchOpen(false);
 
         if (suggestion.type === 'product') {
             router.get(`/view-product/${suggestion.id}`);
@@ -173,19 +153,21 @@ export default function FrontHeader({
     const handleRecentClick = (term: string) => {
         updateQuery(term);
         addRecentSearch(term);
-        handleSubmitSearch('click');
+        const payload = searchUnitId ? { q: term, unit_id: searchUnitId } : { q: term };
+        router.get(searchRoute ?? '/list-products', payload);
+        setSearchOpen(false);
     };
 
     useEffect(() => {
-        const listener = (event: MouseEvent) => {
-            if (mobileSearchOpen) return;
-            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
-                setShowDropdown(false);
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                setSearchOpen((open) => !open);
             }
         };
-        document.addEventListener('mousedown', listener);
-        return () => document.removeEventListener('mousedown', listener);
-    }, [mobileSearchOpen]);
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, []);
 
     useEffect(() => {
         const term = value.trim();
@@ -235,85 +217,12 @@ export default function FrontHeader({
     const showRecents = !value.trim() && recentSearches.length > 0;
     const noMatches = hasQuery && !isLoadingSuggestions && suggestions.length === 0;
 
-    const renderSuggestionsPanel = (isMobile = false) => (
-        <div className={`${isMobile ? '' : 'max-h-80 overflow-y-auto'} rounded-xl border border-border bg-white shadow-lg`}>
-            {showRecents && <div className="border-b px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">Recent searches</div>}
-            {showRecents &&
-                recentSearches.map((item) => (
-                    <button
-                        key={item}
-                        type="button"
-                        onClick={() => handleRecentClick(item)}
-                        className="flex w-full items-center justify-between px-4 py-2 text-sm hover:bg-muted/60"
-                    >
-                        <span className="truncate">{item}</span>
-                        <span className="text-xs text-primary uppercase">Search</span>
-                    </button>
-                ))}
-
-            {hasQuery && (
-                <div className="divide-y">
-                    <div
-                        onClick={() => router.get('/list-products', { q: value })}
-                        className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground"
-                    >
-                        <div className="text-sm font-normal text-foreground">
-                            {value} in <span className="font-semibold">All</span>
-                        </div>
-                    </div>
-                    {suggestions.map((s) => {
-                        const typeLabelMap: Record<string, string> = {
-                            unit: 'Collection',
-                            sub_unit: 'Category',
-                            product: 'Product',
-                            tags: 'Tags',
-                        };
-                        const unitName = s.unit?.name ?? '';
-                        const subUnitName = s.sub_unit?.name ?? '';
-                        return (
-                            <button
-                                type="button"
-                                key={`${s.type}-${s.id}`}
-                                className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/60"
-                                onClick={() => handleSuggestionClick(s)}
-                            >
-                                <div className="flex-1">
-                                    <div className="flex items-center">
-                                        <div className="text-sm font-normal text-foreground">
-                                            {s.name} in <span className="font-semibold">{typeLabelMap[s.type]}</span>
-                                        </div>
-                                    </div>
-                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                        {s.type === 'product' && (unitName || subUnitName) && (
-                                            <span className="rounded-full bg-muted px-2 py-0.5">
-                                                {[unitName, subUnitName].filter(Boolean).join(' | ')}
-                                            </span>
-                                        )}
-                                        {s.tags && s.tags.length > 0 && (
-                                            <span className="flex flex-wrap gap-1">
-                                                {s.tags.slice(0, 3).map((t) => (
-                                                    <span key={t.id} className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
-                                                        {t.name}
-                                                    </span>
-                                                ))}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-
-            {isLoadingSuggestions && (
-                <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Searching products…</span>
-                </div>
-            )}
-        </div>
-    );
+    const typeLabelMap: Record<string, string> = {
+        unit: 'Collection',
+        sub_unit: 'Category',
+        product: 'Product',
+        tags: 'Tags',
+    };
 
     // Compute how many times to repeat the base sequence so one sequence is wider than the viewport
     useLayoutEffect(() => {
@@ -436,15 +345,21 @@ export default function FrontHeader({
         };
     }, [pageEvents]);
 
+    const isActive = (url: string) => page.url === url;
+
+    const renderEventBadge = (discount: number) =>
+        discount > 0 ? (
+            <span className="absolute -top-2 -right-4 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-0.5 text-[8px] leading-none font-semibold text-destructive-foreground">
+                {discount}%
+            </span>
+        ) : null;
+
     return (
         <>
-            {/* <Link href={route('locale.switch', locale === 'en' ? 'id' : 'en')} className="rounded bg-gray-200 px-4 py-2">
-                Switch to {locale === 'en' ? 'Bahasa' : 'English'}
-            </Link> */}
             {auth.user && auth.user.role === 'admin' && (
-                <div className="hidden border-b bg-gray-50 md:block">
+                <div className="hidden border-b bg-muted/50 md:block">
                     <div className="mx-auto max-w-7xl px-4">
-                        <div className="flex items-center justify-between py-2 text-xs text-gray-600">
+                        <div className="flex items-center justify-between py-2 text-xs text-muted-foreground">
                             <div className="flex items-center gap-4">
                                 <Link href="/dashboard" prefetch>
                                     <span className="flex items-center gap-1">Back to Dashboard</span>
@@ -456,13 +371,16 @@ export default function FrontHeader({
             )}
 
             {runningTexts.length > 0 && (
-                <div ref={marqueeContainerRef} className="relative overflow-hidden">
-                    <div ref={marqueeRef} className="flex gap-8 py-2 text-[11px] whitespace-nowrap text-gray-600 uppercase will-change-transform">
+                <div ref={marqueeContainerRef} className="relative overflow-hidden bg-secondary-foreground">
+                    <div
+                        ref={marqueeRef}
+                        className="flex gap-8 py-2 text-[11px] whitespace-nowrap text-secondary uppercase will-change-transform"
+                    >
                         {/* sequence A: repeat to ensure adequate width based on computed repeatFactor */}
                         {Array.from({ length: Math.max(1, repeatFactor) }).flatMap((_, repIdx) =>
                             runningTexts.map((t, i) => (
                                 <div className="flex" key={`a-${repIdx}-${i}-${t.id}`}>
-                                    <img src="/poke-icon.png" className="me-4 h-4 w-4" />
+ 
                                     <span>{t.running_text}</span>
                                 </div>
                             )),
@@ -479,199 +397,269 @@ export default function FrontHeader({
                     </div>
                 </div>
             )}
-            {/* Sticky header containing main header + nav + mobile search */}
-            <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
-                {/* Main header */}
+
+            <header className="w-full border-b bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
                 <div className="mx-auto max-w-7xl px-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3 py-3 md:flex-nowrap md:gap-6 md:py-4">
-                        {/* Left section - Logo */}
-                        <div className="flex shrink-0 items-center gap-4">
-                            <Link href={route('home')} className="font-bold text-foreground transition-opacity hover:opacity-80">
-                                <AppLogoIcon className="size-16" />
+                    <div className="flex items-center justify-between gap-3 py-3 md:gap-6">
+                        <div className="flex min-w-0 items-center gap-2">
+                            {/* Logo */}
+                            <Link href={route('home')} className="shrink-0 font-bold text-foreground transition-opacity hover:opacity-80">
+                                <AppLogoIcon className="size-14 md:size-16" />
                             </Link>
+
+                            {/* Desktop navigation */}
+                            <NavigationMenu viewport={false} className="hidden lg:flex">
+                                <NavigationMenuList className="gap-1">
+                                    {NavBottom.map((nav) => (
+                                        <NavigationMenuItem key={nav.url}>
+                                            <NavigationMenuLink asChild>
+                                                <Link
+                                                    href={nav.url}
+                                                    className={cn(
+                                                        'inline-flex h-9 w-max items-center justify-center rounded-full px-4 py-2 text-sm font-bold uppercase transition-colors hover:bg-muted',
+                                                        isActive(nav.url) && 'opacity-70',
+                                                    )}
+                                                >
+                                                    {nav.title}
+                                                </Link>
+                                            </NavigationMenuLink>
+                                        </NavigationMenuItem>
+                                    ))}
+
+                                    {(activeEvents.length > 0 || isEventsLoading) &&
+                                        activeEvents.map((event) => (
+                                            <NavigationMenuItem key={event.id} className="relative">
+                                                <NavigationMenuLink asChild>
+                                                    <Link
+                                                        href={`/list-product/${event.id}`}
+                                                        className="inline-flex h-9 w-max items-center justify-center rounded-full px-4 py-2 text-sm font-bold uppercase transition-colors hover:bg-muted"
+                                                    >
+                                                        {event.name}
+                                                    </Link>
+                                                </NavigationMenuLink>
+                                                {renderEventBadge(event.discount)}
+                                            </NavigationMenuItem>
+                                        ))}
+                                </NavigationMenuList>
+                            </NavigationMenu>
                         </div>
 
-                        {/* Center section - Search bar (desktop) */}
-                        <div className="hidden w-full min-w-0 flex-1 md:mx-6 md:block" ref={searchContainerRef}>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder={placeholder}
-                                    value={value}
-                                    onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
-                                    onFocus={() => setShowDropdown(true)}
-                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-12 pl-12 text-sm text-gray-700 placeholder-gray-500 transition-all md:py-3"
-                                />
-                                <SearchIcon className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                {value && (
-                                    <button
-                                        type="button"
-                                        onClick={handleClear}
-                                        className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 text-gray-500 hover:bg-muted"
-                                        aria-label="Clear search"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
-                                {isLoadingSuggestions && hasQuery && (
-                                    <Loader2 className="absolute top-1/2 right-10 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
-                                )}
-                                {showDropdown && (showRecents || hasQuery) && (
-                                    <div className="absolute top-full right-0 left-0 z-50 mt-2">{renderSuggestionsPanel()}</div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Right section - Actions */}
-                        <div className="flex shrink-0 items-center gap-2 md:gap-4">
+                        {/* Actions */}
+                        <div className="flex shrink-0 items-center gap-2">
+                            {/* Desktop: search affordance that opens the palette */}
                             <button
                                 type="button"
-                                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border text-gray-600 transition hover:bg-muted md:hidden"
-                                onClick={() => {
-                                    setMobileSearchOpen(true);
-                                    setShowDropdown(true);
-                                }}
+                                onClick={() => setSearchOpen(true)}
+                                className="hidden h-9 w-56 items-center gap-2 rounded-full border px-3 text-sm text-muted-foreground transition-colors hover:bg-muted lg:flex xl:w-72"
                                 aria-label="Open search"
                             >
-                                <SearchIcon className="h-5 w-5" />
+                                <SearchIcon className="size-4 shrink-0" />
+                                <span className="truncate">{placeholder}</span>
+                                <kbd className="ml-auto hidden rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground xl:inline">
+                                    ⌘K
+                                </kbd>
                             </button>
-                            {/* User section */}
+
+                            {/* Mobile / tablet: icon only */}
+                            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSearchOpen(true)} aria-label="Open search">
+                                <Search className="size-5" />
+                            </Button>
+
+                            <CartDropdown auth={auth} />
 
                             {auth.user ? (
-                                <>
-                                    {/* Shopping cart */}
-                                    <CartDropdown auth={auth} />
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50">
-                                            <div className="hidden items-center gap-2 md:flex">
-                                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                                                    {getInitials(auth.user.email)}
-                                                </div>
-                                                <span className="truncate text-sm font-medium text-gray-900 capitalize">
-                                                    Hi, {auth.user.email.split('@')[0]}
-                                                </span>
-                                            </div>
-                                            <div className="md:hidden">
-                                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                                                    {getInitials(auth.user.email)}
-                                                </div>
-                                            </div>
-                                        </DropdownMenuTrigger>
-
-                                        <DropdownMenuContent align="end" className="w-48">
-                                            <UserMenuContent user={auth.user} />
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </>
-                            ) : (
-                                <>
-                                    {/* Shopping cart */}
-                                    <CartDropdown auth={auth} />
-                                    <div className="flex items-center gap-2">
-                                        <Link
-                                            href={route('login')}
-                                            className="hidden rounded-lg px-4 py-2 text-sm font-medium text-foreground capitalize transition-colors hover:bg-muted md:inline-block"
-                                        >
-                                            {translations.navbar.sign_in}
-                                        </Link>
-                                        <Link
-                                            href={route('register')}
-                                            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                                        >
-                                            <span className="hidden capitalize md:inline">{translations.navbar.register}</span>
-                                            <span className="capitalize md:hidden">{translations.navbar.register}</span>
-                                        </Link>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="-mx-4 overflow-x-auto py-4 md:mx-0 md:overflow-visible">
-                        <div className="flex min-w-full items-center gap-6 px-2 whitespace-nowrap md:gap-8">
-                            {NavBottom.map((nav, i) => (
-                                <Link key={i} href={nav.url}>
-                                    <h1 className={`font-bold uppercase ${page.url === nav.url ? 'opacity-70' : ''}`}>{nav.title}</h1>
-                                </Link>
-                            ))}
-                            {(activeEvents.length > 0 || isEventsLoading) && (
-                                <>
-                                    {activeEvents.map((event) => (
-                                        <div className="relative" key={event.id}>
-                                            <Link
-                                                href={`/list-product/${event.id}`}
-                                                className={`font-bold uppercase ${page.url === 'event' ? 'opacity-70' : ''}`}
-                                            >
-                                                {event.name}
-                                            </Link>
-                                            {event.discount > 0 && (
-                                                <span className="absolute -top-2 -right-4 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] leading-none font-semibold text-destructive-foreground">
-                                                    {event.discount}%
-                                                </span>
-                                            )}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg p-2 transition-colors hover:bg-muted">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                                            {getInitials(auth.user.email)}
                                         </div>
-                                    ))}
-                                </>
+                                        <span className="hidden truncate text-sm font-medium capitalize md:inline">
+                                            Hi, {auth.user.email.split('@')[0]}
+                                        </span>
+                                    </DropdownMenuTrigger>
+
+                                    <DropdownMenuContent align="end" className="w-48">
+                                        <UserMenuContent user={auth.user} />
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <Button asChild variant="ghost" size="sm" className="hidden capitalize md:inline-flex">
+                                        <Link href={route('login')}>{translations.navbar.sign_in}</Link>
+                                    </Button>
+                                    <Button asChild size="sm" className="capitalize">
+                                        <Link href={route('register')}>{translations.navbar.register}</Link>
+                                    </Button>
+                                </div>
                             )}
+
+                            {/* Mobile drawer */}
+                            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                                <SheetTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu">
+                                        <Menu className="size-5" />
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent className="overflow-y-auto">
+                                    <SheetHeader>
+                                        <SheetTitle asChild>
+                                            <Link href={route('home')} onClick={() => setMobileMenuOpen(false)}>
+                                                <AppLogoIcon className="size-12" />
+                                            </Link>
+                                        </SheetTitle>
+                                    </SheetHeader>
+
+                                    <div className="flex flex-col gap-6 px-4 pb-6">
+                                        <Accordion type="single" collapsible className="flex w-full flex-col">
+                                            {NavBottom.map((nav) => (
+                                                <Link
+                                                    key={nav.url}
+                                                    href={nav.url}
+                                                    onClick={() => setMobileMenuOpen(false)}
+                                                    className={cn(
+                                                        'flex items-center gap-3 border-b py-4 text-sm font-bold uppercase',
+                                                        isActive(nav.url) && 'opacity-70',
+                                                    )}
+                                                >
+                                                    {NAV_ICONS[nav.title]}
+                                                    {nav.title}
+                                                </Link>
+                                            ))}
+
+                                            {activeEvents.length > 0 && (
+                                                <AccordionItem value="events">
+                                                    <AccordionTrigger className="text-sm font-bold uppercase">
+                                                        <span className="flex items-center gap-3">
+                                                            <Sparkles className="size-5 shrink-0" />
+                                                            Events
+                                                        </span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="flex flex-col">
+                                                        {activeEvents.map((event) => (
+                                                            <div className="relative w-fit" key={event.id}>
+                                                                <Link
+                                                                    href={`/list-product/${event.id}`}
+                                                                    onClick={() => setMobileMenuOpen(false)}
+                                                                    className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-bold uppercase hover:bg-muted"
+                                                                >
+                                                                    <Sparkles className="size-4 shrink-0" />
+                                                                    <span className="truncate">{event.name}</span>
+                                                                </Link>
+                                                                {renderEventBadge(event.discount)}
+                                                            </div>
+                                                        ))}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            )}
+                                        </Accordion>
+
+                                        {!auth.user && (
+                                            <div className="flex flex-col gap-3">
+                                                <Button asChild variant="outline" className="capitalize">
+                                                    <Link href={route('login')} onClick={() => setMobileMenuOpen(false)}>
+                                                        {translations.navbar.sign_in}
+                                                    </Link>
+                                                </Button>
+                                                <Button asChild className="capitalize">
+                                                    <Link href={route('register')} onClick={() => setMobileMenuOpen(false)}>
+                                                        {translations.navbar.register}
+                                                    </Link>
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {mobileSearchOpen && (
-                <div className="fixed inset-0 z-[60] bg-white/95 backdrop-blur-sm">
-                    <div className="mx-auto flex h-full max-w-3xl flex-col px-4 py-6">
-                        <div className="mb-4 flex items-center gap-3">
-                            <button
-                                type="button"
-                                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border text-gray-600 transition hover:bg-muted"
-                                onClick={() => {
-                                    setMobileSearchOpen(false);
-                                    setShowDropdown(false);
-                                }}
-                                aria-label="Close search"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                            <div className="relative flex-1">
-                                <input
-                                    type="text"
-                                    placeholder={placeholder}
-                                    value={value}
-                                    onChange={handleChange}
-                                    onKeyDown={handleKeyDown}
-                                    onFocus={() => setShowDropdown(true)}
-                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-12 pl-12 text-sm text-gray-700 placeholder-gray-500 transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                                />
-                                <SearchIcon className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                {value && (
-                                    <button
-                                        type="button"
-                                        onClick={handleClear}
-                                        className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 text-gray-500 hover:bg-muted"
-                                        aria-label="Clear search"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
-                                {isLoadingSuggestions && hasQuery && (
-                                    <Loader2 className="absolute top-1/2 right-10 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
-                                )}
-                            </div>
-                            <button
-                                type="button"
-                                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
-                                onClick={() => handleSubmitSearch('click')}
-                            >
-                                Search
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-auto">{renderSuggestionsPanel(true)}</div>
-                    </div>
+            {/* Search palette — server-driven, so cmdk's own filtering is disabled */}
+            <CommandDialog
+                open={searchOpen}
+                onOpenChange={setSearchOpen}
+                title="Search"
+                description={placeholder}
+                commandProps={{ shouldFilter: false }}
+                className="top-[8%] translate-y-0 sm:max-w-2xl"
+            >
+                <div className="flex h-12 items-center gap-2 border-b px-4" cmdk-input-wrapper="">
+                    <SearchIcon className="size-4 shrink-0 opacity-50" />
+                    <CommandPrimitive.Input
+                        autoFocus
+                        value={value}
+                        onValueChange={updateQuery}
+                        placeholder={placeholder}
+                        className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground"
+                    />
+                    {isLoadingSuggestions && hasQuery && <Loader2 className="size-4 shrink-0 animate-spin text-primary" />}
                 </div>
-            )}
+
+                <CommandList className="max-h-[60vh]">
+                    {noMatches && <CommandEmpty>No results found.</CommandEmpty>}
+
+                    {showRecents && (
+                        <CommandGroup heading="Recent searches">
+                            {recentSearches.map((item) => (
+                                <CommandItem key={item} value={`recent-${item}`} onSelect={() => handleRecentClick(item)}>
+                                    <SearchIcon />
+                                    <span className="truncate">{item}</span>
+                                    <span className="ml-auto text-xs text-primary uppercase">Search</span>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    )}
+
+                    {hasQuery && (
+                        <CommandGroup heading={searchScopeLabel ? `In ${searchScopeLabel}` : 'Suggestions'}>
+                            {/* Selected by default, so pressing Enter runs a full search */}
+                            <CommandItem value="__search_all__" onSelect={handleSubmitSearch}>
+                                <SearchIcon />
+                                <span className="truncate">
+                                    {value} in <span className="font-semibold">All</span>
+                                </span>
+                            </CommandItem>
+
+                            {suggestions.map((s) => {
+                                const unitName = s.unit?.name ?? '';
+                                const subUnitName = s.sub_unit?.name ?? '';
+                                return (
+                                    <CommandItem
+                                        key={`${s.type}-${s.id}`}
+                                        value={`${s.type}-${s.id}`}
+                                        onSelect={() => handleSuggestionClick(s)}
+                                        className="items-start"
+                                    >
+                                        {s.type === 'tags' ? <Tag /> : s.type === 'product' ? <Boxes /> : <Layers />}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="truncate text-sm">
+                                                {s.name} in <span className="font-semibold">{typeLabelMap[s.type]}</span>
+                                            </div>
+                                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                {s.type === 'product' && (unitName || subUnitName) && (
+                                                    <span className="rounded-full bg-muted px-2 py-0.5">
+                                                        {[unitName, subUnitName].filter(Boolean).join(' | ')}
+                                                    </span>
+                                                )}
+                                                {s.tags && s.tags.length > 0 && (
+                                                    <span className="flex flex-wrap gap-1">
+                                                        {s.tags.slice(0, 3).map((t) => (
+                                                            <span key={t.id} className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                                                                {t.name}
+                                                            </span>
+                                                        ))}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </CommandItem>
+                                );
+                            })}
+                        </CommandGroup>
+                    )}
+                </CommandList>
+            </CommandDialog>
         </>
     );
 }

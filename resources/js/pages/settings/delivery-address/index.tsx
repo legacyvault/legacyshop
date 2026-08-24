@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IDeliveryAddress, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
-import { useCallback, useState } from 'react';
+import { ReactNode, useCallback, useState } from 'react';
 
-export default function DeliveryAddress() {
-    const { auth, locale, translations, deliveryAddresses, countryCode } = usePage<SharedData>().props;
+function DeliveryAddress() {
+    const { deliveryAddresses, countryCode } = usePage<SharedData>().props;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -36,7 +36,7 @@ export default function DeliveryAddress() {
     };
 
     return (
-        <FrontLayout auth={auth} locale={locale} translations={translations}>
+        <>
             <Button onClick={() => setIsModalOpen(true)} className="mb-4">
                 Add Delivery Address
             </Button>
@@ -84,6 +84,10 @@ export default function DeliveryAddress() {
                 id={selectedId}
                 closeOnSuccess={false}
             />
-        </FrontLayout>
+        </>
     );
 }
+
+DeliveryAddress.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default DeliveryAddress;

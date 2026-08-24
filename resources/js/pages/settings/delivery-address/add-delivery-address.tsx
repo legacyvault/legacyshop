@@ -2,7 +2,7 @@ import AddDeliveryAddressModal from '@/components/add-delivery-address-modal';
 import FrontLayout from '@/layouts/front/front-layout';
 import type { SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
-import { useCallback, useState } from 'react';
+import { ReactNode, useCallback, useState } from 'react';
 
 type DeliveryAddress = {
     id: string;
@@ -23,8 +23,8 @@ interface DeliveryAddressPageProps extends SharedData {
     deliveryAddress?: DeliveryAddress | null;
 }
 
-export default function AddDeliveryAddress() {
-    const { auth, locale, translations, id, deliveryAddress, countryCode } = usePage<DeliveryAddressPageProps>().props;
+function AddDeliveryAddress() {
+    const { id, deliveryAddress, countryCode } = usePage<DeliveryAddressPageProps>().props;
     const [isModalOpen, setIsModalOpen] = useState(true);
 
     const handleModalChange = useCallback(
@@ -41,7 +41,7 @@ export default function AddDeliveryAddress() {
     const isEdit = Boolean(id ?? deliveryAddress?.id);
 
     return (
-        <FrontLayout auth={auth} locale={locale} translations={translations}>
+        <>
             <Head title={`${isEdit ? 'Edit' : 'Add'} Delivery Address`} />
 
             <AddDeliveryAddressModal
@@ -52,6 +52,10 @@ export default function AddDeliveryAddress() {
                 countryCode={countryCode ?? 'ID'}
                 closeOnSuccess={false}
             />
-        </FrontLayout>
+        </>
     );
 }
+
+AddDeliveryAddress.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default AddDeliveryAddress;

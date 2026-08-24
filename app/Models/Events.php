@@ -16,6 +16,7 @@ class Events extends Model
         'name',
         'description',
         'picture_url',
+        'thumbnail_url',
         'discount',
         'is_active'
     ];

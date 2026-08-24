@@ -408,8 +408,11 @@ class MiscController extends Controller
 
             // ---- UPLOAD IMAGE ----
             $pictureUrl = null;
+            $thumbnailUrl = null;
             if ($request->hasFile('image')) {
-                $pictureUrl = $this->uploadEventImageToS3($request->file('image'));
+                $upload = $this->uploadEventImageToS3($request->file('image'));
+                $pictureUrl = $upload['url'];
+                $thumbnailUrl = $upload['thumbnail_url'];
             }
 
             // ---- CREATE EVENT ----
@@ -420,7 +423,8 @@ class MiscController extends Controller
                 'description' => $request->description,
                 'discount'    => $request->discount,
                 'picture_url' => $pictureUrl,
-                'is_active'   => $willBeActive,
+                'thumbnail_url' => $thumbnailUrl,
+                'is_active' => $request->is_active ?? true,
             ]);
 
             // ---- ASSIGN PRODUCTS (plain pivot, no is_active on this table) ----
@@ -479,11 +483,17 @@ class MiscController extends Controller
 
             // ---- IMAGE UPDATE (optional) ----
             $pictureUrl = $event->picture_url;
+            $thumbnailUrl = $event->thumbnail_url;
             if ($request->hasFile('image')) {
                 if ($event->picture_url) {
                     $this->deleteFromS3($event->picture_url);
                 }
-                $pictureUrl = $this->uploadEventImageToS3($request->file('image'));
+                if ($event->thumbnail_url) {
+                    $this->deleteFromS3($event->thumbnail_url);
+                }
+                $upload = $this->uploadEventImageToS3($request->file('image'));
+                $pictureUrl = $upload['url'];
+                $thumbnailUrl = $upload['thumbnail_url'];
             }
 
             // ---- UPDATE MAIN EVENT ----
@@ -492,7 +502,8 @@ class MiscController extends Controller
                 'description' => $request->description,
                 'discount'    => $request->discount,
                 'picture_url' => $pictureUrl,
-                'is_active'   => $willBeActive,
+                'thumbnail_url' => $thumbnailUrl,
+                'is_active'   => $request->is_active ?? false,
             ]);
 
             // ---- SYNC EVENT PRODUCTS (plain pivot, no is_active column) ----

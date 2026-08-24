@@ -83,7 +83,9 @@ export const CartProvider = ({ children, auth }: CartProviderProps) => {
             const product = row.product ?? {};
             const name = product.product_name ?? 'Product';
             const basePrice = Number(row.price_per_product ?? 0);
-            const image = product.pictures?.[0]?.url ?? undefined;
+            // Prefer the resized thumbnail for cart/dropdown display — falls back to the
+            // full-size url for pictures uploaded before thumbnails were generated.
+            const image = product.pictures?.[0]?.thumbnail_url ?? product.pictures?.[0]?.url ?? undefined;
             const sku = product.product_sku ?? '';
             const meta = {
                 product_id: String(row.product_id ?? product.id ?? ''),

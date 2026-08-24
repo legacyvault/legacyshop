@@ -16,6 +16,7 @@ class Unit extends Model
         'name',
         'description',
         'picture_url',
+        'thumbnail_url',
         'price',
         'usd_price',
         'discount',

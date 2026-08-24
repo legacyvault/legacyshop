@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { CartItem, useCart } from '@/contexts/CartContext';
+import { usePageSearchBar } from '@/contexts/SearchBarContext';
 import FrontLayout from '@/layouts/front/front-layout';
 import { ICart, SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 interface PageProps extends SharedData {
     carts: ICart[];
@@ -273,21 +274,25 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
     };
 };
 
-export default function Carts() {
-    const { auth, translations, locale, carts, filters, isIndonesian } = usePage<PageProps>().props;
+function Carts() {
+    const { carts, filters, isIndonesian } = usePage<PageProps>().props;
     const [search, setSearch] = useState(String((filters as any)?.q || ''));
+
+    usePageSearchBar({ value: search, onChange: setSearch });
 
     console.log(carts)
 
     return (
         <>
             <Head title="Cart" />
-            <FrontLayout auth={auth} translations={translations} locale={locale} searchValue={search} onSearchChange={setSearch}>
-                <CartContent carts={carts} isIndonesian={isIndonesian} />
-            </FrontLayout>
+            <CartContent carts={carts} isIndonesian={isIndonesian} />
         </>
     );
 }
+
+Carts.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default Carts;
 
 function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndonesian: boolean }) {
     const { items: contextItems, updateQuantity, removeItem } = useCart();
@@ -307,7 +312,9 @@ function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndones
             const quantity = contextItem?.quantity ?? Number(cart.quantity ?? 0) ?? 0;
             const summary = extractSelectionSummary(cart);
             const pricing = computePricingDetails(cart, contextItem);
-            const imageUrl = cart.product?.pictures?.[0]?.url ?? FALLBACK_IMAGE;
+            // Prefer the resized thumbnail — falls back to the full-size url for pictures
+            // uploaded before thumbnails were generated.
+            const imageUrl = cart.product?.pictures?.[0]?.thumbnail_url ?? cart.product?.pictures?.[0]?.url ?? FALLBACK_IMAGE;
             const vendorName = summary.unit ?? cart.product?.unit?.name ?? 'Legacy Vault';
             const vendorId = cart.product?.unit?.id ?? cart.product_id ?? compositeId;
             const sku = cart.product?.product_sku;
@@ -538,7 +545,14 @@ function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndones
                                                 aria-label={`Pilih ${item.productName}`}
                                             />
                                             <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border">
-                                                <img src={item.imageUrl} alt={item.productName} className="h-full w-full object-cover" />
+                                                <img
+                                                    src={item.imageUrl}
+                                                    alt={item.productName}
+                                                    className="h-full w-full object-cover"
+                                                    loading="lazy"
+                                                    width={80}
+                                                    height={80}
+                                                />
                                                 {item.discountPercent > 0 && (
                                                     <Badge variant="destructive" className="absolute top-1 left-1">
                                                         -{item.discountPercent}%

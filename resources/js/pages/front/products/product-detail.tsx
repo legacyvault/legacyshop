@@ -18,21 +18,25 @@ import {
 } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import { Minus, Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 
 type PageProps = SharedData & {
     product: IProducts;
 };
 
-export default function ProductDetail() {
-    const { auth, translations, locale, product, rec_prod } = usePage<PageProps>().props;
+function ProductDetail() {
+    const { translations, product, rec_prod } = usePage<PageProps>().props;
     return (
-        <FrontLayout auth={auth} translations={translations} locale={locale}>
+        <>
             <DetailContent product={product} translations={translations} />
             <ReccomendationList rec_prod={rec_prod} />
-        </FrontLayout>
+        </>
     );
 }
+
+ProductDetail.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default ProductDetail;
 
 function DetailContent({ product }: { product: IProducts; translations: any }) {
     const { addItem, items, updateQuantity, openCart } = useCart();
@@ -136,6 +140,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     const totalStock = Number(product.total_stock);
 
     const mainImage = pictures?.[activeIndex]?.url || 'https://via.placeholder.com/600x800?text=No+Image';
+    // Cart line items don't need the full-size hero image — prefer the resized thumbnail,
+    // falling back to the full-size url for pictures uploaded before thumbnails existed.
+    const cartImage = pictures?.[activeIndex]?.thumbnail_url || mainImage;
 
     const productStockInsufficient = Number(totalStock ?? 0) < selectedQty;
     const subcatStockInsufficient = selectedSubcat ? Number(selectedSubcat.total_stock ?? 0) < selectedQty : false;
@@ -214,7 +221,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         const existing = items.find((i) => i.id === compositeId)?.quantity ?? 0;
         const targetQty = Math.max(1, existing + selectedQty);
 
-        void addItem({ id: compositeId, name, price: finalPrice, image: mainImage, meta, sku }, { quantity: targetQty, meta });
+        void addItem({ id: compositeId, name, price: finalPrice, image: cartImage, meta, sku }, { quantity: targetQty, meta });
         openCart(true);
     };
 
@@ -269,14 +276,27 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                         }`}
                                         onClick={() => setActiveIndex(i)}
                                     >
-                                        <img src={p.url} alt={`thumb-${i}`} className="aspect-square w-20 object-cover" />
+                                        <img
+                                            src={p.url}
+                                            alt={`thumb-${i}`}
+                                            className="aspect-square w-20 object-cover"
+                                            loading="lazy"
+                                            width={80}
+                                            height={80}
+                                        />
                                     </button>
                                 ))}
                             </div>
                         )}
                         <div className="overflow-hidden rounded-lg border bg-background">
                             <div className="relative aspect-[3/4] w-full md:aspect-auto md:h-[560px]">
-                                <img src={mainImage} alt={product.product_name} className="h-full w-full object-contain p-6" />
+                                <img
+                                    src={mainImage}
+                                    alt={product.product_name}
+                                    className="h-full w-full object-contain p-6"
+                                    width={900}
+                                    height={1200}
+                                />
                             </div>
                         </div>
                     </div>
@@ -285,7 +305,13 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     <div className="md:hidden">
                         <div className="overflow-hidden rounded-lg border bg-background">
                             <div className="relative aspect-[3/4] w-full">
-                                <img src={mainImage} alt={product.product_name} className="h-full w-full object-contain p-6" />
+                                <img
+                                    src={mainImage}
+                                    alt={product.product_name}
+                                    className="h-full w-full object-contain p-6"
+                                    width={900}
+                                    height={1200}
+                                />
                             </div>
                         </div>
                         {pictures.length > 0 && (
@@ -298,7 +324,14 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                         }`}
                                         onClick={() => setActiveIndex(i)}
                                     >
-                                        <img src={p.url} alt={`thumb-${i}`} className="aspect-square w-full object-cover" />
+                                        <img
+                                            src={p.url}
+                                            alt={`thumb-${i}`}
+                                            className="aspect-square w-full object-cover"
+                                            loading="lazy"
+                                            width={80}
+                                            height={80}
+                                        />
                                     </button>
                                 ))}
                             </div>

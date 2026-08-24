@@ -7,8 +7,7 @@ import { IArticle, IBanner, IEventProduct, IProducts, type SharedData } from '@/
 import { Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -23,7 +22,7 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
         <section className="py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="mb-12 text-center">
-                    <h2 className="mb-4 text-5xl font-bold text-primary">NEWS & ARTICLES</h2>
+                    <h2 className="mb-4 text-5xl font-bold text-primary font-pixel">NEWS & ARTICLES</h2>
                     <p className="mx-auto max-w-6xl text-xl text-muted-foreground">
                         Get latest news from what’s happening in the world of Cards & Collectibles.
                     </p>
@@ -37,7 +36,7 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
                         <div className="group relative block overflow-hidden bg-muted" aria-label={`Read article ${featuredArticle.title}`}>
                             <div className="aspect-[4/3] w-full overflow-hidden rounded-md">
                                 <img
-                                    src={featuredArticle.image_cover ?? '/banner-example.jpg'}
+                                    src={featuredArticle.thumbnail_url ?? featuredArticle.image_cover ?? '/banner-example.jpg'}
                                     alt={featuredArticle.title}
                                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                     loading="lazy"
@@ -86,7 +85,7 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
                                             aria-label={`Read article ${article.title}`}
                                         >
                                             <img
-                                                src={article.image_cover ?? '/banner-example.jpg'}
+                                                src={article.thumbnail_url ?? article.image_cover ?? '/banner-example.jpg'}
                                                 alt={article.title}
                                                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                                 loading="lazy"
@@ -133,122 +132,228 @@ const ArticlesSection = ({ articles }: { articles: IArticle[] }) => {
     );
 };
 
+const SLIDE_TRANSITION_MS = 700;
+const DRAG_CLICK_SLOP = 6;
+const DRAG_FLICK_RATIO = 0.12;
+
 const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const hasMultiple = banners.length > 1;
+    const total = banners.length;
+    const isLooping = total > 1;
+
+    const loopedBanners = useMemo(() => (isLooping ? [...banners, ...banners, ...banners] : banners), [banners, isLooping]);
+
+    const [trackIndex, setTrackIndex] = useState(isLooping ? total : 0);
+    const [isAnimated, setIsAnimated] = useState(true);
+    const [isPaused, setIsPaused] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragOffset, setDragOffset] = useState(0);
+    const [metrics, setMetrics] = useState({ viewportWidth: 0, slideWidth: 0, slideHeight: 0 });
+    const viewportRef = useRef<HTMLDivElement | null>(null);
+    const dragStartXRef = useRef(0);
+    const hasDraggedRef = useRef(false);
+
+    const activeIndex = isLooping ? ((trackIndex % total) + total) % total : 0;
 
     useEffect(() => {
-        setCurrentIndex(0);
-    }, [banners.length]);
+        setIsAnimated(true);
+        setTrackIndex(total > 1 ? total : 0);
+    }, [total]);
+
+    // Two slides across on desktop: the centred banner plus half of each neighbour at the edges.
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+
+        const measure = () => {
+            const width = viewport.clientWidth;
+            if (!width) return;
+
+            const perView = window.innerWidth >= 1024 ? Math.min(2, loopedBanners.length) : window.innerWidth >= 640 ? 1.6 : 1.15;
+            const slideWidth = width / perView;
+
+            // Every slide is a 16:9 landscape, so the track height follows the slide width.
+            setMetrics({ viewportWidth: width, slideWidth, slideHeight: (slideWidth * 9) / 16 });
+        };
+
+        measure();
+
+        const observer = new ResizeObserver(measure);
+        observer.observe(viewport);
+        window.addEventListener('resize', measure);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', measure);
+        };
+    }, [loopedBanners.length]);
 
     useEffect(() => {
-        if (!hasMultiple) return;
+        if (!isLooping || isPaused) return;
 
-        const intervalId = setInterval(() => {
-            setCurrentIndex((prev) => {
-                const nextIndex = prev + 1;
-                return nextIndex >= banners.length ? 0 : nextIndex;
-            });
-        }, 5000);
+        const intervalId = setInterval(() => setTrackIndex((prev) => prev + 1), 5000);
 
         return () => clearInterval(intervalId);
-    }, [banners.length, hasMultiple]);
+    }, [isLooping, isPaused]);
 
-    if (!banners.length) {
+    // Once a move has played out, jump back into the middle copy without animating.
+    useEffect(() => {
+        if (!isLooping) return;
+        if (trackIndex >= total && trackIndex < total * 2) return;
+
+        const timeoutId = setTimeout(
+            () => {
+                setIsAnimated(false);
+                setTrackIndex((prev) => (prev < total ? prev + total : prev - total));
+            },
+            isAnimated ? SLIDE_TRANSITION_MS : 0,
+        );
+
+        return () => clearTimeout(timeoutId);
+    }, [trackIndex, total, isLooping, isAnimated]);
+
+    // Re-arm the transition on the frame after the silent jump has painted.
+    useEffect(() => {
+        if (isAnimated) return;
+
+        const frameId = requestAnimationFrame(() => requestAnimationFrame(() => setIsAnimated(true)));
+
+        return () => cancelAnimationFrame(frameId);
+    }, [isAnimated]);
+
+    if (!total) {
         return null;
     }
 
-    const goToSlide = (index: number) => {
-        setCurrentIndex(index);
+    // Move to the nearest copy of the requested banner so the track never rewinds the long way.
+    const goToBanner = (index: number) => {
+        if (!isLooping) return;
+
+        let delta = index - activeIndex;
+        if (delta > total / 2) delta -= total;
+        if (delta < -total / 2) delta += total;
+
+        setTrackIndex((prev) => prev + delta);
     };
 
-    const goToNext = () => {
-        setCurrentIndex((prev) => {
-            const nextIndex = prev + 1;
-            return nextIndex >= banners.length ? 0 : nextIndex;
-        });
+    const openBanner = (banner: IBanner) => {
+        if (banner.url) window.location.assign(banner.url);
     };
 
-    const goToPrev = () => {
-        setCurrentIndex((prev) => {
-            const prevIndex = prev - 1;
-            return prevIndex < 0 ? banners.length - 1 : prevIndex;
-        });
+    const { viewportWidth, slideWidth, slideHeight } = metrics;
+    const trackOffset = slideWidth ? viewportWidth / 2 - (trackIndex + 0.5) * slideWidth : 0;
+
+    const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (!isLooping || !slideWidth || event.button !== 0) return;
+
+        dragStartXRef.current = event.clientX;
+        hasDraggedRef.current = false;
+        setIsDragging(true);
+        setIsPaused(true);
+        event.currentTarget.setPointerCapture(event.pointerId);
+    };
+
+    const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (!isDragging) return;
+
+        const distance = event.clientX - dragStartXRef.current;
+        if (Math.abs(distance) > DRAG_CLICK_SLOP) hasDraggedRef.current = true;
+
+        setDragOffset(distance);
+    };
+
+    // Land on whichever slide the drag ended nearest to; a short flick still moves one slide.
+    const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (!isDragging) return;
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        let steps = Math.round(-dragOffset / slideWidth);
+        if (steps === 0 && Math.abs(dragOffset) > slideWidth * DRAG_FLICK_RATIO) {
+            steps = dragOffset < 0 ? 1 : -1;
+        }
+
+        setIsDragging(false);
+        setDragOffset(0);
+        setIsPaused(false);
+        if (steps !== 0) setTrackIndex((prev) => prev + steps);
     };
 
     return (
-        <section className="relative min-h-[300px] w-full overflow-hidden md:min-h-0" style={{ aspectRatio: '16 / 9' }}>
-            {banners.map((banner, index) => {
-                const isActive = index === currentIndex;
+        <section
+            className="relative w-full pb-6"
+            aria-roledescription="carousel"
+            aria-label="Featured banners"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onFocusCapture={() => setIsPaused(true)}
+            onBlurCapture={() => setIsPaused(false)}
+        >
+            <div
+                ref={viewportRef}
+                className={`relative touch-pan-y overflow-hidden select-none ${isLooping ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+                onPointerDown={startDrag}
+                onPointerMove={moveDrag}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+            >
+                <div
+                    className={`flex h-[49vw] items-center ease-out sm:h-[35vw] lg:h-[28vw] ${
+                        isAnimated && !isDragging ? 'transition-transform duration-700 motion-reduce:transition-none' : ''
+                    }`}
+                    style={{ height: slideHeight || undefined, transform: `translate3d(${trackOffset + dragOffset}px, 0, 0)` }}
+                >
+                    {loopedBanners.map((banner, index) => {
+                        const bannerIndex = index % total;
+                        const isActive = index === trackIndex;
 
-                return (
-                    <div
-                        key={banner.id ?? index}
-                        className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700 ease-in-out ${
-                            isActive ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-                        }`}
-                        style={{ backgroundImage: `url('${banner.picture_url ?? '/banner-example.jpg'}')` }}
-                        onClick={() => window.location.replace(banner.url)}
-                    >
-                        {/* <div className="absolute inset-0 bg-black/30" /> */}
+                        return (
+                            <div
+                                key={`${banner.id ?? bannerIndex}-${index}`}
+                                className="h-full shrink-0"
+                                style={{ width: slideWidth || '100%' }}
+                                aria-hidden={!isActive}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (hasDraggedRef.current) return;
+                                        if (isActive) openBanner(banner);
+                                        else goToBanner(bannerIndex);
+                                    }}
+                                    draggable={false}
+                                    tabIndex={isActive ? 0 : -1}
+                                    aria-label={isActive ? banner.banner_title || 'Open banner' : `Show banner ${bannerIndex + 1}`}
+                                    className={`group relative block h-full w-full overflow-hidden bg-muted text-left ease-out focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none focus-visible:ring-inset ${
+                                        isAnimated ? 'transition-[opacity,filter] duration-700 motion-reduce:transition-none' : ''
+                                    } ${isActive ? 'opacity-100 brightness-100' : 'opacity-60 brightness-[0.55] hover:opacity-80 hover:brightness-75'}`}
+                                >
+                                    <div
+                                        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none"
+                                        style={{ backgroundImage: `url('${banner.picture_url ?? '/banner-example.jpg'}')` }}
+                                    />
 
-                        <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-4 text-center text-background">
-                            {banner.banner_title && <h1 className="text-5xl font-bold md:text-7xl">{banner.banner_title}</h1>}
-                            {banner.banner_text && <h4 className="text-md mt-4 font-medium md:text-lg">{banner.banner_text}</h4>}
-                            {banner.button_text && (
-                                <div>
-                                    <Button
-                                        onClick={() => window.location.replace(banner.url)}
-                                        className="mt-6 bg-background text-foreground hover:bg-background"
-                                    >
-                                        {banner.button_text}
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            })}
-
-            {hasMultiple && (
-                <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-between px-4">
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            goToPrev();
-                        }}
-                        className="pointer-events-auto rounded-full bg-black/40 p-3 text-white backdrop-blur transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
-                        aria-label="Show previous banner"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            goToNext();
-                        }}
-                        className="pointer-events-auto rounded-full bg-black/40 p-3 text-white backdrop-blur transition hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
-                        aria-label="Show next banner"
-                    >
-                        <ChevronRight className="h-5 w-5" />
-                    </button>
+                                </button>
+                            </div>
+                        );
+                    })}
                 </div>
-            )}
+            </div>
 
-            {hasMultiple && (
-                <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+            {isLooping && (
+                <div className="mt-5 flex items-center justify-center gap-2">
                     {banners.map((banner, index) => {
-                        const isActive = index === currentIndex;
+                        const isActive = index === activeIndex;
 
                         return (
                             <button
                                 key={banner.id ?? `dot-${index}`}
                                 type="button"
-                                onClick={() => goToSlide(index)}
-                                className={`h-2 w-2 rounded-full transition ${isActive ? 'w-6 bg-white' : 'bg-white/50'}`}
+                                onClick={() => goToBanner(index)}
+                                className={`h-2 rounded-full transition-all ${isActive ? 'w-8 bg-primary' : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60'}`}
                                 aria-label={`Go to banner ${index + 1}`}
+                                aria-current={isActive}
                             />
                         );
                     })}
@@ -589,8 +694,8 @@ const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEv
     );
 };
 
-export default function Welcome() {
-    const { auth, translations, locale } = usePage<SharedData>().props;
+function Welcome() {
+    const { translations } = usePage<SharedData>().props;
 
     const textRef1 = useRef<HTMLDivElement | null>(null);
     const textRef2 = useRef<HTMLDivElement | null>(null);
@@ -645,132 +750,136 @@ export default function Welcome() {
     return (
         <>
             <div className="">
-                <FrontLayout auth={auth} locale={locale} translations={translations}>
-                    {/* BANNER */}
-                    {activeBanner.length > 0 && <BannerCarousel banners={activeBanner} />}
+                {/* BANNER */}
+                {activeBanner.length > 0 && <BannerCarousel banners={activeBanner} />}
 
-                    {/* UNIT SHOWCASE */}
-                    {units.length > 0 && (
-                        <section className={`mx-auto mt-24 max-w-6xl px-4 ${events.length === 0 ? 'mb-48' : ''}`}>
-                            <div className="flex flex-wrap justify-center gap-6">
-                                {units.map((unit) => (
-                                    <button
-                                        key={unit.id}
-                                        type="button"
-                                        onClick={() => router.get(`/list-product/${unit.id}`)}
-                                        className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none md:w-[calc(33.333%_-_1rem)]"
-                                        aria-label={`View products for ${unit.name}`}
-                                    >
-                                        {/* Background image layer with hover upscale */}
-                                        <div
-                                            className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
-                                            style={{
-                                                backgroundImage: `url('${unit.picture_url ?? '/banner-example.jpg'}')`,
-                                            }}
-                                        />
+                {/* UNIT SHOWCASE */}
+                {units.length > 0 && (
+                    <section className={`mx-auto mt-24 max-w-6xl px-4 ${events.length === 0 ? 'mb-48' : ''}`}>
+                        <div className="flex flex-wrap justify-center gap-6">
+                            {units.map((unit) => (
+                                <button
+                                    key={unit.id}
+                                    type="button"
+                                    onClick={() => router.get(`/list-product/${unit.id}`)}
+                                    className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none md:w-[calc(33.333%_-_1rem)]"
+                                    aria-label={`View products for ${unit.name}`}
+                                >
+                                    {/* Background image layer with hover upscale */}
+                                    <div
+                                        className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
+                                        style={{
+                                            backgroundImage: `url('${unit.thumbnail_url ?? unit.picture_url ?? '/banner-example.jpg'}')`,
+                                        }}
+                                    />
 
-                                        {/* Subtle overlay for text readability */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                                    {/* Subtle overlay for text readability */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-                                        {/* Content */}
-                                        {/* <div className="relative z-10 flex h-full flex-col justify-end p-4 text-white">
+                                    {/* Content */}
+                                    {/* <div className="relative z-10 flex h-full flex-col justify-end p-4 text-white">
                                             <h3 className="text-xl font-semibold drop-shadow-sm">{unit.name}</h3>
                                         </div> */}
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
-                    {/* EVENT SHOWCASE */}
-                    {events.length > 0 && (
-                        <section className="mx-auto mt-12 mb-48 max-w-6xl px-4">
-                            <div className="flex flex-wrap justify-center gap-6">
-                                {events.map((event) => (
-                                    <button
-                                        key={event.id}
-                                        type="button"
-                                        onClick={() => router.get(`/list-product/${event.id}`)}
-                                        className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none md:w-[calc(33.333%_-_1rem)]"
-                                        aria-label={`View products for ${event.name}`}
-                                    >
-                                        {/* Background image layer with hover upscale */}
-                                        <div
-                                            className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
-                                            style={{
-                                                backgroundImage: `url('${event.picture_url ?? '/banner-example.jpg'}')`,
-                                            }}
-                                        />
+                {/* EVENT SHOWCASE */}
+                {events.length > 0 && (
+                    <section className="mx-auto mt-12 mb-48 max-w-6xl px-4">
+                        <div className="flex flex-wrap justify-center gap-6">
+                            {events.map((event) => (
+                                <button
+                                    key={event.id}
+                                    type="button"
+                                    onClick={() => router.get(`/list-product/${event.id}`)}
+                                    className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl text-left shadow-md transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none md:w-[calc(33.333%_-_1rem)]"
+                                    aria-label={`View products for ${event.name}`}
+                                >
+                                    {/* Background image layer with hover upscale */}
+                                    <div
+                                        className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
+                                        style={{
+                                            backgroundImage: `url('${event.thumbnail_url ?? event.picture_url ?? '/banner-example.jpg'}')`,
+                                        }}
+                                    />
 
-                                        {/* Subtle overlay for text readability */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                                    {/* Subtle overlay for text readability */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-                                        {/* Content */}
-                                        {/* <div className="relative z-10 flex h-full flex-col justify-end p-4 text-white">
+                                    {/* Content */}
+                                    {/* <div className="relative z-10 flex h-full flex-col justify-end p-4 text-white">
                                             <h3 className="text-xl font-semibold drop-shadow-sm">{unit.name}</h3>
                                         </div> */}
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-                    <div className="relative">
-                        {/* HERO + SEQUENCE SECTION */}
-                        <section className="relative z-50">
-                            <div className="flex w-full flex-col items-center justify-start bg-primary pt-24 text-center text-white md:justify-center">
-                                <h1 ref={textRef1} className="mb-6 text-3xl font-black drop-shadow-lg md:text-7xl">
-                                    {translations.home.welcome}
-                                </h1>
-                                <p ref={textRef2} className="text-md max-w-2xl px-4 md:text-xl">
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                )}
+                {/* HERO + SEQUENCE SECTION */}
+                <section className="w-full overflow-hidden bg-background py-24 text-foreground">
+                    <div className="mx-auto max-w-6xl px-4 sm:px-6">
+                        {/* Headline on the first row, supporting copy + CTA right-aligned on the second */}
+                        <div className="flex flex-col gap-4 lg:gap-8">
+                            <h1 ref={textRef1} className="font-pixel text-3xl text-center font-black text-balance md:text-3xl">
+                                {translations.home.welcome}
+                            </h1>
+
+                            <div className="self-center text-center">
+                                <p ref={textRef2} className="md:text-md max-w-xl text-sm text-muted-foreground">
                                     {translations.home.description1}
                                 </p>
+
+                                <div ref={bottomRef} className="mt-8 flex flex-wrap items-center gap-3 justify-center">
+                                    <Button className="px-7 transition hover:scale-105">Get Started</Button>
+                                    <Button variant={'outline'} className="px-7 transition hover:scale-105">
+                                        How it works
+                                    </Button>
+                                </div>
                             </div>
-                        </section>
-                        <section className="relative -mt-40 flex h-[200vh] w-full flex-col bg-primary">
-                            {/* Image sequence pinned behind */}
-                            <div className="h-screen w-full">
+                        </div>
+
+                        {/* Caption on the left, sequence on the right — playback is driven by hover */}
+                        <div className="mt-16 flex flex-col items-start gap-8 rounded-3xl bg-primary p-8 text-white/70 lg:flex-row lg:gap-16 lg:p-12">
+                            <p className="max-w-md text-md lg:flex-[0_1_22rem]">{translations.home.description2}</p>
+
+                            <div className="aspect-square w-full lg:aspect-[4/3] lg:flex-1">
                                 <ImageSequence />
                             </div>
-                            {/* Scroll down to reveal more content */}
-                            <div ref={bottomRef} className="relative z-10 mt-auto py-12 text-center">
-                                <h2 className="text-md mx-auto mb-6 max-w-3xl font-bold text-background md:text-xl">
-                                    {translations.home.description2}
-                                </h2>
-                                <p className="text-md mx-auto max-w-xl text-background md:text-lg">
-                                    Discover more about our work, technology, and how we bring ideas to life.
-                                </p>
-                                <Button className="mt-8 bg-background text-foreground transition hover:scale-105" variant={'secondary'}>
-                                    Get Started
-                                </Button>
-                            </div>
-                        </section>
+                        </div>
                     </div>
+                </section>
 
-                    {/* EVENT SHOWCASE PRODUCT SECTION */}
+                {/* EVENT SHOWCASE PRODUCT SECTION */}
 
-                    {events.length > 0 && (
-                        <section>
-                            {events.map((v) => (
-                                <section key={v.id} id={`event-${v.id}`} className="my-8 scroll-mt-40">
-                                    <ProductCardsSectionEvent products={v.event_products} title={v.name} event_id={v.id} />
-                                </section>
-                            ))}
-                        </section>
-                    )}
+                {events.length > 0 && (
+                    <section>
+                        {events.map((v) => (
+                            <section key={v.id} id={`event-${v.id}`} className="my-8 scroll-mt-40">
+                                <ProductCardsSectionEvent products={v.event_products} title={v.name} event_id={v.id} />
+                            </section>
+                        ))}
+                    </section>
+                )}
 
-                    <div className="my-8">
-                        <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />
-                    </div>
+                <div className="my-8">
+                    <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />
+                </div>
 
-                    <div className="my-8">
-                        <ProductCardsSection products={productsBottom} title={'SHOP PICKS OF THE MONTH'} />
-                    </div>
+                <div className="my-8">
+                    <ProductCardsSection products={productsBottom} title={'SHOP PICKS OF THE MONTH'} />
+                </div>
 
-                    <div className="my-8">
-                        <ArticlesSection articles={articles} />
-                    </div>
-                </FrontLayout>
+                <div className="my-8">
+                    <ArticlesSection articles={articles} />
+                </div>
             </div>
         </>
     );
 }
+
+Welcome.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default Welcome;

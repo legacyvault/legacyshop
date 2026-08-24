@@ -20,13 +20,32 @@
             })();
         </script>
 
-        <script
-            type="text/javascript"
-            src="{{ config('services.midtrans.snap_url') }}/snap/snap.js"
-            data-client-key="{{ config('services.midtrans.client_key') }}">
-        </script>
+        {{--
+            Midtrans and PayPal are only needed on pages that actually call
+            window.snap.pay(...) or render a PayPal button — checkout, plus
+            the order-history/retry-payment pages (settings/purchases and
+            the two admin orders pages). They were previously loaded
+            unconditionally in <head> on every storefront page (home,
+            product listing, product detail, articles, ...), blocking HTML
+            parsing there for no reason. Only load them on the pages that
+            need them, and mark them `defer` so even there they don't block
+            parsing.
+        --}}
+        @if (in_array($page['component'] ?? null, [
+            'front/checkout/index',
+            'settings/purchases/index',
+            'orders/index',
+            'orders/summary/index',
+        ]))
+            <script
+                type="text/javascript"
+                src="{{ config('services.midtrans.snap_url') }}/snap/snap.js"
+                data-client-key="{{ config('services.midtrans.client_key') }}"
+                defer>
+            </script>
 
-        <script src="https://www.paypal.com/sdk/js?client-id={{ config('services.paypal.client_id') }}"></script>
+            <script src="https://www.paypal.com/sdk/js?client-id={{ config('services.paypal.client_id') }}" defer></script>
+        @endif
 
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
@@ -44,8 +63,9 @@
         <link rel="icon" href="/logo.ico" sizes="any">
         <link rel="apple-touch-icon" href="/logo.png">
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Press+Start+2P&display=swap" rel="stylesheet" />
 
         @routes
         @viteReactRefresh

@@ -13,6 +13,7 @@ class ProductPictures extends Model
 
     protected $fillable = [
         'url',
+        'thumbnail_url',
         'product_id',
         'sort_order',
     ];
