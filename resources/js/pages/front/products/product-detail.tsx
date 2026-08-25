@@ -39,7 +39,7 @@ ProductDetail.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
 export default ProductDetail;
 
 function DetailContent({ product }: { product: IProducts; translations: any }) {
-    const { addItem, items, updateQuantity, openCart } = useCart();
+    const { addItem, updateQuantity, openCart, ensureItemsLoaded } = useCart();
 
     const pictures = product?.pictures ?? [];
     const [activeIndex, setActiveIndex] = useState(0);
@@ -190,7 +190,11 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         variantsHaveStock,
     ]);
 
-    const handleAddToCart = () => {
+    const handleAddToCart = async () => {
+        // add.cart takes an absolute target quantity, so the existing line has to
+        // be known before we can add to it — the context loads items lazily now.
+        const currentItems = await ensureItemsLoaded();
+
         const meta: ICart = {
             category: selectedCat ? [selectedCat] : [],
             category_id: selectedCat?.id ?? null,
@@ -218,7 +222,7 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         ].join('|');
         const name = `${product.product_name}`;
         const sku = `${product.product_sku}`;
-        const existing = items.find((i) => i.id === compositeId)?.quantity ?? 0;
+        const existing = currentItems.find((i) => i.id === compositeId)?.quantity ?? 0;
         const targetQty = Math.max(1, existing + selectedQty);
 
         void addItem({ id: compositeId, name, price: finalPrice, image: cartImage, meta, sku }, { quantity: targetQty, meta });

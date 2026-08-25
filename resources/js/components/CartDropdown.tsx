@@ -9,7 +9,7 @@ import { Button } from './ui/button';
 const CHECKOUT_ITEMS_STORAGE_KEY = 'checkout:selectedItems';
 
 export const CartDropdown = ({ auth }: { auth: Auth }) => {
-    const { items, totalItems, totalPrice, updateQuantity, removeItem, isCartOpen, openCart } = useCart();
+    const { items, totalItems, updateQuantity, removeItem, isCartOpen, openCart, itemsLoaded, cartError } = useCart();
 
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -27,7 +27,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
         };
     }, []);
 
-    const displayCurrency = (items[0]?.meta?.product?.default_currency || 'IDR').toUpperCase();
+    const displayCurrency = (items[0]?.currency || items[0]?.meta?.product?.default_currency || 'IDR').toUpperCase();
 
     const formatPrice = (price: number, currency = 'IDR') => {
         return new Intl.NumberFormat('id-ID', {
@@ -38,10 +38,24 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
     };
 
     const computePriceInfo = useCallback((item: (typeof items)[number]) => {
+        const event = item.event ?? (item.meta?.product as any)?.event;
+        const isEventActive = Boolean(event?.is_active);
+        const eventDiscount = Number(event?.discount ?? 0);
+
+        // Authenticated carts arrive with the price already resolved server-side;
+        // the guest path still carries the raw product, so derive it there.
+        if (typeof item.originalPrice === 'number') {
+            return {
+                finalPrice: Number(item.price ?? 0),
+                originalPrice: Math.max(Number(item.originalPrice), Number(item.price ?? 0)),
+                isEventActive,
+                eventName: isEventActive ? (event?.name ?? null) : null,
+                eventDiscount,
+            };
+        }
+
         const product = item.meta?.product as any;
         const basePrice = Number(product?.default_price ?? product?.product_price ?? item.price ?? 0);
-        const eventDiscount = Number(product?.event?.discount ?? 0);
-        const isEventActive = Boolean(product?.event && (product.event.is_active === 1 || product.event.is_active === true));
         const discountedBase = isEventActive && eventDiscount > 0 ? Math.max(0, Math.round(basePrice - (basePrice * eventDiscount) / 100)) : null;
 
         const candidatePrices = [discountedBase, basePrice].filter(
@@ -54,7 +68,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
             finalPrice,
             originalPrice,
             isEventActive,
-            eventName: isEventActive ? (product?.event?.name ?? null) : null,
+            eventName: isEventActive ? (event?.name ?? null) : null,
             eventDiscount,
         };
     }, []);
@@ -85,9 +99,9 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                 eventName: priceInfo.eventName ?? null,
                 eventDiscountPct: priceInfo.isEventActive ? (priceInfo.eventDiscount ?? null) : null,
                 isEventActive: priceInfo.isEventActive,
-                currency: (item.meta?.product?.default_currency || 'IDR').toUpperCase(),
+                currency: (item.currency || item.meta?.product?.default_currency || 'IDR').toUpperCase(),
                 selectionSummary: {
-                    unit: item.meta?.product?.unit?.name ?? undefined,
+                    unit: item.selection?.unit ?? item.meta?.product?.unit?.name ?? undefined,
                 },
             };
         });
@@ -125,7 +139,27 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                             </button>
                         </div>
 
-                        {items.length === 0 ? (
+                        {cartError && (
+                            <div className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">
+                                {cartError}
+                            </div>
+                        )}
+
+                        {items.length === 0 && !itemsLoaded ? (
+                            // The item list is fetched only when the dropdown opens, so the
+                            // first open on a page can briefly land here.
+                            <div className="space-y-3 py-4">
+                                {[0, 1, 2].map((i) => (
+                                    <div key={i} className="flex items-center gap-3 p-2">
+                                        <div className="h-12 w-12 flex-shrink-0 animate-pulse rounded-md bg-muted" />
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
+                                            <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : items.length === 0 ? (
                             <div className="py-8 text-center">
                                 <ShoppingBag className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                                 <p className="text-sm text-muted-foreground">Your cart is empty</p>

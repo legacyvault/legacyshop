@@ -106,6 +106,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Carts API
     Route::post('add-cart', [CartsController::class, 'addToCart'])->name('add.cart');
     Route::get('carts/{id}', [CartsController::class, 'getCart'])->name('get.cart');
+    Route::get('carts/{id}/summary', [CartsController::class, 'getCartSummary'])->name('cart.summary');
+    Route::get('carts/{id}/items', [CartsController::class, 'getCartItems'])->name('cart.items');
 
     //Profile API
     Route::post('update-profile', [UserController::class, 'updateProfile'])->name('profile.edit');

@@ -280,8 +280,6 @@ function Carts() {
 
     usePageSearchBar({ value: search, onChange: setSearch });
 
-    console.log(carts)
-
     return (
         <>
             <Head title="Cart" />
@@ -295,7 +293,13 @@ Carts.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
 export default Carts;
 
 function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndonesian: boolean }) {
-    const { items: contextItems, updateQuantity, removeItem } = useCart();
+    const { items: contextItems, updateQuantity, removeItem, ensureItemsLoaded } = useCart();
+
+    // The context only loads a summary on boot; this page needs the real lines.
+    useEffect(() => {
+        void ensureItemsLoaded();
+    }, [ensureItemsLoaded]);
+
     const contextMap = useMemo(() => {
         const map = new Map<string, CartItem>();
         contextItems.forEach((item) => {
@@ -374,6 +378,7 @@ function CartContent({ carts, isIndonesian }: { carts: ICart[] | null; isIndones
 
     const displayCurrency = (
         detailedItems[0]?.cart?.product?.default_currency ||
+        contextItems[0]?.currency ||
         contextItems[0]?.meta?.product?.default_currency ||
         'IDR'
     ).toUpperCase();
