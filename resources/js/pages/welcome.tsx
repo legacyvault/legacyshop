@@ -526,7 +526,7 @@ const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEv
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 {/* Section Header */}
                 <div className="mb-12 text-center">
-                    <h2 className="mb-4 text-5xl font-bold text-primary">{title}</h2>
+                    <h2 className="mb-4 text-4xl font-bold text-primary font-pixel">{title}</h2>
                 </div>
                 {/* Product Carousel */}
                 <div className="relative">
@@ -623,6 +623,18 @@ function Welcome() {
         SharedData & { productsTop: IProducts[]; productsBottom: IProducts[] }
     >().props;
 
+    // A unit tile is nothing but its artwork, so skip any unit without one
+    const unitsWithImage = useMemo(
+        () => (Array.isArray(units) ? units.filter((unit) => Boolean(unit.thumbnail_url || unit.picture_url)) : []),
+        [units],
+    );
+
+    // Only events flagged for the homepage, and only while they are active
+    const homepageEvents = useMemo(
+        () => (Array.isArray(events) ? events.filter((event) => Boolean(event.is_active) && Boolean(event.show_on_homepage)) : []),
+        [events],
+    );
+
     const activeBanner = useMemo(() => {
         if (Array.isArray(banner)) {
             return banner as IBanner[];
@@ -642,10 +654,10 @@ function Welcome() {
                 {activeBanner.length > 0 && <BannerCarousel banners={activeBanner} />}
 
                 {/* UNIT SHOWCASE */}
-                {units.length > 0 && (
-                    <section className={`mx-auto mt-24 max-w-6xl px-4 ${events.length === 0 ? 'mb-48' : ''}`}>
+                {unitsWithImage.length > 0 && (
+                    <section className={`mx-auto mt-24 max-w-6xl px-4 ${homepageEvents.length === 0 ? 'mb-48' : ''}`}>
                         <div className="flex flex-wrap justify-center gap-6">
-                            {units.map((unit) => (
+                            {unitsWithImage.map((unit) => (
                                 <button
                                     key={unit.id}
                                     type="button"
@@ -657,7 +669,7 @@ function Welcome() {
                                     <div
                                         className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out group-hover:scale-105"
                                         style={{
-                                            backgroundImage: `url('${unit.thumbnail_url ?? unit.picture_url ?? '/banner-example.jpg'}')`,
+                                            backgroundImage: `url('${unit.thumbnail_url || unit.picture_url}')`,
                                         }}
                                     />
 
@@ -675,10 +687,10 @@ function Welcome() {
                 )}
 
                 {/* EVENT SHOWCASE */}
-                {events.length > 0 && (
+                {homepageEvents.length > 0 && (
                     <section className="mx-auto mt-12 mb-48 max-w-6xl px-4">
                         <div className="flex flex-wrap justify-center gap-6">
-                            {events.map((event) => (
+                            {homepageEvents.map((event) => (
                                 <button
                                     key={event.id}
                                     type="button"
@@ -750,9 +762,9 @@ function Welcome() {
 
                 {/* EVENT SHOWCASE PRODUCT SECTION */}
 
-                {events.length > 0 && (
+                {homepageEvents.length > 0 && (
                     <section>
-                        {events.map((v) => (
+                        {homepageEvents.map((v) => (
                             <section key={v.id} id={`event-${v.id}`} className="my-8 scroll-mt-40">
                                 <ProductCardsSectionEvent products={v.event_products} title={v.name} event_id={v.id} />
                             </section>

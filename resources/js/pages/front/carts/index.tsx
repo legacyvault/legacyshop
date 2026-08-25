@@ -234,7 +234,7 @@ const computePricingDetails = (cart: ICart | CartItem['meta'] | undefined, conte
     const productBase = toNumber(cart.product?.default_price ?? (isIndonesian ? cart.product?.product_price : cart.product?.product_usd_price));
     const productDiscount = toNumber(cart.product?.product_discount);
     const eventDiscount = toNumber(cart.product?.event?.discount);
-    const isEventActive = Boolean(cart.product?.event && cart.product.event.is_active === 1);
+    const isEventActive = Boolean(cart.product?.event?.is_active);
     const appliedEventDiscount = isEventActive ? eventDiscount : 0;
     const appliedProductDiscount = appliedEventDiscount > 0 ? appliedEventDiscount : productDiscount;
 

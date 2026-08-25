@@ -82,6 +82,11 @@ export default function FrontHeader() {
     }, [page.props]);
     const [activeEvents, setActiveEvents] = useState<IEvents[]>(pageEvents);
     const [isEventsLoading, setIsEventsLoading] = useState(false);
+    // Only events flagged for the navigation bar, and only while they are active
+    const navEvents = useMemo(
+        () => activeEvents.filter((event) => Boolean(event.is_active) && Boolean(event.show_on_navbar)),
+        [activeEvents],
+    );
     const placeholder = useMemo(() => {
         if (searchScopeLabel) {
             return `Search within ${searchScopeLabel}...`;
@@ -433,20 +438,20 @@ export default function FrontHeader() {
                                         </NavigationMenuItem>
                                     ))}
 
-                                    {(activeEvents.length > 0 || isEventsLoading) && (
+                                    {(navEvents.length > 0 || isEventsLoading) && (
                                         <NavigationMenuItem>
                                             <NavigationMenuTrigger className="h-9 rounded-full bg-transparent px-4 py-2 text-sm font-bold uppercase transition-colors hover:bg-muted hover:text-foreground focus:bg-transparent focus:text-foreground data-[state=open]:bg-transparent data-[state=open]:text-foreground">
                                                 Events
                                             </NavigationMenuTrigger>
                                             <NavigationMenuContent className="z-50 border-0! bg-background! shadow-[0_0_24px_rgba(0,0,0,0.14)]!">
                                                 <ul className="flex w-72 flex-col gap-1">
-                                                    {isEventsLoading && activeEvents.length === 0 && (
+                                                    {isEventsLoading && navEvents.length === 0 && (
                                                         <li className="flex items-center gap-2 px-3 py-2 text-left text-sm text-muted-foreground">
                                                             <Loader2 className="size-4 shrink-0 animate-spin" />
                                                             Loading...
                                                         </li>
                                                     )}
-                                                    {activeEvents.map((event) => (
+                                                    {navEvents.map((event) => (
                                                         <li key={event.id} className="relative">
                                                             <NavigationMenuLink asChild>
                                                                 <Link
@@ -558,7 +563,7 @@ export default function FrontHeader() {
                                                 </Link>
                                             ))}
 
-                                            {activeEvents.length > 0 && (
+                                            {navEvents.length > 0 && (
                                                 <AccordionItem value="events">
                                                     <AccordionTrigger className="text-sm font-bold uppercase">
                                                         <span className="flex items-center gap-3">
@@ -567,7 +572,7 @@ export default function FrontHeader() {
                                                         </span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="flex flex-col">
-                                                        {activeEvents.map((event) => (
+                                                        {navEvents.map((event) => (
                                                             <div className="relative w-fit" key={event.id}>
                                                                 <Link
                                                                     href={`/list-product/${event.id}`}

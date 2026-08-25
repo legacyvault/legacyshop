@@ -79,7 +79,7 @@ export interface IEvents {
     description: string;
     discount: number;
     id: string;
-    is_active: number;
+    is_active: boolean;
     show_on_navbar?: boolean | number | null;
     show_on_homepage?: boolean | number | null;
     name: string;
