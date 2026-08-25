@@ -148,8 +148,10 @@ export const ModalBody = ({
 
     if (!rendered) return null;
 
+    // z-100: the modal renders before FrontHeader in the layout, so at an equal
+    // z-index the header would paint over the overlay.
     return (
-        <div ref={rootRef} className="fixed inset-0 z-50 flex h-full w-full items-center justify-center" role="dialog" aria-modal="true">
+        <div ref={rootRef} className="fixed inset-0 z-100 flex h-full w-full items-center justify-center" role="dialog" aria-modal="true">
             {/* Static blur, animated opacity only — animating backdrop-filter itself is what makes this kind of modal stutter. */}
             <div ref={overlayRef} className="absolute inset-0 h-full w-full bg-black/60 backdrop-blur-sm" />
 

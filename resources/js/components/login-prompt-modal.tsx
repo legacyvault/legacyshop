@@ -18,17 +18,16 @@ const SHOW_AFTER_MS = 4000;
 
 const PERKS = [
     { icon: PackageCheck, label: 'Track every order in one place' },
-    { icon: Heart, label: 'Save cards to your wishlist' },
-    { icon: BadgePercent, label: 'Member-only drops & pricing' },
-    { icon: Bell, label: 'Get notified before a set sells out' },
+    { icon: Heart, label: 'Save cards to your carts' },
+    { icon: BadgePercent, label: 'Voucher & many discounts!' },
 ];
 
 // Fixed rotations rather than the demo's Math.random() — a random tilt per render
 // would change on every re-render and reads as a glitch.
 const IMAGES = [
-    { src: '/banner-example.jpg', rotate: '-8deg' },
-    { src: '/poke-icon.png', rotate: '4deg' },
-    { src: '/logo.png', rotate: '-3deg' },
+    { src: '/about/image-case-2.webp', rotate: '-8deg' },
+    { src: '/about/image-case-1.jpg', rotate: '4deg' },
+    { src: '/about/instagram-case-3.jpg', rotate: '-3deg' },
 ];
 
 export default function LoginPromptModal() {
@@ -98,7 +97,7 @@ export default function LoginPromptModal() {
                         Sign in to unlock the full storefront experience — it only takes a moment.
                     </p>
 
-                    <ul className="flex flex-col gap-4">
+                    <ul className="flex flex-col items-center gap-4">
                         {PERKS.map(({ icon: Icon, label }) => (
                             <li key={label} {...{ [MODAL_STAGGER_ATTR]: '' }} className="flex items-start gap-3">
                                 <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
