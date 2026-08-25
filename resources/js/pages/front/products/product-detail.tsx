@@ -349,6 +349,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     {/* <div className="mb-2 text-xs text-muted-foreground">
                         <span className="font-medium">{[product.unit?.name, product.product_sku].filter(Boolean).join(' | ')}</span>
                     </div> */}
+                    <div className="mb-2 text-xs text-muted-foreground">
+                        <span className="font-medium">{product.product_sku}</span>
+                    </div>
 
                     {hasEventDiscount && (
                         <div className="mb-3 flex items-center gap-2">
