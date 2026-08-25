@@ -1,6 +1,13 @@
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem, type IDashboardSegment, type IDashboardSummary, type IProductHierarchySummary, type SharedData } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
+import {
+    type BreadcrumbItem,
+    type DashboardRangePreset,
+    type IDashboardSegment,
+    type IDashboardSummary,
+    type IProductHierarchySummary,
+    type SharedData,
+} from '@/types';
+import { Head, router, usePage } from '@inertiajs/react';
 import { CategoryScale, Chart as ChartJS, Filler, Legend, LinearScale, LineElement, PointElement, Title, Tooltip, type ChartOptions } from 'chart.js';
 import { useEffect, useMemo, useState } from 'react';
 import { Line } from 'react-chartjs-2';
@@ -44,14 +51,70 @@ const TABS: { key: TabKey; label: string }[] = [
     { key: 'all', label: 'All' },
 ];
 
+const RANGE_PRESETS: { key: DashboardRangePreset; label: string }[] = [
+    { key: 'today', label: 'Today' },
+    { key: '7d', label: 'Last 7 Days' },
+    { key: '30d', label: 'Last 30 Days' },
+    { key: 'lifetime', label: 'Lifetime' },
+    { key: 'custom', label: 'Custom Range' },
+];
+
+const formatRangeDate = (value: string) =>
+    new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value}T00:00:00`));
+
 export default function Dashboard() {
     const { summary } = usePage<SharedData & { summary?: IDashboardSummary }>().props;
     const [isClient, setIsClient] = useState(false);
     const [activeTab, setActiveTab] = useState<TabKey>('indonesia');
 
+    const range = summary?.range;
+    const activePreset: DashboardRangePreset = range?.preset ?? '7d';
+    const minDate = range?.minDate ?? '';
+    const maxDate = range?.maxDate ?? '';
+
+    const [showCustom, setShowCustom] = useState(activePreset === 'custom');
+    const [customStart, setCustomStart] = useState(range?.start ?? '');
+    const [customEnd, setCustomEnd] = useState(range?.end ?? '');
+    const [isReloading, setIsReloading] = useState(false);
+
     useEffect(() => {
         setIsClient(true);
     }, []);
+
+    // Keep the pickers in sync with whatever range the server actually applied
+    // (it clamps custom ranges to the last 30 days).
+    useEffect(() => {
+        if (!range) return;
+        setCustomStart(range.start);
+        setCustomEnd(range.end);
+        setShowCustom(range.preset === 'custom');
+    }, [range?.start, range?.end, range?.preset]);
+
+    const reloadRange = (params: Record<string, string>) => {
+        router.get('/dashboard', params, {
+            only: ['summary'],
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onStart: () => setIsReloading(true),
+            onFinish: () => setIsReloading(false),
+        });
+    };
+
+    const handlePresetChange = (preset: DashboardRangePreset) => {
+        if (preset === 'custom') {
+            setShowCustom(true);
+            return;
+        }
+
+        setShowCustom(false);
+        reloadRange({ range: preset });
+    };
+
+    const applyCustomRange = () => {
+        if (!customStart || !customEnd || customStart > customEnd) return;
+        reloadRange({ range: 'custom', start_date: customStart, end_date: customEnd });
+    };
 
     const isUSD = activeTab === 'international';
     const formatter = isUSD ? formatUSD : formatIDR;
@@ -128,6 +191,7 @@ export default function Dashboard() {
 
     const kpis = activeSegment?.kpis;
     const periodTotal = trendTotals.reduce((acc, value) => acc + value, 0);
+    const rangeTitle = RANGE_PRESETS.find((preset) => preset.key === activePreset)?.label ?? 'Last 7 Days';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -175,13 +239,75 @@ export default function Dashboard() {
 
                         <div className="grid gap-4 lg:grid-cols-3">
                             <div className="rounded-xl border border-sidebar-border/70 bg-background p-6 lg:col-span-2 dark:border-sidebar-border">
-                                <div className="mb-4 flex items-center justify-between">
+                                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
                                         <p className="text-sm text-muted-foreground">Sales Trend</p>
-                                        <h3 className="text-xl font-semibold">Last 7 Days</h3>
+                                        <h3 className="text-xl font-semibold">{rangeTitle}</h3>
+                                        {range && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {formatRangeDate(range.start)} – {formatRangeDate(range.end)}
+                                            </p>
+                                        )}
                                     </div>
                                     <span className="text-sm text-muted-foreground">{currencyLabel}</span>
                                 </div>
+
+                                <div className="mb-4 flex flex-wrap gap-2">
+                                    {RANGE_PRESETS.map((preset) => (
+                                        <button
+                                            key={preset.key}
+                                            type="button"
+                                            onClick={() => handlePresetChange(preset.key)}
+                                            disabled={isReloading}
+                                            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-60 ${
+                                                (preset.key === 'custom' ? showCustom : activePreset === preset.key)
+                                                    ? 'border-primary bg-primary text-primary-foreground'
+                                                    : 'border-sidebar-border/70 bg-muted text-muted-foreground hover:bg-muted/80'
+                                            }`}
+                                        >
+                                            {preset.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {showCustom && (
+                                    <div className="mb-4 flex flex-col gap-2 rounded-lg border border-sidebar-border/70 p-3 sm:flex-row sm:items-end">
+                                        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                                            Start date
+                                            <input
+                                                type="date"
+                                                value={customStart}
+                                                min={minDate}
+                                                max={customEnd || maxDate}
+                                                onChange={(event) => setCustomStart(event.target.value)}
+                                                className="rounded-md border border-sidebar-border/70 bg-background px-2 py-1 text-sm text-foreground"
+                                            />
+                                        </label>
+                                        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                                            End date
+                                            <input
+                                                type="date"
+                                                value={customEnd}
+                                                min={customStart || minDate}
+                                                max={maxDate}
+                                                onChange={(event) => setCustomEnd(event.target.value)}
+                                                className="rounded-md border border-sidebar-border/70 bg-background px-2 py-1 text-sm text-foreground"
+                                            />
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={applyCustomRange}
+                                            disabled={isReloading || !customStart || !customEnd || customStart > customEnd}
+                                            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors disabled:opacity-50"
+                                        >
+                                            Apply
+                                        </button>
+                                        <p className="text-xs text-muted-foreground sm:ml-auto sm:self-center">
+                                            Available from {minDate ? formatRangeDate(minDate) : '—'} to today
+                                        </p>
+                                    </div>
+                                )}
+
                                 <div className="h-80">
                                     {isClient ? (
                                         <Line data={chartData} options={chartOptions} />
@@ -195,7 +321,7 @@ export default function Dashboard() {
                                 <h3 className="text-xl font-semibold">Quick Summary</h3>
                                 <dl className="mt-6 space-y-4 text-sm">
                                     <div className="flex items-center justify-between">
-                                        <dt className="text-muted-foreground">7-day Sales</dt>
+                                        <dt className="text-muted-foreground">{rangeTitle} Sales</dt>
                                         <dd className="font-medium">{formatter(periodTotal)}</dd>
                                     </div>
                                     <div className="flex items-center justify-between">

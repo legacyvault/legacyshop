@@ -517,12 +517,26 @@ export interface IDashboardSegment {
     productHierarchy: IProductHierarchySummary[];
 }
 
+export type DashboardRangePreset = 'today' | '7d' | '30d' | 'lifetime' | 'custom';
+
+export interface IDashboardRange {
+    preset: DashboardRangePreset;
+    start: string;
+    end: string;
+    granularity: 'hour' | 'day' | 'month';
+    /** Earliest date a custom range may start from (30 days before today). */
+    minDate: string;
+    /** Latest date a custom range may end on (today). */
+    maxDate: string;
+}
+
 export interface IDashboardSummary {
     indonesia: IDashboardSegment;
     international: IDashboardSegment;
     all: IDashboardSegment | null;
     exchangeRateAvailable: boolean;
     exchangeRate: number | null;
+    range: IDashboardRange;
 }
 
 export interface IProductHierarchySummary {

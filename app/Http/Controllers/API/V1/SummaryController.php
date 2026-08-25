@@ -17,21 +17,29 @@ class SummaryController extends Controller
     private const INDONESIA_METHODS = ['snap', 'manual_local'];
     private const INTERNATIONAL_METHODS = ['paypal', 'manual_international'];
 
+    /** Presets accepted by the sales-trend range filter. */
+    private const RANGE_PRESETS = ['today', '7d', '30d', 'lifetime', 'custom'];
+
+    /** A custom range may not reach further back than this many days before today. */
+    private const CUSTOM_RANGE_MAX_DAYS = 30;
+
     /**
      * Render the dashboard view with aggregated sales data.
      *
-     * Accepts optional `start_date` / `end_date` (Y-m-d) query params to drive
-     * the trend range from a date-picker on the frontend. When omitted, falls
-     * back to the last 7 days (today inclusive), same as before.
+     * Accepts a `range` preset (today | 7d | 30d | lifetime | custom) for the
+     * sales trend chart. With `range=custom`, `start_date` / `end_date` (Y-m-d)
+     * drive the window — clamped to the last 30 days. Defaults to the last 7 days.
      */
     public function dashboard(Request $request)
     {
         $validated = $request->validate([
+            'range'      => 'nullable|in:' . implode(',', self::RANGE_PRESETS),
             'start_date' => 'nullable|date',
             'end_date'   => 'nullable|date|after_or_equal:start_date',
         ]);
 
         $summary = $this->buildSalesSummary(
+            $validated['range'] ?? null,
             $validated['start_date'] ?? null,
             $validated['end_date'] ?? null,
         );
@@ -44,29 +52,28 @@ class SummaryController extends Controller
     /**
      * Build segmented KPI metrics and sales trend data.
      *
-     * @param string|null $startDate Y-m-d, inclusive. Defaults to 6 days before $endDate.
-     * @param string|null $endDate   Y-m-d, inclusive. Defaults to today.
+     * @param string|null $range     One of self::RANGE_PRESETS. Defaults to '7d'.
+     * @param string|null $startDate Y-m-d, inclusive. Only used when $range is 'custom'.
+     * @param string|null $endDate   Y-m-d, inclusive. Only used when $range is 'custom'.
      */
-    protected function buildSalesSummary(?string $startDate = null, ?string $endDate = null): array
+    protected function buildSalesSummary(?string $range = null, ?string $startDate = null, ?string $endDate = null): array
     {
         $now = Carbon::now();
         $today = $now->copy()->startOfDay();
 
-        $trendEnd = $endDate
-            ? Carbon::parse($endDate)->endOfDay()
-            : $now->copy()->endOfDay();
+        // A bare start/end without an explicit preset still means "custom".
+        $range = $range ?: (($startDate || $endDate) ? 'custom' : '7d');
 
-        $trendStart = $startDate
-            ? Carbon::parse($startDate)->startOfDay()
-            : $trendEnd->copy()->subDays(6)->startOfDay();
+        [$trendStart, $trendEnd] = $this->resolveTrendRange($range, $startDate, $endDate, $now);
+        $granularity = $this->resolveGranularity($trendStart, $trendEnd);
 
-        $indonesia = $this->buildSegmentData(self::INDONESIA_METHODS, $trendStart, $trendEnd, $today);
-        $international = $this->buildSegmentData(self::INTERNATIONAL_METHODS, $trendStart, $trendEnd, $today);
+        $indonesia = $this->buildSegmentData(self::INDONESIA_METHODS, $trendStart, $trendEnd, $today, $granularity);
+        $international = $this->buildSegmentData(self::INTERNATIONAL_METHODS, $trendStart, $trendEnd, $today, $granularity);
 
         $usdToIdr = $this->getUsdToIdrRate();
 
         $all = $usdToIdr !== null
-            ? $this->buildAllSegment($usdToIdr, $trendStart, $trendEnd, $today)
+            ? $this->buildAllSegment($usdToIdr, $trendStart, $trendEnd, $today, $granularity)
             : null;
 
         return [
@@ -76,16 +83,86 @@ class SummaryController extends Controller
             'exchangeRateAvailable' => $usdToIdr !== null,
             'exchangeRate' => $usdToIdr,
             'range' => [
+                'preset' => $range,
                 'start' => $trendStart->format('Y-m-d'),
                 'end' => $trendEnd->format('Y-m-d'),
+                'granularity' => $granularity,
+                'minDate' => $now->copy()->subDays(self::CUSTOM_RANGE_MAX_DAYS - 1)->format('Y-m-d'),
+                'maxDate' => $now->format('Y-m-d'),
             ],
         ];
     }
 
     /**
+     * Turn a preset (plus optional custom dates) into an inclusive [start, end] window.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    protected function resolveTrendRange(string $range, ?string $startDate, ?string $endDate, Carbon $now): array
+    {
+        $todayStart = $now->copy()->startOfDay();
+        $todayEnd = $now->copy()->endOfDay();
+
+        return match ($range) {
+            'today' => [$todayStart, $todayEnd],
+            '30d' => [$todayEnd->copy()->subDays(29)->startOfDay(), $todayEnd],
+            'lifetime' => [$this->earliestPaidOrderDate() ?? $todayStart, $todayEnd],
+            'custom' => $this->resolveCustomRange($startDate, $endDate, $now),
+            default => [$todayEnd->copy()->subDays(6)->startOfDay(), $todayEnd],
+        };
+    }
+
+    /**
+     * Clamp a custom range to the last self::CUSTOM_RANGE_MAX_DAYS days (today inclusive).
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    protected function resolveCustomRange(?string $startDate, ?string $endDate, Carbon $now): array
+    {
+        $floor = $now->copy()->subDays(self::CUSTOM_RANGE_MAX_DAYS - 1)->startOfDay();
+        $ceiling = $now->copy()->endOfDay();
+
+        $end = $endDate ? Carbon::parse($endDate)->endOfDay() : $ceiling;
+        $end = $end->greaterThan($ceiling) ? $ceiling : $end;
+        $end = $end->lessThan($floor) ? $floor->copy()->endOfDay() : $end;
+
+        $start = $startDate ? Carbon::parse($startDate)->startOfDay() : $end->copy()->subDays(6)->startOfDay();
+        $start = $start->lessThan($floor) ? $floor->copy() : $start;
+        $start = $start->greaterThan($end) ? $end->copy()->startOfDay() : $start;
+
+        return [$start, $end];
+    }
+
+    /**
+     * Pick bucket size so the chart stays readable: hourly for a single day,
+     * daily up to a quarter, monthly beyond that (e.g. lifetime).
+     */
+    protected function resolveGranularity(Carbon $start, Carbon $end): string
+    {
+        $days = $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1;
+
+        return match (true) {
+            $days <= 1 => 'hour',
+            $days <= 92 => 'day',
+            default => 'month',
+        };
+    }
+
+    /**
+     * Earliest paid order date across every tracked payment method (null when there are none).
+     */
+    protected function earliestPaidOrderDate(): ?Carbon
+    {
+        $earliest = $this->paidOrdersQuery(array_merge(self::INDONESIA_METHODS, self::INTERNATIONAL_METHODS))
+            ->min('created_at');
+
+        return $earliest ? Carbon::parse($earliest)->startOfDay() : null;
+    }
+
+    /**
      * Build KPIs, trend and product hierarchy for a specific set of payment methods.
      */
-    protected function buildSegmentData(array $paymentMethods, Carbon $trendStart, Carbon $trendEnd, Carbon $today): array
+    protected function buildSegmentData(array $paymentMethods, Carbon $trendStart, Carbon $trendEnd, Carbon $today, string $granularity = 'day'): array
     {
         $paidOrders = $this->paidOrdersQuery($paymentMethods);
 
@@ -118,7 +195,7 @@ class SummaryController extends Controller
             ? (($currentPeriodRevenue - $previousPeriodRevenue) / $previousPeriodRevenue) * 100
             : null;
 
-        $trend = $this->buildSalesTrend($trendStart, $trendEnd, $paymentMethods);
+        $trend = $this->buildTrend($paymentMethods, $trendStart, $trendEnd, $granularity);
         $productHierarchy = $this->buildProductHierarchySummary($paymentMethods);
 
         return [
@@ -138,7 +215,7 @@ class SummaryController extends Controller
     /**
      * Build the combined "All" segment with international amounts converted to IDR.
      */
-    protected function buildAllSegment(float $usdToIdr, Carbon $trendStart, Carbon $trendEnd, Carbon $today): array
+    protected function buildAllSegment(float $usdToIdr, Carbon $trendStart, Carbon $trendEnd, Carbon $today, string $granularity = 'day'): array
     {
         $allMethods = array_merge(self::INDONESIA_METHODS, self::INTERNATIONAL_METHODS);
         $intlMethods = self::INTERNATIONAL_METHODS;
@@ -183,7 +260,7 @@ class SummaryController extends Controller
             ? (($currentPeriodRevenue - $previousPeriodRevenue) / $previousPeriodRevenue) * 100
             : null;
 
-        $trend = $this->buildAllSalesTrend($usdToIdr, $trendStart, $trendEnd);
+        $trend = $this->buildTrend($allMethods, $trendStart, $trendEnd, $granularity, $usdToIdr);
         $productHierarchy = $this->buildProductHierarchySummary($allMethods);
 
         return [
@@ -201,13 +278,24 @@ class SummaryController extends Controller
     }
 
     /**
-     * Build daily revenue totals for the provided period (with payment method filter).
+     * Build a revenue trend for the given period, bucketed by hour, day or month.
+     *
+     * When $usdToIdr is provided, international orders are converted to IDR so the
+     * "All" segment can mix both currencies in a single series.
      */
-    protected function buildSalesTrend(Carbon $startDate, Carbon $endDate, array $paymentMethods = []): array
+    protected function buildTrend(array $paymentMethods, Carbon $startDate, Carbon $endDate, string $granularity = 'day', ?float $usdToIdr = null): array
     {
-        $raw = $this->paidOrdersQuery($paymentMethods)
+        if ($granularity === 'hour') {
+            return $this->buildHourlyTrend($paymentMethods, $startDate, $endDate, $usdToIdr);
+        }
+
+        $totalExpr = $usdToIdr !== null
+            ? "SUM(CASE WHEN payment_method IN ('" . implode("','", self::INTERNATIONAL_METHODS) . "') THEN grand_total * {$usdToIdr} ELSE grand_total END)"
+            : 'SUM(grand_total)';
+
+        $daily = $this->paidOrdersQuery($paymentMethods)
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('DATE(created_at) as day, SUM(grand_total) as total')
+            ->selectRaw("DATE(created_at) as day, {$totalExpr} as total")
             ->groupBy('day')
             ->orderBy('day')
             ->pluck('total', 'day')
@@ -216,54 +304,62 @@ class SummaryController extends Controller
         $labels = [];
         $totals = [];
 
-        $cursor = $startDate->copy();
+        if ($granularity === 'month') {
+            $cursor = $startDate->copy()->startOfMonth();
+            $lastMonth = $endDate->copy()->startOfMonth();
+
+            while ($cursor->lte($lastMonth)) {
+                $prefix = $cursor->format('Y-m');
+                $labels[] = $cursor->translatedFormat('M Y');
+                $totals[] = (float) $daily
+                    ->filter(fn($value, $day) => str_starts_with((string) $day, $prefix))
+                    ->sum();
+                $cursor->addMonth();
+            }
+
+            return ['labels' => $labels, 'totals' => $totals];
+        }
+
+        $cursor = $startDate->copy()->startOfDay();
         while ($cursor->lte($endDate)) {
-            $dayKey = $cursor->format('Y-m-d');
             $labels[] = $cursor->translatedFormat('d M');
-            $totals[] = $raw->get($dayKey, 0.0);
+            $totals[] = $daily->get($cursor->format('Y-m-d'), 0.0);
             $cursor->addDay();
         }
 
-        return [
-            'labels' => $labels,
-            'totals' => $totals,
-        ];
+        return ['labels' => $labels, 'totals' => $totals];
     }
 
     /**
-     * Build daily revenue trend for "All" tab with USD→IDR conversion per row.
+     * Hourly buckets for single-day ranges. Bucketed in PHP so the query stays
+     * driver-agnostic (no DATE_FORMAT / strftime dialect split).
      */
-    protected function buildAllSalesTrend(float $usdToIdr, Carbon $startDate, Carbon $endDate): array
+    protected function buildHourlyTrend(array $paymentMethods, Carbon $startDate, Carbon $endDate, ?float $usdToIdr = null): array
     {
-        $allMethods = array_merge(self::INDONESIA_METHODS, self::INTERNATIONAL_METHODS);
-        $intlMethods = self::INTERNATIONAL_METHODS;
-
-        $revenueExpr = "SUM(CASE WHEN payment_method IN ('" . implode("','", $intlMethods) . "') THEN grand_total * {$usdToIdr} ELSE grand_total END)";
-
-        $raw = Order::query()
-            ->where('payment_status', 'payment_received')
-            ->whereIn('payment_method', $allMethods)
+        $orders = $this->paidOrdersQuery($paymentMethods)
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw("DATE(created_at) as day, {$revenueExpr} as total")
-            ->groupBy('day')
-            ->orderBy('day')
-            ->pluck('total', 'day')
-            ->map(fn($value) => (float) $value);
+            ->get(['created_at', 'grand_total', 'payment_method']);
+
+        $buckets = array_fill(0, 24, 0.0);
+
+        foreach ($orders as $order) {
+            $amount = (float) $order->grand_total;
+
+            if ($usdToIdr !== null && in_array($order->payment_method, self::INTERNATIONAL_METHODS, true)) {
+                $amount *= $usdToIdr;
+            }
+
+            $buckets[(int) Carbon::parse($order->created_at)->format('G')] += $amount;
+        }
 
         $labels = [];
-        $totals = [];
-
-        $cursor = $startDate->copy();
-        while ($cursor->lte($endDate)) {
-            $dayKey = $cursor->format('Y-m-d');
-            $labels[] = $cursor->translatedFormat('d M');
-            $totals[] = $raw->get($dayKey, 0.0);
-            $cursor->addDay();
+        for ($hour = 0; $hour < 24; $hour++) {
+            $labels[] = sprintf('%02d:00', $hour);
         }
 
         return [
             'labels' => $labels,
-            'totals' => $totals,
+            'totals' => array_values($buckets),
         ];
     }
 
