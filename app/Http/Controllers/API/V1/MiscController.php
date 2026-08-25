@@ -9,6 +9,7 @@ use App\Models\Banner;
 use App\Models\EventProducts;
 use App\Models\Events;
 use App\Models\RunningText;
+use App\Models\Testimonial;
 use App\Models\VoucherModel;
 use Exception;
 use Illuminate\Http\Request;
@@ -692,5 +693,161 @@ class MiscController extends Controller
             ->find($id);
 
         return $data;
+    }
+
+    /**
+     * Instagram handles are stored bare (no leading "@") so the frontend can
+     * render and link them consistently.
+     */
+    private function normalizeInstagramAccount(?string $account): ?string
+    {
+        $account = trim((string) $account);
+        $account = ltrim($account, '@');
+
+        return $account === '' ? null : $account;
+    }
+
+    private function testimonialRules(bool $imageRequired): array
+    {
+        return [
+            'name'              => 'required|string|max:100',
+            'instagram_account' => ['nullable', 'string', 'max:31', 'regex:/^@?[A-Za-z0-9._]{1,30}$/'],
+            'message'           => 'required|string|max:500',
+            'image'             => ($imageRequired ? 'required' : 'nullable') . '|file|mimes:jpg,jpeg,png,webp|max:2048',
+        ];
+    }
+
+    public function createTestimonial(Request $request)
+    {
+        $validator = Validator::make($request->all(), $this->testimonialRules(true), [
+            'instagram_account.regex' => 'Instagram account may only contain letters, numbers, dots and underscores.',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            $image = $this->uploadTestimonialImageToS3($request->file('image'));
+
+            Testimonial::create([
+                'name'              => $request->name,
+                'instagram_account' => $this->normalizeInstagramAccount($request->instagram_account),
+                'message'           => $request->message,
+                'picture_url'       => $image['url'],
+                'thumbnail_url'     => $image['thumbnail_url'],
+            ]);
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'success',
+                'message' => 'Successfully create testimonial.',
+            ]);
+        } catch (Exception $e) {
+            Log::error('[ERROR] Failed to create testimonial: ' . $e->getMessage());
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Failed to create testimonial.',
+            ]);
+        }
+    }
+
+    public function updateTestimonial(Request $request, $id)
+    {
+        $testimonial = Testimonial::find($id);
+
+        if (!$testimonial) {
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Testimonial not found.',
+            ]);
+        }
+
+        $validator = Validator::make($request->all(), $this->testimonialRules(false), [
+            'instagram_account.regex' => 'Instagram account may only contain letters, numbers, dots and underscores.',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            if ($request->hasFile('image')) {
+                $oldPicture = $testimonial->picture_url;
+                $oldThumb   = $testimonial->thumbnail_url;
+
+                $image = $this->uploadTestimonialImageToS3($request->file('image'), $testimonial->id);
+
+                $testimonial->picture_url   = $image['url'];
+                $testimonial->thumbnail_url = $image['thumbnail_url'];
+
+                if ($oldPicture) {
+                    $this->deleteFromS3($oldPicture);
+                }
+                if ($oldThumb) {
+                    $this->deleteFromS3($oldThumb);
+                }
+            }
+
+            $testimonial->name              = $request->name;
+            $testimonial->instagram_account = $this->normalizeInstagramAccount($request->instagram_account);
+            $testimonial->message           = $request->message;
+            $testimonial->save();
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'success',
+                'message' => 'Successfully update testimonial.',
+            ]);
+        } catch (Exception $e) {
+            Log::error('[ERROR] Failed to update testimonial: ' . $e->getMessage());
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Failed to update testimonial.',
+            ]);
+        }
+    }
+
+    public function deleteTestimonial($id)
+    {
+        $testimonial = Testimonial::find($id);
+
+        if (!$testimonial) {
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Testimonial not found.',
+            ]);
+        }
+
+        try {
+            $picture = $testimonial->picture_url;
+            $thumb   = $testimonial->thumbnail_url;
+
+            $testimonial->delete();
+
+            if ($picture) {
+                $this->deleteFromS3($picture);
+            }
+            if ($thumb) {
+                $this->deleteFromS3($thumb);
+            }
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'success',
+                'message' => 'Successfully delete testimonial.',
+            ]);
+        } catch (Exception $e) {
+            Log::error('[ERROR] Failed to delete testimonial: ' . $e->getMessage());
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Failed to delete testimonial.',
+            ]);
+        }
+    }
+
+    public function getAllTestimonials()
+    {
+        return Testimonial::orderBy('created_at', 'desc')->get();
     }
 }

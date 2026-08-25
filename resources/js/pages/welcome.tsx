@@ -619,9 +619,11 @@ const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEv
 function Welcome() {
     const { translations } = usePage<SharedData>().props;
 
-    const { productsTop, productsBottom, units, banner, articles, events } = usePage<
+    const { productsTop, productsBottom, units, banner, articles, events, testimonials } = usePage<
         SharedData & { productsTop: IProducts[]; productsBottom: IProducts[] }
     >().props;
+
+    const activeTestimonials = useMemo(() => (Array.isArray(testimonials) ? testimonials : []), [testimonials]);
 
     // A unit tile is nothing but its artwork, so skip any unit without one
     const unitsWithImage = useMemo(
@@ -773,15 +775,17 @@ function Welcome() {
                 )}
 
                 {/* TESTIMONIALS */}
-                <section className="my-8 py-16">
-                    <div className="mx-auto max-w-7xl px-4 -mb-8 sm:px-6 lg:px-8">
-                        <div className="mb-12 text-center">
-                            <h2 className="mb-4 font-pixel text-2xl font-bold text-primary md:text-3xl">WHAT COLLECTORS SAY</h2>
-                            <p className="text-sm text-muted-foreground">Hear from the collectors and sellers who trade with us every day.</p>
+                {activeTestimonials.length > 0 && (
+                    <section className="my-8 py-16">
+                        <div className="mx-auto -mb-8 max-w-7xl px-4 sm:px-6 lg:px-8">
+                            <div className="mb-12 text-center">
+                                <h2 className="mb-4 font-pixel text-2xl font-bold text-primary md:text-3xl">WHAT COLLECTORS SAY</h2>
+                                <p className="text-sm text-muted-foreground">Hear from the collectors and sellers who trade with us every day.</p>
+                            </div>
                         </div>
-                    </div>
-                    <StaggerTestimonials />
-                </section>
+                        <StaggerTestimonials testimonials={activeTestimonials} />
+                    </section>
+                )}
 
 
                 <div className="my-8">

@@ -68,6 +68,7 @@ export interface SharedData {
     rec_prod: IProducts[];
     events: IEvents[];
     event?: IEvents | null;
+    testimonials: ITestimonial[];
     isIndonesian: boolean;
     internationalShipmentPrice: number | null;
     countryCode: string | null;
@@ -209,6 +210,17 @@ export interface IBanner {
     url: string;
     banner_title: string;
     button_text: string;
+}
+
+export interface ITestimonial {
+    id: string;
+    name: string;
+    instagram_account: string | null;
+    message: string;
+    picture_url: string;
+    thumbnail_url: string | null;
+    created_at: string | Date;
+    updated_at: string | Date;
 }
 
 export interface IRunningText {

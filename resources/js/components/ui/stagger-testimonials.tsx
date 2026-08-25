@@ -1,129 +1,11 @@
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { ITestimonial } from '@/types';
+import { ChevronLeft, ChevronRight, Instagram, Star } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-const testimonials = [
-    {
-        tempId: 0,
-        testimonial: 'My favorite solution in the market. We work 5x faster with COMPANY.',
-        by: 'Alex, CEO at TechCorp',
-        imgSrc: 'https://i.pravatar.cc/300?img=1',
-    },
-    {
-        tempId: 1,
-        testimonial: "I'm confident my data is safe with COMPANY. I can't say that about other providers.",
-        by: 'Dan, CTO at SecureNet',
-        imgSrc: 'https://i.pravatar.cc/300?img=2',
-    },
-    {
-        tempId: 2,
-        testimonial: "I know it's cliche, but we were lost before we found COMPANY. Can't thank you guys enough!",
-        by: 'Stephanie, COO at InnovateCo',
-        imgSrc: 'https://i.pravatar.cc/300?img=3',
-    },
-    {
-        tempId: 3,
-        testimonial: "COMPANY's products make planning for the future seamless. Can't recommend them enough!",
-        by: 'Marie, CFO at FuturePlanning',
-        imgSrc: 'https://i.pravatar.cc/300?img=4',
-    },
-    {
-        tempId: 4,
-        testimonial: "If I could give 11 stars, I'd give 12.",
-        by: 'Andre, Head of Design at CreativeSolutions',
-        imgSrc: 'https://i.pravatar.cc/300?img=5',
-    },
-    {
-        tempId: 5,
-        testimonial: "SO SO SO HAPPY WE FOUND YOU GUYS!!!! I'd bet you've saved me 100 hours so far.",
-        by: 'Jeremy, Product Manager at TimeWise',
-        imgSrc: 'https://i.pravatar.cc/300?img=6',
-    },
-    {
-        tempId: 6,
-        testimonial: "Took some convincing, but now that we're on COMPANY, we're never going back.",
-        by: 'Pam, Marketing Director at BrandBuilders',
-        imgSrc: 'https://i.pravatar.cc/300?img=7',
-    },
-    {
-        tempId: 7,
-        testimonial: "I would be lost without COMPANY's in-depth analytics. The ROI is EASILY 100X for us.",
-        by: 'Daniel, Data Scientist at AnalyticsPro',
-        imgSrc: 'https://i.pravatar.cc/300?img=8',
-    },
-    {
-        tempId: 8,
-        testimonial: "It's just the best. Period.",
-        by: 'Fernando, UX Designer at UserFirst',
-        imgSrc: 'https://i.pravatar.cc/300?img=9',
-    },
-    {
-        tempId: 9,
-        testimonial: 'I switched 5 years ago and never looked back.',
-        by: 'Andy, DevOps Engineer at CloudMasters',
-        imgSrc: 'https://i.pravatar.cc/300?img=10',
-    },
-    {
-        tempId: 10,
-        testimonial: "I've been searching for a solution like COMPANY for YEARS. So glad I finally found one!",
-        by: 'Pete, Sales Director at RevenueRockets',
-        imgSrc: 'https://i.pravatar.cc/300?img=11',
-    },
-    {
-        tempId: 11,
-        testimonial: "It's so simple and intuitive, we got the team up to speed in 10 minutes.",
-        by: 'Marina, HR Manager at TalentForge',
-        imgSrc: 'https://i.pravatar.cc/300?img=12',
-    },
-    {
-        tempId: 12,
-        testimonial: "COMPANY's customer support is unparalleled. They're always there when we need them.",
-        by: 'Olivia, Customer Success Manager at ClientCare',
-        imgSrc: 'https://i.pravatar.cc/300?img=13',
-    },
-    {
-        tempId: 13,
-        testimonial: "The efficiency gains we've seen since implementing COMPANY are off the charts!",
-        by: 'Raj, Operations Manager at StreamlineSolutions',
-        imgSrc: 'https://i.pravatar.cc/300?img=14',
-    },
-    {
-        tempId: 14,
-        testimonial: "COMPANY has revolutionized how we handle our workflow. It's a game-changer!",
-        by: 'Lila, Workflow Specialist at ProcessPro',
-        imgSrc: 'https://i.pravatar.cc/300?img=15',
-    },
-    {
-        tempId: 15,
-        testimonial: "The scalability of COMPANY's solution is impressive. It grows with our business seamlessly.",
-        by: 'Trevor, Scaling Officer at GrowthGurus',
-        imgSrc: 'https://i.pravatar.cc/300?img=16',
-    },
-    {
-        tempId: 16,
-        testimonial: "I appreciate how COMPANY continually innovates. They're always one step ahead.",
-        by: 'Naomi, Innovation Lead at FutureTech',
-        imgSrc: 'https://i.pravatar.cc/300?img=17',
-    },
-    {
-        tempId: 17,
-        testimonial: "The ROI we've seen with COMPANY is incredible. It's paid for itself many times over.",
-        by: 'Victor, Finance Analyst at ProfitPeak',
-        imgSrc: 'https://i.pravatar.cc/300?img=18',
-    },
-    {
-        tempId: 18,
-        testimonial: "COMPANY's platform is so robust, yet easy to use. It's the perfect balance.",
-        by: 'Yuki, Tech Lead at BalancedTech',
-        imgSrc: 'https://i.pravatar.cc/300?img=19',
-    },
-    {
-        tempId: 19,
-        testimonial: 'We’ve tried many solutions, but COMPANY stands out in terms of reliability and performance.',
-        by: 'Zoe, Performance Manager at ReliableSystems',
-        imgSrc: 'https://i.pravatar.cc/300?img=20',
-    },
-];
+interface TestimonialItem extends ITestimonial {
+    tempId: number;
+}
 
 // Liquid-chrome card back, generated rather than shipped as an asset.
 // A banded black/grey gradient is warped by a turbulence displacement map — the warp is what
@@ -232,26 +114,39 @@ const ELEMENTS = [
 
 // Card stats are derived from the name so they stay stable across shuffles
 // (tempId is re-rolled on every move).
-const statFromName = (name: string) => {
-    const seed = [...name].reduce((total, char) => total + char.charCodeAt(0), 0);
+const statFromName = (name: string, total: number) => {
+    const seed = [...name].reduce((sum, char) => sum + char.charCodeAt(0), 0);
 
     return {
-        number: String((seed % 20) + 1).padStart(3, '0'),
+        number: String((seed % Math.max(total, 1)) + 1).padStart(3, '0'),
         element: ELEMENTS[seed % ELEMENTS.length],
     };
 };
 
+// The stagger used to be scale(1.04) centre / scale(0.82) side. Upscaling a composited layer
+// resamples its text, so the centre's 1.04 now lives in layout and only the sides are transformed.
+// Both cards keep the exact on-screen sizes they had before.
+const CENTRE_ZOOM = 1.04;
+const SIDE_SCALE = 0.82 / CENTRE_ZOOM;
+
+const toEven = (value: number) => Math.round(value / 2) * 2;
+
 interface TestimonialCardProps {
     position: number;
-    testimonial: (typeof testimonials)[0];
+    testimonial: TestimonialItem;
     handleMove: (steps: number) => void;
     cardSize: number;
+    total: number;
 }
 
-const TestimonialCard: React.FC<TestimonialCardProps> = ({ position, testimonial, handleMove, cardSize }) => {
+const TestimonialCard: React.FC<TestimonialCardProps> = ({ position, testimonial, handleMove, cardSize, total }) => {
     const isCenter = position === 0;
-    const [name] = testimonial.by.split(',');
-    const { number, element } = statFromName(testimonial.by);
+    const name = testimonial.name;
+    const { number, element } = statFromName(name, total);
+    // translate(-50%, -50%) of an odd length lands on a half pixel and resamples the whole
+    // layer, so both dimensions are snapped to even numbers.
+    const centreWidth = toEven(cardSize * CENTRE_ZOOM);
+    const centreHeight = toEven(centreWidth * 1.4);
 
     const faceShadow = isCenter ? '0 18px 40px -12px rgba(0,0,0,0.45), 0 0 0 1px rgba(120,80,0,0.35)' : '0 8px 20px -10px rgba(0,0,0,0.35)';
     // Foil animation repaints rather than composites, so only the backs actually in view get it.
@@ -266,20 +161,23 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({ position, testimonial
         <div
             onClick={() => handleMove(position)}
             className={cn(
-                'absolute top-1/2 left-1/2 cursor-pointer transition-all duration-500 ease-in-out',
+                'absolute top-1/2 left-1/2 cursor-pointer transition-[transform,opacity] duration-500 ease-in-out',
                 isCenter ? 'z-10' : 'z-0 saturate-[0.85]',
                 !isVisible && 'pointer-events-none opacity-0',
             )}
             style={{
-                width: cardSize,
-                height: cardSize * 1.4,
+                // Laid out at the centre card's full size so the centre sits at scale(1) and its
+                // text rasterises at native resolution. The compositor caches one texture for the
+                // whole transition, so any scale > 1 here would be a visible upscale of that texture.
+                width: centreWidth,
+                height: centreHeight,
                 perspective: 1400,
                 transform: `
           translate(-50%, -50%)
           translateX(${(cardSize / 1.5) * position}px)
           translateY(${isCenter ? -40 : position % 2 ? 15 : -15}px)
           rotate(${isCenter ? 0 : position % 2 ? 2.5 : -2.5}deg)
-          scale(${isCenter ? 1.04 : 0.82})
+          scale(${isCenter ? 1 : SIDE_SCALE})
         `,
             }}
         >
@@ -312,18 +210,48 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({ position, testimonial
                         {/* Art window */}
                         <div className={cn('rounded-sm bg-gradient-to-br p-[3px]', element.art)}>
                             <div className="relative h-44 overflow-hidden rounded-[2px] bg-gradient-to-b from-sky-200 to-emerald-200 sm:h-52">
-                                <img src={testimonial.imgSrc} alt={name} className="h-full w-full object-cover object-top" />
+                                {/* The 400px thumbnail covers a 1x screen at this size but not a
+                                    retina one, so hand retina the full-size original instead. */}
+                                <img
+                                    src={testimonial.thumbnail_url ?? testimonial.picture_url}
+                                    srcSet={
+                                        testimonial.thumbnail_url
+                                            ? `${testimonial.thumbnail_url} 1x, ${testimonial.picture_url} 2x`
+                                            : undefined
+                                    }
+                                    alt={name}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="h-full w-full object-contain"
+                                />
                             </div>
                         </div>
 
                         {/* Attack box */}
                         <div className={cn('flex flex-1 flex-col justify-center border-y-2 py-2', element.divider)}>
-                            <p className="line-clamp-5 text-[11px] leading-snug text-neutral-800 sm:text-xs">“{testimonial.testimonial}”</p>
+                            <p className="line-clamp-5 text-[11px] leading-snug text-neutral-800 sm:text-xs">“{testimonial.message}”</p>
                         </div>
 
                         {/* Footer bar */}
-                        <div className="flex items-center justify-end text-[9px] text-neutral-600 sm:text-[10px]">
-                            <span className="font-mono">{number}/020</span>
+                        <div className="flex items-center justify-between gap-2 text-[9px] text-neutral-600 sm:text-[10px]">
+                            {testimonial.instagram_account ? (
+                                <a
+                                    href={`https://instagram.com/${testimonial.instagram_account}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    tabIndex={isCenter ? 0 : -1}
+                                    className="flex min-w-0 items-center gap-1 hover:underline"
+                                >
+                                    <Instagram className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">@{testimonial.instagram_account}</span>
+                                </a>
+                            ) : (
+                                <span />
+                            )}
+                            <span className="shrink-0 font-mono">
+                                {number}/{String(total).padStart(3, '0')}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -352,9 +280,14 @@ const TestimonialCard: React.FC<TestimonialCardProps> = ({ position, testimonial
     );
 };
 
-export const StaggerTestimonials: React.FC = () => {
+export const StaggerTestimonials: React.FC<{ testimonials: ITestimonial[] }> = ({ testimonials }) => {
     const [cardSize, setCardSize] = useState(300);
-    const [testimonialsList, setTestimonialsList] = useState(testimonials);
+
+    const initialList = useMemo<TestimonialItem[]>(() => testimonials.map((item, index) => ({ ...item, tempId: index })), [testimonials]);
+
+    const [testimonialsList, setTestimonialsList] = useState(initialList);
+
+    useEffect(() => setTestimonialsList(initialList), [initialList]);
 
     const handleMove = (steps: number) => {
         const newList = [...testimonialsList];
@@ -385,10 +318,12 @@ export const StaggerTestimonials: React.FC = () => {
         return () => window.removeEventListener('resize', updateSize);
     }, []);
 
+    if (testimonialsList.length === 0) return null;
+
     return (
         <div className="relative w-full overflow-hidden bg-muted/30" style={{ height: 600 }}>
             {testimonialsList.map((testimonial, index) => {
-                const position = testimonialsList.length % 2 ? index - (testimonialsList.length + 1) / 2 : index - testimonialsList.length / 2;
+                const position = index - Math.floor(testimonialsList.length / 2);
 
                 // Three on show, plus one hidden either side to hand off the transition.
                 if (Math.abs(position) > 2) return null;
@@ -400,10 +335,11 @@ export const StaggerTestimonials: React.FC = () => {
                         handleMove={handleMove}
                         position={position}
                         cardSize={cardSize}
+                        total={testimonialsList.length}
                     />
                 );
             })}
-            <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
+            <div className={cn('absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2', testimonialsList.length < 2 && 'hidden')}>
                 <button
                     onClick={() => handleMove(-1)}
                     className={cn(

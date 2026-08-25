@@ -173,6 +173,33 @@ trait AwsS3
     }
 
 
+    /**
+     * @return array{url: string, thumbnail_url: ?string}
+     */
+    public function uploadTestimonialImageToS3($file, $testimonialId = null): array
+    {
+        $extension = $file->getClientOriginalExtension();
+        $random    = mt_rand(100000, 999999);
+
+        $pathPrefix   = $testimonialId ? "testimonial/{$testimonialId}" : "testimonial";
+        $filenameStem = "image-{$random}";
+
+        $filename = "{$pathPrefix}/{$filenameStem}." . $extension;
+
+        $this->getS3Client()->putObject([
+            'Bucket'      => env('AWS_S3_BUCKET'),
+            'Key'         => $filename,
+            'Body'        => fopen($file->getRealPath(), 'r'),
+            'ContentType' => $file->getMimeType(),
+        ]);
+
+        return [
+            'url'           => $this->buildPublicUrl($filename),
+            'thumbnail_url' => $this->uploadThumbnailToS3($file->getRealPath(), $pathPrefix, $filenameStem),
+        ];
+    }
+
+
     public function uploadBannerImageToS3($file, $bannerId = null): string
     {
         $extension = $file->getClientOriginalExtension();

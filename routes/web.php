@@ -209,6 +209,11 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     Route::post('add-banner', [MiscController::class, 'createBanner'])->name('add-banner');
     Route::post('update-banner', [MiscController::class, 'updateBanner'])->name('edit-banner');
 
+    //Testimonial API
+    Route::post('create-testimonial', [MiscController::class, 'createTestimonial'])->name('testimonial.create');
+    Route::post('update-testimonial/{id}', [MiscController::class, 'updateTestimonial'])->name('testimonial.update');
+    Route::delete('delete-testimonial/{id}', [MiscController::class, 'deleteTestimonial'])->name('testimonial.delete');
+
     //Article API
     Route::post('create-article', [ArticleController::class, 'createArticle'])->name('create-article');
     Route::post('update-article', [ArticleController::class, 'updateArticle'])->name('edit-article');
@@ -382,6 +387,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('view-banner', [ViewController::class, 'bannerPage']);
         Route::get('voucher', [ViewController::class, 'voucherPage']);
         Route::get('event', [ViewController::class, 'eventPage']);
+        Route::get('testimonial', [ViewController::class, 'testimonialPage']);
     });
 
     Route::prefix('admin-articles')->group(function () {

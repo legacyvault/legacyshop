@@ -106,6 +106,7 @@ class ViewController extends Controller
         $banner = $this->miscController->getActiveBanner();
         $articles = $this->articleController->getNewestArticle();
         $events = $this->miscController->getAllActiveEvents($request);
+        $testimonials = $this->miscController->getAllTestimonials();
 
         return Inertia::render('welcome', [
             'productsTop' => $productsTop,
@@ -114,6 +115,7 @@ class ViewController extends Controller
             'banner' => $banner,
             'articles' => $articles,
             'events' => $events,
+            'testimonials' => $testimonials,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -655,6 +657,15 @@ class ViewController extends Controller
 
         return Inertia::render('misc/event', [
             'events' => $events,
+        ]);
+    }
+
+    public function testimonialPage()
+    {
+        $testimonials = $this->miscController->getAllTestimonials();
+
+        return Inertia::render('misc/testimonial', [
+            'testimonials' => $testimonials,
         ]);
     }
 }
