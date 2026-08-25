@@ -741,7 +741,7 @@ function Welcome() {
                         </div>
 
                         {/* Caption on the left, sequence on the right — playback is driven by hover */}
-                        <div className="mt-4 flex flex-col items-stretch gap-8 rounded-3xl bg-primary p-8 text-white/70 lg:flex-row lg:gap-16 lg:p-12">
+                        <div className="mt-4 flex flex-col items-stretch gap-8 rounded-3xl bg-primary p-8 text-white lg:flex-row lg:gap-16 lg:p-12">
                             <div className="flex w-full flex-col items-start justify-between gap-4 lg:flex-[0_1_22rem]">
                                 <p className="max-w-md text-md">{translations.home.description2}</p>
                                 <div>

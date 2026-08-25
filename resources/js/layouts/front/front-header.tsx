@@ -21,7 +21,7 @@ import { IEvents, IRunningText, SharedData } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import { Command as CommandPrimitive } from 'cmdk';
 import gsap from 'gsap';
-import { Boxes, Layers, Loader2, Menu, Newspaper, Search, SearchIcon, Sparkles, Store, Tag } from 'lucide-react';
+import { Boxes, Info, Layers, Loader2, Menu, Newspaper, Search, SearchIcon, Sparkles, Store, Tag } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 type ProductSuggestion = {
@@ -46,12 +46,17 @@ const NavBottom = [
         title: 'articles',
         url: '/articles',
     },
+    {
+        title: 'about us',
+        url: '/about-us',
+    },
 ];
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
     home: <Store className="size-5 shrink-0" />,
     products: <Boxes className="size-5 shrink-0" />,
     articles: <Newspaper className="size-5 shrink-0" />,
+    'about us': <Info className="size-5 shrink-0" />,
 };
 
 export default function FrontHeader() {
@@ -83,10 +88,7 @@ export default function FrontHeader() {
     const [activeEvents, setActiveEvents] = useState<IEvents[]>(pageEvents);
     const [isEventsLoading, setIsEventsLoading] = useState(false);
     // Only events flagged for the navigation bar, and only while they are active
-    const navEvents = useMemo(
-        () => activeEvents.filter((event) => Boolean(event.is_active) && Boolean(event.show_on_navbar)),
-        [activeEvents],
-    );
+    const navEvents = useMemo(() => activeEvents.filter((event) => Boolean(event.is_active) && Boolean(event.show_on_navbar)), [activeEvents]);
     const placeholder = useMemo(() => {
         if (searchScopeLabel) {
             return `Search within ${searchScopeLabel}...`;
@@ -384,16 +386,13 @@ export default function FrontHeader() {
 
             {runningTexts.length > 0 && (
                 <div ref={marqueeContainerRef} className="relative overflow-hidden bg-secondary-foreground">
-                    <div
-                        ref={marqueeRef}
-                        className="flex gap-8 py-2 text-[11px] whitespace-nowrap text-secondary uppercase will-change-transform"
-                    >
+                    <div ref={marqueeRef} className="flex gap-8 py-2 text-[11px] whitespace-nowrap text-secondary uppercase will-change-transform">
                         {/* sequence A: repeat to ensure adequate width based on computed repeatFactor */}
                         {Array.from({ length: Math.max(1, repeatFactor) }).flatMap((_, repIdx) =>
                             runningTexts.map((t, i) => (
                                 <div className="flex" key={`a-${repIdx}-${i}-${t.id}`}>
                                     <img src="/poke-icon.png" className="me-4 h-4 w-4" />
-                                    <span className='text-muted'>{t.running_text}</span>
+                                    <span className="text-muted">{t.running_text}</span>
                                 </div>
                             )),
                         )}
@@ -402,7 +401,7 @@ export default function FrontHeader() {
                             runningTexts.map((t, i) => (
                                 <div className="flex" key={`b-${repIdx}-${i}-${t.id}`}>
                                     <img src="/poke-icon.png" className="me-4 h-4 w-4" />
-                                    <span className='text-muted'>{t.running_text}</span>
+                                    <span className="text-muted">{t.running_text}</span>
                                 </div>
                             )),
                         )}
@@ -458,7 +457,9 @@ export default function FrontHeader() {
                                                                     href={`/list-product/${event.id}`}
                                                                     className="flex flex-col items-start gap-1 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted"
                                                                 >
-                                                                    <span className="w-full truncate pr-10 text-sm font-normal uppercase">{event.name}</span>
+                                                                    <span className="w-full truncate pr-10 text-sm font-normal uppercase">
+                                                                        {event.name}
+                                                                    </span>
                                                                     {event.description && (
                                                                         <span className="line-clamp-2 w-full text-xs font-normal text-muted-foreground">
                                                                             {event.description}

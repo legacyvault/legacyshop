@@ -293,6 +293,8 @@ Route::get('/lang/{lang}', function ($lang) {
 //ROUTES
 Route::get('/', [ViewController::class, 'welcomePage'])->name('home');
 
+Route::get('/about-us', [ViewController::class, 'frontAboutUsPage'])->name('front.about-us');
+
 Route::get('/articles', [ViewController::class, 'frontArticlesPage'])->name('front.articles');
 Route::get('/articles/{slug}', [ViewController::class, 'frontArticleView'])->name('front.articles-view');
 

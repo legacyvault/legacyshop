@@ -377,6 +377,18 @@ class ViewController extends Controller
         ]);
     }
 
+    public function frontAboutUsPage(Request $request)
+    {
+        $events = $this->miscController->getAllActiveEvents($request);
+        return Inertia::render('front/about-us/index', [
+            'events' => $events,
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ]
+        ]);
+    }
+
     public function frontArticlesPage(Request $request)
     {
         $articles = $this->articleController->getAllArticle();

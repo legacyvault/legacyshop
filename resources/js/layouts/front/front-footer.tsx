@@ -26,6 +26,7 @@ export default function FrontFooter() {
             title: 'Company',
             links: [
                 { title: 'Home', url: '/' },
+                { title: 'About Us', url: '/about-us' },
                 { title: 'Articles', url: '/articles' },
             ],
         },
@@ -45,9 +46,7 @@ export default function FrontFooter() {
             label: 'Address',
             content: (
                 <>
-                    Jl. Contoh Alamat No. 123,
-                    <br />
-                    Jakarta Selatan 12345, Indonesia
+                    Jakarta Indonesia
                 </>
             ),
         },
@@ -72,7 +71,7 @@ export default function FrontFooter() {
         {
             icon: Building2,
             label: 'Company No.',
-            content: <>PT Legacy Vault Indonesia — 01.234.567.8-901.000</>,
+            content: <>PT Legacy Vault Indonesia</>,
         },
     ];
 
@@ -136,7 +135,7 @@ export default function FrontFooter() {
                         <h3 className="mb-6 font-semibold text-white">Contact</h3>
                         <ul className="space-y-4">
                             {contacts.map((contact) => (
-                                <li key={contact.label} className="flex items-start gap-3 text-gray-300">
+                                <li key={contact.label} className="flex items-center gap-3 text-gray-300">
                                     <contact.icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                                     <div>
                                         <span className="sr-only">{contact.label}: </span>
@@ -150,9 +149,7 @@ export default function FrontFooter() {
 
                 {/* Bottom bar */}
                 <div className="mt-16 flex flex-col gap-4 border-t border-background pt-8 text-sm text-gray-400 md:flex-row md:items-center md:justify-between">
-                    <p>
-                        © {currentYear} Legacy Vault. All rights reserved.
-                    </p>
+                    <p>© {currentYear} Legacy Vault. All rights reserved.</p>
 
                     {/* <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
                         {legal.map((item) => (
