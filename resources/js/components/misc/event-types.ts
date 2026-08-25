@@ -21,6 +21,8 @@ export type EventFormState = {
     description: string;
     discount: string;
     isActive: boolean;
+    showOnNavbar: boolean;
+    showOnHomepage: boolean;
     productIds: string[];
     imageFile: File | null;
     imageUrl: string | null;

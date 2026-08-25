@@ -80,6 +80,8 @@ export interface IEvents {
     discount: number;
     id: string;
     is_active: number;
+    show_on_navbar?: boolean | number | null;
+    show_on_homepage?: boolean | number | null;
     name: string;
     picture_url: string;
     thumbnail_url?: string | null;

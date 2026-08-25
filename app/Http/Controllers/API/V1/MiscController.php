@@ -350,7 +350,7 @@ class MiscController extends Controller
         return redirect()->back()->with('success', 'Successfully update voucher.');
     }
 
-    private function findActiveProductConflicts(array $productIds, ?int $excludeEventId = null)
+    private function findActiveProductConflicts(array $productIds, ?string $excludeEventId = null)
     {
         return EventProducts::whereIn('product_id', $productIds)
             ->whereHas('event', function ($q) use ($excludeEventId) {
@@ -377,6 +377,8 @@ class MiscController extends Controller
             'discount'    => 'required|numeric',
             'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
             'is_active'   => 'nullable',
+            'show_on_navbar' => 'nullable',
+            'show_on_homepage' => 'nullable',
             'product_ids' => 'required|array|min:1',
         ]);
 
@@ -425,6 +427,8 @@ class MiscController extends Controller
                 'picture_url' => $pictureUrl,
                 'thumbnail_url' => $thumbnailUrl,
                 'is_active' => $request->is_active ?? true,
+                'show_on_navbar' => $request->boolean('show_on_navbar'),
+                'show_on_homepage' => $request->boolean('show_on_homepage'),
             ]);
 
             // ---- ASSIGN PRODUCTS (plain pivot, no is_active on this table) ----
@@ -452,6 +456,8 @@ class MiscController extends Controller
             'discount'    => 'required|numeric',
             'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
             'is_active'   => 'nullable',
+            'show_on_navbar' => 'nullable',
+            'show_on_homepage' => 'nullable',
             'product_ids' => 'required|array|min:1',
         ]);
 
@@ -504,6 +510,8 @@ class MiscController extends Controller
                 'picture_url' => $pictureUrl,
                 'thumbnail_url' => $thumbnailUrl,
                 'is_active'   => $request->is_active ?? false,
+                'show_on_navbar' => $request->boolean('show_on_navbar'),
+                'show_on_homepage' => $request->boolean('show_on_homepage'),
             ]);
 
             // ---- SYNC EVENT PRODUCTS (plain pivot, no is_active column) ----

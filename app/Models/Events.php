@@ -18,7 +18,15 @@ class Events extends Model
         'picture_url',
         'thumbnail_url',
         'discount',
-        'is_active'
+        'is_active',
+        'show_on_navbar',
+        'show_on_homepage'
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'show_on_navbar' => 'boolean',
+        'show_on_homepage' => 'boolean',
     ];
 
     protected static function booted()
