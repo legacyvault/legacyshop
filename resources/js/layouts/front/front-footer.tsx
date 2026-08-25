@@ -43,7 +43,7 @@ export default function FrontFooter() {
     const contacts = [
         {
             icon: MapPin,
-            label: 'Address',
+            label: 'Based in',
             content: (
                 <>
                     Jakarta Indonesia
@@ -54,8 +54,8 @@ export default function FrontFooter() {
             icon: Mail,
             label: 'Email',
             content: (
-                <a href="mailto:hello@legacyvault.com" className="transition-colors duration-200 hover:text-white">
-                    hello@legacyvault.com
+                <a href="mailto:legacyvault.business@gmail.com" className="transition-colors duration-200 hover:text-white">
+                    legacyvault.business@gmail.com
                 </a>
             ),
         },
@@ -64,13 +64,13 @@ export default function FrontFooter() {
             label: 'Phone',
             content: (
                 <a href="tel:+622112345678" className="transition-colors duration-200 hover:text-white">
-                    +62 21 1234 5678
+                    +62-813-9300-757
                 </a>
             ),
         },
         {
             icon: Building2,
-            label: 'Company No.',
+            label: 'Location',
             content: <>PT Legacy Vault Indonesia</>,
         },
     ];

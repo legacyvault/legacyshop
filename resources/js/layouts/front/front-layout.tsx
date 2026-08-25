@@ -1,4 +1,5 @@
 import DialogHandler from '@/components/dialog-handler';
+import LoginPromptModal from '@/components/login-prompt-modal';
 import { CartProvider, useCart } from '@/contexts/CartContext';
 import { SearchBarProvider } from '@/contexts/SearchBarContext';
 import { SharedData } from '@/types';
@@ -43,6 +44,7 @@ function FrontChildLayout({ children }: PropsWithChildren) {
     return (
         <>
             <DialogHandler />
+            <LoginPromptModal />
             <FrontHeader />
             <div className="relative min-h-screen bg-background">
                 <div

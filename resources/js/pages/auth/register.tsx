@@ -92,7 +92,7 @@ export default function Register() {
     return (
         <>
             <DialogHandler />
-            <AuthLayout title="Create an account" description="Enter your details below to create your account">
+            <AuthLayout title="Create an account" description="Enter your details below to create your account" showBackToHome>
                 <Head title="Register" />
                 <form method="POST" className="flex flex-col gap-6" onSubmit={submit}>
                     <div className="grid gap-6">

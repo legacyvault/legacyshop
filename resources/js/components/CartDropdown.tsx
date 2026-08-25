@@ -113,8 +113,11 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
         }
     }, [items, computePriceInfo]);
 
+    // No `relative` below `sm`: the panel then anchors to the header instead of this button,
+    // so a full-width mobile sheet can't be pushed off-screen by the actions sitting between
+    // the cart icon and the viewport edge.
     return (
-        <div className="relative z-20" ref={dropdownRef}>
+        <div className="z-20 sm:relative" ref={dropdownRef}>
             {/* Cart Icon Button */}
             <button
                 onClick={() => openCart(!isCartOpen)}
@@ -130,8 +133,8 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
 
             {/* Dropdown */}
             {isCartOpen && (
-                <div className="absolute top-full right-0 z-50 mt-2 w-80 rounded-lg bg-background shadow-lg">
-                    <div className="p-4">
+                <div className="absolute top-full right-3 left-3 z-50 mt-2 rounded-lg border border-border/60 bg-background shadow-lg sm:right-0 sm:left-auto sm:w-80">
+                    <div className="p-3 sm:p-4">
                         <div className="mb-4 flex items-center justify-between">
                             <h3 className="text-lg font-semibold text-card-foreground">Shopping Cart</h3>
                             <button onClick={() => openCart(false)} className="rounded-md p-1 hover:bg-muted">
@@ -167,7 +170,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                         ) : (
                             <>
                                 {/* Cart Items */}
-                                <div className="mb-4 max-h-64 space-y-3 overflow-y-auto">
+                                <div className="mb-4 max-h-[50vh] space-y-3 overflow-y-auto sm:max-h-64">
                                     {items.map((item) => {
                                         const priceInfo = computePriceInfo(item);
                                         return (
@@ -240,7 +243,7 @@ export const CartDropdown = ({ auth }: { auth: Auth }) => {
                                 </div>
 
                                 {/* Total */}
-                                <div className="-mx-4 rounded-b-lg border-t border-foreground/20 px-4 pt-4">
+                                <div className="-mx-3 rounded-b-lg border-t border-foreground/20 px-3 pt-4 sm:-mx-4 sm:px-4">
                                     {/* <div className="mb-4 flex items-center justify-between">
                                         <span className="font-medium text-foreground">Total:</span>
                                         <span className="text-lg font-bold text-foreground">{formatPrice(totalPrice)}</span>

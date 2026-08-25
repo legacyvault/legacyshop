@@ -255,7 +255,6 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
                                         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none"
                                         style={{ backgroundImage: `url('${banner.picture_url ?? '/banner-example.jpg'}')` }}
                                     />
-
                                 </button>
                             </div>
                         );
@@ -298,8 +297,7 @@ const ProductCardsSection = ({ products, title }: { products: IProducts[]; title
             if (width >= 1280) return 5;
             if (width >= 1024) return 4;
             if (width >= 768) return 3;
-            if (width >= 640) return 2;
-            return 1;
+            return 2;
         };
 
         const updateVisibleCount = () => {
@@ -390,7 +388,7 @@ const ProductCardsSection = ({ products, title }: { products: IProducts[]; title
                     <div className="overflow-hidden">
                         <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
                             {slides.map((slide, index) => (
-                                <div key={index} className="flex w-full min-w-full shrink-0 basis-full gap-4 px-1">
+                                <div key={index} className="flex w-full min-w-full shrink-0 basis-full gap-2 px-1 sm:gap-4">
                                     {slide.map((product, itemIndex) => (
                                         <div key={product ? product.id : `placeholder-${itemIndex}`} className="min-w-0 flex-1">
                                             {product ? (
@@ -462,8 +460,7 @@ const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEv
             if (width >= 1280) return 5;
             if (width >= 1024) return 4;
             if (width >= 768) return 3;
-            if (width >= 640) return 2;
-            return 1;
+            return 2;
         };
 
         const updateVisibleCount = () => {
@@ -526,7 +523,7 @@ const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEv
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 {/* Section Header */}
                 <div className="mb-12 text-center">
-                    <h2 className="mb-4 text-4xl font-bold text-primary font-pixel">{title}</h2>
+                    <h2 className="mb-4 font-pixel text-4xl font-bold text-primary">{title}</h2>
                 </div>
                 {/* Product Carousel */}
                 <div className="relative">
@@ -554,7 +551,7 @@ const ProductCardsSectionEvent = ({ products, title, event_id }: { products: IEv
                     <div className="overflow-hidden">
                         <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
                             {slides.map((slide, index) => (
-                                <div key={index} className="flex w-full min-w-full shrink-0 basis-full gap-4 px-1">
+                                <div key={index} className="flex w-full min-w-full shrink-0 basis-full gap-2 px-1 sm:gap-4">
                                     {slide.map((product, itemIndex) => (
                                         <div key={product ? product.id : `placeholder-${itemIndex}`} className="min-w-0 flex-1">
                                             {product ? (
@@ -724,17 +721,13 @@ function Welcome() {
                 <section className="w-full overflow-hidden bg-background pb-24 text-foreground">
                     <div className="mx-auto max-w-6xl px-4 sm:px-6">
                         {/* Headline on the first row, supporting copy + CTA right-aligned on the second */}
-                        <div className="flex flex-col gap-4 ">
-                            <h1 className="font-pixel text-3xl text-center font-black text-balance md:text-3xl">
-                                {translations.home.welcome}
-                            </h1>
+                        <div className="flex flex-col gap-4">
+                            <h1 className="text-center font-pixel text-3xl font-black text-balance md:text-3xl">{translations.home.welcome}</h1>
 
                             <div className="self-center text-center">
-                                <p className="md:text-md max-w-xl text-sm text-muted-foreground">
-                                    {translations.home.description1}
-                                </p>
+                                <p className="md:text-md max-w-xl text-sm text-muted-foreground">{translations.home.description1}</p>
 
-                                <div className="mt-4 flex flex-wrap items-center gap-3 justify-center">
+                                <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
                                     <Button className="px-7 transition hover:scale-105">Get Started</Button>
                                 </div>
                             </div>
@@ -743,9 +736,9 @@ function Welcome() {
                         {/* Caption on the left, sequence on the right — playback is driven by hover */}
                         <div className="mt-4 flex flex-col items-stretch gap-8 rounded-3xl bg-primary p-8 text-white lg:flex-row lg:gap-16 lg:p-12">
                             <div className="flex w-full flex-col items-start justify-between gap-4 lg:flex-[0_1_22rem]">
-                                <p className="max-w-md text-md">{translations.home.description2}</p>
+                                <p className="text-md max-w-md">{translations.home.description2}</p>
                                 <div>
-                                    <p className="max-w-md text-md">Discover more about our work, technology, and how we bring ideas to life.</p>
+                                    <p className="text-md max-w-md">Discover more about our work, technology, and how we bring ideas to life.</p>
                                     <Button
                                         variant={'outline'}
                                         className="mt-4 border-white/50 bg-transparent px-7 text-white transition hover:scale-105 hover:bg-white hover:text-primary"
@@ -786,7 +779,6 @@ function Welcome() {
                         <StaggerTestimonials testimonials={activeTestimonials} />
                     </section>
                 )}
-
 
                 <div className="my-8">
                     <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />

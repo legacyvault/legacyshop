@@ -41,7 +41,7 @@ const values = [
 
 const SectionHead = ({ label, title }: { label: string; title: string }) => (
     <div className="mb-10">
-        <div className="flex items-baseline gap-4">
+        <div className="flex items-center gap-4">
             <span className="text-xs font-bold tracking-widest text-muted-foreground">{label}</span>
             <h2 className="font-pixel text-2xl font-bold text-primary md:text-3xl">{title}</h2>
         </div>

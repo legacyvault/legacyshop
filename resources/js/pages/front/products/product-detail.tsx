@@ -578,7 +578,7 @@ function ReccomendationList({ rec_prod }: { rec_prod: IProducts[] }) {
         <>
             <div className="mx-auto w-full max-w-7xl px-4 py-8">
                 <h2 className="mb-6 text-2xl font-semibold">Top Picks for You</h2>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-6 lg:grid-cols-5">
                     {rec_prod.map((p) => (
                         <ProductCard key={p.id} product={p} onClick={() => router.get(`/view-product/${p.id}`)} />
                     ))}
