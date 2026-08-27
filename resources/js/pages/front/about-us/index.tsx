@@ -20,17 +20,17 @@ const craftSteps = [
         step: 'III.',
         title: 'Quality Check',
         description:
-            "Every Extended Art is checked by hand against an actual card. We match the card's color and texture, then finish it with a fine glitter coat — so the piece doesn't just look premium next to your card. It feels like it too.",
+            "Every Extended Art is checked by hand against an actual card. We match the card's color and texture, then finish it with a fine glitter coat - so the piece doesn't just look premium next to your card. It feels like it too.",
     },
 ];
 
 const values = [
     {
         title: 'Hand-Drawn, Always',
-        description: 'No AI extensions, no filters — every Extended Art is drawn by our talented team of illustrators.',
+        description: 'No AI extensions, no filters - every Extended Art is drawn by our talented team of illustrators.',
     },
     {
-        title: 'Quality Obsessed',
+        title: 'Quality First',
         description: 'Our Extended Art goes through multiple quality checks, made with premium materials that complement your collection perfectly.',
     },
     {
@@ -51,11 +51,15 @@ const SectionHead = ({ label, title }: { label: string; title: string }) => (
 
 const craftPhotos = [
     {
-        src: '/about/craft-drawing-1.jpeg',
+        src: '/about/image-case-2-1.webp',
         alt: 'Legacy Vault illustrator drawing an extended art on a pen display at a card show',
     },
     {
-        src: '/about/craft-drawing-2.jpeg',
+        src: '/about/craft-drawing-1.jpeg',
+        alt: 'Close-up of an illustrator extending card artwork stroke by stroke',
+    },
+    {
+        src: '/about/craft-drawing-3.jpeg',
         alt: 'Close-up of an illustrator extending card artwork stroke by stroke',
     },
 ];
@@ -72,7 +76,7 @@ function AboutUs() {
                         <div className="mb-6 flex items-center gap-3">
                             <span className="h-px w-7 bg-primary" />
                             <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">
-                                Legacy Vault — Hand-Drawn Extended Art
+                                Legacy Vault - Hand-Drawn Extended Art
                             </span>
                         </div>
                         <h1 className="font-pixel text-3xl leading-snug font-black text-balance text-primary md:text-4xl">
@@ -139,7 +143,7 @@ function AboutUs() {
                                 loading="lazy"
                             />
                             <figcaption className="mt-4 text-sm text-muted-foreground">
-                                Umbreon ex SAR — Terastal Festival. The card that started all of this.
+                                Umbreon ex SAR - Terastal Festival. The card that started all of this.
                             </figcaption>
                         </figure>
                     </div>
@@ -151,7 +155,7 @@ function AboutUs() {
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <SectionHead label="02" title="THE CRAFT" />
 
-                    <div className="mb-12 grid gap-6 sm:grid-cols-2">
+                    <div className="mb-8 grid gap-6 sm:grid-cols-2 md:grid-cols-3">
                         {craftPhotos.map((photo) => (
                             <img
                                 key={photo.src}
@@ -163,7 +167,7 @@ function AboutUs() {
                         ))}
                     </div>
 
-                    <div className="grid gap-10 md:grid-cols-3">
+                    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 md:grid-cols-3">
                         {craftSteps.map((item) => (
                             <div key={item.step} className="border-t border-border pt-5">
                                 <span className="block text-xl font-bold text-primary italic">{item.step}</span>
@@ -178,15 +182,23 @@ function AboutUs() {
             {/* Values */}
             <section className="py-16">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="grid gap-10 rounded-3xl bg-card p-8 text-card-foreground sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-16">
+                    <div className="grid gap-10 rounded-3xl items-end bg-card p-8 text-card-foreground sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-16">
                         <div>
                             <h2 className="font-pixel text-2xl leading-relaxed font-bold text-primary md:text-3xl">WHAT WE'RE ALL ABOUT</h2>
-                            {/* <img
-                                src="/about/instagram-case-3.jpg"
-                                alt="Collector holding a Legacy Vault extended art case out in the city"
-                                className="mt-8 aspect-[4/5] w-full rounded-2xl object-cover shadow-lg"
-                                loading="lazy"
-                            /> */}
+                            <div className="mt-8 flex flex-row items-stretch gap-4 sm:gap-6">
+                                <img
+                                    src="/about/value-1.jpeg"
+                                    alt="Collector holding a Legacy Vault extended art case out in the city"
+                                    className="aspect-[4/5] min-w-0 flex-1 rounded-2xl object-cover shadow-lg"
+                                    loading="lazy"
+                                />
+                                <img
+                                    src="/about/value-2.jpeg"
+                                    alt="Collector holding a Legacy Vault extended art case out in the city"
+                                    className="aspect-[4/5] min-w-0 flex-1 rounded-2xl object-cover shadow-lg"
+                                    loading="lazy"
+                                />
+                            </div>
                         </div>
 
                         <ul className="divide-y divide-border">
