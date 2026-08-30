@@ -368,9 +368,24 @@ class MiscController extends Controller
         try {
             DB::beginTransaction();
 
-            // NOTE: the max-3-active-events rule is enforced in Events::booted()'s
-            // saving() hook, which throws an Exception if exceeded — no need to
-            // duplicate that check here; it will be caught below and rolled back.
+            // ---- CHECK MAX ACTIVE EVENT ----
+            // if ($request->is_active) {
+            //     $activeCount = Events::where('is_active', 1)->count();
+            //     if ($activeCount >= 3) {
+            //         return redirect()->back()->with('error', 'Maximum 3 active events allowed.');
+            //     }
+            // }
+
+            // ---- CHECK PRODUCT BELONGS TO ONLY ONE EVENT ----
+            $existingProducts = EventProducts::whereIn('product_id', $request->product_ids)->get();
+
+            if ($existingProducts->count() > 0) {
+                $usedProductIds = $existingProducts->pluck('product_id')->toArray();
+
+                return redirect()->back()
+                    ->with('error', 'Some products are already assigned to another event: ' . implode(', ', $usedProductIds))
+                    ->withInput();
+            }
 
             // ---- UPLOAD IMAGE ----
             $pictureUrl = null;
@@ -387,20 +402,12 @@ class MiscController extends Controller
                 'is_active' => $request->is_active ?? true,
             ]);
 
-            // ---- ASSIGN PRODUCTS, AUTO-DEACTIVATING THEM ELSEWHERE ----
-            // A product can be attached to many events, but only ACTIVE in one
-            // at a time. Assigning it here makes it active in this event and
-            // deactivates it in any other event where it was active.
+            // ---- INSERT EVENT PRODUCTS ----
             foreach ($request->product_ids as $pid) {
-                EventProducts::where('product_id', $pid)
-                    ->where('event_id', '<>', $event->id)
-                    ->where('is_active', true)
-                    ->update(['is_active' => false]);
-
-                EventProducts::updateOrCreate(
-                    ['event_id' => $event->id, 'product_id' => $pid],
-                    ['is_active' => true]
-                );
+                EventProducts::create([
+                    'event_id' => $event->id,
+                    'product_id' => $pid,
+                ]);
             }
 
             DB::commit();
@@ -432,9 +439,29 @@ class MiscController extends Controller
 
             $event = Events::findOrFail($id);
 
-            // NOTE: the max-3-active-events rule is enforced in Events::booted()'s
-            // saving() hook (it excludes the current record's own id), so no need
-            // to duplicate that check here — it will be caught below and rolled back.
+            // ---- CHECK ACTIVE LIMIT (exclude current event) ----
+            // if ($request->is_active) {
+            //     $activeCount = Events::where('is_active', 1)
+            //         ->where('id', '<>', $id)
+            //         ->count();
+
+            //     if ($activeCount >= 3) {
+            //         return redirect()->back()->with('error', 'Maximum 3 active events allowed.');
+            //     }
+            // }
+
+            // ---- CHECK PRODUCT CAN ONLY BE IN ONE EVENT ----
+            // exclude products already belonging to this event
+            $existingProducts = EventProducts::whereIn('product_id', $request->product_ids)
+                ->where('event_id', '<>', $id) // exclude current event
+                ->get();
+
+            if ($existingProducts->count() > 0) {
+                $usedProductIds = $existingProducts->pluck('product_id')->toArray();
+                return redirect()->back()
+                    ->with('error', 'Some products are already assigned to another event: ' . implode(', ', $usedProductIds))
+                    ->withInput();
+            }
 
             // ---- IMAGE UPDATE (optional) ----
             $pictureUrl = $event->picture_url;
@@ -454,27 +481,14 @@ class MiscController extends Controller
                 'is_active'   => $request->is_active ?? false,
             ]);
 
-            // ---- UPDATE EVENT PRODUCTS ----
-            // Drop products that were removed from this event's list entirely.
-            EventProducts::where('event_id', $id)
-                ->whereNotIn('product_id', $request->product_ids)
-                ->delete();
+            // remove old
+            EventProducts::where('event_id', $id)->delete();
 
-            // For each product kept/added on this event: deactivate it in any
-            // OTHER event where it's currently active (a product can be attached
-            // to many events but only active in one at a time), then activate
-            // it (or create the assignment) here. This also naturally allows
-            // activating a product that's currently inactive everywhere.
             foreach ($request->product_ids as $pid) {
-                EventProducts::where('product_id', $pid)
-                    ->where('event_id', '<>', $id)
-                    ->where('is_active', true)
-                    ->update(['is_active' => false]);
-
-                EventProducts::updateOrCreate(
-                    ['event_id' => $id, 'product_id' => $pid],
-                    ['is_active' => true]
-                );
+                EventProducts::create([
+                    'event_id' => $id,
+                    'product_id' => $pid,
+                ]);
             }
 
             DB::commit();
@@ -516,12 +530,6 @@ class MiscController extends Controller
             // Load events with products
             $events = Events::orderBy('name', 'asc')
                 ->with([
-                    // Only show products that are ACTIVE within this event —
-                    // a product deactivated here (because it's now active in
-                    // another event) should not surface on this event anymore.
-                    'event_products' => function ($query) {
-                        $query->where('is_active', true);
-                    },
                     'event_products.product' => function ($query) {
                         $query->with([
                             'stocks',
