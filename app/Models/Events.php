@@ -22,21 +22,21 @@ class Events extends Model
 
     protected static function booted()
     {
-        static::saving(function ($events) {
-            // Only enforce if is_active is being set to 1
-            if ($events->is_active) {
-                $activeCount = self::where('is_active', 1)
-                    ->when($events->id, function ($query) use ($events) {
-                        // Exclude the current record if updating
-                        return $query->where('id', '<>', $events->id);
-                    })
-                    ->count();
+        // static::saving(function ($events) {
+        //     // Only enforce if is_active is being set to 1
+        //     if ($events->is_active) {
+        //         $activeCount = self::where('is_active', 1)
+        //             ->when($events->id, function ($query) use ($events) {
+        //                 // Exclude the current record if updating
+        //                 return $query->where('id', '<>', $events->id);
+        //             })
+        //             ->count();
 
-                if ($activeCount >= 3) {
-                    throw new \Exception("Maximum of 3 active events allowed.");
-                }
-            }
-        });
+        //         if ($activeCount >= 3) {
+        //             throw new \Exception("Maximum of 3 active events allowed.");
+        //         }
+        //     }
+        // });
     }
 
     public function event_products()

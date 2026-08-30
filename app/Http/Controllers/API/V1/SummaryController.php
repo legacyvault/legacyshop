@@ -24,17 +24,9 @@ class SummaryController extends Controller
      * the trend range from a date-picker on the frontend. When omitted, falls
      * back to the last 7 days (today inclusive), same as before.
      */
-    public function dashboard(Request $request)
+    public function dashboard()
     {
-        $validated = $request->validate([
-            'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
-        ]);
-
-        $summary = $this->buildSalesSummary(
-            $validated['start_date'] ?? null,
-            $validated['end_date'] ?? null,
-        );
+        $summary = $this->buildSalesSummary();
 
         return Inertia::render('dashboard', [
             'summary' => $summary,
@@ -43,22 +35,14 @@ class SummaryController extends Controller
 
     /**
      * Build segmented KPI metrics and sales trend data.
-     *
-     * @param string|null $startDate Y-m-d, inclusive. Defaults to 6 days before $endDate.
-     * @param string|null $endDate   Y-m-d, inclusive. Defaults to today.
      */
-    protected function buildSalesSummary(?string $startDate = null, ?string $endDate = null): array
+    protected function buildSalesSummary(): array
     {
         $now = Carbon::now();
         $today = $now->copy()->startOfDay();
 
-        $trendEnd = $endDate
-            ? Carbon::parse($endDate)->endOfDay()
-            : $now->copy()->endOfDay();
-
-        $trendStart = $startDate
-            ? Carbon::parse($startDate)->startOfDay()
-            : $trendEnd->copy()->subDays(6)->startOfDay();
+        $trendStart = $now->copy()->subDays(6)->startOfDay();
+        $trendEnd = $now->copy()->endOfDay();
 
         $indonesia = $this->buildSegmentData(self::INDONESIA_METHODS, $trendStart, $trendEnd, $today);
         $international = $this->buildSegmentData(self::INTERNATIONAL_METHODS, $trendStart, $trendEnd, $today);
@@ -75,10 +59,6 @@ class SummaryController extends Controller
             'all' => $all,
             'exchangeRateAvailable' => $usdToIdr !== null,
             'exchangeRate' => $usdToIdr,
-            'range' => [
-                'start' => $trendStart->format('Y-m-d'),
-                'end' => $trendEnd->format('Y-m-d'),
-            ],
         ];
     }
 
@@ -100,11 +80,9 @@ class SummaryController extends Controller
             ->whereBetween('created_at', [$today, $today->copy()->endOfDay()])
             ->count();
 
-        // Previous period is the same length as [trendStart, trendEnd], immediately preceding it —
-        // so a 30-day selection is compared against the prior 30 days, not a fixed 7.
-        $periodLengthDays = $trendStart->diffInDays($trendEnd) + 1;
+        $previousTrendStart = $trendStart->copy()->subDays(7);
+
         $previousTrendEnd = $trendStart->copy()->subSecond();
-        $previousTrendStart = $trendStart->copy()->subDays($periodLengthDays)->startOfDay();
 
         $currentPeriodRevenue = (float) (clone $paidOrders)
             ->whereBetween('created_at', [$trendStart, $trendEnd])
@@ -164,10 +142,9 @@ class SummaryController extends Controller
             ->whereBetween('created_at', [$today, $today->copy()->endOfDay()])
             ->count();
 
-        // Same dynamic-length previous-period logic as buildSegmentData().
-        $periodLengthDays = $trendStart->diffInDays($trendEnd) + 1;
+        $previousTrendStart = $trendStart->copy()->subDays(7);
+
         $previousTrendEnd = $trendStart->copy()->subSecond();
-        $previousTrendStart = $trendStart->copy()->subDays($periodLengthDays)->startOfDay();
 
         $currentPeriodRevenue = (float) (clone $baseQuery())
             ->whereBetween('created_at', [$trendStart, $trendEnd])
