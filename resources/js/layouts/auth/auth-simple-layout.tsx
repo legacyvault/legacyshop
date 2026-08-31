@@ -1,17 +1,29 @@
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Link } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import { type PropsWithChildren } from 'react';
 
 interface AuthLayoutProps {
     name?: string;
     title?: string;
     description?: string;
+    showBackToHome?: boolean;
 }
 
-export default function AuthSimpleLayout({ children, title, description }: PropsWithChildren<AuthLayoutProps>) {
+export default function AuthSimpleLayout({ children, title, description, showBackToHome = false }: PropsWithChildren<AuthLayoutProps>) {
     return (
         <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
             <div className="w-full max-w-sm">
+                {showBackToHome && (
+                    <Link
+                        href={route('home')}
+                        className="mb-6 inline-flex items-center gap-2 self-start text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to homepage
+                    </Link>
+                )}
+
                 <div className="flex flex-col gap-8">
                     <div className="flex flex-col items-center gap-4">
                         <Link href={route('home')} className="flex flex-col items-center gap-2 font-medium">

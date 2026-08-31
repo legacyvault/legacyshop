@@ -68,6 +68,7 @@ export interface SharedData {
     rec_prod: IProducts[];
     events: IEvents[];
     event?: IEvents | null;
+    testimonials: ITestimonial[];
     isIndonesian: boolean;
     internationalShipmentPrice: number | null;
     countryCode: string | null;
@@ -79,9 +80,12 @@ export interface IEvents {
     description: string;
     discount: number;
     id: string;
-    is_active: number;
+    is_active: boolean;
+    show_on_navbar?: boolean | number | null;
+    show_on_homepage?: boolean | number | null;
     name: string;
     picture_url: string;
+    thumbnail_url?: string | null;
     updated_at: string | Date;
     event_products: IEventProduct[];
 }
@@ -208,6 +212,17 @@ export interface IBanner {
     button_text: string;
 }
 
+export interface ITestimonial {
+    id: string;
+    name: string;
+    instagram_account: string | null;
+    message: string;
+    picture_url: string;
+    thumbnail_url: string | null;
+    created_at: string | Date;
+    updated_at: string | Date;
+}
+
 export interface IRunningText {
     id: string;
     running_text: string;
@@ -247,6 +262,7 @@ export interface IUnit {
     usd_price?: number;
     discount?: number;
     picture_url?: string;
+    thumbnail_url?: string | null;
     categories: ICategories[];
     is_active: boolean;
 }
@@ -347,6 +363,7 @@ export interface IArticle {
     created_at?: string;
     updated_at?: string;
     image_cover: string | null;
+    thumbnail_url?: string | null;
 }
 
 export interface IWarehouse {
@@ -500,12 +517,26 @@ export interface IDashboardSegment {
     productHierarchy: IProductHierarchySummary[];
 }
 
+export type DashboardRangePreset = 'today' | '7d' | '30d' | 'lifetime' | 'custom';
+
+export interface IDashboardRange {
+    preset: DashboardRangePreset;
+    start: string;
+    end: string;
+    granularity: 'hour' | 'day' | 'month';
+    /** Earliest date a custom range may start from (30 days before today). */
+    minDate: string;
+    /** Latest date a custom range may end on (today). */
+    maxDate: string;
+}
+
 export interface IDashboardSummary {
     indonesia: IDashboardSegment;
     international: IDashboardSegment;
     all: IDashboardSegment | null;
     exchangeRateAvailable: boolean;
     exchangeRate: number | null;
+    range: IDashboardRange;
 }
 
 export interface IProductHierarchySummary {
@@ -614,6 +645,7 @@ export interface IProductGroupProduct {
     pictures?: {
         id: string;
         url: string;
+        thumbnail_url?: string | null;
         product_id: string;
         created_at?: string;
         updated_at?: string;
@@ -666,6 +698,7 @@ export interface IProducts {
         product_id: string;
         updated_at: string;
         url: string;
+        thumbnail_url?: string | null;
     }[];
     product_discount: number;
     product_name: string;

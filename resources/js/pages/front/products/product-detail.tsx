@@ -1,4 +1,5 @@
 import ProductCard from '@/components/product-card';
+import Seo from '@/components/seo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,24 +19,37 @@ import {
 } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import { Minus, Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 
 type PageProps = SharedData & {
     product: IProducts;
 };
 
-export default function ProductDetail() {
-    const { auth, translations, locale, product, rec_prod } = usePage<PageProps>().props;
+function ProductDetail() {
+    const { translations, product, rec_prod } = usePage<PageProps>().props;
     return (
-        <FrontLayout auth={auth} translations={translations} locale={locale}>
+        <>
+            <Seo
+                title={product?.product_name}
+                description={
+                    product?.description ||
+                    [product?.product_name, product?.unit?.name && `from the ${product.unit.name} collection`, 'at Legacy Vault']
+                        .filter(Boolean)
+                        .join(' ')
+                }
+            />
             <DetailContent product={product} translations={translations} />
             <ReccomendationList rec_prod={rec_prod} />
-        </FrontLayout>
+        </>
     );
 }
 
+ProductDetail.layout = (page: ReactNode) => <FrontLayout>{page}</FrontLayout>;
+
+export default ProductDetail;
+
 function DetailContent({ product }: { product: IProducts; translations: any }) {
-    const { addItem, items, updateQuantity, openCart } = useCart();
+    const { addItem, updateQuantity, openCart, ensureItemsLoaded } = useCart();
 
     const pictures = product?.pictures ?? [];
     const [activeIndex, setActiveIndex] = useState(0);
@@ -136,6 +150,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
     const totalStock = Number(product.total_stock);
 
     const mainImage = pictures?.[activeIndex]?.url || 'https://via.placeholder.com/600x800?text=No+Image';
+    // Cart line items don't need the full-size hero image — prefer the resized thumbnail,
+    // falling back to the full-size url for pictures uploaded before thumbnails existed.
+    const cartImage = pictures?.[activeIndex]?.thumbnail_url || mainImage;
 
     const productStockInsufficient = Number(totalStock ?? 0) < selectedQty;
     const subcatStockInsufficient = selectedSubcat ? Number(selectedSubcat.total_stock ?? 0) < selectedQty : false;
@@ -183,7 +200,11 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         variantsHaveStock,
     ]);
 
-    const handleAddToCart = () => {
+    const handleAddToCart = async () => {
+        // add.cart takes an absolute target quantity, so the existing line has to
+        // be known before we can add to it — the context loads items lazily now.
+        const currentItems = await ensureItemsLoaded();
+
         const meta: ICart = {
             category: selectedCat ? [selectedCat] : [],
             category_id: selectedCat?.id ?? null,
@@ -211,10 +232,10 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
         ].join('|');
         const name = `${product.product_name}`;
         const sku = `${product.product_sku}`;
-        const existing = items.find((i) => i.id === compositeId)?.quantity ?? 0;
+        const existing = currentItems.find((i) => i.id === compositeId)?.quantity ?? 0;
         const targetQty = Math.max(1, existing + selectedQty);
 
-        void addItem({ id: compositeId, name, price: finalPrice, image: mainImage, meta, sku }, { quantity: targetQty, meta });
+        void addItem({ id: compositeId, name, price: finalPrice, image: cartImage, meta, sku }, { quantity: targetQty, meta });
         openCart(true);
     };
 
@@ -269,14 +290,27 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                         }`}
                                         onClick={() => setActiveIndex(i)}
                                     >
-                                        <img src={p.url} alt={`thumb-${i}`} className="aspect-square w-20 object-cover" />
+                                        <img
+                                            src={p.url}
+                                            alt={`thumb-${i}`}
+                                            className="aspect-square w-20 object-cover"
+                                            loading="lazy"
+                                            width={80}
+                                            height={80}
+                                        />
                                     </button>
                                 ))}
                             </div>
                         )}
                         <div className="overflow-hidden rounded-lg border bg-background">
                             <div className="relative aspect-[3/4] w-full md:aspect-auto md:h-[560px]">
-                                <img src={mainImage} alt={product.product_name} className="h-full w-full object-contain p-6" />
+                                <img
+                                    src={mainImage}
+                                    alt={product.product_name}
+                                    className="h-full w-full object-contain p-6"
+                                    width={900}
+                                    height={1200}
+                                />
                             </div>
                         </div>
                     </div>
@@ -285,7 +319,13 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     <div className="md:hidden">
                         <div className="overflow-hidden rounded-lg border bg-background">
                             <div className="relative aspect-[3/4] w-full">
-                                <img src={mainImage} alt={product.product_name} className="h-full w-full object-contain p-6" />
+                                <img
+                                    src={mainImage}
+                                    alt={product.product_name}
+                                    className="h-full w-full object-contain p-6"
+                                    width={900}
+                                    height={1200}
+                                />
                             </div>
                         </div>
                         {pictures.length > 0 && (
@@ -298,7 +338,14 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                                         }`}
                                         onClick={() => setActiveIndex(i)}
                                     >
-                                        <img src={p.url} alt={`thumb-${i}`} className="aspect-square w-full object-cover" />
+                                        <img
+                                            src={p.url}
+                                            alt={`thumb-${i}`}
+                                            className="aspect-square w-full object-cover"
+                                            loading="lazy"
+                                            width={80}
+                                            height={80}
+                                        />
                                     </button>
                                 ))}
                             </div>
@@ -312,6 +359,9 @@ function DetailContent({ product }: { product: IProducts; translations: any }) {
                     {/* <div className="mb-2 text-xs text-muted-foreground">
                         <span className="font-medium">{[product.unit?.name, product.product_sku].filter(Boolean).join(' | ')}</span>
                     </div> */}
+                    <div className="mb-2 text-xs text-muted-foreground">
+                        <span className="font-medium">{product.product_sku}</span>
+                    </div>
 
                     {hasEventDiscount && (
                         <div className="mb-3 flex items-center gap-2">
@@ -541,7 +591,7 @@ function ReccomendationList({ rec_prod }: { rec_prod: IProducts[] }) {
         <>
             <div className="mx-auto w-full max-w-7xl px-4 py-8">
                 <h2 className="mb-6 text-2xl font-semibold">Top Picks for You</h2>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-6 lg:grid-cols-5">
                     {rec_prod.map((p) => (
                         <ProductCard key={p.id} product={p} onClick={() => router.get(`/view-product/${p.id}`)} />
                     ))}

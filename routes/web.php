@@ -106,6 +106,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     //Carts API
     Route::post('add-cart', [CartsController::class, 'addToCart'])->name('add.cart');
     Route::get('carts/{id}', [CartsController::class, 'getCart'])->name('get.cart');
+    Route::get('carts/{id}/summary', [CartsController::class, 'getCartSummary'])->name('cart.summary');
+    Route::get('carts/{id}/items', [CartsController::class, 'getCartItems'])->name('cart.items');
 
     //Profile API
     Route::post('update-profile', [UserController::class, 'updateProfile'])->name('profile.edit');
@@ -144,10 +146,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('sub-category', [SubCategoryController::class, 'getAllSubCategory'])->name('subcat');
     Route::get('sub-category/{id}', [SubCategoryController::class, 'getSubCategoryById'])->name('subcat.id');
 
-    Route::get('division', [DivisionController::class, 'getAllDivision'])->name('division');
+    Route::get('division', [DivisionController::class, 'getAllDivision'])->name('division.list');
     Route::get('division/{id}', [DivisionController::class, 'getDivisionById'])->name('division.id');
 
-    Route::get('variant', [VariantController::class, 'getAllVariant'])->name('variant');
+    Route::get('variant', [VariantController::class, 'getAllVariant'])->name('variant.list');
     Route::get('variant/{id}', [VariantController::class, 'getVariantById'])->name('variant.id');
 
     Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
@@ -206,6 +208,11 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Banner API
     Route::post('add-banner', [MiscController::class, 'createBanner'])->name('add-banner');
     Route::post('update-banner', [MiscController::class, 'updateBanner'])->name('edit-banner');
+
+    //Testimonial API
+    Route::post('create-testimonial', [MiscController::class, 'createTestimonial'])->name('testimonial.create');
+    Route::post('update-testimonial/{id}', [MiscController::class, 'updateTestimonial'])->name('testimonial.update');
+    Route::delete('delete-testimonial/{id}', [MiscController::class, 'deleteTestimonial'])->name('testimonial.delete');
 
     //Article API
     Route::post('create-article', [ArticleController::class, 'createArticle'])->name('create-article');
@@ -285,6 +292,8 @@ Route::get('/lang/{lang}', function ($lang) {
 
 //ROUTES
 Route::get('/', [ViewController::class, 'welcomePage'])->name('home');
+
+Route::get('/about-us', [ViewController::class, 'frontAboutUsPage'])->name('front.about-us');
 
 Route::get('/articles', [ViewController::class, 'frontArticlesPage'])->name('front.articles');
 Route::get('/articles/{slug}', [ViewController::class, 'frontArticleView'])->name('front.articles-view');
@@ -380,6 +389,7 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('view-banner', [ViewController::class, 'bannerPage']);
         Route::get('voucher', [ViewController::class, 'voucherPage']);
         Route::get('event', [ViewController::class, 'eventPage']);
+        Route::get('testimonial', [ViewController::class, 'testimonialPage']);
     });
 
     Route::prefix('admin-articles')->group(function () {

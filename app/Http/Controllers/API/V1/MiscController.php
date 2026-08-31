@@ -9,6 +9,7 @@ use App\Models\Banner;
 use App\Models\EventProducts;
 use App\Models\Events;
 use App\Models\RunningText;
+use App\Models\Testimonial;
 use App\Models\VoucherModel;
 use Exception;
 use Illuminate\Http\Request;
@@ -350,14 +351,35 @@ class MiscController extends Controller
         return redirect()->back()->with('success', 'Successfully update voucher.');
     }
 
+    private function findActiveProductConflicts(array $productIds, ?string $excludeEventId = null)
+    {
+        return EventProducts::whereIn('product_id', $productIds)
+            ->whereHas('event', function ($q) use ($excludeEventId) {
+                $q->where('is_active', true);
+                if ($excludeEventId) {
+                    $q->where('id', '<>', $excludeEventId);
+                }
+            })
+            ->with(['event:id,name', 'product:id,product_name'])
+            ->get()
+            ->map(fn($ep) => [
+                'product_id'   => $ep->product_id,
+                'product_name' => $ep->product?->product_name,
+                'event_id'     => $ep->event_id,
+                'event_name'   => $ep->event?->name,
+            ]);
+    }
+
     public function createEvent(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name'        => 'required|string',
             'description' => 'string|nullable',
-            'discount' => 'required|numeric',
-            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
-            'is_active' => 'nullable',
+            'discount'    => 'required|numeric',
+            'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
+            'is_active'   => 'nullable',
+            'show_on_navbar' => 'nullable',
+            'show_on_homepage' => 'nullable',
             'product_ids' => 'required|array|min:1',
         ]);
 
@@ -389,17 +411,25 @@ class MiscController extends Controller
 
             // ---- UPLOAD IMAGE ----
             $pictureUrl = null;
+            $thumbnailUrl = null;
             if ($request->hasFile('image')) {
-                $pictureUrl = $this->uploadEventImageToS3($request->file('image'));
+                $upload = $this->uploadEventImageToS3($request->file('image'));
+                $pictureUrl = $upload['url'];
+                $thumbnailUrl = $upload['thumbnail_url'];
             }
 
             // ---- CREATE EVENT ----
+            // NOTE: the max-3-active-events rule is still enforced in
+            // Events::booted()'s saving() hook.
             $event = Events::create([
                 'name'        => $request->name,
                 'description' => $request->description,
-                'discount' => $request->discount,
+                'discount'    => $request->discount,
                 'picture_url' => $pictureUrl,
+                'thumbnail_url' => $thumbnailUrl,
                 'is_active' => $request->is_active ?? true,
+                'show_on_navbar' => $request->boolean('show_on_navbar'),
+                'show_on_homepage' => $request->boolean('show_on_homepage'),
             ]);
 
             // ---- INSERT EVENT PRODUCTS ----
@@ -419,6 +449,7 @@ class MiscController extends Controller
         }
     }
 
+
     public function updateEvent(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
@@ -427,6 +458,8 @@ class MiscController extends Controller
             'discount'    => 'required|numeric',
             'image'       => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:2048',
             'is_active'   => 'nullable',
+            'show_on_navbar' => 'nullable',
+            'show_on_homepage' => 'nullable',
             'product_ids' => 'required|array|min:1',
         ]);
 
@@ -438,6 +471,7 @@ class MiscController extends Controller
             DB::beginTransaction();
 
             $event = Events::findOrFail($id);
+            $willBeActive = $request->boolean('is_active', false);
 
             // ---- CHECK ACTIVE LIMIT (exclude current event) ----
             // if ($request->is_active) {
@@ -465,11 +499,17 @@ class MiscController extends Controller
 
             // ---- IMAGE UPDATE (optional) ----
             $pictureUrl = $event->picture_url;
+            $thumbnailUrl = $event->thumbnail_url;
             if ($request->hasFile('image')) {
                 if ($event->picture_url) {
                     $this->deleteFromS3($event->picture_url);
                 }
-                $pictureUrl = $this->uploadEventImageToS3($request->file('image'));
+                if ($event->thumbnail_url) {
+                    $this->deleteFromS3($event->thumbnail_url);
+                }
+                $upload = $this->uploadEventImageToS3($request->file('image'));
+                $pictureUrl = $upload['url'];
+                $thumbnailUrl = $upload['thumbnail_url'];
             }
 
             // ---- UPDATE MAIN EVENT ----
@@ -478,7 +518,10 @@ class MiscController extends Controller
                 'description' => $request->description,
                 'discount'    => $request->discount,
                 'picture_url' => $pictureUrl,
+                'thumbnail_url' => $thumbnailUrl,
                 'is_active'   => $request->is_active ?? false,
+                'show_on_navbar' => $request->boolean('show_on_navbar'),
+                'show_on_homepage' => $request->boolean('show_on_homepage'),
             ]);
 
             // remove old
@@ -570,6 +613,114 @@ class MiscController extends Controller
         }
     }
 
+    /**
+     * Events for the header's "Events" dropdown only.
+     *
+     */
+    public function getNavbarEvents(Request $request)
+    {
+        try {
+            return Events::query()
+                ->select('id', 'name', 'description', 'discount', 'is_active', 'show_on_navbar')
+                ->where('is_active', 1)
+                ->where('show_on_navbar', 1)
+                ->orderBy('name', 'asc')
+                ->get();
+        } catch (\Exception $e) {
+            Log::error('Failed to get navbar events: ' . $e->getMessage());
+
+            return collect();
+        }
+    }
+
+    /**
+     * Events for the homepage.
+     *
+     * getAllActiveEvents() eager-loads every relation of every product (stocks,
+     * tags, categories, subcategories, divisions, variants, ...) because the
+     * listing and API consumers need them. The homepage renders nothing but a
+     * ProductCard per product, so shipping that full graph inlined it as
+     * megabytes of JSON into the initial HTML on every visit.
+     *
+     * Returns every active event, because FrontHeader reads this same prop for
+     * its navbar dropdown, but only carries products for the events the
+     * homepage carousels actually draw — and only the columns a card reads.
+     */
+    public function getHomepageEvents(Request $request)
+    {
+        try {
+            $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
+
+            $events = Events::query()
+                ->select('id', 'name', 'description', 'discount', 'is_active', 'show_on_navbar', 'show_on_homepage')
+                ->where('is_active', 1)
+                ->orderBy('name', 'asc')
+                ->get();
+
+            // Navbar-only events appear as links; they never need their products.
+            $events->each(fn($event) => $event->setRelation('event_products', collect()));
+
+            $events
+                ->filter(fn($event) => (bool) $event->show_on_homepage)
+                ->load([
+                    'event_products' => function ($query) {
+                        $query->select('id', 'event_id', 'product_id');
+                    },
+                    'event_products.product' => function ($query) {
+                        $query
+                            ->select(
+                                'id',
+                                'product_name',
+                                'unit_id',
+                                'product_price',
+                                'product_usd_price',
+                                'product_discount'
+                            )
+                            ->with([
+                                // The card shows the first two pictures (default + hover)
+                                'pictures' => function ($pictures) {
+                                    $pictures->select('id', 'product_id', 'url', 'thumbnail_url', 'sort_order', 'created_at');
+                                },
+                                'unit' => function ($unit) {
+                                    $unit->select('id', 'name', 'price', 'usd_price');
+                                },
+                                // Drives the discount badge and the struck-through price
+                                'event' => function ($event) {
+                                    $event->select('events.id', 'events.name', 'events.discount');
+                                },
+                            ]);
+                    },
+                ]);
+
+            $events->each(function ($event) use ($isIndonesian) {
+                foreach ($event->event_products as $eventProduct) {
+                    if (!$eventProduct->product) {
+                        continue;
+                    }
+
+                    $this->mapPrice($eventProduct->product, $isIndonesian, true);
+
+                    if ($eventProduct->product->unit) {
+                        $this->mapPrice($eventProduct->product->unit, $isIndonesian);
+                    }
+
+                    // The card renders picture 0 (default) and picture 1 (hover);
+                    // anything beyond that is payload nobody looks at.
+                    $eventProduct->product->setRelation(
+                        'pictures',
+                        $eventProduct->product->pictures->take(2)->values()
+                    );
+                }
+            });
+
+            return $events;
+        } catch (\Exception $e) {
+            Log::error('Failed to get homepage events: ' . $e->getMessage());
+
+            return collect();
+        }
+    }
+
     private function mapPrice($model, $isIndonesian, $isProduct = false)
     {
         if (!$model) return null;
@@ -658,5 +809,161 @@ class MiscController extends Controller
             ->find($id);
 
         return $data;
+    }
+
+    /**
+     * Instagram handles are stored bare (no leading "@") so the frontend can
+     * render and link them consistently.
+     */
+    private function normalizeInstagramAccount(?string $account): ?string
+    {
+        $account = trim((string) $account);
+        $account = ltrim($account, '@');
+
+        return $account === '' ? null : $account;
+    }
+
+    private function testimonialRules(bool $imageRequired): array
+    {
+        return [
+            'name'              => 'required|string|max:100',
+            'instagram_account' => ['nullable', 'string', 'max:31', 'regex:/^@?[A-Za-z0-9._]{1,30}$/'],
+            'message'           => 'required|string|max:500',
+            'image'             => ($imageRequired ? 'required' : 'nullable') . '|file|mimes:jpg,jpeg,png,webp|max:2048',
+        ];
+    }
+
+    public function createTestimonial(Request $request)
+    {
+        $validator = Validator::make($request->all(), $this->testimonialRules(true), [
+            'instagram_account.regex' => 'Instagram account may only contain letters, numbers, dots and underscores.',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            $image = $this->uploadTestimonialImageToS3($request->file('image'));
+
+            Testimonial::create([
+                'name'              => $request->name,
+                'instagram_account' => $this->normalizeInstagramAccount($request->instagram_account),
+                'message'           => $request->message,
+                'picture_url'       => $image['url'],
+                'thumbnail_url'     => $image['thumbnail_url'],
+            ]);
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'success',
+                'message' => 'Successfully create testimonial.',
+            ]);
+        } catch (Exception $e) {
+            Log::error('[ERROR] Failed to create testimonial: ' . $e->getMessage());
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Failed to create testimonial.',
+            ]);
+        }
+    }
+
+    public function updateTestimonial(Request $request, $id)
+    {
+        $testimonial = Testimonial::find($id);
+
+        if (!$testimonial) {
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Testimonial not found.',
+            ]);
+        }
+
+        $validator = Validator::make($request->all(), $this->testimonialRules(false), [
+            'instagram_account.regex' => 'Instagram account may only contain letters, numbers, dots and underscores.',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            if ($request->hasFile('image')) {
+                $oldPicture = $testimonial->picture_url;
+                $oldThumb   = $testimonial->thumbnail_url;
+
+                $image = $this->uploadTestimonialImageToS3($request->file('image'), $testimonial->id);
+
+                $testimonial->picture_url   = $image['url'];
+                $testimonial->thumbnail_url = $image['thumbnail_url'];
+
+                if ($oldPicture) {
+                    $this->deleteFromS3($oldPicture);
+                }
+                if ($oldThumb) {
+                    $this->deleteFromS3($oldThumb);
+                }
+            }
+
+            $testimonial->name              = $request->name;
+            $testimonial->instagram_account = $this->normalizeInstagramAccount($request->instagram_account);
+            $testimonial->message           = $request->message;
+            $testimonial->save();
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'success',
+                'message' => 'Successfully update testimonial.',
+            ]);
+        } catch (Exception $e) {
+            Log::error('[ERROR] Failed to update testimonial: ' . $e->getMessage());
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Failed to update testimonial.',
+            ]);
+        }
+    }
+
+    public function deleteTestimonial($id)
+    {
+        $testimonial = Testimonial::find($id);
+
+        if (!$testimonial) {
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Testimonial not found.',
+            ]);
+        }
+
+        try {
+            $picture = $testimonial->picture_url;
+            $thumb   = $testimonial->thumbnail_url;
+
+            $testimonial->delete();
+
+            if ($picture) {
+                $this->deleteFromS3($picture);
+            }
+            if ($thumb) {
+                $this->deleteFromS3($thumb);
+            }
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'success',
+                'message' => 'Successfully delete testimonial.',
+            ]);
+        } catch (Exception $e) {
+            Log::error('[ERROR] Failed to delete testimonial: ' . $e->getMessage());
+
+            return redirect()->back()->with('alert', [
+                'type'    => 'error',
+                'message' => 'Failed to delete testimonial.',
+            ]);
+        }
+    }
+
+    public function getAllTestimonials()
+    {
+        return Testimonial::orderBy('created_at', 'desc')->get();
     }
 }

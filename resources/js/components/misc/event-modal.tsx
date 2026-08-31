@@ -1,4 +1,5 @@
-import { EventFormState, EventGroupOption } from '@/components/misc/event-types';
+import { EventFormState, EventGroupOption, EventProductOption } from '@/components/misc/event-types';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { CheckedState } from '@radix-ui/react-checkbox';
 import { Image as ImageIcon, Loader2, Search, TicketPercent } from 'lucide-react';
+import { useState } from 'react';
 
 type EventModalProps = {
     open: boolean;
@@ -19,6 +21,12 @@ type EventModalProps = {
     onToggleGroup: (groupId: string, next: CheckedState) => void;
     onSave?: () => void;
     saving?: boolean;
+};
+
+type VisibleGroup = {
+    group: EventGroupOption;
+    products: EventProductOption[];
+    filteredProducts: EventProductOption[];
 };
 
 const matchesSearch = (term: string, value?: string | null) => {
@@ -40,6 +48,9 @@ export default function EventModal({
     onSave,
     saving = false,
 }: EventModalProps) {
+    const [openGroups, setOpenGroups] = useState<string[]>([]);
+    const searchTerm = event.search.trim();
+
     const renderGroups = () => {
         if (productGroupsLoading) {
             return (
@@ -58,69 +69,23 @@ export default function EventModal({
             );
         }
 
-        let hasVisible = false;
-
-        const blocks = productGroups
+        const visibleGroups = productGroups
             .map((group) => {
                 const products = group.products ?? [];
-                if (!products.length && event.search.trim()) return null;
 
-                const filteredProducts = products.filter(
-                    (product) => matchesSearch(event.search, product.name) || matchesSearch(event.search, product.sku),
-                );
+                if (searchTerm) {
+                    const filteredProducts = products.filter(
+                        (product) => matchesSearch(searchTerm, product.name) || matchesSearch(searchTerm, product.sku),
+                    );
+                    if (!filteredProducts.length) return null;
+                    return { group, products, filteredProducts };
+                }
 
-                if (!filteredProducts.length && event.search.trim()) return null;
-
-                const selectedInGroup = products.filter((product) => event.productIds.includes(product.id)).length;
-                const allSelected = products.length > 0 && selectedInGroup === products.length;
-                const someSelected = !allSelected && selectedInGroup > 0;
-                const checkedState: CheckedState = allSelected ? true : someSelected ? 'indeterminate' : false;
-
-                hasVisible = hasVisible || filteredProducts.length > 0 || (!event.search.trim() && !products.length);
-
-                return (
-                    <div key={group.id} className="rounded-lg border border-dashed border-muted bg-muted/30 p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <label className="flex items-center gap-3 text-sm font-semibold">
-                                <Checkbox checked={checkedState} onCheckedChange={(value) => onToggleGroup(group.id, value)} />
-                                <span>{group.name}</span>
-                                <Badge variant="secondary" className="bg-white text-slate-900">
-                                    {group.productsCount ?? group.products.length}
-                                </Badge>
-                            </label>
-                            <div className="text-xs text-muted-foreground">{selectedInGroup} selected in this group</div>
-                        </div>
-                        {products.length ? (
-                            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                                {filteredProducts.map((product) => (
-                                    <label
-                                        key={product.id}
-                                        className="flex cursor-pointer items-center gap-3 rounded-lg border border-muted bg-background px-3 py-2 text-sm transition hover:border-primary/60 hover:bg-primary/5"
-                                    >
-                                        <Checkbox
-                                            checked={event.productIds.includes(product.id)}
-                                            onCheckedChange={(value) => onToggleProduct(product.id, value === true)}
-                                        />
-                                        <div className="flex flex-col">
-                                            <span className="font-medium">{product.name}</span>
-                                            <span className="text-[11px] text-muted-foreground uppercase">
-                                                {product.sku ? `SKU ${product.sku}` : 'No SKU'}
-                                            </span>
-                                        </div>
-                                    </label>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="mt-3 rounded-md border border-dashed border-muted px-3 py-2 text-xs text-muted-foreground">
-                                No products inside this group yet.
-                            </div>
-                        )}
-                    </div>
-                );
+                return { group, products, filteredProducts: products };
             })
-            .filter(Boolean);
+            .filter((entry): entry is VisibleGroup => Boolean(entry));
 
-        if (!hasVisible) {
+        if (!visibleGroups.length) {
             return (
                 <div className="flex items-center gap-2 rounded-lg border border-dashed border-muted bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
                     <Search className="size-4" />
@@ -129,7 +94,80 @@ export default function EventModal({
             );
         }
 
-        return <div className="space-y-3">{blocks}</div>;
+        // While searching, keep every matching group expanded so results stay visible
+        const accordionValue = searchTerm ? visibleGroups.map((entry) => entry.group.id) : openGroups;
+
+        return (
+            <Accordion
+                type="multiple"
+                value={accordionValue}
+                onValueChange={(value) => {
+                    if (!searchTerm) setOpenGroups(value);
+                }}
+                className="space-y-3"
+            >
+                {visibleGroups.map(({ group, products, filteredProducts }) => {
+                    const selectedInGroup = products.filter((product) => event.productIds.includes(product.id)).length;
+                    const allSelected = products.length > 0 && selectedInGroup === products.length;
+                    const someSelected = !allSelected && selectedInGroup > 0;
+                    const checkedState: CheckedState = allSelected ? true : someSelected ? 'indeterminate' : false;
+
+                    return (
+                        <AccordionItem
+                            key={group.id}
+                            value={group.id}
+                            className="rounded-lg border border-dashed border-muted bg-muted/30 px-3 last:border-b"
+                        >
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    checked={checkedState}
+                                    onCheckedChange={(value) => onToggleGroup(group.id, value)}
+                                    aria-label={`Select all products in ${group.name}`}
+                                />
+                                <AccordionTrigger className="flex-1 items-center py-3 hover:no-underline">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <span className="text-sm font-semibold">{group.name}</span>
+                                        <Badge variant="secondary" className="bg-white text-slate-900">
+                                            {group.productsCount ?? products.length}
+                                        </Badge>
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                            {selectedInGroup} selected in this group
+                                        </span>
+                                    </div>
+                                </AccordionTrigger>
+                            </div>
+                            <AccordionContent>
+                                {filteredProducts.length ? (
+                                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                                        {filteredProducts.map((product) => (
+                                            <label
+                                                key={product.id}
+                                                className="flex cursor-pointer items-center gap-3 rounded-lg border border-muted bg-background px-3 py-2 text-sm transition hover:border-primary/60 hover:bg-primary/5"
+                                            >
+                                                <Checkbox
+                                                    checked={event.productIds.includes(product.id)}
+                                                    onCheckedChange={(value) => onToggleProduct(product.id, value === true)}
+                                                />
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{product.name}</span>
+                                                    <span className="text-[11px] text-muted-foreground uppercase">
+                                                        {product.sku ? `SKU ${product.sku}` : 'No SKU'}
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="rounded-md border border-dashed border-muted px-3 py-2 text-xs text-muted-foreground">
+                                        No products inside this group yet.
+                                    </div>
+                                )}
+                            </AccordionContent>
+                        </AccordionItem>
+                    );
+                })}
+            </Accordion>
+        );
     };
 
     return (
@@ -188,12 +226,30 @@ export default function EventModal({
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-sm font-semibold">
-                                <Checkbox checked={event.isActive} onCheckedChange={(value) => onFieldChange('isActive', value === true)} />
-                                Set as active
-                            </Label>
-                            <p className="text-xs text-muted-foreground">Maximum 3 events can be active at the same time.</p>
+                        <div className="space-y-3">
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2 text-sm font-semibold">
+                                    <Checkbox checked={event.isActive} onCheckedChange={(value) => onFieldChange('isActive', value === true)} />
+                                    Set as active
+                                </Label>
+                                <p className="text-xs text-muted-foreground">Maximum 3 events can be active at the same time.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2 text-sm font-semibold">
+                                    <Checkbox
+                                        checked={event.showOnNavbar}
+                                        onCheckedChange={(value) => onFieldChange('showOnNavbar', value === true)}
+                                    />
+                                    Show on navigation bar
+                                </Label>
+                                <Label className="flex items-center gap-2 text-sm font-semibold">
+                                    <Checkbox
+                                        checked={event.showOnHomepage}
+                                        onCheckedChange={(value) => onFieldChange('showOnHomepage', value === true)}
+                                    />
+                                    Show on homepage
+                                </Label>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2 text-sm font-semibold">

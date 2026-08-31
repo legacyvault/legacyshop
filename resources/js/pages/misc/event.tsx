@@ -30,6 +30,8 @@ type EventResponse = {
     description?: string | null;
     discount?: number | string | null;
     is_active?: boolean | number | string | null;
+    show_on_navbar?: boolean | number | string | null;
+    show_on_homepage?: boolean | number | string | null;
     picture_url?: string | null;
     event_products?: (EventProductRow | null)[] | null;
 };
@@ -155,6 +157,8 @@ export default function Event() {
                 description: toStringValue(event?.description),
                 discount: toStringValue(event?.discount),
                 isActive: toBoolean(event?.is_active),
+                showOnNavbar: toBoolean(event?.show_on_navbar),
+                showOnHomepage: toBoolean(event?.show_on_homepage),
                 productIds,
                 imageFile: null,
                 imageUrl: toStringValue(event?.picture_url) || null,
@@ -237,6 +241,8 @@ export default function Event() {
             description: '',
             discount: '',
             isActive: true,
+            showOnNavbar: false,
+            showOnHomepage: false,
             productIds: [],
             imageFile: null,
             imageUrl: null,
@@ -356,6 +362,8 @@ export default function Event() {
             description: trimmedDescription || null,
             discount: discountValue,
             is_active: event.isActive,
+            show_on_navbar: event.showOnNavbar,
+            show_on_homepage: event.showOnHomepage,
             product_ids: event.productIds,
         };
 

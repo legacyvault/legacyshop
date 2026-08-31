@@ -105,7 +105,8 @@ class ViewController extends Controller
         $units = $this->productController->getAllActiveUnit();
         $banner = $this->miscController->getActiveBanner();
         $articles = $this->articleController->getNewestArticle();
-        $events = $this->miscController->getAllActiveEvents($request);
+        $events = $this->miscController->getHomepageEvents($request);
+        $testimonials = $this->miscController->getAllTestimonials();
 
         return Inertia::render('welcome', [
             'productsTop' => $productsTop,
@@ -114,6 +115,7 @@ class ViewController extends Controller
             'banner' => $banner,
             'articles' => $articles,
             'events' => $events,
+            'testimonials' => $testimonials,
             'translations' => [
                 'home' => Lang::get('WelcomeTrans'),
                 'navbar' => Lang::get('HeaderTrans')
@@ -305,7 +307,7 @@ class ViewController extends Controller
         $products = $this->productController->getAllProduct($request, $unit?->id);
         $subunits = $this->productController->getAllSubUnit($unit?->id);
         $tags = $this->productController->getAllShowTags();
-        $events = $this->miscController->getAllActiveEvents($request);
+        $events = $this->miscController->getNavbarEvents($request);
 
         return Inertia::render('front/products/index', [
             'products' => $products,
@@ -375,10 +377,22 @@ class ViewController extends Controller
         ]);
     }
 
+    public function frontAboutUsPage(Request $request)
+    {
+        $events = $this->miscController->getNavbarEvents($request);
+        return Inertia::render('front/about-us/index', [
+            'events' => $events,
+            'translations' => [
+                'home' => Lang::get('WelcomeTrans'),
+                'navbar' => Lang::get('HeaderTrans')
+            ]
+        ]);
+    }
+
     public function frontArticlesPage(Request $request)
     {
         $articles = $this->articleController->getAllArticle();
-        $events = $this->miscController->getAllActiveEvents($request);
+        $events = $this->miscController->getNavbarEvents($request);
         return Inertia::render('front/articles/index', [
             'articles' => $articles,
             'events' => $events,
@@ -392,7 +406,7 @@ class ViewController extends Controller
     public function frontArticleView($slug, Request $request)
     {
         $article = $this->articleController->getArticleBySlug($slug);
-        $events = $this->miscController->getAllActiveEvents($request);
+        $events = $this->miscController->getNavbarEvents($request);
 
         if (!$article) {
             abort(404);
@@ -655,6 +669,15 @@ class ViewController extends Controller
 
         return Inertia::render('misc/event', [
             'events' => $events,
+        ]);
+    }
+
+    public function testimonialPage()
+    {
+        $testimonials = $this->miscController->getAllTestimonials();
+
+        return Inertia::render('misc/testimonial', [
+            'testimonials' => $testimonials,
         ]);
     }
 }

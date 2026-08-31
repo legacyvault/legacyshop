@@ -75,7 +75,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
         <>
             <DialogHandler />
 
-            <AuthLayout title="Log in to your account" description="Enter your email and password below to log in">
+            <AuthLayout title="Log in to your account" description="Enter your email and password below to log in" showBackToHome>
                 <Head title="Log in" />
 
                 <form method="POST" className="flex flex-col gap-6" onSubmit={submit}>

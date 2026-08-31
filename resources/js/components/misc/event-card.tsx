@@ -58,6 +58,21 @@ export default function EventCard({ event, products, onEdit }: EventCardProps) {
                     {products.length ? `${products.length} products linked` : 'No products linked yet'}
                 </div>
 
+                {(event.showOnNavbar || event.showOnHomepage) && (
+                    <div className="flex flex-wrap gap-2">
+                        {event.showOnNavbar && (
+                            <Badge variant="secondary" className="text-[10px]">
+                                Navigation bar
+                            </Badge>
+                        )}
+                        {event.showOnHomepage && (
+                            <Badge variant="secondary" className="text-[10px]">
+                                Homepage
+                            </Badge>
+                        )}
+                    </div>
+                )}
+
                 <div className="flex flex-wrap gap-2">
                     {previewProducts.length ? (
                         previewProducts.map((product) => (

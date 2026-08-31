@@ -1,115 +1,165 @@
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Link, usePage } from '@inertiajs/react';
+import { Building2, Facebook, Instagram, Linkedin, Mail, MapPin, Phone, Twitter } from 'lucide-react';
 
 export default function FrontFooter() {
-    const NavBottom = [
+    const page = usePage();
+    const currentYear = new Date().getFullYear();
+
+    const socials = [
+        { label: 'Instagram', icon: Instagram, url: '#' },
+        { label: 'Facebook', icon: Facebook, url: '#' },
+        { label: 'Twitter', icon: Twitter, url: '#' },
+        { label: 'LinkedIn', icon: Linkedin, url: '#' },
+    ];
+
+    const columns = [
         {
-            title: 'home',
-            url: '/',
+            title: 'Shop',
+            links: [
+                { title: 'All Products', url: '/list-products' },
+                { title: 'Cart', url: '/view-cart' },
+                { title: 'Checkout', url: '/checkout' },
+            ],
         },
         {
-            title: 'products',
-            url: '/list-products',
+            title: 'Company',
+            links: [
+                { title: 'Home', url: '/' },
+                { title: 'About Us', url: '/about-us' },
+                { title: 'Articles', url: '/articles' },
+            ],
         },
         {
-            title: 'articles',
-            url: '/articles',
+            title: 'Account',
+            links: [
+                { title: 'Login', url: '/login' },
+                { title: 'Register', url: '/register' },
+                { title: 'My Purchases', url: '/settings/purchases' },
+            ],
         },
     ];
 
-    const page = usePage();
-    const currentYear = new Date().getFullYear();
+    const contacts = [
+        {
+            icon: MapPin,
+            label: 'Based in',
+            content: (
+                <>
+                    Jakarta Indonesia
+                </>
+            ),
+        },
+        {
+            icon: Mail,
+            label: 'Email',
+            content: (
+                <a href="mailto:legacyvault.business@gmail.com" className="transition-colors duration-200 hover:text-white">
+                    legacyvault.business@gmail.com
+                </a>
+            ),
+        },
+        {
+            icon: Phone,
+            label: 'Phone',
+            content: (
+                <a href="tel:+622112345678" className="transition-colors duration-200 hover:text-white">
+                    +62-813-9300-757
+                </a>
+            ),
+        },
+        {
+            icon: Building2,
+            label: 'Location',
+            content: <>PT Legacy Vault Indonesia</>,
+        },
+    ];
+
+    const legal = [
+        { title: 'Terms and Conditions', url: '#' },
+        { title: 'Privacy Policy', url: '#' },
+    ];
 
     return (
         <footer className="bg-foreground py-16">
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
-                <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-16">
-                    <div>
-                        <Link href={route('home')} className="font-bold text-foreground transition-opacity hover:opacity-80">
-                            <AppLogoIcon className="size-16" />
+                <div className="grid grid-cols-2 gap-10 md:grid-cols-3 lg:grid-cols-12 lg:gap-12">
+                    {/* Brand */}
+                    <div className="col-span-2 md:col-span-3 lg:col-span-3">
+                        <Link href={route('home')} className="flex items-center gap-3 transition-opacity hover:opacity-80">
+                            <AppLogoIcon className="size-10" />
+                            <span className="text-2xl font-bold tracking-tight text-white">Legacy Vault</span>
                         </Link>
-                        <h1 className="mt-2 pl-2 text-2xl font-semibold text-white">Legacy Vault</h1>
+
+                        <p className="mt-6 max-w-sm leading-relaxed text-gray-300">
+                            Premium hand-drawn extended art display cases, made to show off your collection while keeping every card protected.
+                        </p>
+
+                        <div className="mt-8 flex items-center gap-6">
+                            {socials.map((social) => (
+                                <a
+                                    key={social.label}
+                                    href={social.url}
+                                    aria-label={social.label}
+                                    className="text-gray-300 transition-colors duration-200 hover:text-white"
+                                >
+                                    <social.icon className="size-5" />
+                                </a>
+                            ))}
+                        </div>
                     </div>
 
-                    {/* Information Section */}
-                    <div>
-                        <h3 className="mb-6 text-lg font-semibold tracking-wide text-white">INFORMATION</h3>
+                    {/* Link columns */}
+                    {columns.map((column) => (
+                        <div key={column.title} className="lg:col-span-2">
+                            <h3 className="mb-6 font-semibold text-white">{column.title}</h3>
+                            <ul className="space-y-4">
+                                {column.links.map((link) => (
+                                    <li key={link.title}>
+                                        <Link
+                                            href={link.url}
+                                            className={`text-gray-300 transition-colors duration-200 hover:text-white ${
+                                                page.url === link.url ? 'text-white' : ''
+                                            }`}
+                                        >
+                                            {link.title}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+
+                    {/* Contact */}
+                    <div className="col-span-2 md:col-span-3 lg:col-span-3">
+                        <h3 className="mb-6 font-semibold text-white">Contact</h3>
                         <ul className="space-y-4">
-                            {NavBottom.map((nav, i) => (
-                                <li>
-                                    <Link
-                                        key={i}
-                                        href={nav.url}
-                                        className={`text-background capitalize transition-colors duration-200 hover:text-muted-foreground ${page.url === nav.url ? 'opacity-70' : ''}`}
-                                    >
-                                        {nav.title}
-                                    </Link>
+                            {contacts.map((contact) => (
+                                <li key={contact.label} className="flex items-center gap-3 text-gray-300">
+                                    <contact.icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                                    <div>
+                                        <span className="sr-only">{contact.label}: </span>
+                                        <span className="text-sm leading-relaxed">{contact.content}</span>
+                                    </div>
                                 </li>
                             ))}
                         </ul>
                     </div>
-
-                    {/* Mission Section */}
-                    <div>
-                        <h3 className="mb-6 text-lg font-semibold tracking-wide text-white">ABOUT</h3>
-                        <p className="leading-relaxed text-gray-300">
-                            Introducing our Premium Hand-drawn Extended Art Display Case, the perfect solution to show off your collection more
-                            elegantly while ensuring the safety and protection of your cards. Enjoy exclusive Hand-drawn Extended Art Backgrounds from
-                            the Legacy Vault. Made with high-quality materials, our display cases promise excellent durability and clarity, allowing
-                            you to admire every detail without exception.
-                        </p>
-                    </div>
                 </div>
 
-                {/* Bottom Section */}
-                <div className="mt-16 flex flex-col items-center justify-between border-t border-gray-800 pt-8 lg:flex-row">
-                    <div className="mb-6 text-sm text-gray-400 lg:mb-0">© {currentYear} Legacy Vault - All Rights Reserved</div>
+                {/* Bottom bar */}
+                <div className="mt-16 flex flex-col gap-4 border-t border-background pt-8 text-sm text-gray-400 md:flex-row md:items-center md:justify-between">
+                    <p>© {currentYear} Legacy Vault. All rights reserved.</p>
 
-                    {/* Payment Icons */}
-                    {/* <div className="flex space-x-3">
-                        <div className="rounded bg-white p-2">
-                            <svg className="h-5 w-8" viewBox="0 0 32 20" fill="none">
-                                <rect width="32" height="20" rx="4" fill="white" />
-                                <path d="M13.5 7.5v5h-2v-5h2zm4.5 0l-1.5 3.5L15 7.5h-2.5l2.5 5h2l2.5-5H17z" fill="#1A1F71" />
-                                <path d="M21.5 7.5v5h-2v-5h2z" fill="#EB001B" />
-                            </svg>
-                        </div>
-                        <div className="rounded bg-white p-2">
-                            <svg className="h-5 w-8" viewBox="0 0 32 20" fill="none">
-                                <rect width="32" height="20" rx="4" fill="white" />
-                                <circle cx="12" cy="10" r="6" fill="#EB001B" />
-                                <circle cx="20" cy="10" r="6" fill="#F79E1B" />
-                                <path d="M16 6.5c-1.5 1.2-2.5 3-2.5 5s1 3.8 2.5 5c1.5-1.2 2.5-3 2.5-5s-1-3.8-2.5-5z" fill="#FF5F00" />
-                            </svg>
-                        </div>
-                        <div className="rounded bg-white p-2">
-                            <svg className="h-5 w-8" viewBox="0 0 32 20" fill="none">
-                                <rect width="32" height="20" rx="4" fill="white" />
-                                <circle cx="12" cy="10" r="6" fill="#0099DF" />
-                                <circle cx="20" cy="10" r="6" fill="#DC143C" />
-                                <path d="M16 6.5c-1.5 1.2-2.5 3-2.5 5s1 3.8 2.5 5c1.5-1.2 2.5-3 2.5-5s-1-3.8-2.5-5z" fill="#9C2AAE" />
-                            </svg>
-                        </div>
-                        <div className="rounded bg-blue-600 p-2">
-                            <svg className="h-5 w-8" viewBox="0 0 32 20" fill="none">
-                                <rect width="32" height="20" rx="4" fill="#006FCF" />
-                                <path d="M6 8h4v4H6V8zm6-2h4v8h-4V6zm6 1h4v6h-4V7z" fill="white" />
-                            </svg>
-                        </div>
-                        <div className="rounded bg-black p-2">
-                            <svg className="h-5 w-8" viewBox="0 0 32 20" fill="none">
-                                <rect width="32" height="20" rx="4" fill="black" />
-                                <path d="M8 6h3v8H8V6zm5 0h6v2h-6V6zm0 3h5v2h-5V9zm0 3h6v2h-6v-2z" fill="white" />
-                            </svg>
-                        </div>
-                        <div className="rounded bg-orange-500 p-2">
-                            <svg className="h-5 w-8" viewBox="0 0 32 20" fill="none">
-                                <rect width="32" height="20" rx="4" fill="#FF9500" />
-                                <circle cx="16" cy="10" r="4" fill="white" />
-                                <path d="M14 8h4v4h-4V8z" fill="#FF9500" />
-                            </svg>
-                        </div>
-                    </div> */}
+                    {/* <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                        {legal.map((item) => (
+                            <li key={item.title}>
+                                <Link href={item.url} className="transition-colors duration-200 hover:text-white">
+                                    {item.title}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul> */}
                 </div>
             </div>
         </footer>
