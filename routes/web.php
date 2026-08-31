@@ -146,10 +146,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('sub-category', [SubCategoryController::class, 'getAllSubCategory'])->name('subcat');
     Route::get('sub-category/{id}', [SubCategoryController::class, 'getSubCategoryById'])->name('subcat.id');
 
-    Route::get('division', [DivisionController::class, 'getAllDivision'])->name('division');
+    Route::get('division', [DivisionController::class, 'getAllDivision'])->name('division.list');
     Route::get('division/{id}', [DivisionController::class, 'getDivisionById'])->name('division.id');
 
-    Route::get('variant', [VariantController::class, 'getAllVariant'])->name('variant');
+    Route::get('variant', [VariantController::class, 'getAllVariant'])->name('variant.list');
     Route::get('variant/{id}', [VariantController::class, 'getVariantById'])->name('variant.id');
 
     Route::post('logout', [AwsCognitoAuthController::class, 'logout'])->name('cognito.logout');
