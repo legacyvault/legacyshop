@@ -83,6 +83,7 @@ export interface IEvents {
     is_active: boolean;
     show_on_navbar?: boolean | number | null;
     show_on_homepage?: boolean | number | null;
+    show_products_on_homepage?: boolean | number | null;
     name: string;
     picture_url: string;
     thumbnail_url?: string | null;

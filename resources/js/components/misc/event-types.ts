@@ -23,6 +23,7 @@ export type EventFormState = {
     isActive: boolean;
     showOnNavbar: boolean;
     showOnHomepage: boolean;
+    showProductsOnHomepage: boolean;
     productIds: string[];
     imageFile: File | null;
     imageUrl: string | null;

@@ -32,6 +32,7 @@ type EventResponse = {
     is_active?: boolean | number | string | null;
     show_on_navbar?: boolean | number | string | null;
     show_on_homepage?: boolean | number | string | null;
+    show_products_on_homepage?: boolean | number | string | null;
     picture_url?: string | null;
     event_products?: (EventProductRow | null)[] | null;
 };
@@ -159,6 +160,7 @@ export default function Event() {
                 isActive: toBoolean(event?.is_active),
                 showOnNavbar: toBoolean(event?.show_on_navbar),
                 showOnHomepage: toBoolean(event?.show_on_homepage),
+                showProductsOnHomepage: toBoolean(event?.show_products_on_homepage),
                 productIds,
                 imageFile: null,
                 imageUrl: toStringValue(event?.picture_url) || null,
@@ -243,6 +245,7 @@ export default function Event() {
             isActive: true,
             showOnNavbar: false,
             showOnHomepage: false,
+            showProductsOnHomepage: false,
             productIds: [],
             imageFile: null,
             imageUrl: null,
@@ -364,6 +367,7 @@ export default function Event() {
             is_active: event.isActive,
             show_on_navbar: event.showOnNavbar,
             show_on_homepage: event.showOnHomepage,
+            show_products_on_homepage: event.showProductsOnHomepage,
             product_ids: event.productIds,
         };
 

@@ -78,6 +78,11 @@ class Product extends Model
         return $this->hasMany(ProductStock::class);
     }
 
+    public function product_group()
+    {
+        return $this->belongsTo(ProductGroup::class, 'product_group_id', 'id');
+    }
+
     public function unit()
     {
         return $this->belongsTo(Unit::class, 'unit_id', 'id');

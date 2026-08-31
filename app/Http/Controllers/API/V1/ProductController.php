@@ -1457,11 +1457,13 @@ class ProductController extends Controller
         $isGrouped = !is_null($product->product_group_id);
 
         if ($isGrouped) {
-            // Grouped products: only name, description, weight, tags, and pictures can be changed
+            // Grouped products: only name, description, weight, tags, pictures, and showcase flags can be changed
             $validator = Validator::make($request->all(), [
                 'product_name'   => 'required|string|max:255',
                 'description'    => 'required|string',
                 'product_weight' => 'required|numeric|min:1',
+                'is_showcase_top'    => 'nullable|boolean',
+                'is_showcase_bottom' => 'nullable|boolean',
                 'tag_id'         => 'nullable|array',
                 'tag_id.*'       => 'exists:tags,id',
                 'pictures'       => 'nullable|array',
@@ -1483,6 +1485,8 @@ class ProductController extends Controller
                     'product_name'   => $request->product_name,
                     'description'    => $request->description,
                     'product_weight' => $request->product_weight,
+                    'is_showcase_top'    => $request->boolean('is_showcase_top'),
+                    'is_showcase_bottom' => $request->boolean('is_showcase_bottom'),
                 ]);
 
                 $product->tags()->sync($request->tag_id ?? []);
