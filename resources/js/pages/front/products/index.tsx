@@ -1,5 +1,6 @@
 import Empty from '@/components/empty';
 import ProductCard from '@/components/product-card';
+import Seo from '@/components/seo';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -164,6 +165,14 @@ function FrontProducts() {
 
     return (
         <>
+            <Seo
+                title={event ? `${event.name} Event` : unit ? unit.name : 'All Products'}
+                description={
+                    event?.description ??
+                    unit?.description ??
+                    'Browse the full Legacy Vault catalogue of hand-drawn Extended Art trading cards and collectibles.'
+                }
+            />
             <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-6 space-y-2">

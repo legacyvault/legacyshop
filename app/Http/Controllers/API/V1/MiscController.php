@@ -605,6 +605,114 @@ class MiscController extends Controller
         }
     }
 
+    /**
+     * Events for the header's "Events" dropdown only.
+     *
+     */
+    public function getNavbarEvents(Request $request)
+    {
+        try {
+            return Events::query()
+                ->select('id', 'name', 'description', 'discount', 'is_active', 'show_on_navbar')
+                ->where('is_active', 1)
+                ->where('show_on_navbar', 1)
+                ->orderBy('name', 'asc')
+                ->get();
+        } catch (\Exception $e) {
+            Log::error('Failed to get navbar events: ' . $e->getMessage());
+
+            return collect();
+        }
+    }
+
+    /**
+     * Events for the homepage.
+     *
+     * getAllActiveEvents() eager-loads every relation of every product (stocks,
+     * tags, categories, subcategories, divisions, variants, ...) because the
+     * listing and API consumers need them. The homepage renders nothing but a
+     * ProductCard per product, so shipping that full graph inlined it as
+     * megabytes of JSON into the initial HTML on every visit.
+     *
+     * Returns every active event, because FrontHeader reads this same prop for
+     * its navbar dropdown, but only carries products for the events the
+     * homepage carousels actually draw — and only the columns a card reads.
+     */
+    public function getHomepageEvents(Request $request)
+    {
+        try {
+            $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
+
+            $events = Events::query()
+                ->select('id', 'name', 'description', 'discount', 'is_active', 'show_on_navbar', 'show_on_homepage')
+                ->where('is_active', 1)
+                ->orderBy('name', 'asc')
+                ->get();
+
+            // Navbar-only events appear as links; they never need their products.
+            $events->each(fn($event) => $event->setRelation('event_products', collect()));
+
+            $events
+                ->filter(fn($event) => (bool) $event->show_on_homepage)
+                ->load([
+                    'event_products' => function ($query) {
+                        $query->select('id', 'event_id', 'product_id');
+                    },
+                    'event_products.product' => function ($query) {
+                        $query
+                            ->select(
+                                'id',
+                                'product_name',
+                                'unit_id',
+                                'product_price',
+                                'product_usd_price',
+                                'product_discount'
+                            )
+                            ->with([
+                                // The card shows the first two pictures (default + hover)
+                                'pictures' => function ($pictures) {
+                                    $pictures->select('id', 'product_id', 'url', 'thumbnail_url', 'sort_order', 'created_at');
+                                },
+                                'unit' => function ($unit) {
+                                    $unit->select('id', 'name', 'price', 'usd_price');
+                                },
+                                // Drives the discount badge and the struck-through price
+                                'event' => function ($event) {
+                                    $event->select('events.id', 'events.name', 'events.discount');
+                                },
+                            ]);
+                    },
+                ]);
+
+            $events->each(function ($event) use ($isIndonesian) {
+                foreach ($event->event_products as $eventProduct) {
+                    if (!$eventProduct->product) {
+                        continue;
+                    }
+
+                    $this->mapPrice($eventProduct->product, $isIndonesian, true);
+
+                    if ($eventProduct->product->unit) {
+                        $this->mapPrice($eventProduct->product->unit, $isIndonesian);
+                    }
+
+                    // The card renders picture 0 (default) and picture 1 (hover);
+                    // anything beyond that is payload nobody looks at.
+                    $eventProduct->product->setRelation(
+                        'pictures',
+                        $eventProduct->product->pictures->take(2)->values()
+                    );
+                }
+            });
+
+            return $events;
+        } catch (\Exception $e) {
+            Log::error('Failed to get homepage events: ' . $e->getMessage());
+
+            return collect();
+        }
+    }
+
     private function mapPrice($model, $isIndonesian, $isProduct = false)
     {
         if (!$model) return null;

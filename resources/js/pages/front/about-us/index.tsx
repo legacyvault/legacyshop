@@ -1,6 +1,7 @@
+import Seo from '@/components/seo';
 import { Button } from '@/components/ui/button';
 import FrontLayout from '@/layouts/front/front-layout';
-import { Head, Link } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { ReactNode } from 'react';
 
 const craftSteps = [
@@ -67,7 +68,10 @@ const craftPhotos = [
 function AboutUs() {
     return (
         <>
-            <Head title="About Us" />
+            <Seo
+                title="About Us"
+                description="How Legacy Vault makes Extended Art: studying the original card art, extending it stroke by stroke by hand, then quality-checking every piece against a real card."
+            />
 
             {/* Hero */}
             <section className="py-16">

@@ -1,7 +1,8 @@
 import { formatPublishedDate, getArticleReadTime, getArticleText } from '@/components/articles/article-utils';
+import Seo from '@/components/seo';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IArticle, SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { ReactNode } from 'react';
 
 const escapeHtml = (value: string): string =>
@@ -39,7 +40,7 @@ function FrontArticleView() {
 
     return (
         <>
-            <Head title={article.title ?? 'Article'} />
+            <Seo title={article.title ?? 'Article'} description={getArticleText(article)} />
             <section className="bg-muted/40">
                 <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
                     <div className="mb-10 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">

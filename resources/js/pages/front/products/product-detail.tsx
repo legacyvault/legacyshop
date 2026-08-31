@@ -1,4 +1,5 @@
 import ProductCard from '@/components/product-card';
+import Seo from '@/components/seo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,6 +29,15 @@ function ProductDetail() {
     const { translations, product, rec_prod } = usePage<PageProps>().props;
     return (
         <>
+            <Seo
+                title={product?.product_name}
+                description={
+                    product?.description ||
+                    [product?.product_name, product?.unit?.name && `from the ${product.unit.name} collection`, 'at Legacy Vault']
+                        .filter(Boolean)
+                        .join(' ')
+                }
+            />
             <DetailContent product={product} translations={translations} />
             <ReccomendationList rec_prod={rec_prod} />
         </>

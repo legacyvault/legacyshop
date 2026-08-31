@@ -1,8 +1,9 @@
 import { formatPublishedDate, getArticleExcerpt, getArticleLink, getArticleReadTime } from '@/components/articles/article-utils';
+import Seo from '@/components/seo';
 import { usePageSearchBar } from '@/contexts/SearchBarContext';
 import FrontLayout from '@/layouts/front/front-layout';
 import { IArticle, SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { ReactNode, useMemo, useState } from 'react';
 
 function FrontArticles() {
@@ -17,7 +18,10 @@ function FrontArticles() {
 
     return (
         <>
-            <Head title="Articles" />
+            <Seo
+                title="News & Articles"
+                description="News, guides and stories from Legacy Vault on Extended Art trading cards, collecting and the craft behind each piece."
+            />
             <section className="py-16">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <header className="mb-12 text-left">
