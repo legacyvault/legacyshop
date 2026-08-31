@@ -2358,13 +2358,13 @@ class ProductController extends Controller
             DB::beginTransaction();
 
             // ----LIMIT 6 ACTIVE----
-            if ($request->is_active) {
-                $activeCount = Unit::where('is_active', 1)->count();
+            // if ($request->is_active) {
+            //     $activeCount = Unit::where('is_active', 1)->count();
 
-                if ($activeCount >= 6) {
-                    return redirect()->back()->with('error', 'Failed to create unit: maximum 6 active unit');
-                }
-            }
+            //     if ($activeCount >= 6) {
+            //         return redirect()->back()->with('error', 'Failed to create unit: maximum 6 active unit');
+            //     }
+            // }
 
 
             $pictureUrl = null;
@@ -2464,13 +2464,13 @@ class ProductController extends Controller
                 return redirect()->back()->with('error', 'Unit not found.');
             }
 
-            if ($request->is_active && $unit->is_active != 1) {
-                $activeCount = Unit::where('is_active', 1)->count();
+            // if ($request->is_active && $unit->is_active != 1) {
+            //     $activeCount = Unit::where('is_active', 1)->count();
 
-                if ($activeCount >= 6) {
-                    return redirect()->back()->with('error', 'Failed update unit: Maximum 6 active unit');
-                }
-            }
+            //     if ($activeCount >= 6) {
+            //         return redirect()->back()->with('error', 'Failed update unit: Maximum 6 active unit');
+            //     }
+            // }
 
             if ($request->hasFile('image')) {
                 if ($unit->picture_url) {

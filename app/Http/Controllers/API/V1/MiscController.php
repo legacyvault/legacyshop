@@ -390,23 +390,23 @@ class MiscController extends Controller
         try {
             DB::beginTransaction();
 
-            $willBeActive = $request->boolean('is_active', true);
+            // ---- CHECK MAX ACTIVE EVENT ----
+            // if ($request->is_active) {
+            //     $activeCount = Events::where('is_active', 1)->count();
+            //     if ($activeCount >= 3) {
+            //         return redirect()->back()->with('error', 'Maximum 3 active events allowed.');
+            //     }
+            // }
 
-            // ---- ENFORCE "ONE ACTIVE EVENT PER PRODUCT" ----
-            // Only matters if THIS event is being created as active.
-            if ($willBeActive) {
-                $conflicts = $this->findActiveProductConflicts($request->product_ids);
+            // ---- CHECK PRODUCT BELONGS TO ONLY ONE EVENT ----
+            $existingProducts = EventProducts::whereIn('product_id', $request->product_ids)->get();
 
-                if ($conflicts->isNotEmpty()) {
-                    DB::rollBack();
-                    $list = $conflicts->map(fn($c) => "{$c['product_name']} (active in \"{$c['event_name']}\")")->implode(', ');
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('alert', [
-                            'type'    => 'error',
-                            'message' => "Cannot activate: already active in another event — {$list}",
-                        ]);
-                }
+            if ($existingProducts->count() > 0) {
+                $usedProductIds = $existingProducts->pluck('product_id')->toArray();
+
+                return redirect()->back()
+                    ->with('error', 'Some products are already assigned to another event: ' . implode(', ', $usedProductIds))
+                    ->withInput();
             }
 
             // ---- UPLOAD IMAGE ----
@@ -432,11 +432,12 @@ class MiscController extends Controller
                 'show_on_homepage' => $request->boolean('show_on_homepage'),
             ]);
 
-            // ---- ASSIGN PRODUCTS (plain pivot, no is_active on this table) ----
+            // ---- INSERT EVENT PRODUCTS ----
             foreach ($request->product_ids as $pid) {
-                EventProducts::updateOrCreate(
-                    ['event_id' => $event->id, 'product_id' => $pid]
-                );
+                EventProducts::create([
+                    'event_id' => $event->id,
+                    'product_id' => $pid,
+                ]);
             }
 
             DB::commit();
@@ -472,20 +473,28 @@ class MiscController extends Controller
             $event = Events::findOrFail($id);
             $willBeActive = $request->boolean('is_active', false);
 
-            // ---- ENFORCE "ONE ACTIVE EVENT PER PRODUCT" (exclude self) ----
-            if ($willBeActive) {
-                $conflicts = $this->findActiveProductConflicts($request->product_ids, $event->id);
+            // ---- CHECK ACTIVE LIMIT (exclude current event) ----
+            // if ($request->is_active) {
+            //     $activeCount = Events::where('is_active', 1)
+            //         ->where('id', '<>', $id)
+            //         ->count();
 
-                if ($conflicts->isNotEmpty()) {
-                    DB::rollBack();
-                    $list = $conflicts->map(fn($c) => "{$c['product_name']} (active in \"{$c['event_name']}\")")->implode(', ');
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('alert', [
-                            'type'    => 'error',
-                            'message' => "Cannot activate: already active in another event — {$list}",
-                        ]);
-                }
+            //     if ($activeCount >= 3) {
+            //         return redirect()->back()->with('error', 'Maximum 3 active events allowed.');
+            //     }
+            // }
+
+            // ---- CHECK PRODUCT CAN ONLY BE IN ONE EVENT ----
+            // exclude products already belonging to this event
+            $existingProducts = EventProducts::whereIn('product_id', $request->product_ids)
+                ->where('event_id', '<>', $id) // exclude current event
+                ->get();
+
+            if ($existingProducts->count() > 0) {
+                $usedProductIds = $existingProducts->pluck('product_id')->toArray();
+                return redirect()->back()
+                    ->with('error', 'Some products are already assigned to another event: ' . implode(', ', $usedProductIds))
+                    ->withInput();
             }
 
             // ---- IMAGE UPDATE (optional) ----
@@ -515,15 +524,14 @@ class MiscController extends Controller
                 'show_on_homepage' => $request->boolean('show_on_homepage'),
             ]);
 
-            // ---- SYNC EVENT PRODUCTS (plain pivot, no is_active column) ----
-            EventProducts::where('event_id', $id)
-                ->whereNotIn('product_id', $request->product_ids)
-                ->delete();
+            // remove old
+            EventProducts::where('event_id', $id)->delete();
 
             foreach ($request->product_ids as $pid) {
-                EventProducts::updateOrCreate(
-                    ['event_id' => $id, 'product_id' => $pid]
-                );
+                EventProducts::create([
+                    'event_id' => $id,
+                    'product_id' => $pid,
+                ]);
             }
 
             DB::commit();

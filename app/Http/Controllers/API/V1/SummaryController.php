@@ -177,11 +177,9 @@ class SummaryController extends Controller
             ->whereBetween('created_at', [$today, $today->copy()->endOfDay()])
             ->count();
 
-        // Previous period is the same length as [trendStart, trendEnd], immediately preceding it —
-        // so a 30-day selection is compared against the prior 30 days, not a fixed 7.
-        $periodLengthDays = $trendStart->diffInDays($trendEnd) + 1;
+        $previousTrendStart = $trendStart->copy()->subDays(7);
+
         $previousTrendEnd = $trendStart->copy()->subSecond();
-        $previousTrendStart = $trendStart->copy()->subDays($periodLengthDays)->startOfDay();
 
         $currentPeriodRevenue = (float) (clone $paidOrders)
             ->whereBetween('created_at', [$trendStart, $trendEnd])
@@ -241,10 +239,9 @@ class SummaryController extends Controller
             ->whereBetween('created_at', [$today, $today->copy()->endOfDay()])
             ->count();
 
-        // Same dynamic-length previous-period logic as buildSegmentData().
-        $periodLengthDays = $trendStart->diffInDays($trendEnd) + 1;
+        $previousTrendStart = $trendStart->copy()->subDays(7);
+
         $previousTrendEnd = $trendStart->copy()->subSecond();
-        $previousTrendStart = $trendStart->copy()->subDays($periodLengthDays)->startOfDay();
 
         $currentPeriodRevenue = (float) (clone $baseQuery())
             ->whereBetween('created_at', [$trendStart, $trendEnd])

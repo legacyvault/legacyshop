@@ -25,21 +25,21 @@ class Unit extends Model
 
     protected static function booted()
     {
-        static::saving(function ($unit) {
-            // Only enforce if is_active is being set to 1
-            if ($unit->is_active) {
-                $activeCount = self::where('is_active', 1)
-                    ->when($unit->id, function ($query) use ($unit) {
-                        // Exclude the current record if updating
-                        return $query->where('id', '<>', $unit->id);
-                    })
-                    ->count();
+        // static::saving(function ($unit) {
+        //     // Only enforce if is_active is being set to 1
+        //     if ($unit->is_active) {
+        //         $activeCount = self::where('is_active', 1)
+        //             ->when($unit->id, function ($query) use ($unit) {
+        //                 // Exclude the current record if updating
+        //                 return $query->where('id', '<>', $unit->id);
+        //             })
+        //             ->count();
 
-                if ($activeCount >= 6) {
-                    throw new \Exception("Maximum of 6 active units allowed.");
-                }
-            }
-        });
+        //         if ($activeCount >= 6) {
+        //             throw new \Exception("Maximum of 6 active units allowed.");
+        //         }
+        //     }
+        // });
     }
 
     public function sub_unit()
