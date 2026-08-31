@@ -58,7 +58,14 @@
             }
         </style>
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        {{--
+            No <title> here. Inertia's head manager emits one via @inertiaHead
+            (server-rendered under SSR, swapped client-side after hydration), so
+            a hardcoded tag here produces *two* <title> elements in the HTML.
+            Browsers show the last one, but crawlers take the first — which is
+            how every page ended up titled "Legacy_Vault" in Google's results.
+            Page titles belong in <Seo> / <Head>, not here.
+        --}}
 
         <link rel="icon" href="/logo.ico" sizes="any">
         <link rel="apple-touch-icon" href="/logo.png">

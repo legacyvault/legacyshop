@@ -380,6 +380,7 @@ class MiscController extends Controller
             'is_active'   => 'nullable',
             'show_on_navbar' => 'nullable',
             'show_on_homepage' => 'nullable',
+            'show_products_on_homepage' => 'nullable',
             'product_ids' => 'required|array|min:1',
         ]);
 
@@ -430,6 +431,7 @@ class MiscController extends Controller
                 'is_active' => $request->is_active ?? true,
                 'show_on_navbar' => $request->boolean('show_on_navbar'),
                 'show_on_homepage' => $request->boolean('show_on_homepage'),
+                'show_products_on_homepage' => $request->boolean('show_products_on_homepage'),
             ]);
 
             // ---- INSERT EVENT PRODUCTS ----
@@ -460,6 +462,7 @@ class MiscController extends Controller
             'is_active'   => 'nullable',
             'show_on_navbar' => 'nullable',
             'show_on_homepage' => 'nullable',
+            'show_products_on_homepage' => 'nullable',
             'product_ids' => 'required|array|min:1',
         ]);
 
@@ -522,6 +525,7 @@ class MiscController extends Controller
                 'is_active'   => $request->is_active ?? false,
                 'show_on_navbar' => $request->boolean('show_on_navbar'),
                 'show_on_homepage' => $request->boolean('show_on_homepage'),
+                'show_products_on_homepage' => $request->boolean('show_products_on_homepage'),
             ]);
 
             // remove old
@@ -652,7 +656,7 @@ class MiscController extends Controller
             $isIndonesian = $this->resolveCountryCodeFromIp($request) === 'ID';
 
             $events = Events::query()
-                ->select('id', 'name', 'description', 'discount', 'is_active', 'show_on_navbar', 'show_on_homepage')
+                ->select('id', 'name', 'description', 'discount', 'is_active', 'show_on_navbar', 'show_on_homepage', 'show_products_on_homepage')
                 ->where('is_active', 1)
                 ->orderBy('name', 'asc')
                 ->get();
@@ -661,7 +665,7 @@ class MiscController extends Controller
             $events->each(fn($event) => $event->setRelation('event_products', collect()));
 
             $events
-                ->filter(fn($event) => (bool) $event->show_on_homepage)
+                ->filter(fn($event) => (bool) $event->show_products_on_homepage)
                 ->load([
                     'event_products' => function ($query) {
                         $query->select('id', 'event_id', 'product_id');

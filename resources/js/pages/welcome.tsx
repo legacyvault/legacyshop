@@ -651,10 +651,14 @@ function Welcome() {
         [units],
     );
 
-    // Only events flagged for the homepage, and only while they are active
-    const homepageEvents = useMemo(
-        () => (Array.isArray(events) ? events.filter((event) => Boolean(event.is_active) && Boolean(event.show_on_homepage)) : []),
-        [events],
+    const activeEvents = useMemo(() => (Array.isArray(events) ? events.filter((event) => Boolean(event.is_active)) : []), [events]);
+
+    // The two homepage flags are independent: one draws the event tile, the other its product carousel
+    const homepageEvents = useMemo(() => activeEvents.filter((event) => Boolean(event.show_on_homepage)), [activeEvents]);
+
+    const homepageProductListEvents = useMemo(
+        () => activeEvents.filter((event) => Boolean(event.show_products_on_homepage)),
+        [activeEvents],
     );
 
     const activeBanner = useMemo(() => {
@@ -803,9 +807,9 @@ function Welcome() {
 
                 {/* EVENT SHOWCASE PRODUCT SECTION */}
 
-                {homepageEvents.length > 0 && (
+                {homepageProductListEvents.length > 0 && (
                     <section>
-                        {homepageEvents.map((v) => (
+                        {homepageProductListEvents.map((v) => (
                             <section key={v.id} id={`event-${v.id}`} className="my-8 scroll-mt-40">
                                 <ProductCardsSectionEvent products={v.event_products} title={v.name} event_id={v.id} />
                             </section>

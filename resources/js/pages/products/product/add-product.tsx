@@ -898,6 +898,10 @@ export default function AddProduct() {
                 .forEach((pic) => fd.append('existing_picture_order[]', pic.id));
         }
 
+        // Showcase flags apply to grouped products as well
+        fd.append('is_showcase_top', formData.is_showcase_top ? '1' : '0');
+        fd.append('is_showcase_bottom', formData.is_showcase_bottom ? '1' : '0');
+
         if (!isGrouped) {
             fd.append('product_price', String(effectiveProductPrice));
             fd.append('product_discount', String(effectiveProductDiscount));
@@ -907,8 +911,6 @@ export default function AddProduct() {
             fd.append('use_unit_usd_price', formData.use_unit_usd_price ? '1' : '0');
             fd.append('use_unit_discount', formData.use_unit_discount ? '1' : '0');
             fd.append('product_usd_price', String(effectiveProductUsdPrice));
-            fd.append('is_showcase_top', formData.is_showcase_top ? '1' : '0');
-            fd.append('is_showcase_bottom', formData.is_showcase_bottom ? '1' : '0');
             formData.category.forEach((catId) => fd.append('categories[]', catId));
 
             formData.subcategory.forEach((subId, i) => {
@@ -962,6 +964,8 @@ export default function AddProduct() {
                 if ((err as any).description) mapped.description = (err as any).description as string;
                 if ((err as any).tag_id) mapped.tags = (err as any).tag_id as string;
                 if (Object.keys(err as any).some((k) => k.startsWith('pictures'))) mapped.images = 'Invalid pictures uploaded';
+                if ((err as any).is_showcase_top) mapped.is_showcase_top = (err as any).is_showcase_top as string;
+                if ((err as any).is_showcase_bottom) mapped.is_showcase_bottom = (err as any).is_showcase_bottom as string;
                 if (!isGrouped) {
                     if ((err as any).product_price) mapped.price = (err as any).product_price as string;
                     if ((err as any).product_usd_price) mapped.product_usd_price = (err as any).product_usd_price as string;
@@ -969,8 +973,6 @@ export default function AddProduct() {
                     if ((err as any).unit_id) mapped.unit = (err as any).unit_id as string;
                     if ((err as any).sub_unit_id) mapped.subunit = (err as any).sub_unit_id as string;
                     if ((err as any).categories) mapped.category = (err as any).categories as string;
-                    if ((err as any).is_showcase_top) mapped.is_showcase_top = (err as any).is_showcase_top as string;
-                    if ((err as any).is_showcase_bottom) mapped.is_showcase_bottom = (err as any).is_showcase_bottom as string;
                     if (Object.keys(err as any).some((k) => k.startsWith('sub_categories'))) mapped.subcategory = 'Invalid subcategory selection';
                     if (Object.keys(err as any).some((k) => k.startsWith('divisions'))) mapped.division = 'Invalid division selection';
                     if (Object.keys(err as any).some((k) => k.startsWith('variants'))) mapped.variant = 'Invalid variant selection';
@@ -994,7 +996,7 @@ export default function AddProduct() {
                 {/* Grouped product notice */}
                 {isGrouped && (
                     <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                        This product belongs to a product group. Only the name, description, weight, and tags can be edited here. To change pricing or classification, edit the group instead.
+                        This product belongs to a product group. Only the name, description, weight, tags, and homepage showcase toggles can be edited here. To change pricing or classification, edit the group instead.
                     </div>
                 )}
 
@@ -1233,7 +1235,44 @@ export default function AddProduct() {
                     {errors.product_weight && <p className="mt-1 text-sm text-red-500">{errors.product_weight}</p>}
                 </div>
 
-                {/* Fields hidden for grouped products: collection, pricing, showcase, category hierarchy, discounts, price summary */}
+                {/* Homepage showcase toggles — available for grouped products too */}
+                <div className="mb-6">
+                    <label htmlFor="is_showcase_top" className="mb-2 block text-sm font-medium">
+                        TOP SELLING ITEMS
+                    </label>
+                    <div className="flex items-center gap-3">
+                        <input
+                            id="is_showcase_top"
+                            type="checkbox"
+                            checked={formData.is_showcase_top}
+                            onChange={(e) => handleInputChange('is_showcase_top', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-gray-600">Display this product in the Top Selling Items section on the homepage.</span>
+                    </div>
+                    {errors.is_showcase_top && <p className="mt-1 text-sm text-red-500">{errors.is_showcase_top}</p>}
+                </div>
+
+                <div className="mb-6">
+                    <label htmlFor="is_showcase_bottom" className="mb-2 block text-sm font-medium">
+                        SHOP PICKS OF THE MONTH
+                    </label>
+                    <div className="flex items-center gap-3">
+                        <input
+                            id="is_showcase_bottom"
+                            type="checkbox"
+                            checked={formData.is_showcase_bottom}
+                            onChange={(e) => handleInputChange('is_showcase_bottom', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-gray-600">
+                            Display this product in the Shop Picks of the Month section on the homepage.
+                        </span>
+                    </div>
+                    {errors.is_showcase_bottom && <p className="mt-1 text-sm text-red-500">{errors.is_showcase_bottom}</p>}
+                </div>
+
+                {/* Fields hidden for grouped products: collection, pricing, category hierarchy, discounts, price summary */}
                 {!isGrouped && (<>
                 {/* Unit Field */}
                 <div className="mb-6">
@@ -1429,42 +1468,6 @@ export default function AddProduct() {
                         </div>
                     </div>
                 )}
-
-                {/* Showcase Toggle */}
-                <div className="mb-6">
-                    <label htmlFor="is_showcase_top" className="mb-2 block text-sm font-medium">
-                        Showcase 'Top Selling'
-                    </label>
-                    <div className="flex items-center gap-3">
-                        <input
-                            id="is_showcase_top"
-                            type="checkbox"
-                            checked={formData.is_showcase_top}
-                            onChange={(e) => handleInputChange('is_showcase_top', e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm text-gray-600">Display this product on the top selling section.</span>
-                    </div>
-                    {errors.is_showcase_top && <p className="mt-1 text-sm text-red-500">{errors.is_showcase_top}</p>}
-                </div>
-
-                {/* Showcase Toggle */}
-                <div className="mb-6">
-                    <label htmlFor="is_showcase_bottom" className="mb-2 block text-sm font-medium">
-                        Showcase 'Shop Picks of the Month'
-                    </label>
-                    <div className="flex items-center gap-3">
-                        <input
-                            id="is_"
-                            type="checkbox"
-                            checked={formData.is_showcase_bottom}
-                            onChange={(e) => handleInputChange('is_showcase_bottom', e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm text-gray-600">Display this product on the showcase section.</span>
-                    </div>
-                    {errors.is_showcase_bottom && <p className="mt-1 text-sm text-red-500">{errors.is_showcase_bottom}</p>}
-                </div>
 
                 {/* Sub Unit Multi-Select */}
                 <div className="mb-6">

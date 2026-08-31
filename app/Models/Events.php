@@ -20,13 +20,15 @@ class Events extends Model
         'discount',
         'is_active',
         'show_on_navbar',
-        'show_on_homepage'
+        'show_on_homepage',
+        'show_products_on_homepage'
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'show_on_navbar' => 'boolean',
         'show_on_homepage' => 'boolean',
+        'show_products_on_homepage' => 'boolean',
     ];
 
     protected static function booted()

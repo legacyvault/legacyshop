@@ -249,6 +249,13 @@ export default function EventModal({
                                     />
                                     Show on homepage
                                 </Label>
+                                <Label className="flex items-center gap-2 text-sm font-semibold">
+                                    <Checkbox
+                                        checked={event.showProductsOnHomepage}
+                                        onCheckedChange={(value) => onFieldChange('showProductsOnHomepage', value === true)}
+                                    />
+                                    Show on homepage as product list
+                                </Label>
                             </div>
                         </div>
                         <div className="space-y-2">
