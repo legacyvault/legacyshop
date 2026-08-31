@@ -123,13 +123,16 @@ const ImageSequence: React.FC = () => {
         >
             <canvas ref={canvasRef} className="h-full w-full" />
 
-            {/* Offsets track the card's resting position inside the square frame, not the box corner */}
             <span
-                className={`pointer-events-none absolute top-[5%] left-[53%] flex h-14 w-14 items-center justify-center rounded-full bg-background text-center text-xs font-medium text-foreground transition-opacity duration-300 ${
-                    isActive ? 'opacity-0' : 'opacity-100'
+                className={`pointer-events-none absolute top-[5%] left-[53%] flex h-16 w-16 items-center justify-center transition-all duration-300 ${
+                    isActive ? 'scale-75 opacity-0' : 'scale-100 opacity-100'
                 }`}
             >
-                Hover me
+                <span className="absolute inset-0 animate-ping rounded-full bg-background/50 [animation-duration:2s] motion-reduce:hidden" />
+                <span className="absolute inset-0 rounded-full bg-background/25 blur-md" />
+                <span className="relative flex h-full w-full animate-pulse items-center justify-center rounded-full bg-background text-center text-xs font-semibold tracking-wide text-foreground shadow-lg ring-1 ring-foreground/10 [animation-duration:2s] motion-reduce:animate-none">
+                    Hover me
+                </span>
             </span>
         </div>
     );

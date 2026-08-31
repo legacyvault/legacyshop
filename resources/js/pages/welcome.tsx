@@ -1,6 +1,7 @@
 import { formatPublishedDate, getArticleExcerpt, getArticleLink, getArticleReadTime } from '@/components/articles/article-utils';
 import ImageSequence from '@/components/image-sequence';
 import ProductCard from '@/components/product-card';
+import Seo from '@/components/seo';
 import { Button } from '@/components/ui/button';
 import { Casestudy5, type CasestudyItem } from '@/components/ui/casestudy-5';
 import { StaggerTestimonials } from '@/components/ui/stagger-testimonials';
@@ -8,6 +9,28 @@ import FrontLayout from '@/layouts/front/front-layout';
 import { IArticle, IBanner, IEventProduct, IProducts, type SharedData } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+
+// Same three steps we walk through on the About Us page, trimmed for the homepage.
+const homeCraftSteps = [
+    {
+        step: 'I.',
+        title: 'Reference',
+        description:
+            'We study the original card art frame by frame - line weight, light source, color palette, illustrator art-style - until we understand it well enough to continue it by hand.',
+    },
+    {
+        step: 'II.',
+        title: 'Hand-Drawn Extension',
+        description:
+            "The artwork is extended stroke by stroke, matching the original artist's linework so the transition feels seamless - each piece handled by an illustrator who specializes in that art style.",
+    },
+    {
+        step: 'III.',
+        title: 'Quality Check',
+        description:
+            "Every Extended Art is checked by hand against an actual card. We match the card's color and texture, then finish it with a fine glitter coat so it feels as premium as it looks.",
+    },
+];
 
 const toCasestudyItem = (article: IArticle, label: string, excerptLength = 140): CasestudyItem => {
     const readTime = getArticleReadTime(article);
@@ -648,6 +671,10 @@ function Welcome() {
 
     return (
         <>
+            <Seo
+                title="Extended Art Trading Cards & Collectibles"
+                description="Legacy Vault crafts hand-drawn Extended Art trading cards and collectibles. Browse top-selling items, seasonal events and curated shop picks."
+            />
             <div className="">
                 {/* BANNER */}
                 {activeBanner.length > 0 && <BannerCarousel banners={activeBanner} />}
@@ -687,7 +714,7 @@ function Welcome() {
 
                 {/* EVENT SHOWCASE */}
                 {homepageEvents.length > 0 && (
-                    <section className="mx-auto mt-12 mb-48 max-w-6xl px-4">
+                    <section className="mx-auto my-12 max-w-6xl px-4">
                         <div className="flex flex-wrap justify-center gap-6">
                             {homepageEvents.map((event) => (
                                 <button
@@ -717,40 +744,59 @@ function Welcome() {
                         </div>
                     </section>
                 )}
-                {/* HERO + SEQUENCE SECTION */}
-                <section className="w-full overflow-hidden bg-background pb-24 text-foreground">
-                    <div className="mx-auto max-w-6xl px-4 sm:px-6">
-                        {/* Headline on the first row, supporting copy + CTA right-aligned on the second */}
-                        <div className="flex flex-col gap-4">
-                            <h1 className="text-center font-pixel text-3xl font-black text-balance md:text-3xl">{translations.home.welcome}</h1>
-
-                            <div className="self-center text-center">
-                                <p className="md:text-md max-w-xl text-sm text-muted-foreground">{translations.home.description1}</p>
-
-                                <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-                                    <Button className="px-7 transition hover:scale-105">Get Started</Button>
+                {/* HERO + SEQUENCE + CRAFT — one section, at least a full viewport tall: copy beside the sequence, craft steps underneath */}
+                <section className="flex w-full flex-col bg-primary py-12 text-primary-foreground lg:min-h-screen lg:py-8">
+                    {/* Rows keep a fixed rhythm and the block as a whole is centred, so leftover viewport height
+                        spills evenly above and below instead of stretching the gap between the two rows. */}
+                    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-12 px-4 sm:px-6 lg:gap-16">
+                        {/* Row 1 — copy on the left, sequence on the right (playback is driven by hover) */}
+                        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+                            <div>
+                                <div className="mb-4 flex items-center gap-3">
+                                    <span className="h-px w-7 bg-primary-foreground/60" />
+                                    <span className="text-xs font-bold tracking-widest text-primary-foreground/70 uppercase">
+                                        Legacy Vault - Hand-Drawn Extended Art
+                                    </span>
                                 </div>
+                                <h1 className="font-pixel text-3xl leading-snug font-black text-balance text-primary-foreground lg:text-4xl">
+                                    Every card deserves to break its frame.
+                                </h1>
+
+                                <p className="mt-5 max-w-xl text-sm text-primary-foreground/80">{translations.home.description1}</p>
+                                <p className="mt-3 max-w-xl text-sm text-primary-foreground/80">{translations.home.description2}</p>
+
+                                <div className="mt-6 flex flex-wrap items-center gap-3">
+                                    <Link href="/list-products">
+                                        <Button className="bg-primary-foreground px-7 text-primary transition hover:scale-105 hover:bg-primary-foreground/90">
+                                            Browse Extended Art
+                                        </Button>
+                                    </Link>
+                                    <Link href="/about-us">
+                                        <Button
+                                            variant="outline"
+                                            className="border-primary-foreground/50 bg-transparent px-7 text-primary-foreground transition hover:scale-105 hover:bg-primary-foreground hover:text-primary"
+                                        >
+                                            Our Story
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {/* Square so the card render never letterboxes */}
+                            <div className="mx-auto aspect-square w-full max-w-xl">
+                                <ImageSequence />
                             </div>
                         </div>
 
-                        {/* Caption on the left, sequence on the right — playback is driven by hover */}
-                        <div className="mt-4 flex flex-col items-stretch gap-8 rounded-3xl bg-primary p-8 text-white lg:flex-row lg:gap-16 lg:p-12">
-                            <div className="flex w-full flex-col items-start justify-between gap-4 lg:flex-[0_1_22rem]">
-                                <p className="text-md max-w-md">{translations.home.description2}</p>
-                                <div>
-                                    <p className="text-md max-w-md">Discover more about our work, technology, and how we bring ideas to life.</p>
-                                    <Button
-                                        variant={'outline'}
-                                        className="mt-4 border-white/50 bg-transparent px-7 text-white transition hover:scale-105 hover:bg-white hover:text-primary"
-                                    >
-                                        How it works
-                                    </Button>
+                        {/* Row 2 — THE CRAFT: the three steps behind every piece */}
+                        <div className="grid shrink-0 gap-x-6 gap-y-8 sm:grid-cols-2 md:grid-cols-3">
+                            {homeCraftSteps.map((item) => (
+                                <div key={item.step} className="border-t border-primary-foreground/25 pt-5">
+                                    <span className="block font-pixel text-lg font-bold text-primary-foreground italic">{item.step}</span>
+                                    <h3 className="text-md mt-3 font-pixel font-semibold text-primary-foreground">{item.title}</h3>
+                                    <p className="mt-3 text-sm text-primary-foreground/75">{item.description}</p>
                                 </div>
-                            </div>
-
-                            <div className="aspect-square w-full lg:aspect-[4/3] lg:flex-1">
-                                <ImageSequence />
-                            </div>
+                            ))}
                         </div>
                     </div>
                 </section>
