@@ -71,7 +71,7 @@ export default function FrontFooter() {
         {
             icon: Building2,
             label: 'Location',
-            content: <>PT Legacy Vault Indonesia</>,
+            content: <>Legacy Vault Indonesia</>,
         },
     ];
 
