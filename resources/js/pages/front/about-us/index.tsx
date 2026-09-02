@@ -52,7 +52,7 @@ const SectionHead = ({ label, title }: { label: string; title: string }) => (
 
 const craftPhotos = [
     {
-        src: '/about/image-case-2-1.webp',
+        src: '/about/craft-drawing-0.png',
         alt: 'Legacy Vault illustrator drawing an extended art on a pen display at a card show',
     },
     {
@@ -101,7 +101,7 @@ function AboutUs() {
                     </div>
                     <div className="flex justify-center lg:justify-end">
                         <img
-                            src="/about/image-case-2-1.webp"
+                            src="/about/hero.jpg"
                             alt="Umbreon ex Special Art Rare in a Legacy Vault extended art display case"
                             className="w-full max-w-md rounded-2xl object-cover shadow-xl"
                             loading="eager"
@@ -118,24 +118,16 @@ function AboutUs() {
                     <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-16">
                         <div className="space-y-5">
                             <p className="text-xl leading-relaxed font-semibold text-foreground italic">
-                                We didn't set out to start a brand. It started the way most collections do… one card we couldn't stop looking at.
+                                It all started in late 2024. A friend came to me with an idea.. he wanted to display his card collection, but not the way everyone else does. That sent me down a rabbit hole online, where I stumbled on the concept of "extended art." The more I looked into it, the more one question stuck with me: why not build this ourselves, but do it differently from every other extended art brand out there? by making it fully hand-drawn by real illustrators?
                             </p>
                             <p className="text-base text-muted-foreground">
-                                I can still remember the pull: Umbreon ex SAR from Terastal Festival, the kind of card that you photograph a dozen
-                                times and show to your friends.
+                                So I called up a friend who does exactly that. An illustrator, one of the best I know, someone I'd worked with before who can move between art styles effortlessly. He'd just graduated from one of Indonesia's top universities and asked if I needed his talent. That's where it began. A few meetings, a lot of trial and error, and some test runs on popular Pokémon cards later.. Legacy Vault officially launched in January 2025.
                             </p>
                             <p className="text-base text-muted-foreground">
-                                But somewhere between the sleeve, the toploader, and the binder page, something always felt unfinished. The art was
-                                the reason we fell for the card in the first place… and there we were, thinking about what if we extend the card
-                                artwork? But in a world full of AI extended arts, we drew.
+                                It wasn't an easy start. Our first product line was Acrylic Cases, with three variants. A few months in, after listening to customer feedback and digging into what would actually be convenient, easy to produce, and effortless for any collector to use, we landed on what we sell today, worldwide: the extended art print.
                             </p>
                             <p className="text-base text-muted-foreground">
-                                Every piece from Legacy Vault starts the same way: by hand-drawn. We study the card's original artwork, then keep
-                                drawing, past the border, past the frame, until the extended artwork finishes the story.
-                            </p>
-                            <p className="text-base text-muted-foreground">
-                                That's where Legacy Vault stands. At its core, a hand-drawn continuation of the art you already love. Made to
-                                complement your cards and give them the spotlight they deserve.
+                                That print became our best-seller, and demand didn't stay local. Word spread from collector to collector, and soon we had friends and customers from Singapore, Thailand, Hong Kong, the US, Italy, Belgium, Korea, Japan, and more, all wanting a piece of what we built.. And that's really just the beginning, our goal now is to keep expanding globally, so Legacy Vault can reach collectors everywhere and add something beautiful to their collections.
                             </p>
                         </div>
 
@@ -221,14 +213,13 @@ function AboutUs() {
             <section className="pt-8 pb-24">
                 <div className="mx-auto max-w-2xl px-4 text-center sm:px-6">
                     <img
-                        src="/about/instagram-case-3.jpg"
+                        src="/about/sign-off.jpg"
                         alt="Legacy Vault extended art case for Umbreon ex Special Art Rare"
                         className="mx-auto mb-10 w-full max-w-xs rounded-2xl object-cover shadow-lg"
                         loading="lazy"
                     />
                     <p className="text-lg text-foreground italic">
-                        "Whether you're here for a specific extended art or just browsing to feed the same TCG addiction that we have… we welcome you
-                        to Legacy Vault."
+                        "A collection hidden in storage is a story no one gets to see.. Legacy Vault is here to help you display yours the way it was always meant to be seen."
                     </p>
                     <p className="mt-4 text-base text-muted-foreground">Thank you for trusting us with your collection.</p>
                     <span className="mt-8 block text-xs font-bold tracking-widest text-muted-foreground uppercase">Founder, Legacy Vault</span>
