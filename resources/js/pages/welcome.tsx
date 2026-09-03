@@ -647,7 +647,12 @@ function Welcome() {
 
     // A unit tile is nothing but its artwork, so skip any unit without one
     const unitsWithImage = useMemo(
-        () => (Array.isArray(units) ? units.filter((unit) => Boolean(unit.thumbnail_url || unit.picture_url)) : []),
+        () =>
+            Array.isArray(units)
+                ? units
+                      .filter((unit) => Boolean(unit.thumbnail_url || unit.picture_url))
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                : [],
         [units],
     );
 
