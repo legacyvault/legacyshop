@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Cable, LayoutGrid, ListOrdered, NotebookPen, PackageOpen, Store, TruckIcon, WarehouseIcon } from 'lucide-react';
+import { Cable, LayoutGrid, ListOrdered, NotebookPen, PackageOpen, Store, TicketPercent, TruckIcon, WarehouseIcon } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -88,6 +88,21 @@ const mainNavItems: NavItem[] = [
         title: 'Warehouse',
         href: '/warehouse',
         icon: WarehouseIcon,
+    },
+    {
+        title: 'Referral',
+        href: '/referral',
+        icon: TicketPercent,
+        child: [
+            {
+                title: 'Referral Code',
+                href: '/referral',
+            },
+            {
+                title: 'Usage',
+                href: '/referral/usage',
+            },
+        ],
     },
     {
         title: 'Orders',
