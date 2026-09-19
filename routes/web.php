@@ -402,6 +402,11 @@ Route::middleware(['ensureToken', 'role:admin'])->group(function () {
         Route::get('/', [ViewController::class, 'warehousePage'])->name('warehouse-admin.view');
         Route::get('add-warehouse/{id?}', [ViewController::class, 'addWarehousePage']);
     });
+
+    Route::prefix('referral')->group(function () {
+        Route::get('/', [ViewController::class, 'referralPage'])->name('referral.view');
+        Route::get('usage', [ViewController::class, 'referralUsagePage'])->name('referral.usage.view');
+    });
 });
 
 use Barryvdh\DomPDF\Facade\Pdf;

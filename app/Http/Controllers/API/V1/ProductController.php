@@ -1951,6 +1951,31 @@ class ProductController extends Controller
         // ---- Country detection ----
         $isIndonesian = $this->resolveCountryCodeFromIp(request()) === 'ID';
 
+        // Top 5 best-selling products (lifetime, paid orders only), ranked by quantity sold
+        $topProductIds = OrderItems::query()
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('products', 'products.id', '=', 'order_items.product_id')
+            ->where('orders.payment_status', 'payment_received')
+            ->selectRaw('order_items.product_id, SUM(order_items.quantity) as total_quantity')
+            ->groupBy('order_items.product_id')
+            ->orderByDesc('total_quantity')
+            ->limit(5)
+            ->pluck('order_items.product_id')
+            ->all();
+
+        // Sales data can be thin (new shop, refunds, deleted products), so top the list up with the
+        // manually flagged showcase products instead of rendering a short or empty section.
+        if (count($topProductIds) < 5) {
+            $topProductIds = array_merge(
+                $topProductIds,
+                Product::where('is_showcase_top', true)
+                    ->whereNotIn('id', $topProductIds)
+                    ->limit(5 - count($topProductIds))
+                    ->pluck('id')
+                    ->all()
+            );
+        }
+
         $data = Product::with([
             'product_group',
             'stocks',
@@ -1962,7 +1987,9 @@ class ProductController extends Controller
             'variants',
             'tags',
             'pictures',
-        ])->where('is_showcase_top', true)->get();
+        ])->whereIn('id', $topProductIds)->get()
+            ->sortBy(fn($p) => array_search($p->id, $topProductIds))
+            ->values();
 
         // Apply mapping
         $data->transform(function ($p) use ($isIndonesian) {
@@ -1988,7 +2015,10 @@ class ProductController extends Controller
             'variants',
             'tags',
             'pictures',
-        ])->where('is_showcase_bottom', true)->get();
+        ])->where('is_showcase_bottom', true)
+            ->latest('updated_at')
+            ->limit(12)
+            ->get();
 
         // Apply mapping
         $data->transform(function ($p) use ($isIndonesian) {
