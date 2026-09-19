@@ -307,7 +307,64 @@ const BannerCarousel = ({ banners }: { banners: IBanner[] }) => {
     );
 };
 
-const ProductCardsSection = ({ products, title }: { products: IProducts[]; title: string }) => {
+const RANK_LABELS = ['1ST', '2ND', '3RD', '4TH', '5TH', '6TH', '7TH', '8TH', '9TH', '10TH'];
+
+// Square button with a hard offset shadow, the one arcade touch on the controls; pressing it "sinks" into the shadow.
+const PixelButton = ({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) => (
+    <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        className="flex h-11 w-11 items-center justify-center border-2 border-primary bg-background text-primary shadow-[3px_3px_0_0_var(--primary)] transition duration-150 hover:bg-primary hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+    >
+        {children}
+    </button>
+);
+
+// Leaderboard: an outlined rank number sits behind each card, with a small placing label on top.
+const RankedItem = ({ product, rank }: { product: IProducts; rank: number }) => (
+    <div className="relative pt-7 pl-3 sm:pt-9 sm:pl-5">
+        <span className="sr-only">{RANK_LABELS[rank - 1] ?? `#${rank}`} best seller</span>
+        <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute top-0 left-0 font-pixel text-4xl leading-none select-none sm:text-6xl ${
+                rank === 1 ? 'text-primary' : 'text-transparent'
+            }`}
+            style={rank === 1 ? undefined : { WebkitTextStroke: '1.5px var(--primary)' }}
+        >
+            {rank}
+        </span>
+        <div className="relative z-10 bg-background">
+            <ProductCard product={product} onClick={() => router.get(`/view-product/${product.id}`)} />
+        </div>
+    </div>
+);
+
+// Staff shelf: a slightly crooked price-tag style label clipped onto each pick.
+const ShelfItem = ({ product, position }: { product: IProducts; position: number }) => (
+    <div className="relative pt-5">
+        <span className="absolute top-1 right-3 z-20 rotate-3 border-2 border-primary bg-background px-2 py-1 font-pixel text-[8px] leading-none text-primary shadow-[2px_2px_0_0_var(--primary)] sm:text-[9px]">
+            PICK {String(position + 1).padStart(2, '0')}
+        </span>
+        <ProductCard product={product} onClick={() => router.get(`/view-product/${product.id}`)} />
+    </div>
+);
+
+const ProductCardsSection = ({
+    products,
+    variant,
+    title,
+    eyebrow,
+    meta,
+    subtitle,
+}: {
+    products: IProducts[];
+    variant: 'leaderboard' | 'shelf';
+    title: string;
+    eyebrow: string;
+    meta: string;
+    subtitle?: string;
+}) => {
     const [activeSlide, setActiveSlide] = useState(0);
     const [visibleCount, setVisibleCount] = useState(1);
 
@@ -378,44 +435,98 @@ const ProductCardsSection = ({ products, title }: { products: IProducts[]; title
         });
     };
 
-    return (
-        <section className="py-16">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                {/* Section Header */}
-                <div className="mb-12 text-center">
-                    <h2 className="mb-4 text-5xl font-bold text-primary">{title}</h2>
-                </div>
-                {/* Product Carousel */}
-                <div className="relative">
-                    <button
-                        type="button"
-                        aria-label="Show previous products"
-                        onClick={() => goToSlide('prev')}
-                        className="absolute top-1/2 left-0 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
-                    >
-                        <span className="sr-only">Previous products</span>
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-5 w-5"
-                        >
-                            <polyline points="15 18 9 12 15 6" />
-                        </svg>
-                    </button>
+    const isCarousel = products.length > 5;
+    const isShelf = variant === 'shelf';
+    const pad = (value: number) => String(value).padStart(2, '0');
 
+    const renderItem = (product: IProducts, position: number) =>
+        isShelf ? <ShelfItem product={product} position={position} /> : <RankedItem product={product} rank={position + 1} />;
+
+    return (
+        <section className={`relative${isShelf ? 'bg-card' : ''}`}>
+            <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 md:py-20 lg:px-8">
+                {/* Scoreboard rule: label, dashed line, meta */}
+                <div className="mb-6 flex items-center gap-3 font-pixel text-[9px] text-muted-foreground sm:text-[10px]">
+                    <span className="text-primary">{eyebrow}</span>
+                    <span aria-hidden="true" className="h-0 flex-1 border-t-2 border-dashed border-primary/20" />
+                    <span>{meta}</span>
+                </div>
+
+                {/* Section Header */}
+                <div className="mb-8 flex flex-col gap-5 md:mb-10 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <h2 className="font-pixel text-xl leading-snug font-bold text-balance text-primary sm:text-2xl md:text-3xl">{title}</h2>
+                        {subtitle && <p className="mt-3 max-w-xl text-sm text-muted-foreground">{subtitle}</p>}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {isCarousel && (
+                            <>
+                                <span className="mr-1 font-pixel text-[10px] text-muted-foreground tabular-nums">
+                                    {pad(activeSlide + 1)}/{pad(slides.length)}
+                                </span>
+                                <PixelButton label="Show previous products" onClick={() => goToSlide('prev')}>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="square"
+                                        strokeLinejoin="miter"
+                                        className="h-4 w-4"
+                                    >
+                                        <polyline points="15 18 9 12 15 6" />
+                                    </svg>
+                                </PixelButton>
+                                <PixelButton label="Show next products" onClick={() => goToSlide('next')}>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="square"
+                                        strokeLinejoin="miter"
+                                        className="h-4 w-4"
+                                    >
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
+                                </PixelButton>
+                            </>
+                        )}
+                        <Link
+                            href={'/list-products'}
+                            className="group ml-auto hidden items-center gap-2 text-sm font-semibold text-primary md:ml-3 md:inline-flex"
+                        >
+                            <span className="border-b-2 border-primary/20 pb-0.5 transition group-hover:border-primary">See all</span>
+                            <span className="transition-transform group-hover:translate-x-1">&rarr;</span>
+                        </Link>
+                    </div>
+                </div>
+
+                {!isCarousel ? (
+                    /* Static grid — few enough products that sliding adds nothing */
+                    <div className="flex flex-wrap justify-center gap-x-2 gap-y-6 px-1 sm:gap-x-4">
+                        {products.map((product, position) => (
+                            <div
+                                key={product.id}
+                                className="w-[calc(50%-0.25rem)] sm:w-[calc(50%-0.5rem)] md:w-[calc(33.333%-0.667rem)] lg:w-[calc(25%-0.75rem)] xl:w-[calc(20%-0.8rem)]"
+                            >
+                                {renderItem(product, position)}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    /* Product Carousel */
                     <div className="overflow-hidden">
                         <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
-                            {slides.map((slide, index) => (
-                                <div key={index} className="flex w-full min-w-full shrink-0 basis-full gap-2 px-1 sm:gap-4">
+                            {slides.map((slide, slideIndex) => (
+                                <div key={slideIndex} className="flex w-full min-w-full shrink-0 basis-full gap-2 px-1 sm:gap-4">
                                     {slide.map((product, itemIndex) => (
                                         <div key={product ? product.id : `placeholder-${itemIndex}`} className="min-w-0 flex-1">
                                             {product ? (
-                                                <ProductCard product={product} onClick={() => router.get(`/view-product/${product.id}`)} />
+                                                renderItem(product, slideIndex * visibleCount + itemIndex)
                                             ) : (
                                                 <div className="h-full w-full opacity-0" aria-hidden="true" />
                                             )}
@@ -425,44 +536,31 @@ const ProductCardsSection = ({ products, title }: { products: IProducts[]; title
                             ))}
                         </div>
                     </div>
+                )}
 
-                    <button
-                        type="button"
-                        aria-label="Show next products"
-                        onClick={() => goToSlide('next')}
-                        className="absolute top-1/2 right-0 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md transition hover:bg-background"
-                    >
-                        <span className="sr-only">Next products</span>
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-5 w-5"
-                        >
-                            <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                    </button>
-                </div>
-                <div className="mt-6 flex items-center justify-center gap-2">
-                    {slides.map((_, index) => (
-                        <button
-                            key={`indicator-${index}`}
-                            type="button"
-                            onClick={() => setActiveSlide(index)}
-                            className={`h-2 w-8 rounded-full transition ${activeSlide === index ? 'bg-primary' : 'bg-muted'}`}
-                            aria-label={`Go to slide ${index + 1}`}
-                            aria-current={activeSlide === index}
-                        />
-                    ))}
-                </div>
-                {/* Section Footer */}
-                <div className="mt-12 text-center">
+                {/* Shelf ledge under the picks */}
+                {isShelf && <div aria-hidden="true" className="mt-2 h-2 bg-primary shadow-[0_10px_0_0_rgba(30,30,30,0.06)]" />}
+
+                {isCarousel && (
+                    /* Progress blocks */
+                    <div className="mt-8 flex items-center justify-center gap-1.5">
+                        {slides.map((_, slideIndex) => (
+                            <button
+                                key={`indicator-${slideIndex}`}
+                                type="button"
+                                onClick={() => setActiveSlide(slideIndex)}
+                                className={`h-2.5 transition-all duration-200 ${activeSlide === slideIndex ? 'w-8 bg-primary' : 'w-2.5 bg-primary/15 hover:bg-primary/40'}`}
+                                aria-label={`Go to slide ${slideIndex + 1}`}
+                                aria-current={activeSlide === slideIndex}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* Section Footer — mobile only; desktop gets the header link */}
+                <div className="mt-8 text-center md:hidden">
                     <Link href={'/list-products'}>
-                        <Button className="mt-4">Explore More</Button>
+                        <Button>Explore More</Button>
                     </Link>
                 </div>
             </div>
@@ -649,9 +747,7 @@ function Welcome() {
     const unitsWithImage = useMemo(
         () =>
             Array.isArray(units)
-                ? units
-                      .filter((unit) => Boolean(unit.thumbnail_url || unit.picture_url))
-                      .sort((a, b) => a.name.localeCompare(b.name))
+                ? units.filter((unit) => Boolean(unit.thumbnail_url || unit.picture_url)).sort((a, b) => a.name.localeCompare(b.name))
                 : [],
         [units],
     );
@@ -661,10 +757,7 @@ function Welcome() {
     // The two homepage flags are independent: one draws the event tile, the other its product carousel
     const homepageEvents = useMemo(() => activeEvents.filter((event) => Boolean(event.show_on_homepage)), [activeEvents]);
 
-    const homepageProductListEvents = useMemo(
-        () => activeEvents.filter((event) => Boolean(event.show_products_on_homepage)),
-        [activeEvents],
-    );
+    const homepageProductListEvents = useMemo(() => activeEvents.filter((event) => Boolean(event.show_products_on_homepage)), [activeEvents]);
 
     const activeBanner = useMemo(() => {
         if (Array.isArray(banner)) {
@@ -687,6 +780,81 @@ function Welcome() {
             <div className="">
                 {/* BANNER */}
                 {activeBanner.length > 0 && <BannerCarousel banners={activeBanner} />}
+
+                <ProductCardsSection
+                    products={productsTop}
+                    variant="leaderboard"
+                    eyebrow="HI-SCORE"
+                    meta="ALL-TIME TOP 5"
+                    title="TOP SELLING ITEMS"
+                    subtitle="Ranked by copies sold - the Extended Art collectors keep coming back for."
+                />
+
+                <ProductCardsSection
+                    products={productsBottom}
+                    variant="shelf"
+                    eyebrow="STAFF SHELF"
+                    meta={new Date().toLocaleString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()}
+                    title="SHOP PICKS OF THE MONTH"
+                    subtitle="Hand-picked by our team - fresh favourites worth a closer look."
+                />
+
+                {/* HERO + SEQUENCE + CRAFT — one section, at least a full viewport tall: copy beside the sequence, craft steps underneath */}
+                <section className="flex w-full flex-col bg-primary py-12 text-primary-foreground lg:min-h-screen lg:py-8">
+                    {/* Rows keep a fixed rhythm and the block as a whole is centred, so leftover viewport height
+                        spills evenly above and below instead of stretching the gap between the two rows. */}
+                    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-12 px-4 sm:px-6 lg:gap-16">
+                        {/* Row 1 — copy on the left, sequence on the right (playback is driven by hover) */}
+                        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+                            <div>
+                                <div className="mb-4 flex items-center gap-3">
+                                    <span className="h-px w-7 bg-primary-foreground/60" />
+                                    <span className="text-xs font-bold tracking-widest text-primary-foreground/70 uppercase">
+                                        Legacy Vault - Hand-Drawn Extended Art
+                                    </span>
+                                </div>
+                                <h1 className="font-pixel text-3xl leading-snug font-black text-balance text-primary-foreground lg:text-4xl">
+                                    Every card deserves to break its frame.
+                                </h1>
+
+                                <p className="mt-5 max-w-xl text-sm text-primary-foreground/80">{translations.home.description1}</p>
+                                <p className="mt-3 max-w-xl text-sm text-primary-foreground/80">{translations.home.description2}</p>
+
+                                <div className="mt-6 flex flex-wrap items-center gap-3">
+                                    <Link href="/list-products">
+                                        <Button className="bg-primary-foreground px-7 text-primary transition hover:scale-105 hover:bg-primary-foreground/90">
+                                            Browse Extended Art
+                                        </Button>
+                                    </Link>
+                                    <Link href="/about-us">
+                                        <Button
+                                            variant="outline"
+                                            className="border-primary-foreground/50 bg-transparent px-7 text-primary-foreground transition hover:scale-105 hover:bg-primary-foreground hover:text-primary"
+                                        >
+                                            Our Story
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {/* Square so the card render never letterboxes */}
+                            <div className="mx-auto aspect-square w-full max-w-xl">
+                                <ImageSequence />
+                            </div>
+                        </div>
+
+                        {/* Row 2 — THE CRAFT: the three steps behind every piece */}
+                        <div className="grid shrink-0 gap-x-6 gap-y-8 sm:grid-cols-2 md:grid-cols-3">
+                            {homeCraftSteps.map((item) => (
+                                <div key={item.step} className="border-t border-primary-foreground/25 pt-5">
+                                    <span className="block font-pixel text-lg font-bold text-primary-foreground italic">{item.step}</span>
+                                    <h3 className="text-md mt-3 font-pixel font-semibold text-primary-foreground">{item.title}</h3>
+                                    <p className="mt-3 text-sm text-primary-foreground/75">{item.description}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
 
                 {/* UNIT SHOWCASE */}
                 {unitsWithImage.length > 0 && (
@@ -753,62 +921,6 @@ function Welcome() {
                         </div>
                     </section>
                 )}
-                {/* HERO + SEQUENCE + CRAFT — one section, at least a full viewport tall: copy beside the sequence, craft steps underneath */}
-                <section className="flex w-full flex-col bg-primary py-12 text-primary-foreground lg:min-h-screen lg:py-8">
-                    {/* Rows keep a fixed rhythm and the block as a whole is centred, so leftover viewport height
-                        spills evenly above and below instead of stretching the gap between the two rows. */}
-                    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-12 px-4 sm:px-6 lg:gap-16">
-                        {/* Row 1 — copy on the left, sequence on the right (playback is driven by hover) */}
-                        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
-                            <div>
-                                <div className="mb-4 flex items-center gap-3">
-                                    <span className="h-px w-7 bg-primary-foreground/60" />
-                                    <span className="text-xs font-bold tracking-widest text-primary-foreground/70 uppercase">
-                                        Legacy Vault - Hand-Drawn Extended Art
-                                    </span>
-                                </div>
-                                <h1 className="font-pixel text-3xl leading-snug font-black text-balance text-primary-foreground lg:text-4xl">
-                                    Every card deserves to break its frame.
-                                </h1>
-
-                                <p className="mt-5 max-w-xl text-sm text-primary-foreground/80">{translations.home.description1}</p>
-                                <p className="mt-3 max-w-xl text-sm text-primary-foreground/80">{translations.home.description2}</p>
-
-                                <div className="mt-6 flex flex-wrap items-center gap-3">
-                                    <Link href="/list-products">
-                                        <Button className="bg-primary-foreground px-7 text-primary transition hover:scale-105 hover:bg-primary-foreground/90">
-                                            Browse Extended Art
-                                        </Button>
-                                    </Link>
-                                    <Link href="/about-us">
-                                        <Button
-                                            variant="outline"
-                                            className="border-primary-foreground/50 bg-transparent px-7 text-primary-foreground transition hover:scale-105 hover:bg-primary-foreground hover:text-primary"
-                                        >
-                                            Our Story
-                                        </Button>
-                                    </Link>
-                                </div>
-                            </div>
-
-                            {/* Square so the card render never letterboxes */}
-                            <div className="mx-auto aspect-square w-full max-w-xl">
-                                <ImageSequence />
-                            </div>
-                        </div>
-
-                        {/* Row 2 — THE CRAFT: the three steps behind every piece */}
-                        <div className="grid shrink-0 gap-x-6 gap-y-8 sm:grid-cols-2 md:grid-cols-3">
-                            {homeCraftSteps.map((item) => (
-                                <div key={item.step} className="border-t border-primary-foreground/25 pt-5">
-                                    <span className="block font-pixel text-lg font-bold text-primary-foreground italic">{item.step}</span>
-                                    <h3 className="text-md mt-3 font-pixel font-semibold text-primary-foreground">{item.title}</h3>
-                                    <p className="mt-3 text-sm text-primary-foreground/75">{item.description}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
 
                 {/* EVENT SHOWCASE PRODUCT SECTION */}
 
@@ -828,20 +940,14 @@ function Welcome() {
                         <div className="mx-auto -mb-8 max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="mb-12 text-center">
                                 <h2 className="mb-4 font-pixel text-2xl font-bold text-primary md:text-3xl">WHAT COLLECTORS SAY</h2>
-                                <p className="text-sm text-muted-foreground">Hear from the collectors and sellers who trade with us every day.</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Hear from collectors who use Legacy Vault extended art for their collections.
+                                </p>
                             </div>
                         </div>
                         <StaggerTestimonials testimonials={activeTestimonials} />
                     </section>
                 )}
-
-                <div className="my-8">
-                    <ProductCardsSection products={productsTop} title={'TOP SELLING ITEMS'} />
-                </div>
-
-                <div className="my-8">
-                    <ProductCardsSection products={productsBottom} title={'SHOP PICKS OF THE MONTH'} />
-                </div>
 
                 <div className="my-8">
                     <ArticlesSection articles={articles} />
