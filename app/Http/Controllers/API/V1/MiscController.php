@@ -8,6 +8,7 @@ use App\Http\Traits\GeoIpTrait;
 use App\Models\Banner;
 use App\Models\EventProducts;
 use App\Models\Events;
+use App\Models\Referral;
 use App\Models\RunningText;
 use App\Models\Testimonial;
 use App\Models\VoucherModel;
@@ -969,5 +970,113 @@ class MiscController extends Controller
     public function getAllTestimonials()
     {
         return Testimonial::orderBy('created_at', 'desc')->get();
+    }
+
+    public function createReferral(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name'        => 'required|string',
+            'referral_code' => 'required|string|unique:referrals',
+            'discount'    => 'required|numeric',
+            'quantity'    => 'required|integer|min:1',
+            'is_active'   => 'nullable',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $referral = Referral::create([
+                'name' => $request->name,
+                'referral_code' => $request->referral_code,
+                'discount' => $request->discount,
+                'is_active' => $request->is_active ?? true,
+            ]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully created referral.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to create referral: ' . $e);
+            return redirect()->back()->with('error', 'Failed to create referral: ' . $e->getMessage());
+        }
+    }
+
+    public function updateReferral(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'name'          => 'required|string',
+            'referral_code' => 'required|string|unique:referrals,referral_code,' . $id,
+            'discount'      => 'required|numeric',
+            'is_active'     => 'nullable',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $referral = Referral::findOrFail($id);
+
+            $referral->update([
+                'name'          => $request->name,
+                'referral_code' => $request->referral_code,
+                'discount'      => $request->discount,
+                'is_active'     => $request->is_active ?? false,
+            ]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully updated referral.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to update referral: ' . $e);
+            return redirect()->back()->with('error', 'Failed to update referral: ' . $e->getMessage());
+        }
+    }
+
+    public function getAllReferrals()
+    {
+        $data = Referral::query()
+            ->leftJoin('orders', 'orders.referral_code', '=', 'referrals.referral_code')
+            ->select('referrals.*')
+            ->selectRaw('COUNT(orders.id) as usage')
+            ->groupBy('referrals.id', 'referrals.name', 'referrals.referral_code', 'referrals.discount', 'referrals.is_active', 'referrals.created_at', 'referrals.updated_at')
+            ->orderBy('referrals.name', 'asc')
+            ->get();
+
+        return $data;
+    }
+
+    public function getReferral($id)
+    {
+        try {
+            $referral = Referral::findOrFail($id);
+            return $referral;
+        } catch (Exception $e) {
+            Log::error('[ERROR] Failed to fetch referral: ' . $e);
+            return redirect()->back()->with('error', 'Referral not found.');
+        }
+    }
+
+    public function deleteReferral($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $referral = Referral::findOrFail($id);
+            $referral->delete();
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully deleted referral.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete referral: ' . $e);
+            return redirect()->back()->with('error', 'Failed to delete referral: ' . $e->getMessage());
+        }
     }
 }
