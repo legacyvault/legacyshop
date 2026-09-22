@@ -19,6 +19,7 @@ use App\Models\Events;
 use App\Models\Guest;
 use App\Models\Product;
 use App\Models\Profile;
+use App\Models\Referral;
 use App\Models\SubCategory;
 use App\Models\Variant;
 use App\Models\VoucherModel;
@@ -74,7 +75,8 @@ class OrderController extends Controller
             'receiver_city' => 'required|string',
             'receiver_province' => 'required|string',
             'receiver_country' => 'nullable|string',
-            'voucher_code'            => 'nullable|string',
+            'voucher_code' => 'nullable|string',
+            'referral_code' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|uuid',
             'items.*.product_name' => 'required|string',
@@ -138,8 +140,12 @@ class OrderController extends Controller
         }
         $shippingFee = $request->shipping_fee;
         $voucherDiscount = 0;
+        $referralDiscount = 0;
         $eligibleProductIds = [];
+        $voucher = null;
+        $referral = null;
 
+        // ---- VOUCHER DISCOUNT (applied first, on raw item price) ----
         if ($request->filled('voucher_code')) {
             $voucher = VoucherModel::with('products')
                 ->where('voucher_code', $request->voucher_code)
@@ -173,7 +179,28 @@ class OrderController extends Controller
             }
         }
 
-        $subtotal = $subtotal - $voucherDiscount;
+        // ---- REFERRAL DISCOUNT (applied second, on amount remaining after voucher) ----
+        if ($request->filled('referral_code')) {
+            $referral = Referral::where('referral_code', $request->referral_code)
+                ->where('is_active', true)
+                ->lockForUpdate()
+                ->first();
+
+            if ($referral) {
+                $referralPercent = $referral->discount;
+
+                foreach ($items as &$item) {
+                    $lineTotal = $item['price'] * $item['quantity'];
+                    $afterVoucher = $lineTotal - ($item['voucher_discount'] ?? 0);
+                    $item['referral_discount'] = ($afterVoucher * $referralPercent) / 100;
+                }
+                unset($item);
+
+                $referralDiscount = collect($items)->sum('referral_discount');
+            }
+        }
+
+        $subtotal = $subtotal - $voucherDiscount - $referralDiscount;
 
         $grandTotal = max(
             0,
@@ -220,16 +247,19 @@ class OrderController extends Controller
                 'paid_at' => $isManualInvoice ? now() : null,
             ];
 
-            if ($request->filled('voucher_code')) {
-                $data['voucher_code'] = $voucher->voucher_code;
+            if ($voucher) {
+                // FIX: was writing to $data instead of $data_order (bug in original code)
+                $data_order['voucher_code'] = $voucher->voucher_code;
+            }
+
+            if ($referral) {
+                $data_order['referral_code'] = $referral->referral_code;
             }
 
             $order = Order::create($data_order);
 
-            if ($request->filled('voucher_code')) {
-                if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
-                    $voucher->decrement('limit', 1);
-                }
+            if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
+                $voucher->decrement('limit', 1);
             }
 
             if ($isManualInvoice) {
@@ -244,23 +274,14 @@ class OrderController extends Controller
             // Create Order Items
             foreach ($items as $item) {
                 Log::info($item);
-                // $eventDiscountPerUnit =
-                //     ($item['event_discount'] ?? 0) / max(1, $item['quantity']);
 
-                if ($request->filled('voucher_code')) {
-                    $voucherDiscountPerUnit =
-                        ($item['voucher_discount'] ?? 0) / max(1, $item['quantity']);
+                $voucherDiscountPerUnit = ($item['voucher_discount'] ?? 0) / max(1, $item['quantity']);
+                $referralDiscountPerUnit = ($item['referral_discount'] ?? 0) / max(1, $item['quantity']);
 
-                    $finalPricePerUnit = max(
-                        0,
-                        $item['price'] - $voucherDiscountPerUnit
-                    );
-                } else {
-                    $finalPricePerUnit = max(
-                        0,
-                        $item['price']
-                    );
-                }
+                $finalPricePerUnit = max(
+                    0,
+                    $item['price'] - $voucherDiscountPerUnit - $referralDiscountPerUnit
+                );
 
                 OrderItems::create([
                     'id' => Str::uuid(),
@@ -395,7 +416,8 @@ class OrderController extends Controller
             'shipping_duration_range' => 'nullable|string',
             'shipping_duration_unit' => 'nullable|string',
             'biteship_destination_id' => 'nullable|string',
-            'voucher_code'            => 'nullable|string',
+            'voucher_code' => 'nullable|string',
+            'referral_code' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|uuid',
             'items.*.product_name' => 'required|string',
@@ -452,44 +474,6 @@ class OrderController extends Controller
         }
         unset($item);
 
-        // $activeEvents = Events::with('event_products')
-        //     ->where('is_active', true)
-        //     ->get();
-
-        // $eventProductDiscounts = [];
-
-        // foreach ($activeEvents as $event) {
-        //     foreach ($event->event_products as $ep) {
-        //         $eventProductDiscounts[$ep->product_id] = $event->discount;
-        //     }
-        // }
-
-        // $shippingFee = $request->shipping_fee;
-        // $subtotal = 0;
-        // $eventDiscountTotal = 0;
-
-        // foreach ($items as &$item) {
-        //     $lineTotal = $item['quantity'] * $item['price'];
-        //     $subtotal += $lineTotal;
-
-        //     $eventDiscount = 0;
-
-        //     if (
-        //         !empty($item['product_id']) &&
-        //         isset($eventProductDiscounts[$item['product_id']])
-        //     ) {
-        //         $eventPercent = $eventProductDiscounts[$item['product_id']]; // contoh: 10 = 10%
-        //         $eventDiscount = ($lineTotal * $eventPercent) / 100;
-        //     }
-
-        //     $item['event_discount'] = round($eventDiscount, 2);
-        //     $item['total_after_event'] = round($lineTotal - $eventDiscount, 2);
-
-        //     $eventDiscountTotal += $eventDiscount;
-        // }
-        // unset($item);
-
-        // $subtotalAfterEvent = max(0, $subtotal - $eventDiscountTotal);
         $subtotal = 0;
 
         foreach ($items as $item) {
@@ -497,8 +481,12 @@ class OrderController extends Controller
         }
         $shippingFee = $request->shipping_fee;
         $voucherDiscount = 0;
+        $referralDiscount = 0;
         $eligibleProductIds = [];
+        $voucher = null;
+        $referral = null;
 
+        // ---- VOUCHER DISCOUNT (applied first, on raw item price) ----
         if ($request->filled('voucher_code')) {
             $voucher = VoucherModel::with('products')
                 ->where('voucher_code', $request->voucher_code)
@@ -532,7 +520,28 @@ class OrderController extends Controller
             }
         }
 
-        $subtotal = $subtotal - $voucherDiscount;
+        // ---- REFERRAL DISCOUNT (applied second, on amount remaining after voucher) ----
+        if ($request->filled('referral_code')) {
+            $referral = Referral::where('referral_code', $request->referral_code)
+                ->where('is_active', true)
+                ->lockForUpdate()
+                ->first();
+
+            if ($referral) {
+                $referralPercent = $referral->discount;
+
+                foreach ($items as &$item) {
+                    $lineTotal = $item['price'] * $item['quantity'];
+                    $afterVoucher = $lineTotal - ($item['voucher_discount'] ?? 0);
+                    $item['referral_discount'] = ($afterVoucher * $referralPercent) / 100;
+                }
+                unset($item);
+
+                $referralDiscount = collect($items)->sum('referral_discount');
+            }
+        }
+
+        $subtotal = $subtotal - $voucherDiscount - $referralDiscount;
 
         $grandTotal = max(
             0,
@@ -585,18 +594,21 @@ class OrderController extends Controller
                 'paid_at' => $isManualInvoice ? now() : null,
             ];
 
-            if ($request->filled('voucher_code')) {
-                $data['voucher_code'] = $voucher->voucher_code;
+            if ($voucher) {
+                // FIX: was writing to $data instead of $data_order (bug in original code)
+                $data_order['voucher_code'] = $voucher->voucher_code;
+            }
+
+            if ($referral) {
+                $data_order['referral_code'] = $referral->referral_code;
             }
 
             $order = Order::create($data_order);
 
             Log::info('Order before Midtrans', ['order' => $order]);
 
-            if ($request->filled('voucher_code')) {
-                if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
-                    $voucher->decrement('limit', 1);
-                }
+            if ($voucher && $voucher->is_limit && $voucherDiscount > 0) {
+                $voucher->decrement('limit', 1);
             }
 
             if ($isManualInvoice) {
@@ -610,24 +622,13 @@ class OrderController extends Controller
 
             // Create Order Items
             foreach ($items as $item) {
-                // Log::info($item);
-                // $eventDiscountPerUnit =
-                //     ($item['event_discount'] ?? 0) / max(1, $item['quantity']);
+                $voucherDiscountPerUnit = ($item['voucher_discount'] ?? 0) / max(1, $item['quantity']);
+                $referralDiscountPerUnit = ($item['referral_discount'] ?? 0) / max(1, $item['quantity']);
 
-                if ($request->filled('voucher_code')) {
-                    $voucherDiscountPerUnit =
-                        ($item['voucher_discount'] ?? 0) / max(1, $item['quantity']);
-
-                    $finalPricePerUnit = max(
-                        0,
-                        $item['price'] - $voucherDiscountPerUnit
-                    );
-                } else {
-                    $finalPricePerUnit = max(
-                        0,
-                        $item['price']
-                    );
-                }
+                $finalPricePerUnit = max(
+                    0,
+                    $item['price'] - $voucherDiscountPerUnit - $referralDiscountPerUnit
+                );
 
                 OrderItems::create([
                     'id' => Str::uuid(),
