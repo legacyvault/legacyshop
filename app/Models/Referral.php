@@ -19,6 +19,11 @@ class Referral extends Model
         'is_active'
     ];
 
+    protected $casts = [
+        'discount' => 'float',
+        'is_active' => 'boolean',
+    ];
+
     // In Referral model
     public function orders()
     {

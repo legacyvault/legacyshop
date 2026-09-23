@@ -254,6 +254,7 @@ class OrderController extends Controller
 
             if ($referral) {
                 $data_order['referral_code'] = $referral->referral_code;
+                $data_order['referral_discount'] = $referralDiscount;
             }
 
             $order = Order::create($data_order);
@@ -601,6 +602,7 @@ class OrderController extends Controller
 
             if ($referral) {
                 $data_order['referral_code'] = $referral->referral_code;
+                $data_order['referral_discount'] = $referralDiscount;
             }
 
             $order = Order::create($data_order);

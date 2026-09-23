@@ -19,6 +19,7 @@ class Order extends Model
         'order_number',
         'voucher_code',
         'referral_code',
+        'referral_discount',
         'transaction_id',
         'transaction_status',
         'transaction_time',

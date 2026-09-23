@@ -1,6 +1,12 @@
-import { mockReferralCodes, mockReferralUsages } from '@/components/referral/referral-mock';
 import ReferralModal from '@/components/referral/referral-modal';
-import { ReferralCode, ReferralFormState } from '@/components/referral/referral-types';
+import {
+    ReferralCode,
+    ReferralFormState,
+    ReferralResponse,
+    ReferralUsageResponse,
+    toReferralCode,
+    toReferralUsage,
+} from '@/components/referral/referral-types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,8 +14,8 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { BreadcrumbItem, SharedData } from '@/types';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Percent, Plus, Search, Ticket, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -35,9 +41,23 @@ const formatDate = (value: string) => {
 
 const generateId = () => `referral-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+type PageProps = SharedData & {
+    referrals?: ReferralResponse[];
+    latestUsages?: ReferralUsageResponse[];
+};
+
+const firstError = (errors: Record<string, string>, fallback: string) => {
+    const message = Object.values(errors)[0];
+    return typeof message === 'string' && message.length ? message : fallback;
+};
+
 export default function ReferralIndex() {
-    const [referrals, setReferrals] = useState<ReferralCode[]>(mockReferralCodes);
+    const { referrals: referralData, latestUsages: latestUsageData } = usePage<PageProps>().props;
+    const referrals = useMemo(() => (Array.isArray(referralData) ? referralData.map(toReferralCode) : []), [referralData]);
+    const latestUsages = useMemo(() => (Array.isArray(latestUsageData) ? latestUsageData.map(toReferralUsage) : []), [latestUsageData]);
+
     const [draft, setDraft] = useState<ReferralFormState | null>(null);
+    const [saving, setSaving] = useState(false);
     const [search, setSearch] = useState('');
     const [formError, setFormError] = useState<string | null>(null);
 
@@ -82,7 +102,6 @@ export default function ReferralIndex() {
         setDraft((prev) => (prev ? ({ ...prev, [field]: value } as ReferralFormState) : prev));
     };
 
-    // UI-only for now: saving just updates local state, no request is sent yet.
     const handleSave = () => {
         if (!draft) return;
 
@@ -111,40 +130,50 @@ export default function ReferralIndex() {
             return;
         }
 
-        setReferrals((prev) => {
-            if (draft.isNew) {
-                return [
-                    ...prev,
-                    {
-                        id: draft.id,
-                        name: trimmedName,
-                        code: trimmedCode,
-                        discount: discountValue,
-                        isActive: draft.isActive,
-                        totalUsage: 0,
-                        totalDiscountGiven: 0,
-                        createdAt: new Date().toISOString(),
-                    },
-                ];
-            }
+        const payload = {
+            name: trimmedName,
+            referral_code: trimmedCode,
+            discount: discountValue,
+            is_active: draft.isActive,
+        };
 
-            return prev.map((referral) =>
-                referral.id === draft.id
-                    ? { ...referral, name: trimmedName, code: trimmedCode, discount: discountValue, isActive: draft.isActive }
-                    : referral,
-            );
-        });
+        const options = {
+            preserveScroll: true,
+            onStart: () => setSaving(true),
+            onSuccess: () => setDraft(null),
+            onError: (errors: Record<string, string>) => setFormError(firstError(errors, 'Unable to save referral code.')),
+            onFinish: () => setSaving(false),
+        };
 
-        setDraft(null);
+        if (draft.isNew) {
+            router.post(route('referral.create'), payload, options);
+        } else {
+            router.post(route('referral.update', draft.id), payload, options);
+        }
     };
 
     const toggleActive = (referral: ReferralCode) => {
-        setReferrals((prev) => prev.map((item) => (item.id === referral.id ? { ...item, isActive: !item.isActive } : item)));
+        router.post(
+            route('referral.update', referral.id),
+            {
+                name: referral.name,
+                referral_code: referral.code,
+                discount: referral.discount,
+                is_active: !referral.isActive,
+            },
+            {
+                preserveScroll: true,
+                onError: (errors) => setFormError(firstError(errors, 'Unable to update referral code.')),
+            },
+        );
     };
 
     const deleteReferral = (referral: ReferralCode) => {
         if (!confirm(`Delete referral code "${referral.code}"?`)) return;
-        setReferrals((prev) => prev.filter((item) => item.id !== referral.id));
+        router.delete(route('referral.delete', referral.id), {
+            preserveScroll: true,
+            onError: (errors) => setFormError(firstError(errors, 'Unable to delete referral code.')),
+        });
     };
 
     return (
@@ -287,10 +316,11 @@ export default function ReferralIndex() {
                 <Card className="border-dashed">
                     <CardHeader>
                         <CardTitle className="text-base">Latest usage</CardTitle>
-                        <CardDescription>Most recent orders that redeemed a referral code.</CardDescription>
+                        <CardDescription>Most recent paid orders that redeemed a referral code.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        {mockReferralUsages.slice(0, 3).map((usage) => (
+                        {latestUsages.length === 0 && <p className="text-sm text-muted-foreground">No referral usage yet.</p>}
+                        {latestUsages.map((usage) => (
                             <div key={usage.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-muted px-3 py-2">
                                 <div className="text-sm">
                                     <span className="font-mono uppercase">{usage.referralCode}</span>
@@ -317,6 +347,7 @@ export default function ReferralIndex() {
                     referral={draft}
                     onFieldChange={updateDraftField}
                     onSave={handleSave}
+                    saving={saving}
                 />
             )}
 

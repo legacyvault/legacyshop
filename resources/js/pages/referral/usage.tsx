@@ -1,11 +1,11 @@
-import { mockReferralCodes, mockReferralUsages } from '@/components/referral/referral-mock';
+import { ReferralResponse, ReferralUsageResponse, toReferralCode, toReferralUsage } from '@/components/referral/referral-types';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { BreadcrumbItem, SharedData } from '@/types';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Percent, Search, ShoppingBag, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -35,14 +35,23 @@ const formatDateTime = (value: string) => {
     return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 };
 
+type PageProps = SharedData & {
+    referrals?: ReferralResponse[];
+    usages?: ReferralUsageResponse[];
+};
+
 export default function ReferralUsage() {
+    const { referrals: referralData, usages: usageData } = usePage<PageProps>().props;
+    const referralCodes = useMemo(() => (Array.isArray(referralData) ? referralData.map(toReferralCode) : []), [referralData]);
+    const allUsages = useMemo(() => (Array.isArray(usageData) ? usageData.map(toReferralUsage) : []), [usageData]);
+
     const initialCode = useMemo(() => {
         if (typeof window === 'undefined') return ALL_CODES;
         const param = new URLSearchParams(window.location.search).get('code');
         if (!param) return ALL_CODES;
-        const match = mockReferralCodes.find((referral) => referral.code.toUpperCase() === param.toUpperCase());
+        const match = referralCodes.find((referral) => referral.code.toUpperCase() === param.toUpperCase());
         return match ? match.code : ALL_CODES;
-    }, []);
+    }, [referralCodes]);
 
     const [codeFilter, setCodeFilter] = useState<string>(initialCode);
     const [search, setSearch] = useState('');
@@ -50,7 +59,7 @@ export default function ReferralUsage() {
     const usages = useMemo(() => {
         const term = search.trim().toLowerCase();
 
-        return mockReferralUsages.filter((usage) => {
+        return allUsages.filter((usage) => {
             const matchesCode = codeFilter === ALL_CODES || usage.referralCode === codeFilter;
             const matchesTerm =
                 !term ||
@@ -60,7 +69,7 @@ export default function ReferralUsage() {
 
             return matchesCode && matchesTerm;
         });
-    }, [codeFilter, search]);
+    }, [allUsages, codeFilter, search]);
 
     const totals = useMemo(() => {
         const discount = usages.reduce((sum, usage) => sum + usage.discountAmount, 0);
@@ -77,7 +86,7 @@ export default function ReferralUsage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <h1 className="text-2xl leading-tight font-semibold">Referral usage</h1>
-                        <p className="text-sm text-muted-foreground">Every order that redeemed a referral code.</p>
+                        <p className="text-sm text-muted-foreground">Every paid order that redeemed a referral code.</p>
                     </div>
                     <Link href="/referral">
                         <Button variant="outline">Back to referral codes</Button>
@@ -123,7 +132,7 @@ export default function ReferralUsage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value={ALL_CODES}>All referral codes</SelectItem>
-                                {mockReferralCodes.map((referral) => (
+                                {referralCodes.map((referral) => (
                                     <SelectItem key={referral.id} value={referral.code}>
                                         {referral.code} — {referral.name}
                                     </SelectItem>
@@ -145,7 +154,7 @@ export default function ReferralUsage() {
                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
                     <div>
                         Total usage: <span className="font-semibold text-foreground">{usages.length}</span>
-                        {usages.length !== mockReferralUsages.length && <span> of {mockReferralUsages.length} records</span>}
+                        {usages.length !== allUsages.length && <span> of {allUsages.length} records</span>}
                         {codeFilter !== ALL_CODES && <span> · code {codeFilter}</span>}
                     </div>
                     <div>

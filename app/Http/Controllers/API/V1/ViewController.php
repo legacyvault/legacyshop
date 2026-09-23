@@ -663,15 +663,20 @@ class ViewController extends Controller
         ]);
     }
 
-    // TODO: wire to the referral API once the backend is available.
     public function referralPage()
     {
-        return Inertia::render('referral/index');
+        return Inertia::render('referral/index', [
+            'referrals' => $this->miscController->getAllReferrals(),
+            'latestUsages' => $this->miscController->getReferralUsages(3),
+        ]);
     }
 
     public function referralUsagePage()
     {
-        return Inertia::render('referral/usage');
+        return Inertia::render('referral/usage', [
+            'referrals' => $this->miscController->getAllReferrals(),
+            'usages' => $this->miscController->getReferralUsages(),
+        ]);
     }
 
     public function eventPage()

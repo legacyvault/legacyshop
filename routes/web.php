@@ -43,6 +43,7 @@ Route::group(['prefix' => 'v1'], function () {
     Route::post('delivery-rates', [BiteshipController::class, 'getDeliveryRates'])->name('delivery.rates');
 
     Route::post('check-voucher', [MiscController::class, 'checkVoucher'])->name('check.voucher');
+    Route::post('check-referral', [MiscController::class, 'checkReferral'])->middleware('throttle:20,1')->name('check.referral');
 
     // Checkout routes — CSRF excluded in bootstrap/app.php
     Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');

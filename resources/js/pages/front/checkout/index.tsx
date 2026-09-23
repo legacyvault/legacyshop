@@ -1208,12 +1208,74 @@ export default function Checkout() {
         }
     }, [checkoutItems, voucherCode]);
 
+    const [referralCode, setReferralCode] = useState('');
+    const [referralError, setReferralError] = useState<string | null>(null);
+    const [referralApplying, setReferralApplying] = useState(false);
+    const [appliedReferral, setAppliedReferral] = useState<{ code: string; discount: number } | null>(null);
+
+    const handleApplyReferral = useCallback(async () => {
+        const trimmedCode = referralCode.trim().toUpperCase();
+        if (!trimmedCode) {
+            setReferralError('Please enter a referral code.');
+            return;
+        }
+
+        setReferralApplying(true);
+        setReferralError(null);
+
+        try {
+            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+            const referralHeaders: Record<string, string> = {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            };
+            if (csrfToken) referralHeaders['X-CSRF-TOKEN'] = csrfToken;
+
+            const response = await fetch('/v1/check-referral', {
+                method: 'POST',
+                headers: referralHeaders,
+                credentials: 'include',
+                body: JSON.stringify({ referral_code: trimmedCode }),
+            });
+
+            const contentType = response.headers.get('content-type') ?? '';
+            const body = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+
+            if (!response.ok) {
+                const message =
+                    (body && typeof body.message === 'string' && body.message.length ? body.message : null) || 'Referral code is not valid.';
+                setReferralError(message);
+                setAppliedReferral(null);
+                return;
+            }
+
+            const discountValue = Number(body?.data?.discount ?? 0);
+            setAppliedReferral({
+                code: typeof body?.data?.referral_code === 'string' ? body.data.referral_code : trimmedCode,
+                discount: Number.isFinite(discountValue) ? discountValue : 0,
+            });
+            setReferralError(null);
+        } catch (error) {
+            setReferralError(error instanceof Error ? error.message : 'Unable to apply referral code. Please try again.');
+            setAppliedReferral(null);
+        } finally {
+            setReferralApplying(false);
+        }
+    }, [referralCode]);
+
     const subtotal = checkoutItems.reduce((total, item) => total + item.price * item.quantity, 0);
     const shipping = isIndonesian ? (selectedRate?.price ?? 0) : (internationalShipmentPrice ?? 0);
 
     const voucherDiscount = useMemo(() => appliedVoucher?.totalVoucherPrice, [appliedVoucher]);
 
-    const total = Math.max(0, subtotal + shipping - (voucherDiscount ?? 0));
+    // Mirrors the backend: referral applies after the voucher, on what is left of the item subtotal.
+    const referralDiscount = useMemo(() => {
+        if (!appliedReferral) return 0;
+        return (Math.max(0, subtotal - (voucherDiscount ?? 0)) * appliedReferral.discount) / 100;
+    }, [appliedReferral, subtotal, voucherDiscount]);
+
+    const total = Math.max(0, subtotal + shipping - (voucherDiscount ?? 0) - referralDiscount);
 
     useEffect(() => {
         if (!appliedVoucher) return;
@@ -1508,6 +1570,7 @@ export default function Checkout() {
             payment_method: 'paypal',
             shipping_fee: internationalShipmentPrice,
             voucher_code: appliedVoucher?.code ?? undefined,
+            referral_code: appliedReferral?.code ?? undefined,
             receiver_name: selectedCheckoutAddress.contact_name,
             receiver_phone: selectedCheckoutAddress.contact_phone,
             receiver_address: selectedCheckoutAddress.address,
@@ -1553,6 +1616,7 @@ export default function Checkout() {
         return data.id;
     }, [
         appliedVoucher,
+        appliedReferral,
         checkoutItems,
         guestAddressForm,
         guestContact,
@@ -1661,6 +1725,7 @@ export default function Checkout() {
             shipping_duration_range: selectedRate.shipment_duration_range ?? selectedRate.duration ?? null,
             shipping_duration_unit: selectedRate.shipment_duration_unit ?? null,
             voucher_code: appliedVoucher?.code ?? undefined,
+            referral_code: appliedReferral?.code ?? undefined,
             receiver_name: selectedCheckoutAddress.contact_name,
             receiver_phone: selectedCheckoutAddress.contact_phone,
             receiver_address: selectedCheckoutAddress.address,
@@ -1760,6 +1825,7 @@ export default function Checkout() {
         setPendingSnapToken,
         clearCheckoutStorage,
         appliedVoucher,
+        appliedReferral,
     ]);
 
     const embedSnap = useCallback(
@@ -2564,6 +2630,49 @@ export default function Checkout() {
                                     {voucherError ? <p className="text-xs text-destructive">{voucherError}</p> : null}
                                     {appliedVoucher && !voucherError ? (
                                         <p className="text-xs text-emerald-600">Voucher applied. Discount: {appliedVoucher.discount}%</p>
+                                    ) : null}
+                                </div>
+                                {appliedReferral && referralDiscount > 0 ? (
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                        <span className="flex items-center gap-2">
+                                            Referral
+                                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary uppercase">
+                                                {appliedReferral.code}
+                                            </span>
+                                        </span>
+                                        <span className="font-medium text-emerald-600">- {formatCurrency(referralDiscount, displayCurrency)}</span>
+                                    </div>
+                                ) : null}
+                                <div className="space-y-2">
+                                    <Label htmlFor="referral-code" className="text-xs font-semibold text-foreground">
+                                        Referral Code
+                                    </Label>
+                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                        <Input
+                                            id="referral-code"
+                                            value={referralCode}
+                                            placeholder="Enter referral code"
+                                            onChange={(event) => setReferralCode(event.target.value)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter') {
+                                                    event.preventDefault();
+                                                    void handleApplyReferral();
+                                                }
+                                            }}
+                                            className="h-10 uppercase"
+                                        />
+                                        <Button
+                                            type="button"
+                                            className="shrink-0"
+                                            onClick={() => void handleApplyReferral()}
+                                            disabled={referralApplying}
+                                        >
+                                            {referralApplying ? 'Checking...' : appliedReferral ? 'Update' : 'Apply'}
+                                        </Button>
+                                    </div>
+                                    {referralError ? <p className="text-xs text-destructive">{referralError}</p> : null}
+                                    {appliedReferral && !referralError ? (
+                                        <p className="text-xs text-emerald-600">Referral applied. Discount: {appliedReferral.discount}%</p>
                                     ) : null}
                                 </div>
                             </CardContent>
