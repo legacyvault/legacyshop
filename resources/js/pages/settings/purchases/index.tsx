@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import FrontLayout from '@/layouts/front/front-layout';
+import { useMidtransSnap } from '@/hooks/use-midtrans-snap';
 import { cn } from '@/lib/utils';
 import { IRootHistoryOrders, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
@@ -27,7 +28,7 @@ function Purchases() {
     const [searchValue, setSearchValue] = useState<string>((filters?.q as string) ?? '');
     const [detailOpen, setDetailOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<IRootHistoryOrders | null>(null);
-    const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.pay));
+    const isSnapReady = useMidtransSnap();
 
     useEffect(() => {
         setSearchValue((filters?.q as string) ?? '');

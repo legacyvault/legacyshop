@@ -242,6 +242,14 @@ deliberately.
   only for components listed there (`front/checkout/index`, `settings/purchases/index`,
   `orders/index`, `orders/summary/index`) with `defer`. If you add a page that calls
   `window.snap` or renders a PayPal button, add its component name to that list.
+- **Snap must be self-loading on Inertia navigation**: the `app.blade.php` `<script>`
+  list only fires on a *full* page load. Reaching a payment page via an Inertia
+  `<Link>`/`router` (the normal cart → checkout path) skips `<head>`, so `window.snap`
+  is absent and anything gated on it silently no-ops (this is what left checkout stuck
+  on "Preparing payment widget..."). `useMidtransSnap()` (`resources/js/hooks/`) injects
+  the script on demand from the `midtrans` shared prop; use it on any Snap page instead
+  of reading `import.meta.env.VITE_MIDTRANS_CLIENT_KEY` directly (that VITE var was
+  never set; the key now comes from `HandleInertiaRequests`) .
 - **Titles/SEO**: use `<Seo>` / Inertia `<Head>`; there is intentionally **no**
   `<title>` in `app.blade.php` (a hardcoded one caused duplicate titles). App name
   in `app.tsx`/`ssr.tsx` is the literal `'Legacy Vault'` and must match between them.

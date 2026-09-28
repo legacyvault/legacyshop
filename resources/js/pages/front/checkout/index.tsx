@@ -237,7 +237,8 @@ function loadStoredCheckoutItems(): CheckoutItem[] {
 }
 
 export default function Checkout() {
-    const { profile, rates, warehouse, auth, isIndonesian, internationalShipmentPrice, countryCode } = usePage<SharedData>().props;
+    const { profile, rates, warehouse, auth, isIndonesian, internationalShipmentPrice, countryCode, midtrans } =
+        usePage<SharedData>().props;
     const isGuest = !auth?.user;
     const deliveryAddresses = profile?.delivery_address ?? [];
 
@@ -1263,8 +1264,8 @@ export default function Checkout() {
     const [isThankYou, setIsThankYou] = useState(false);
     const [pendingSnapToken, setPendingSnapToken] = useState<string | null>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const midtransClientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY ?? '';
-    const midtransSnapUrl = `${import.meta.env.VITE_MIDTRANS_URL}/snap/snap.js`;
+    const midtransClientKey = midtrans?.clientKey ?? import.meta.env.VITE_MIDTRANS_CLIENT_KEY ?? '';
+    const midtransSnapUrl = `${midtrans?.snapUrl ?? import.meta.env.VITE_MIDTRANS_URL ?? 'https://app.sandbox.midtrans.com'}/snap/snap.js`;
     const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.embed));
 
     const selectedAddressValidForFlow = useMemo(() => {
@@ -1282,21 +1283,33 @@ export default function Checkout() {
     const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<IDeliveryAddress | null>(null);
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        if (!midtransClientKey) return;
 
         if (window.snap) {
             setIsSnapReady(true);
             return;
         }
 
+        if (!midtransClientKey) {
+            setCheckoutError((prev) => prev ?? 'Payment gateway is not configured. Please contact support.');
+            return;
+        }
+
         const scriptId = 'midtrans-snap-script';
         const existingScript = document.getElementById(scriptId) as HTMLScriptElement | null;
 
+        const timeoutId = setTimeout(() => {
+            if (!window.snap?.embed) {
+                setCheckoutError((prev) => prev ?? 'Payment gateway is still loading. Please refresh and try again.');
+            }
+        }, 15000);
+
         const handleLoad = () => {
+            clearTimeout(timeoutId);
             setIsSnapReady(true);
         };
 
         const handleError = () => {
+            clearTimeout(timeoutId);
             setCheckoutError((prev) => prev ?? 'Failed to load payment gateway. Please refresh and try again.');
         };
 
@@ -1305,6 +1318,7 @@ export default function Checkout() {
             existingScript.addEventListener('error', handleError);
 
             return () => {
+                clearTimeout(timeoutId);
                 existingScript.removeEventListener('load', handleLoad);
                 existingScript.removeEventListener('error', handleError);
             };
@@ -1320,6 +1334,7 @@ export default function Checkout() {
         document.body.appendChild(script);
 
         return () => {
+            clearTimeout(timeoutId);
             script.removeEventListener('load', handleLoad);
             script.removeEventListener('error', handleError);
         };
@@ -1854,7 +1869,11 @@ export default function Checkout() {
                             id={SNAP_EMBED_CONTAINER_ID}
                             className="mx-auto w-full max-w-2xl rounded-xl border border-border/60 bg-background p-4 shadow-lg"
                         >
-                            <p className="text-center text-sm text-muted-foreground">Preparing payment widget...</p>
+                            {checkoutError ? (
+                                <p className="text-center text-sm text-destructive">{checkoutError}</p>
+                            ) : (
+                                <p className="text-center text-sm text-muted-foreground">Preparing payment widget...</p>
+                            )}
                         </div>
                     </div>
                 ) : null}
