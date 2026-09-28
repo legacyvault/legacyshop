@@ -30,6 +30,10 @@ export interface SharedData {
     ziggy: Config & { location: string };
     profile: IProfile;
     sidebarOpen: boolean;
+    midtrans?: {
+        clientKey: string | null;
+        snapUrl: string | null;
+    };
     [key: string]: unknown;
     translations: any;
     locale: string;

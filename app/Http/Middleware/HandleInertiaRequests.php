@@ -2,11 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Profile;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
-use App\Models\Profile;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -42,22 +42,23 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
         $profile = $user ? Profile::where('user_id', $user->id)->first() : null;
         $userPayload = $user ? [
-            'id'   => $user->id,
+            'id' => $user->id,
             'name' => $user->name,
-            'email'=> $user->email,
+            'email' => $user->email,
             'role' => $user->role,
-            'country' => $profile?->country
+            'country' => $profile?->country,
         ] : null;
-    
+
         $accessToken = ($user && $user->role === 'admin')
             ? $user->auth_token
             : null;
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
-                'user'    => $userPayload,
+                'user' => $userPayload,
                 'cognito' => [
                     'accessToken' => $accessToken, // null for non-admins
                 ],
@@ -68,8 +69,12 @@ class HandleInertiaRequests extends Middleware
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
-                'alert' => session('alert')
-            ]
+                'alert' => session('alert'),
+            ],
+            'midtrans' => [
+                'clientKey' => config('services.midtrans.client_key'),
+                'snapUrl' => config('services.midtrans.snap_url'),
+            ],
         ];
     }
 }

@@ -38,6 +38,7 @@
             'orders/summary/index',
         ]))
             <script
+                id="midtrans-snap-script"
                 type="text/javascript"
                 src="{{ config('services.midtrans.snap_url') }}/snap/snap.js"
                 data-client-key="{{ config('services.midtrans.client_key') }}"

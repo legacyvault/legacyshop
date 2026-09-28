@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/app-layout';
+import { useMidtransSnap } from '@/hooks/use-midtrans-snap';
 import { BreadcrumbItem, IOrdersPaginated, IRootHistoryOrders, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Calendar as CalendarIcon, Loader2, MoreHorizontal, Search } from 'lucide-react';
@@ -157,7 +158,7 @@ const transactionStatusVariant = (status?: string | null): 'default' | 'secondar
 
 export default function Orders() {
     const { ordersPaginated, filters } = usePage<SharedData & { filters?: Filters }>().props;
-    const [isSnapReady, setIsSnapReady] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.snap?.pay));
+    const isSnapReady = useMidtransSnap();
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
