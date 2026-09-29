@@ -12,9 +12,10 @@ type ReferralModalProps = {
     referral: ReferralFormState;
     onFieldChange: (field: keyof ReferralFormState, value: string | boolean) => void;
     onSave: () => void;
+    saving?: boolean;
 };
 
-export default function ReferralModal({ open, onOpenChange, referral, onFieldChange, onSave }: ReferralModalProps) {
+export default function ReferralModal({ open, onOpenChange, referral, onFieldChange, onSave, saving = false }: ReferralModalProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="w-full sm:max-w-lg">
@@ -82,7 +83,9 @@ export default function ReferralModal({ open, onOpenChange, referral, onFieldCha
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button onClick={onSave}>Save referral code</Button>
+                    <Button onClick={onSave} disabled={saving}>
+                        {saving ? 'Saving...' : 'Save referral code'}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

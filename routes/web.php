@@ -43,6 +43,7 @@ Route::group(['prefix' => 'v1'], function () {
     Route::post('delivery-rates', [BiteshipController::class, 'getDeliveryRates'])->name('delivery.rates');
 
     Route::post('check-voucher', [MiscController::class, 'checkVoucher'])->name('check.voucher');
+    Route::post('check-referral', [MiscController::class, 'checkReferral'])->middleware('throttle:20,1')->name('check.referral');
 
     // Checkout routes — CSRF excluded in bootstrap/app.php
     Route::post('checkout/order', [OrderController::class, 'checkout'])->name('order.checkout');
@@ -129,6 +130,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken']], function () {
     Route::get('events', [MiscController::class, 'getAllEvents'])->name('all-events');
     Route::get('active-events', [MiscController::class, 'getAllActiveEvents'])->name('active-events');
     Route::get('event/{id}', [MiscController::class, 'getEventById'])->name('event.id');
+
+    Route::get('referrals', [MiscController::class, 'getAllReferrals'])->name('referrals');
+    Route::get('referral/{id}', [MiscController::class, 'getReferral'])->name('referral.id');
 
     Route::get('vouchers', [MiscController::class, 'getAllVoucher'])->name('vouchers');
     Route::get('voucher/{id}', [MiscController::class, 'getVoucherById'])->name('voucher.id');
@@ -245,6 +249,11 @@ Route::group(['prefix' => 'v1', 'middleware' => ['ensureToken', 'role:admin']], 
     //Events
     Route::post('create-event', [MiscController::class, 'createEvent'])->name('event.create');
     Route::post('update-event/{id}', [MiscController::class, 'updateEvent'])->name('event.update');
+
+    //Referral
+    Route::post('create-referral', [MiscController::class, 'createReferral'])->name('referral.create');
+    Route::post('update-referral/{id}', [MiscController::class, 'updateReferral'])->name('referral.update');
+    Route::delete('delete-referral/{id}', [MiscController::class, 'deleteReferral'])->name('referral.delete');
 
     //Subcat API
     Route::post('create-sub-category', [SubCategoryController::class, 'createSubCategory'])->name('subcat.create');

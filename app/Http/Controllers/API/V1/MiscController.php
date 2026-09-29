@@ -8,6 +8,8 @@ use App\Http\Traits\GeoIpTrait;
 use App\Models\Banner;
 use App\Models\EventProducts;
 use App\Models\Events;
+use App\Models\Order;
+use App\Models\Referral;
 use App\Models\RunningText;
 use App\Models\Testimonial;
 use App\Models\VoucherModel;
@@ -969,5 +971,188 @@ class MiscController extends Controller
     public function getAllTestimonials()
     {
         return Testimonial::orderBy('created_at', 'desc')->get();
+    }
+
+    public function createReferral(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name'        => 'required|string',
+            'referral_code' => 'required|string|unique:referrals',
+            'discount'    => 'required|numeric|gt:0|max:100',
+            'is_active'   => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $referral = Referral::create([
+                'name' => $request->name,
+                'referral_code' => $request->referral_code,
+                'discount' => $request->discount,
+                'is_active' => $request->is_active ?? true,
+            ]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully created referral.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to create referral: ' . $e);
+            return redirect()->back()->with('error', 'Failed to create referral: ' . $e->getMessage());
+        }
+    }
+
+    public function updateReferral(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'name'          => 'required|string',
+            'referral_code' => 'required|string|unique:referrals,referral_code,' . $id,
+            'discount'      => 'required|numeric|gt:0|max:100',
+            'is_active'     => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $referral = Referral::findOrFail($id);
+
+            // Orders link to a referral by its code, so renaming a used code would orphan its history.
+            $codeChanged = strcasecmp($referral->referral_code, $request->referral_code) !== 0;
+            if ($codeChanged && $referral->orders()->exists()) {
+                DB::rollBack();
+                return redirect()->back()->withErrors([
+                    'referral_code' => 'This code has already been used on orders and cannot be changed. Create a new referral code instead.',
+                ])->withInput();
+            }
+
+            $referral->update([
+                'name'          => $request->name,
+                'referral_code' => $request->referral_code,
+                'discount'      => $request->discount,
+                'is_active'     => $request->is_active ?? false,
+            ]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully updated referral.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to update referral: ' . $e);
+            return redirect()->back()->with('error', 'Failed to update referral: ' . $e->getMessage());
+        }
+    }
+
+    public function getAllReferrals()
+    {
+        $data = Referral::query()
+            ->leftJoin('orders', function ($join) {
+                $join->on('orders.referral_code', '=', 'referrals.referral_code')
+                    ->where('orders.payment_status', 'payment_received');
+            })
+            ->select('referrals.*')
+            ->selectRaw('COUNT(orders.id) as `usage`')
+            ->selectRaw('COALESCE(SUM(orders.referral_discount), 0) as total_discount')
+            ->groupBy('referrals.id', 'referrals.name', 'referrals.referral_code', 'referrals.discount', 'referrals.is_active', 'referrals.created_at', 'referrals.updated_at')
+            ->orderBy('referrals.name', 'asc')
+            ->get();
+
+        return $data;
+    }
+
+    public function getReferralUsages($limit = null)
+    {
+        // Only paid orders count as usage; left join keeps history for deleted referral codes.
+        $query = Order::with(['user.profile', 'guest'])
+            ->leftJoin('referrals', 'referrals.referral_code', '=', 'orders.referral_code')
+            ->whereNotNull('orders.referral_code')
+            ->where('orders.payment_status', 'payment_received')
+            ->select('orders.*', 'referrals.id as referral_id', 'referrals.name as referral_name')
+            ->orderBy('orders.created_at', 'desc');
+
+        if ($limit) {
+            $query->limit($limit);
+        }
+
+        return $query->get()->map(function ($order) {
+            return [
+                'id'              => $order->id,
+                'referral_id'     => $order->referral_id,
+                'referral_code'   => $order->referral_code,
+                'referral_name'   => $order->referral_name ?? '(deleted)',
+                'customer_name'   => $order->user?->profile?->name ?? $order->guest?->contact_name ?? '-',
+                'customer_email'  => $order->user?->email ?? $order->guest?->email ?? '-',
+                'order_number'    => $order->order_number,
+                'order_total'     => (float) $order->grand_total,
+                'discount_amount' => (float) ($order->referral_discount ?? 0),
+                'payment_status'  => $order->payment_status,
+                'used_at'         => $order->created_at,
+            ];
+        });
+    }
+
+    public function checkReferral(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'referral_code' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $referral = Referral::where('referral_code', $request->referral_code)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$referral) {
+            return response()->json([
+                'message' => 'Referral code not found',
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Referral code is valid',
+            'data'    => [
+                'referral_code' => $referral->referral_code,
+                'discount'      => $referral->discount,
+            ],
+        ], 200);
+    }
+
+    public function getReferral($id)
+    {
+        try {
+            $referral = Referral::findOrFail($id);
+            return $referral;
+        } catch (Exception $e) {
+            Log::error('[ERROR] Failed to fetch referral: ' . $e);
+            return redirect()->back()->with('error', 'Referral not found.');
+        }
+    }
+
+    public function deleteReferral($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $referral = Referral::findOrFail($id);
+            $referral->delete();
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully deleted referral.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[ERROR] Failed to delete referral: ' . $e);
+            return redirect()->back()->with('error', 'Failed to delete referral: ' . $e->getMessage());
+        }
     }
 }
