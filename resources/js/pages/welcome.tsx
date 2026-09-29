@@ -354,15 +354,11 @@ const ProductCardsSection = ({
     products,
     variant,
     title,
-    eyebrow,
-    meta,
     subtitle,
 }: {
     products: IProducts[];
     variant: 'leaderboard' | 'shelf';
     title: string;
-    eyebrow: string;
-    meta: string;
     subtitle?: string;
 }) => {
     const [activeSlide, setActiveSlide] = useState(0);
@@ -445,13 +441,6 @@ const ProductCardsSection = ({
     return (
         <section className={`relative${isShelf ? 'bg-card' : ''}`}>
             <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 md:py-20 lg:px-8">
-                {/* Scoreboard rule: label, dashed line, meta */}
-                <div className="mb-6 flex items-center gap-3 font-pixel text-[9px] text-muted-foreground sm:text-[10px]">
-                    <span className="text-primary">{eyebrow}</span>
-                    <span aria-hidden="true" className="h-0 flex-1 border-t-2 border-dashed border-primary/20" />
-                    <span>{meta}</span>
-                </div>
-
                 {/* Section Header */}
                 <div className="mb-8 flex flex-col gap-5 md:mb-10 md:flex-row md:items-end md:justify-between">
                     <div>
@@ -784,8 +773,6 @@ function Welcome() {
                 <ProductCardsSection
                     products={productsTop}
                     variant="leaderboard"
-                    eyebrow="HI-SCORE"
-                    meta="ALL-TIME TOP 5"
                     title="TOP SELLING ITEMS"
                     subtitle="Ranked by copies sold - the Extended Art collectors keep coming back for."
                 />
@@ -793,8 +780,6 @@ function Welcome() {
                 <ProductCardsSection
                     products={productsBottom}
                     variant="shelf"
-                    eyebrow="STAFF SHELF"
-                    meta={new Date().toLocaleString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()}
                     title="SHOP PICKS OF THE MONTH"
                     subtitle="Hand-picked by our team - fresh favourites worth a closer look."
                 />
