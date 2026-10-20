@@ -303,8 +303,10 @@ export default function Checkout() {
         }
 
         setSelectedAddress((prev) => {
-            if (prev && validAddresses.some((address) => address.id === prev.id)) {
-                return prev;
+            // Return the fresh object (not `prev`) so edits to the selected address show without a reload.
+            const refreshed = prev ? validAddresses.find((address) => address.id === prev.id) : undefined;
+            if (refreshed) {
+                return refreshed;
             }
 
             return validAddresses.find((address) => address.is_active) ?? validAddresses[0];

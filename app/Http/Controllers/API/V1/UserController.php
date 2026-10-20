@@ -286,7 +286,7 @@ class UserController extends Controller
         // Use the address's own country (not the profile country) so validation
         // and Biteship sync are correct when users have addresses in multiple countries.
         $existingAddress = DeliveryAddress::find($request->id);
-        $isIndonesia = $this->isIndonesiaCountry($existingAddress?->getRawAttributeValue('country') ?? $request->country);
+        $isIndonesia = $this->isIndonesiaCountry($existingAddress?->getRawOriginal('country') ?? $request->country);
 
         $validator = Validator::make($request->all(), [
             'id'            => 'required|exists:delivery_address,id',
