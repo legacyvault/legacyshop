@@ -470,6 +470,18 @@ class OrderController extends Controller
             ], 500);
         }
 
+        // Reject couriers outside BiteshipController::allowedCouriers() (BITESHIP_COURIERS
+        // if set, else every Biteship courier code). Activation itself is enforced by
+        // Biteship's rates endpoint, which only quotes activated couriers.
+        // Manual invoices use free-text couriers and never create a Biteship draft.
+        if (!$isManualInvoice && !in_array(strtolower((string) $request->courier_code), BiteshipController::allowedCouriers(), true)) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'The selected courier is no longer available. Please choose another shipping option.',
+            ], 422);
+        }
+
         foreach ($items as &$item) {
             $item['price'] = $this->resolveAuthoritativeItemPrice($item, true);
         }

@@ -1034,7 +1034,7 @@ export default function Checkout() {
             const payload = {
                 origin_postal_code: warehouse.postal_code,
                 destination_postal_code: selectedCheckoutAddress.postal_code,
-                couriers: 'jne,sicepat,jnt,anteraja',
+                // Couriers come from BITESHIP_COURIERS on the server (config services.biteship.couriers).
                 items: rateItemsPayload,
             };
 
