@@ -45,4 +45,16 @@ return [
     'ip_api' => [
         'key' => env('IP_API_KEY'),
     ],
+
+    'biteship' => [
+        'api_key' => env('BITESHIP_API_KEY'),
+        // Optional restriction. Empty (default) = offer every courier that is
+        // activated in the Biteship Courier Marketplace (Biteship's rates endpoint only
+        // returns activated couriers). Set e.g. "jnt,anteraja" to hide the rest even
+        // if they're active in Biteship. Comma-separated Biteship courier codes.
+        'couriers' => array_values(array_filter(array_map(
+            fn ($code) => strtolower(trim($code)),
+            explode(',', (string) env('BITESHIP_COURIERS', ''))
+        ))),
+    ],
 ];
